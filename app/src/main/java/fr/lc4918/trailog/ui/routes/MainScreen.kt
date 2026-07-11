@@ -724,6 +724,7 @@ private fun LegendContent(
                         Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
+                    Spacer(Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         // Boutons avec contour + libellé (au lieu de simples icônes), centrés horizontalement
                         // dans la ligne (poids égaux de chaque côté), espacement entre eux agrandi de 50 % (4dp -> 6dp).

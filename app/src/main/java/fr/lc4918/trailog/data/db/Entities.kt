@@ -125,7 +125,7 @@ data class SettingsEntity(
     val profCursorBold: Boolean = false,
     val customTitle: String = "",                   // titre du menu latéral ; vide = titre par défaut traduit
     val avatarSource: String = "",                  // chemin fichier local ou URL ; vide = icône par défaut
-    val showBasemapControlButton: Boolean = false,  // bouton du gestionnaire de fonds de plan sur la carte
+    val showBasemapControlButton: Boolean = true,   // bouton du gestionnaire de fonds de plan sur la carte
     val basemapControlWidthPct: Int = 50,           // largeur du panneau (% de la largeur d'écran)
     val basemapControlOpacityPct: Int = 20,         // transparence du panneau (%)
     val bubbleTitleFont: Int = 14,                  // taille police du titre de l'infobulle ("Marqueur")

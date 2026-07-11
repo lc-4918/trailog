@@ -79,8 +79,12 @@ class MapController {
     /** Réoriente la carte pour remettre le nord en haut. */
     fun resetNorth() { map?.easeCamera(CameraUpdateFactory.bearingTo(0.0)) }
 
+    /** Aucun style de repli : tant que json/url ne sont pas résolus (ex. fonds/réglages pas encore
+     *  chargés), on ne touche pas au style actuellement appliqué plutôt que d'afficher un style de
+     *  démonstration MapLibre (fond monde générique, un aplat de couleur par pays). */
     fun requestStyle(json: String?, url: String?) {
-        desiredJson = json; desiredUrl = url; desiredKey = url ?: json ?: "demo"
+        if (json == null && url == null) return
+        desiredJson = json; desiredUrl = url; desiredKey = url ?: json
         applyStyleIfNeeded()
     }
 
@@ -89,11 +93,7 @@ class MapController {
         val key = desiredKey ?: return
         if (key == appliedKey) return
         appliedKey = key
-        val b = when {
-            desiredUrl != null -> Style.Builder().fromUri(desiredUrl!!)
-            desiredJson != null -> Style.Builder().fromJson(desiredJson!!)
-            else -> Style.Builder().fromUri("https://demotiles.maplibre.org/style.json")
-        }
+        val b = if (desiredUrl != null) Style.Builder().fromUri(desiredUrl!!) else Style.Builder().fromJson(desiredJson!!)
         m.setStyle(b) { st ->
             style = st
             layerKeys.clear(); pinImages.clear()  // le nouveau style a vidé sources/couches

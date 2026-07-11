@@ -589,21 +589,37 @@ private val CompactChipHeight = 28.dp
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/** Déclencheur du select construit à la main (Box + Row), plutôt que via les slots leadingIcon/trailingIcon
+ *  de [CompactOutlinedTextField] : ces slots imposent un plancher de hauteur (zone tactile M3, ~48dp) non
+ *  contournable de l'intérieur, ce qui gonflait le champ par rapport aux autres inputs compacts (bug 1.6).
+ *  Le fond/bord réutilise [OutlinedTextFieldDefaults.Container] pour rester visuellement identique. */
 @Composable private fun LanguagePicker(current: String, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
-        CompactOutlinedTextField(
-            value = LocalePrefs.nativeName(current), onValueChange = {}, readOnly = true,
-            leadingIcon = { LanguageFlag(current) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(open) }, textStyle = MaterialTheme.typography.bodyMedium,
-        )
+        Box(Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth().clip(OutlinedTextFieldDefaults.shape)) {
+            OutlinedTextFieldDefaults.Container(
+                enabled = true, isError = false, interactionSource = interactionSource,
+                modifier = Modifier.matchParentSize(),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LanguageFlag(current)
+                Spacer(Modifier.width(8.dp))
+                Text(LocalePrefs.nativeName(current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                ExposedDropdownMenuDefaults.TrailingIcon(open, modifier = Modifier.requiredSize(CompactIconSize))
+            }
+        }
         ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             LocalePrefs.SELECTABLE.forEach { code ->
                 DropdownMenuItem(
                     leadingIcon = { LanguageFlag(code) },
                     text = { Text(LocalePrefs.nativeName(code)) },
-                    onClick = { onSelect(code); open = false },
+                    // Fermer avant de déclencher le changement de langue (qui recrée l'Activity) : évite
+                    // tout flash du menu encore ouvert pendant la recréation (cf. bug 1.6).
+                    onClick = { open = false; onSelect(code) },
                 )
             }
         }
