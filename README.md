@@ -1,83 +1,117 @@
-# CycleApp — application Android d'itinéraires vélo / VTT (squelette)
+# Trailog
 
-Application **native Kotlin + Jetpack Compose** pour consulter des itinéraires (et en
-ajouter par **import de fichiers** GPX / GeoJSON / KML), avec carte **MapLibre Native**,
-profil altimétrique natif synchronisé, et fonctionnement **hors-ligne** (MBTiles / cache).
+**Cartographie et itinéraires hors-ligne pour Android.**
 
-> ⚠️ **Ceci est un squelette de démarrage** à ouvrir dans Android Studio. Il pose
-> l'architecture complète et la plupart des écrans, mais n'a pas pu être compilé ici :
-> quelques signatures de l'API MapLibre 11 peuvent demander de petits ajustements, et
-> le `gradle-wrapper.jar` (binaire) est régénéré automatiquement par Android Studio.
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
+[![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
 
-## Ouvrir le projet
-1. Android Studio (récent) → **Open** → sélectionner le dossier `cycle-app`.
-2. Laisser Gradle se synchroniser (il télécharge Gradle 8.11.1 + dépendances).
-3. Si proposé, accepter les mises à jour AGP/Kotlin/Compose.
-4. Lancer sur un appareil/émulateur **API 24+**.
-   - Backend rendu = **Vulkan** (défaut MapLibre). Si l'émulateur plante au rendu,
-     remplacer dans `app/build.gradle.kts` la dépendance par
-     `org.maplibre.gl:android-sdk-opengl:11.11.0`.
+Trailog est une application Android native pour consulter, importer et organiser des
+traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,
+avec un fonctionnement pensé pour le hors-ligne.
 
-## Versions
-- Gradle 8.11.1 · AGP 8.7.3 · Kotlin 2.1.0 · Compose BOM 2025.01.00
-- MapLibre Native Android **11.11.0** · Room 2.6.1 · Navigation Compose 2.8.x
-- minSdk 24 · target/compile 35 · `java.time` via core-library-desugaring · base Room **v2** (migration destructive en dev)
+> *Captures d'écran à venir.*
 
-## Architecture
-```
-app/src/main/java/fr/lc4918/cycle/
-├─ CycleApp.kt              Application : init MapLibre + dépôt + amorçage
-├─ MainActivity.kt          setContent { AppRoot() }
-├─ domain/
-│  ├─ model/Models.kt       TrackPoint, Sample, TrackStats, ComputedTrack
-│  └─ geo/TrackMath.kt      distance, lissage, pente, D+/D-, temps en mouvement (porté du JS)
-│  └─ geo/Format.kt         formats durée / distance / altitude
-├─ data/
-│  ├─ db/                   Room : Folder, Route, Provider, Composite, Settings + DAO + base
-│  ├─ seed/Providers.kt     21 fonds par défaut (OSM défaut, IGN FR/ES, overlays, DEM…)
-│  ├─ imp/TrackImporter.kt  parseurs GeoJSON / GPX / KML
-│  └─ repo/                 CycleRepository (import, calcul, stockage), GeoJsonStore
-├─ map/StyleBuilder.kt      style MapLibre (fond + overlays + relief, MBTiles inclus)
-└─ ui/
-   ├─ components/MapLibreView.kt  MapView (AndroidView) + MapController (tracé, curseur, tap tolérant)
-   ├─ profile/ElevationProfile.kt profil natif (Canvas) coloré par pente + curseur
-   ├─ routes/MainScreen.kt        menu latéral (légende arborescente, avatar→réglages) + carte + profil
-   ├─ settings/SettingsScreen.kt  unités, menu, tolérance, relief, fond défaut, dossier MBTiles, éditeur providers
-   └─ nav/AppRoot.kt              NavHost (main / settings)
-```
+---
 
-## Fonds de carte
-- Édités dans les réglages (URL + clé API, activer/désactiver).
-- **MBTiles** : fournir un provider de type `MBTILES` dont l'`urlTemplate` est le nom de
-  fichier (rangé dans le **dossier MBTiles** configurable) ou un `mbtiles:///chemin` complet.
-  MapLibre exige un **chemin réel** : à l'import, copier le `.mbtiles` dans ce dossier.
-- **Composite** = un fond opaque + des overlays (modèle `CompositeEntity`).
-- Relief : provider `DEM` (terrarium) + interrupteur *hillshade*.
+## Table des matières
 
-## Couches de points (markers)
-- Import **GeoJSON / GPX (wpt) / KML (Placemark)** comme couche de points, au même titre qu'un parcours.
-- Marqueurs affichés sur la carte ; **tap sur un marqueur → infobulle** (lecture) avec les propriétés
-  dans l'ordre du schéma de couche puis les propriétés propres au marqueur.
-- Types de valeur gérés en lecture : **texte**, **image** (affichée à la taille de l'infobulle, bouton
-  « Agrandir » en haut-droite → visionneuse plein écran), **lien** (pastille moderne cliquable, pas un `<a>` souligné).
-- Bouton **crayon → formulaire (popup 80 %)** : édition des valeurs texte et lien (étape 1).
+- [Qu'est-ce que Trailog ?](#quest-ce-que-trailog-)
+- [Caractéristiques principales](#caractéristiques-principales)
+- [Installation](#installation)
+- [Guide de démarrage rapide](#guide-de-démarrage-rapide)
+- [Utilisation avancée](#utilisation-avancée)
+- [Données & Confidentialité](#données--confidentialité)
+- [Contribution & Développement](#contribution--développement)
+- [Licence](#licence)
+- [Contact](#contact)
 
-## Ce qui marche dans le squelette
-- Import GPX/GeoJSON/KML → calcul stats (distance, D+/D-, pente, temps mouvement) → stockage.
-- Liste arborescente (dossiers/itinéraires) dans le menu latéral plein écran (burger + swipe).
-- Affichage carte du tracé + profil natif synchronisé (scrub → curseur).
-- Réglages : unités, mode menu, tolérance de tap, relief, fond par défaut, dossier MBTiles, éditeur de providers (URL/clé/tileSize).
-- Arborescence : **renommer / déplacer / supprimer** dossiers, parcours et couches ; **nouveau sous-dossier**.
-- Tap sur la carte près d'un tracé → **curseur positionné au point le plus proche** (synchro carte ↔ profil).
-- **Import d'un fichier `.mbtiles`** : copie vers le dossier réel + lecture des métadonnées SQLite (nom, zoom, format) + enregistrement comme fond utilisable hors-ligne (raster ; pbf/vectoriel signalé non géré en v1).
+---
 
-## TODO (prochaines itérations)
-- **Éditeur d'infobulle, étape 2** : ajouter une propriété (texte/image/lien) avec **portée marqueur ou couche**,
-  **import d'image** depuis le formulaire, et **réorganisation drag-drop** des propriétés (appliquée à toute la couche).
-- UI de sélection des overlays + éditeur de composites.
-- Gestion des régions hors-ligne (offline packs) + taille du cache ambiant.
-- Renommer/déplacer dossiers & itinéraires (les DAO existent déjà).
-- Tap carte → point le plus proche pour synchroniser le curseur (actuellement hit-test du tracé).
-- Centrage sur la position GPS, terrain 3D.
+## Qu'est-ce que Trailog ?
 
-Voir `SPEC.md` pour la spécification détaillée.
+Trailog permet de garder ses traces et points d'intérêt organisés localement sur son
+téléphone, et de les visualiser sur une carte avec un profil altimétrique synchronisé,
+sans dépendre d'un service en ligne.
+
+**Cas d'usage typiques :**
+- Randonnée, vélo, VTT : consulter un itinéraire préparé à l'avance, hors-ligne sur le terrain.
+- Archivage de traces personnelles, classées en dossiers.
+- Exploration de fonds de carte spécialisés (IGN, relief, pistes cyclables…).
+
+## Caractéristiques principales
+
+- **Carte native** (MapLibre) avec de nombreux fonds de carte configurables (OpenStreetMap,
+  IGN, relief/hillshade, fonds composites fond + overlays…).
+- **Import de traces** au format **GPX**, **GeoJSON** et **KML/KMZ**, avec calcul automatique
+  des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement).
+- **Profil altimétrique** natif, synchronisé avec un curseur sur la carte.
+- **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires.
+- **Couches de points** (marqueurs) avec infobulles éditables (texte, image, lien).
+- **Hors-ligne** : cache des tuiles déjà consultées, et import de fonds **MBTiles** locaux.
+- **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
+  catalan, basque, italien et portugais.
+- Réglages personnalisables : unités, tolérance de sélection tactile, thème d'avatar, etc.
+
+## Installation
+
+**Prérequis :** Android 7.0 (API 24) ou supérieur.
+
+### Depuis GitHub Releases (recommandé)
+
+1. Ouvrir la page [Releases](https://github.com/lc-4918/trailog/releases) du dépôt.
+2. Télécharger le fichier `.apk` de la dernière version.
+3. Ouvrir le fichier téléchargé sur votre téléphone (autoriser l'installation depuis une
+   source inconnue si demandé par Android).
+4. Confirmer l'installation.
+
+> Trailog n'est pas distribué sur le Play Store : GitHub Releases sert de plateforme de
+> distribution. Voir la section [Contribution & Développement](#contribution--développement)
+> pour le détail du fonctionnement de ce "store".
+
+## Guide de démarrage rapide
+
+1. **Importer une trace** : bouton *Importer* → choisir un fichier GPX, GeoJSON ou KML/KMZ
+   → l'app calcule automatiquement les statistiques et propose un aperçu.
+2. **Choisir la destination** : dossier existant ou nouveau (dossier ou sous-dossier).
+3. **Visualiser** : tap sur l'itinéraire dans le menu latéral → affichage sur la carte et du
+   profil altimétrique. Un tap sur la carte ou sur le profil positionne le curseur au point
+   correspondant sur l'autre vue.
+4. **Ajouter des points d'intérêt** : importer une couche de points (GeoJSON/GPX/KML), tap
+   sur un marqueur pour voir son infobulle.
+
+## Utilisation avancée
+
+- **Import/export** : GeoJSON, GPX et KML/KMZ en import ; export GeoJSON des traces.
+- **Fonds de carte** : gérer la liste des fournisseurs de tuiles dans les réglages
+  (URL, clé API, activation), créer des **fonds composites** (un fond opaque + un ou
+  plusieurs overlays, ex. OpenStreetMap + tracés VTT).
+- **Fonds hors-ligne locaux** : importer un fichier `.mbtiles` pour disposer d'un fond
+  utilisable sans connexion.
+- **Relief** : activer le hillshade (ombrage de relief) dans les réglages carte.
+- **Personnalisation** : avatar, unités (métrique/impérial), mode d'ouverture du menu
+  (bouton ou balayage), tolérance de sélection tactile sur la carte.
+
+## Données & Confidentialité
+
+- Aucun suivi en ligne, aucune télémétrie.
+- Toutes les traces, points et réglages sont stockés **localement** sur l'appareil.
+- Les seules requêtes réseau sont celles nécessaires au chargement des tuiles de carte
+  auprès des fournisseurs que vous avez configurés.
+
+## Contribution & Développement
+
+Le développement se fait ouvertement sur GitHub :
+- Guide technique complet (installation, architecture, build) : voir [`DEVELOPER.md`](DEVELOPER.md).
+- Fonctionnement du CI/CD et des releases : voir [`WORKFLOW.md`](WORKFLOW.md).
+- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/trailog/issues).
+
+## Licence
+
+Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](LICENSE).
+
+## Contact
+
+Pour toute question, ouvrez une [discussion ou une issue](https://github.com/lc-4918/trailog/issues)
+sur le dépôt GitHub.
