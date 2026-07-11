@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Ekintza arruntak -->
+    <string name="action_back">Atzera</string>
+    <string name="action_browse">Arakatu</string>
+    <string name="action_cancel">Utzi</string>
+    <string name="action_close">Itxi</string>
+    <string name="action_close_menu">Itxi menua</string>
+    <string name="action_collapse">Bildu</string>
+    <string name="action_color">Kolorea</string>
+    <string name="action_create">Sortu</string>
+    <string name="action_create_and_import">Sortu eta inportatu</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Ezabatu</string>
+    <string name="action_drag_to_move">Arrastatu mugitzeko</string>
+    <string name="action_edit">Editatu</string>
+    <string name="action_enable">Gaitu</string>
+    <string name="action_expand">Zabaldu</string>
+    <string name="action_expand_image">Handitu</string>
+    <string name="action_hide">Ezkutatu</string>
+    <string name="action_hide_folder">Ezkutatu karpeta</string>
+    <string name="action_import">Inportatu</string>
+    <string name="action_export">Esportatu</string>
+    <string name="action_import_mbtiles">Inportatu .mbtiles fitxategi bat</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menua</string>
+    <string name="action_more">Ekintzak</string>
+    <string name="action_move">Mugitu…</string>
+    <string name="action_new_subfolder">Azpikarpeta berria</string>
+    <string name="action_ok">Ados</string>
+    <string name="action_rename">Berrizendatu</string>
+    <string name="action_reset_north">Berbideratu iparraldera</string>
+    <string name="action_save">Gorde</string>
+    <string name="action_show">Erakutsi</string>
+    <string name="action_show_folder">Erakutsi karpeta</string>
+    <string name="action_zoom_to_layer">Zooma geruzan</string>
+    <string name="action_center_on_location">Zentratu nire kokapenean</string>
+    <string name="action_reset_avatar">Berrezarri avatarra</string>
+    <string name="action_pin_image">Ainguratu azal-irudi gisa</string>
+    <string name="action_unpin_image">Kendu ainguratzea</string>
+    <string name="action_create_composite">Sortu oinarrizko mapa konposatua</string>
+    <string name="action_reset_defaults">Berrezarri balio lehenetsiak</string>
+    <string name="action_change_avatar">Aldatu avatarra</string>
+    <string name="action_load_image_from_phone">Kargatu irudi bat</string>
+    <string name="action_manage_providers">Kudeatu hornitzaileak</string>
+
+    <!-- Etiketa orokorrak -->
+    <string name="label_root">— Erroa —</string>
+    <string name="label_new_folder">Karpeta berria</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">GPS kokapena</string>
+
+    <!-- Elkarrizketa-koadroak -->
+    <string name="dialog_composite_title">Oinarrizko mapa konposatu berria</string>
+    <string name="dialog_import_into_title">Inportatu hemen…</string>
+    <string name="dialog_gps_disabled_title">GPS sentsorea inaktibo</string>
+    <string name="dialog_gps_disabled_text">Kokapen-detekzioa desgaituta dago. Gaitu nahi duzu?</string>
+    <string name="dialog_move_to_title">Mugitu hona…</string>
+    <string name="dialog_color_title">Bistaratze-kolorea</string>
+    <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>
+
+    <!-- Alboko menua -->
+    <string name="drawer_default_title">Ibilbideak</string>
+
+    <!-- Ezarpenak: fitxak -->
+    <string name="settings_title">Ezarpenak</string>
+    <string name="settings_tab_general">Sistema</string>
+    <string name="settings_tab_profile">Profila</string>
+    <string name="settings_tab_map">Mapa</string>
+    <string name="settings_tab_tiles">Lauzak</string>
+
+    <!-- Ezarpenak: Sistema -->
+    <string name="settings_section_avatar">Avatarra</string>
+    <string name="settings_section_language">Hizkuntza</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Unitateak</string>
+    <string name="unit_metric">Metrikoa</string>
+    <string name="unit_imperial">Inperiala</string>
+    <string name="settings_section_theme">Gaia</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Argia</string>
+    <string name="theme_dark">Iluna</string>
+    <string name="settings_section_side_menu">Alboko menua</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Irristatu</string>
+    <string name="side_menu_both">Biak</string>
+    <string name="settings_section_tap_tolerance">Ukitze-tolerantzia: %1$d dp</string>
+    <string name="settings_section_status_bar">Egoera-barra</string>
+    <string name="settings_status_bar_transparent">Gardena (mapa azpitik ikusten da)</string>
+
+    <!-- Ezarpenak: Profila -->
+    <string name="settings_section_display">Bistaratzea</string>
+    <string name="settings_profile_grid">Sareta</string>
+    <string name="settings_profile_color_by_slope">Koloreztatu area maldaren arabera</string>
+    <string name="settings_profile_slope_legend">Malden legenda</string>
+    <string name="settings_section_font_sizes">Letra-tamainak (sp)</string>
+    <string name="font_axes">Ardatzak</string>
+    <string name="font_title">Izenburua</string>
+    <string name="font_title_bar_info">Info (izenburu-barra)</string>
+    <string name="font_cursor_point">Uneko puntua</string>
+    <string name="settings_section_title_line_info">Izenburu-lerroaren info</string>
+    <string name="chip_distance">Distantzia</string>
+    <string name="chip_ascent">Igoera</string>
+    <string name="chip_descent">Jaitsiera</string>
+    <string name="chip_duration">Iraupena</string>
+    <string name="chip_alt_min">Alt min</string>
+    <string name="chip_alt_max">Alt max</string>
+    <string name="settings_section_cursor_info">Uneko puntuaren info</string>
+    <string name="chip_altitude">Altitudea</string>
+    <string name="chip_slope">Malda</string>
+    <string name="chip_time">Denbora</string>
+
+    <!-- Ezarpenak: Burbuilak -->
+    <string name="settings_section_bubbles">Informazio-burbuilak</string>
+    <string name="settings_font_size">Letra-tamaina</string>
+    <string name="settings_bold_abbrev">L</string>
+
+    <!-- Ezarpenak: Mapa -->
+    <string name="settings_section_scale">Eskala</string>
+    <string name="settings_show_scale_bar">Erakutsi eskala grafikoa</string>
+    <string name="settings_section_rotation">Errotazioa</string>
+    <string name="settings_allow_rotation">Baimendu maparen errotazioa (2 hatzeko keinua)</string>
+    <string name="settings_section_gps_position">GPS kokapena</string>
+    <string name="settings_show_gps_button">Erakutsi GPS kokapen-botoia</string>
+    <string name="settings_section_markers">Markatzaileak (mapa)</string>
+    <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
+    <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>
+    <string name="settings_default_system">Sistemaren lehenetsia</string>
+    <string name="settings_section_basemap_control">Oinarrizko mapen kudeatzailea</string>
+    <string name="settings_show_basemap_control_button">Erakutsi oinarrizko mapen kudeatzailearen botoia</string>
+    <string name="settings_basemap_control_width">Panelaren zabalera: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Panelaren gardentasuna: %1$d%%</string>
+    <string name="settings_section_default_basemap">Oinarrizko mapa lehenetsia</string>
+    <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
+    <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>
+    <string name="settings_section_basemaps">Oinarrizko mapak</string>
+    <string name="settings_section_providers">Hornitzaileak</string>
+    <string name="settings_basemap_label">Oinarrizko mapa</string>
+    <string name="settings_field_mbtiles_file">MBTiles fitxategia</string>
+    <string name="settings_field_name">Izena</string>
+    <string name="settings_field_url">URLa</string>
+    <string name="settings_field_api_key">API gakoa</string>
+    <string name="settings_field_tile_size">Lauza-tamaina (px) — normalean 256 edo 512</string>
+
+    <!-- Informazio-burbuila -->
+    <string name="bubble_title_marker">Markatzailea</string>
+    <string name="bubble_no_properties">Propietaterik ez</string>
+    <string name="bubble_image_not_found">(irudia ez da aurkitu)</string>
+    <string name="field_display_text">Bistaratutako testua</string>
+    <string name="field_image_source">Irudia (fitxategia edo URLa)</string>
+    <string name="field_composite_name">Konposatuaren izena</string>
+    <string name="field_foreground_opacity">Aurreko planoko geruzaren gardentasuna: %1$d%%</string>
+    <string name="label_foreground_layer">Aurreko planoko geruza</string>
+    <string name="label_background_layer">Atzeko planoko geruza</string>
+    <string name="basemap_control_title">Oinarrizko mapak</string>
+    <string name="content_desc_basemap_control">Oinarrizko mapen kudeatzailea</string>
+
+    <!-- Egoera / erroreak -->
+    <string name="error_cannot_open_file">Ezin izan da fitxategia ireki</string>
+    <string name="status_imported_format">Inportatuta: %1$s (zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">MBTiles inportazioak huts egin du</string>
+    <string name="error_mbtiles_vector_unsupported">MBTiles bektoriala (pbf) oraindik ez da onartzen: %1$s</string>
+
+    <!-- Berrezarpena -->
+    <string name="settings_section_reset">Berrezarpena</string>
+    <string name="action_reset_all_settings">Berrezarri ezarpen guztiak</string>
+    <string name="dialog_reset_all_settings_text">Ekintza honek ezarpen guztiak berrezartzen ditu (hizkuntza, gaia, avatarra, maparen ezarpenak…). Hornitzaileen URLak eta API gakoak, erabiltzaileak sortutako oinarrizko mapa konposatuak eta inportatutako MBTiles fitxategiak mantendu egingo dira.</string>
+
+    <!-- Hornitzaileen inportazioa/esportazioa -->
+    <string name="dialog_import_providers_title">Hornitzaileak inportatu?</string>
+    <string name="dialog_import_providers_text">%1$d hornitzaile inportatuko dira. Id bera duten hornitzaile existenteak gainidatziko dira.</string>
+</resources>

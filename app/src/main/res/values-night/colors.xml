@@ -1,0 +1,4 @@
+<resources>
+    <!-- Gris foncé plutôt que le fond quasi noir par défaut de Material3 (jugé trop sombre pour le splash). -->
+    <color name="splash_background">#2C2C2E</color>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="cycle-app-demo" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="45.8995" lon="6.1190"><name>Belvédère</name><desc>Vue sur le lac</desc><sym>Scenic Area</sym></wpt>
+  <wpt lat="45.8930" lon="6.1240"><name>Source</name><desc>Eau potable</desc></wpt>
+  <wpt lat="45.8880" lon="6.1305"><name>Bifurcation</name><desc>À gauche</desc></wpt>
+</gpx>

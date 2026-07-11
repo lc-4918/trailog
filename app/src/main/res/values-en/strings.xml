@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_browse">Browse</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="action_close_menu">Close menu</string>
+    <string name="action_collapse">Collapse</string>
+    <string name="action_color">Color</string>
+    <string name="action_create">Create</string>
+    <string name="action_create_and_import">Create and import</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_drag_to_move">Drag to move</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_expand">Expand</string>
+    <string name="action_expand_image">Expand</string>
+    <string name="action_hide">Hide</string>
+    <string name="action_hide_folder">Hide folder</string>
+    <string name="action_import">Import</string>
+    <string name="action_export">Export</string>
+    <string name="action_import_mbtiles">Import an .mbtiles file</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menu</string>
+    <string name="action_more">Actions</string>
+    <string name="action_move">Move…</string>
+    <string name="action_new_subfolder">New subfolder</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_reset_north">Reset to north</string>
+    <string name="action_save">Save</string>
+    <string name="action_show">Show</string>
+    <string name="action_show_folder">Show folder</string>
+    <string name="action_zoom_to_layer">Zoom to layer</string>
+    <string name="action_center_on_location">Center on my location</string>
+    <string name="action_reset_avatar">Reset avatar</string>
+    <string name="action_pin_image">Pin as cover image</string>
+    <string name="action_unpin_image">Unpin</string>
+    <string name="action_create_composite">Create a composite basemap</string>
+    <string name="action_reset_defaults">Reset to defaults</string>
+    <string name="action_change_avatar">Change avatar</string>
+    <string name="action_load_image_from_phone">Load an image</string>
+    <string name="action_manage_providers">Manage providers</string>
+
+    <!-- Generic labels -->
+    <string name="label_root">— Root —</string>
+    <string name="label_new_folder">New folder</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">GPS position</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_composite_title">New composite basemap</string>
+    <string name="dialog_import_into_title">Import into…</string>
+    <string name="dialog_gps_disabled_title">GPS sensor inactive</string>
+    <string name="dialog_gps_disabled_text">Location sensing is disabled. Do you want to enable it?</string>
+    <string name="dialog_move_to_title">Move to…</string>
+    <string name="dialog_color_title">Display color</string>
+    <string name="dialog_edit_bubble_title">Edit info bubble</string>
+
+    <!-- Side menu -->
+    <string name="drawer_default_title">Routes</string>
+
+    <!-- Settings: tabs -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_tab_general">System</string>
+    <string name="settings_tab_profile">Profile</string>
+    <string name="settings_tab_map">Map</string>
+    <string name="settings_tab_tiles">Tiles</string>
+
+    <!-- Settings: System -->
+    <string name="settings_section_avatar">Avatar</string>
+    <string name="settings_section_language">Language</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Units</string>
+    <string name="unit_metric">Metric</string>
+    <string name="unit_imperial">Imperial</string>
+    <string name="settings_section_theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="settings_section_side_menu">Side menu</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Swipe</string>
+    <string name="side_menu_both">Both</string>
+    <string name="settings_section_tap_tolerance">Tap tolerance: %1$d dp</string>
+    <string name="settings_section_status_bar">Status bar</string>
+    <string name="settings_status_bar_transparent">Transparent (map shows through)</string>
+
+    <!-- Settings: Profile -->
+    <string name="settings_section_display">Display</string>
+    <string name="settings_profile_grid">Grid</string>
+    <string name="settings_profile_color_by_slope">Color area by slope</string>
+    <string name="settings_profile_slope_legend">Slope legend</string>
+    <string name="settings_section_font_sizes">Font sizes (sp)</string>
+    <string name="font_axes">Axes</string>
+    <string name="font_title">Title</string>
+    <string name="font_title_bar_info">Info (title bar)</string>
+    <string name="font_cursor_point">Current point</string>
+    <string name="settings_section_title_line_info">Title line info</string>
+    <string name="chip_distance">Distance</string>
+    <string name="chip_ascent">Ascent</string>
+    <string name="chip_descent">Descent</string>
+    <string name="chip_duration">Duration</string>
+    <string name="chip_alt_min">Min alt</string>
+    <string name="chip_alt_max">Max alt</string>
+    <string name="settings_section_cursor_info">Current point info</string>
+    <string name="chip_altitude">Altitude</string>
+    <string name="chip_slope">Slope</string>
+    <string name="chip_time">Time</string>
+
+    <!-- Settings: Bubbles -->
+    <string name="settings_section_bubbles">Info bubbles</string>
+    <string name="settings_font_size">Font size</string>
+    <string name="settings_bold_abbrev">B</string>
+
+    <!-- Settings: Map -->
+    <string name="settings_section_scale">Scale</string>
+    <string name="settings_show_scale_bar">Show scale bar</string>
+    <string name="settings_section_rotation">Rotation</string>
+    <string name="settings_allow_rotation">Allow map rotation (2-finger gesture)</string>
+    <string name="settings_section_gps_position">GPS position</string>
+    <string name="settings_show_gps_button">Show GPS location button</string>
+    <string name="settings_section_markers">Markers (map)</string>
+    <string name="settings_marker_size">Marker size (dp)</string>
+    <string name="settings_section_import_folder">Default import folder</string>
+    <string name="settings_default_system">System default</string>
+    <string name="settings_section_basemap_control">Basemap manager</string>
+    <string name="settings_show_basemap_control_button">Show basemap manager button</string>
+    <string name="settings_basemap_control_width">Panel width: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Panel transparency: %1$d%%</string>
+    <string name="settings_section_default_basemap">Default basemap</string>
+    <string name="settings_section_mbtiles_folder">MBTiles folder</string>
+    <string name="settings_app_folder_default">App folder (default)</string>
+    <string name="settings_section_basemaps">Basemaps</string>
+    <string name="settings_section_providers">Providers</string>
+    <string name="settings_basemap_label">Basemap</string>
+    <string name="settings_field_mbtiles_file">MBTiles file</string>
+    <string name="settings_field_name">Name</string>
+    <string name="settings_field_url">URL</string>
+    <string name="settings_field_api_key">API key</string>
+    <string name="settings_field_tile_size">Tile size (px) — usually 256 or 512</string>
+
+    <!-- Info bubble -->
+    <string name="bubble_title_marker">Marker</string>
+    <string name="bubble_no_properties">No properties</string>
+    <string name="bubble_image_not_found">(image not found)</string>
+    <string name="field_display_text">Display text</string>
+    <string name="field_image_source">Image (file or URL)</string>
+    <string name="field_composite_name">Composite name</string>
+    <string name="field_foreground_opacity">Foreground layer transparency: %1$d%%</string>
+    <string name="label_foreground_layer">Foreground layer</string>
+    <string name="label_background_layer">Background layer</string>
+    <string name="basemap_control_title">Basemaps</string>
+    <string name="content_desc_basemap_control">Basemap manager</string>
+
+    <!-- Status / errors -->
+    <string name="error_cannot_open_file">Unable to open the file</string>
+    <string name="status_imported_format">Imported: %1$s (zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">MBTiles import failed</string>
+    <string name="error_mbtiles_vector_unsupported">Vector MBTiles (pbf) not supported yet: %1$s</string>
+
+    <!-- Reset -->
+    <string name="settings_section_reset">Reset</string>
+    <string name="action_reset_all_settings">Reset all settings</string>
+    <string name="dialog_reset_all_settings_text">This restores all settings (language, theme, avatar, map settings…). Provider URLs and API keys, user-created composite basemaps, and imported MBTiles files are kept.</string>
+
+    <!-- Provider import/export -->
+    <string name="dialog_import_providers_title">Import providers?</string>
+    <string name="dialog_import_providers_text">%1$d provider(s) will be imported. Existing providers with the same id will be overwritten.</string>
+</resources>

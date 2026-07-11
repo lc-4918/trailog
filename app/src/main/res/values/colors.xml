@@ -1,0 +1,6 @@
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Même valeur que MaterialTheme.colorScheme.background par défaut (lightColorScheme, Neutral98) :
+         le splash natif doit se fondre sans coupure visible avec le premier écran Compose. -->
+    <color name="splash_background">#FEF7FF</color>
+</resources>

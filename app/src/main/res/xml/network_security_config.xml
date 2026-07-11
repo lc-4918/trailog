@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <!-- Hôtes hérités encore en http (cf. SPEC §10). Préférez https si possible. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">terkep.turistautak.hu</domain>
+        <domain includeSubdomains="true">freemap.sk</domain>
+        <domain includeSubdomains="true">opencache.statkart.no</domain>
+        <domain includeSubdomains="true">geoportal.dgu.hr</domain>
+    </domain-config>
+</network-security-config>

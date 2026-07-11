@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Ações comuns -->
+    <string name="action_back">Voltar</string>
+    <string name="action_browse">Procurar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_close_menu">Fechar o menu</string>
+    <string name="action_collapse">Recolher</string>
+    <string name="action_color">Cor</string>
+    <string name="action_create">Criar</string>
+    <string name="action_create_and_import">Criar e importar</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_drag_to_move">Arrastar para mover</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_enable">Ativar</string>
+    <string name="action_expand">Expandir</string>
+    <string name="action_expand_image">Ampliar</string>
+    <string name="action_hide">Ocultar</string>
+    <string name="action_hide_folder">Ocultar pasta</string>
+    <string name="action_import">Importar</string>
+    <string name="action_export">Exportar</string>
+    <string name="action_import_mbtiles">Importar um ficheiro .mbtiles</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menu</string>
+    <string name="action_more">Ações</string>
+    <string name="action_move">Mover…</string>
+    <string name="action_new_subfolder">Nova subpasta</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Renomear</string>
+    <string name="action_reset_north">Reorientar para norte</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_show">Mostrar</string>
+    <string name="action_show_folder">Mostrar pasta</string>
+    <string name="action_zoom_to_layer">Zoom na camada</string>
+    <string name="action_center_on_location">Centrar na minha posição</string>
+    <string name="action_reset_avatar">Repor avatar</string>
+    <string name="action_pin_image">Fixar como imagem de capa</string>
+    <string name="action_unpin_image">Desafixar</string>
+    <string name="action_create_composite">Criar um mapa base composto</string>
+    <string name="action_reset_defaults">Repor valores predefinidos</string>
+    <string name="action_change_avatar">Alterar avatar</string>
+    <string name="action_load_image_from_phone">Carregar uma imagem</string>
+    <string name="action_manage_providers">Gerir fornecedores</string>
+
+    <!-- Etiquetas genéricas -->
+    <string name="label_root">— Raiz —</string>
+    <string name="label_new_folder">Nova pasta</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">Posição GPS</string>
+
+    <!-- Diálogos -->
+    <string name="dialog_composite_title">Novo mapa base composto</string>
+    <string name="dialog_import_into_title">Importar para…</string>
+    <string name="dialog_gps_disabled_title">Sensor GPS inativo</string>
+    <string name="dialog_gps_disabled_text">A localização está desativada. Pretende ativá-la?</string>
+    <string name="dialog_move_to_title">Mover para…</string>
+    <string name="dialog_color_title">Cor de visualização</string>
+    <string name="dialog_edit_bubble_title">Editar o balão informativo</string>
+
+    <!-- Menu lateral -->
+    <string name="drawer_default_title">Itinerários</string>
+
+    <!-- Definições: separadores -->
+    <string name="settings_title">Definições</string>
+    <string name="settings_tab_general">Sistema</string>
+    <string name="settings_tab_profile">Perfil</string>
+    <string name="settings_tab_map">Mapa</string>
+    <string name="settings_tab_tiles">Mosaicos</string>
+
+    <!-- Definições: Sistema -->
+    <string name="settings_section_avatar">Avatar</string>
+    <string name="settings_section_language">Idioma</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Unidades</string>
+    <string name="unit_metric">Métrico</string>
+    <string name="unit_imperial">Imperial</string>
+    <string name="settings_section_theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Escuro</string>
+    <string name="settings_section_side_menu">Menu lateral</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Deslizar</string>
+    <string name="side_menu_both">Ambos</string>
+    <string name="settings_section_tap_tolerance">Tolerância de toque: %1$d dp</string>
+    <string name="settings_section_status_bar">Barra de estado</string>
+    <string name="settings_status_bar_transparent">Transparente (o mapa vê-se por baixo)</string>
+
+    <!-- Definições: Perfil -->
+    <string name="settings_section_display">Visualização</string>
+    <string name="settings_profile_grid">Grelha</string>
+    <string name="settings_profile_color_by_slope">Colorir a área pela inclinação</string>
+    <string name="settings_profile_slope_legend">Legenda de inclinações</string>
+    <string name="settings_section_font_sizes">Tamanhos de letra (sp)</string>
+    <string name="font_axes">Eixos</string>
+    <string name="font_title">Título</string>
+    <string name="font_title_bar_info">Info (barra de título)</string>
+    <string name="font_cursor_point">Ponto atual</string>
+    <string name="settings_section_title_line_info">Info da linha de título</string>
+    <string name="chip_distance">Distância</string>
+    <string name="chip_ascent">Subida</string>
+    <string name="chip_descent">Descida</string>
+    <string name="chip_duration">Duração</string>
+    <string name="chip_alt_min">Alt mín</string>
+    <string name="chip_alt_max">Alt máx</string>
+    <string name="settings_section_cursor_info">Info do ponto atual</string>
+    <string name="chip_altitude">Altitude</string>
+    <string name="chip_slope">Inclinação</string>
+    <string name="chip_time">Tempo</string>
+
+    <!-- Definições: Balões -->
+    <string name="settings_section_bubbles">Balões informativos</string>
+    <string name="settings_font_size">Tamanho da letra</string>
+    <string name="settings_bold_abbrev">N</string>
+
+    <!-- Definições: Mapa -->
+    <string name="settings_section_scale">Escala</string>
+    <string name="settings_show_scale_bar">Mostrar a escala gráfica</string>
+    <string name="settings_section_rotation">Rotação</string>
+    <string name="settings_allow_rotation">Permitir a rotação do mapa (gesto de 2 dedos)</string>
+    <string name="settings_section_gps_position">Posição GPS</string>
+    <string name="settings_show_gps_button">Mostrar o botão de localização GPS</string>
+    <string name="settings_section_markers">Marcadores (mapa)</string>
+    <string name="settings_marker_size">Tamanho dos marcadores (dp)</string>
+    <string name="settings_section_import_folder">Pasta inicial das importações</string>
+    <string name="settings_default_system">Predefinição do sistema</string>
+    <string name="settings_section_basemap_control">Gestor de mapas base</string>
+    <string name="settings_show_basemap_control_button">Mostrar o botão do gestor de mapas base</string>
+    <string name="settings_basemap_control_width">Largura do painel: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Transparência do painel: %1$d%%</string>
+    <string name="settings_section_default_basemap">Mapa base predefinido</string>
+    <string name="settings_section_mbtiles_folder">Pasta de MBTiles</string>
+    <string name="settings_app_folder_default">Pasta da app (predefinida)</string>
+    <string name="settings_section_basemaps">Mapas base</string>
+    <string name="settings_section_providers">Fornecedores</string>
+    <string name="settings_basemap_label">Mapa base</string>
+    <string name="settings_field_mbtiles_file">Ficheiro MBTiles</string>
+    <string name="settings_field_name">Nome</string>
+    <string name="settings_field_url">URL</string>
+    <string name="settings_field_api_key">Chave API</string>
+    <string name="settings_field_tile_size">Tamanho do mosaico (px) — geralmente 256 ou 512</string>
+
+    <!-- Balão informativo -->
+    <string name="bubble_title_marker">Marcador</string>
+    <string name="bubble_no_properties">Sem propriedades</string>
+    <string name="bubble_image_not_found">(imagem não encontrada)</string>
+    <string name="field_display_text">Texto apresentado</string>
+    <string name="field_image_source">Imagem (ficheiro ou URL)</string>
+    <string name="field_composite_name">Nome do composto</string>
+    <string name="field_foreground_opacity">Transparência da camada em primeiro plano: %1$d%%</string>
+    <string name="label_foreground_layer">Camada em primeiro plano</string>
+    <string name="label_background_layer">Camada de fundo</string>
+    <string name="basemap_control_title">Mapas base</string>
+    <string name="content_desc_basemap_control">Gestor de mapas base</string>
+
+    <!-- Estado / erros -->
+    <string name="error_cannot_open_file">Não foi possível abrir o ficheiro</string>
+    <string name="status_imported_format">Importado: %1$s (zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">Falha ao importar MBTiles</string>
+    <string name="error_mbtiles_vector_unsupported">MBTiles vetorial (pbf) ainda não suportado: %1$s</string>
+
+    <!-- Reposição -->
+    <string name="settings_section_reset">Reposição</string>
+    <string name="action_reset_all_settings">Repor todas as definições</string>
+    <string name="dialog_reset_all_settings_text">Esta ação repõe todas as definições (idioma, tema, avatar, definições do mapa…). Os URLs e chaves API dos fornecedores, os mapas base compostos criados pelo utilizador e os ficheiros MBTiles importados são mantidos.</string>
+
+    <!-- Importação/exportação de fornecedores -->
+    <string name="dialog_import_providers_title">Importar os fornecedores?</string>
+    <string name="dialog_import_providers_text">%1$d fornecedor(es) serão importados. Os fornecedores existentes com o mesmo id serão substituídos.</string>
+</resources>

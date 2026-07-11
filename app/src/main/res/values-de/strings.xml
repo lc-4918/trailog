@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Allgemeine Aktionen -->
+    <string name="action_back">Zurück</string>
+    <string name="action_browse">Durchsuchen</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="action_close">Schließen</string>
+    <string name="action_close_menu">Menü schließen</string>
+    <string name="action_collapse">Einklappen</string>
+    <string name="action_color">Farbe</string>
+    <string name="action_create">Erstellen</string>
+    <string name="action_create_and_import">Erstellen und importieren</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_drag_to_move">Ziehen zum Verschieben</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_enable">Aktivieren</string>
+    <string name="action_expand">Ausklappen</string>
+    <string name="action_expand_image">Vergrößern</string>
+    <string name="action_hide">Ausblenden</string>
+    <string name="action_hide_folder">Ordner ausblenden</string>
+    <string name="action_import">Importieren</string>
+    <string name="action_export">Exportieren</string>
+    <string name="action_import_mbtiles">.mbtiles-Datei importieren</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menü</string>
+    <string name="action_more">Aktionen</string>
+    <string name="action_move">Verschieben…</string>
+    <string name="action_new_subfolder">Neuer Unterordner</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Umbenennen</string>
+    <string name="action_reset_north">Nach Norden ausrichten</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_show">Einblenden</string>
+    <string name="action_show_folder">Ordner einblenden</string>
+    <string name="action_zoom_to_layer">Auf Ebene zoomen</string>
+    <string name="action_center_on_location">Auf meinen Standort zentrieren</string>
+    <string name="action_reset_avatar">Avatar zurücksetzen</string>
+    <string name="action_pin_image">Als Titelbild anheften</string>
+    <string name="action_unpin_image">Lösen</string>
+    <string name="action_create_composite">Kombinierte Kartengrundlage erstellen</string>
+    <string name="action_reset_defaults">Auf Standardwerte zurücksetzen</string>
+    <string name="action_change_avatar">Avatar ändern</string>
+    <string name="action_load_image_from_phone">Bild laden</string>
+    <string name="action_manage_providers">Anbieter verwalten</string>
+
+    <!-- Allgemeine Bezeichnungen -->
+    <string name="label_root">— Stammverzeichnis —</string>
+    <string name="label_new_folder">Neuer Ordner</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">GPS-Position</string>
+
+    <!-- Dialoge -->
+    <string name="dialog_composite_title">Neue kombinierte Kartengrundlage</string>
+    <string name="dialog_import_into_title">Importieren nach…</string>
+    <string name="dialog_gps_disabled_title">GPS-Sensor inaktiv</string>
+    <string name="dialog_gps_disabled_text">Die Standorterkennung ist deaktiviert. Möchten Sie sie aktivieren?</string>
+    <string name="dialog_move_to_title">Verschieben nach…</string>
+    <string name="dialog_color_title">Anzeigefarbe</string>
+    <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>
+
+    <!-- Seitenmenü -->
+    <string name="drawer_default_title">Routen</string>
+
+    <!-- Einstellungen: Tabs -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_tab_general">System</string>
+    <string name="settings_tab_profile">Profil</string>
+    <string name="settings_tab_map">Karte</string>
+    <string name="settings_tab_tiles">Kacheln</string>
+
+    <!-- Einstellungen: System -->
+    <string name="settings_section_avatar">Avatar</string>
+    <string name="settings_section_language">Sprache</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Einheiten</string>
+    <string name="unit_metric">Metrisch</string>
+    <string name="unit_imperial">Imperial</string>
+    <string name="settings_section_theme">Design</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="settings_section_side_menu">Seitenmenü</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Wischen</string>
+    <string name="side_menu_both">Beides</string>
+    <string name="settings_section_tap_tolerance">Antipptoleranz: %1$d dp</string>
+    <string name="settings_section_status_bar">Statusleiste</string>
+    <string name="settings_status_bar_transparent">Transparent (Karte scheint durch)</string>
+
+    <!-- Einstellungen: Profil -->
+    <string name="settings_section_display">Anzeige</string>
+    <string name="settings_profile_grid">Raster</string>
+    <string name="settings_profile_color_by_slope">Fläche nach Steigung einfärben</string>
+    <string name="settings_profile_slope_legend">Steigungslegende</string>
+    <string name="settings_section_font_sizes">Schriftgrößen (sp)</string>
+    <string name="font_axes">Achsen</string>
+    <string name="font_title">Titel</string>
+    <string name="font_title_bar_info">Infos (Titelleiste)</string>
+    <string name="font_cursor_point">Aktueller Punkt</string>
+    <string name="settings_section_title_line_info">Infos der Titelzeile</string>
+    <string name="chip_distance">Distanz</string>
+    <string name="chip_ascent">Anstieg</string>
+    <string name="chip_descent">Abstieg</string>
+    <string name="chip_duration">Dauer</string>
+    <string name="chip_alt_min">Höhe min</string>
+    <string name="chip_alt_max">Höhe max</string>
+    <string name="settings_section_cursor_info">Infos zum aktuellen Punkt</string>
+    <string name="chip_altitude">Höhe</string>
+    <string name="chip_slope">Steigung</string>
+    <string name="chip_time">Zeit</string>
+
+    <!-- Einstellungen: Infoblasen -->
+    <string name="settings_section_bubbles">Infoblasen</string>
+    <string name="settings_font_size">Schriftgröße</string>
+    <string name="settings_bold_abbrev">F</string>
+
+    <!-- Einstellungen: Karte -->
+    <string name="settings_section_scale">Maßstab</string>
+    <string name="settings_show_scale_bar">Maßstabsleiste anzeigen</string>
+    <string name="settings_section_rotation">Drehung</string>
+    <string name="settings_allow_rotation">Kartendrehung erlauben (2-Finger-Geste)</string>
+    <string name="settings_section_gps_position">GPS-Position</string>
+    <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
+    <string name="settings_section_markers">Markierungen (Karte)</string>
+    <string name="settings_marker_size">Markierungsgröße (dp)</string>
+    <string name="settings_section_import_folder">Standard-Importordner</string>
+    <string name="settings_default_system">Systemstandard</string>
+    <string name="settings_section_basemap_control">Kartengrundlagen-Verwaltung</string>
+    <string name="settings_show_basemap_control_button">Button für Kartengrundlagen-Verwaltung anzeigen</string>
+    <string name="settings_basemap_control_width">Panelbreite: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Paneltransparenz: %1$d%%</string>
+    <string name="settings_section_default_basemap">Standardkartengrundlage</string>
+    <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
+    <string name="settings_app_folder_default">App-Ordner (Standard)</string>
+    <string name="settings_section_basemaps">Kartengrundlagen</string>
+    <string name="settings_section_providers">Anbieter</string>
+    <string name="settings_basemap_label">Grundlage</string>
+    <string name="settings_field_mbtiles_file">MBTiles-Datei</string>
+    <string name="settings_field_name">Name</string>
+    <string name="settings_field_url">URL</string>
+    <string name="settings_field_api_key">API-Schlüssel</string>
+    <string name="settings_field_tile_size">Kachelgröße (px) — meist 256 oder 512</string>
+
+    <!-- Infoblase -->
+    <string name="bubble_title_marker">Markierung</string>
+    <string name="bubble_no_properties">Keine Eigenschaften</string>
+    <string name="bubble_image_not_found">(Bild nicht gefunden)</string>
+    <string name="field_display_text">Anzeigetext</string>
+    <string name="field_image_source">Bild (Datei oder URL)</string>
+    <string name="field_composite_name">Name der Kombination</string>
+    <string name="field_foreground_opacity">Transparenz der Vordergrundebene: %1$d%%</string>
+    <string name="label_foreground_layer">Vordergrundebene</string>
+    <string name="label_background_layer">Hintergrundebene</string>
+    <string name="basemap_control_title">Kartengrundlagen</string>
+    <string name="content_desc_basemap_control">Kartengrundlagen-Verwaltung</string>
+
+    <!-- Status / Fehler -->
+    <string name="error_cannot_open_file">Datei kann nicht geöffnet werden</string>
+    <string name="status_imported_format">Importiert: %1$s (Zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">MBTiles-Import fehlgeschlagen</string>
+    <string name="error_mbtiles_vector_unsupported">Vektor-MBTiles (pbf) derzeit nicht unterstützt: %1$s</string>
+
+    <!-- Zurücksetzen -->
+    <string name="settings_section_reset">Zurücksetzen</string>
+    <string name="action_reset_all_settings">Alle Einstellungen zurücksetzen</string>
+    <string name="dialog_reset_all_settings_text">Dadurch werden alle Einstellungen zurückgesetzt (Sprache, Design, Avatar, Karteneinstellungen …). URLs und API-Schlüssel der Anbieter, vom Nutzer erstellte zusammengesetzte Kartengrundlagen und importierte MBTiles-Dateien bleiben erhalten.</string>
+
+    <!-- Import/Export von Anbietern -->
+    <string name="dialog_import_providers_title">Anbieter importieren?</string>
+    <string name="dialog_import_providers_text">%1$d Anbieter werden importiert. Bestehende Anbieter mit derselben ID werden überschrieben.</string>
+</resources>

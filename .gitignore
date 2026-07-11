@@ -1,0 +1,42 @@
+# Gradle
+.gradle/
+build/
+*.iml
+
+# Local config (SDK path, etc.)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+captures/
+.navigation/
+.externalNativeBuild/
+.cxx/
+*_remote.bak
+
+# Kotlin
+.kotlin/
+
+# Keystore & signing secrets — never commit these
+*.jks
+*.keystore
+
+# Google Services
+google-services.json
+
+# Logs / OS files
+*.log
+.DS_Store
+
+# Native profiling
+*.hprof
+
+# fastlane (if used later)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/readme.md
+
+# Claude Code local settings (machine-specific, not for sharing)
+.claude/settings.local.json

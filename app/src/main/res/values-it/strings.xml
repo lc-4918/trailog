@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Azioni comuni -->
+    <string name="action_back">Indietro</string>
+    <string name="action_browse">Sfoglia</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_close">Chiudi</string>
+    <string name="action_close_menu">Chiudi il menu</string>
+    <string name="action_collapse">Comprimi</string>
+    <string name="action_color">Colore</string>
+    <string name="action_create">Crea</string>
+    <string name="action_create_and_import">Crea e importa</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_drag_to_move">Trascina per spostare</string>
+    <string name="action_edit">Modifica</string>
+    <string name="action_enable">Attiva</string>
+    <string name="action_expand">Espandi</string>
+    <string name="action_expand_image">Ingrandisci</string>
+    <string name="action_hide">Nascondi</string>
+    <string name="action_hide_folder">Nascondi cartella</string>
+    <string name="action_import">Importa</string>
+    <string name="action_export">Esporta</string>
+    <string name="action_import_mbtiles">Importa un file .mbtiles</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menu</string>
+    <string name="action_more">Azioni</string>
+    <string name="action_move">Sposta…</string>
+    <string name="action_new_subfolder">Nuova sottocartella</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Rinomina</string>
+    <string name="action_reset_north">Riorienta a nord</string>
+    <string name="action_save">Salva</string>
+    <string name="action_show">Mostra</string>
+    <string name="action_show_folder">Mostra cartella</string>
+    <string name="action_zoom_to_layer">Zoom sul livello</string>
+    <string name="action_center_on_location">Centra sulla mia posizione</string>
+    <string name="action_reset_avatar">Ripristina avatar</string>
+    <string name="action_pin_image">Fissa come immagine di copertina</string>
+    <string name="action_unpin_image">Rimuovi fissaggio</string>
+    <string name="action_create_composite">Crea una mappa di base composita</string>
+    <string name="action_reset_defaults">Ripristina i valori predefiniti</string>
+    <string name="action_change_avatar">Cambia avatar</string>
+    <string name="action_load_image_from_phone">Carica un\'immagine</string>
+    <string name="action_manage_providers">Gestisci fornitori</string>
+
+    <!-- Etichette generiche -->
+    <string name="label_root">— Radice —</string>
+    <string name="label_new_folder">Nuova cartella</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">Posizione GPS</string>
+
+    <!-- Finestre di dialogo -->
+    <string name="dialog_composite_title">Nuova mappa di base composita</string>
+    <string name="dialog_import_into_title">Importa in…</string>
+    <string name="dialog_gps_disabled_title">Sensore GPS inattivo</string>
+    <string name="dialog_gps_disabled_text">Il rilevamento della posizione è disattivato. Vuoi attivarlo?</string>
+    <string name="dialog_move_to_title">Sposta in…</string>
+    <string name="dialog_color_title">Colore di visualizzazione</string>
+    <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>
+
+    <!-- Menu laterale -->
+    <string name="drawer_default_title">Itinerari</string>
+
+    <!-- Impostazioni: schede -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_tab_general">Sistema</string>
+    <string name="settings_tab_profile">Profilo</string>
+    <string name="settings_tab_map">Mappa</string>
+    <string name="settings_tab_tiles">Tessere</string>
+
+    <!-- Impostazioni: Sistema -->
+    <string name="settings_section_avatar">Avatar</string>
+    <string name="settings_section_language">Lingua</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Unità</string>
+    <string name="unit_metric">Metrico</string>
+    <string name="unit_imperial">Imperiale</string>
+    <string name="settings_section_theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Chiaro</string>
+    <string name="theme_dark">Scuro</string>
+    <string name="settings_section_side_menu">Menu laterale</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Scorrimento</string>
+    <string name="side_menu_both">Entrambi</string>
+    <string name="settings_section_tap_tolerance">Tolleranza tocco: %1$d dp</string>
+    <string name="settings_section_status_bar">Barra di stato</string>
+    <string name="settings_status_bar_transparent">Trasparente (la mappa è visibile sotto)</string>
+
+    <!-- Impostazioni: Profilo -->
+    <string name="settings_section_display">Visualizzazione</string>
+    <string name="settings_profile_grid">Griglia</string>
+    <string name="settings_profile_color_by_slope">Colora l\'area in base alla pendenza</string>
+    <string name="settings_profile_slope_legend">Legenda pendenze</string>
+    <string name="settings_section_font_sizes">Dimensioni carattere (sp)</string>
+    <string name="font_axes">Assi</string>
+    <string name="font_title">Titolo</string>
+    <string name="font_title_bar_info">Info (barra del titolo)</string>
+    <string name="font_cursor_point">Punto corrente</string>
+    <string name="settings_section_title_line_info">Info della riga del titolo</string>
+    <string name="chip_distance">Distanza</string>
+    <string name="chip_ascent">Salita</string>
+    <string name="chip_descent">Discesa</string>
+    <string name="chip_duration">Durata</string>
+    <string name="chip_alt_min">Alt min</string>
+    <string name="chip_alt_max">Alt max</string>
+    <string name="settings_section_cursor_info">Info del punto corrente</string>
+    <string name="chip_altitude">Altitudine</string>
+    <string name="chip_slope">Pendenza</string>
+    <string name="chip_time">Tempo</string>
+
+    <!-- Impostazioni: Fumetti -->
+    <string name="settings_section_bubbles">Fumetti informativi</string>
+    <string name="settings_font_size">Dimensione carattere</string>
+    <string name="settings_bold_abbrev">G</string>
+
+    <!-- Impostazioni: Mappa -->
+    <string name="settings_section_scale">Scala</string>
+    <string name="settings_show_scale_bar">Mostra la scala grafica</string>
+    <string name="settings_section_rotation">Rotazione</string>
+    <string name="settings_allow_rotation">Consenti la rotazione della mappa (gesto a 2 dita)</string>
+    <string name="settings_section_gps_position">Posizione GPS</string>
+    <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
+    <string name="settings_section_markers">Indicatori (mappa)</string>
+    <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
+    <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>
+    <string name="settings_default_system">Predefinito di sistema</string>
+    <string name="settings_section_basemap_control">Gestione mappe di base</string>
+    <string name="settings_show_basemap_control_button">Mostra il pulsante di gestione delle mappe di base</string>
+    <string name="settings_basemap_control_width">Larghezza del pannello: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Trasparenza del pannello: %1$d%%</string>
+    <string name="settings_section_default_basemap">Mappa di base predefinita</string>
+    <string name="settings_section_mbtiles_folder">Cartella MBTiles</string>
+    <string name="settings_app_folder_default">Cartella dell\'app (predefinita)</string>
+    <string name="settings_section_basemaps">Mappe di base</string>
+    <string name="settings_section_providers">Fornitori</string>
+    <string name="settings_basemap_label">Mappa di base</string>
+    <string name="settings_field_mbtiles_file">File MBTiles</string>
+    <string name="settings_field_name">Nome</string>
+    <string name="settings_field_url">URL</string>
+    <string name="settings_field_api_key">Chiave API</string>
+    <string name="settings_field_tile_size">Dimensione tile (px) — solitamente 256 o 512</string>
+
+    <!-- Fumetto informativo -->
+    <string name="bubble_title_marker">Indicatore</string>
+    <string name="bubble_no_properties">Nessuna proprietà</string>
+    <string name="bubble_image_not_found">(immagine non trovata)</string>
+    <string name="field_display_text">Testo visualizzato</string>
+    <string name="field_image_source">Immagine (file o URL)</string>
+    <string name="field_composite_name">Nome del composito</string>
+    <string name="field_foreground_opacity">Trasparenza del livello in primo piano: %1$d%%</string>
+    <string name="label_foreground_layer">Livello in primo piano</string>
+    <string name="label_background_layer">Livello di sfondo</string>
+    <string name="basemap_control_title">Mappe di base</string>
+    <string name="content_desc_basemap_control">Gestione mappe di base</string>
+
+    <!-- Stato / errori -->
+    <string name="error_cannot_open_file">Impossibile aprire il file</string>
+    <string name="status_imported_format">Importato: %1$s (zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">Importazione MBTiles non riuscita</string>
+    <string name="error_mbtiles_vector_unsupported">MBTiles vettoriale (pbf) non ancora supportato: %1$s</string>
+
+    <!-- Ripristino -->
+    <string name="settings_section_reset">Ripristino</string>
+    <string name="action_reset_all_settings">Ripristina tutte le impostazioni</string>
+    <string name="dialog_reset_all_settings_text">Questa azione ripristina tutte le impostazioni (lingua, tema, avatar, impostazioni della mappa…). URL e chiavi API dei fornitori, le mappe di base composite create dall\'utente e i file MBTiles importati vengono conservati.</string>
+
+    <!-- Importazione/esportazione dei fornitori -->
+    <string name="dialog_import_providers_title">Importare i fornitori?</string>
+    <string name="dialog_import_providers_text">Verranno importati %1$d fornitori. I fornitori esistenti con lo stesso id verranno sovrascritti.</string>
+</resources>

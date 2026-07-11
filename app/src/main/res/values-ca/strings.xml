@@ -1,0 +1,173 @@
+<resources>
+    <string name="app_name">Trailog</string>
+
+    <!-- Accions comunes -->
+    <string name="action_back">Enrere</string>
+    <string name="action_browse">Navega</string>
+    <string name="action_cancel">Cancel·la</string>
+    <string name="action_close">Tanca</string>
+    <string name="action_close_menu">Tanca el menú</string>
+    <string name="action_collapse">Replega</string>
+    <string name="action_color">Color</string>
+    <string name="action_create">Crea</string>
+    <string name="action_create_and_import">Crea i importa</string>
+    <string name="action_decrease">-</string>
+    <string name="action_delete">Suprimeix</string>
+    <string name="action_drag_to_move">Arrossega per moure</string>
+    <string name="action_edit">Edita</string>
+    <string name="action_enable">Activa</string>
+    <string name="action_expand">Desplega</string>
+    <string name="action_expand_image">Amplia</string>
+    <string name="action_hide">Amaga</string>
+    <string name="action_hide_folder">Amaga la carpeta</string>
+    <string name="action_import">Importa</string>
+    <string name="action_export">Exporta</string>
+    <string name="action_import_mbtiles">Importa un fitxer .mbtiles</string>
+    <string name="action_increase">+</string>
+    <string name="action_menu">Menú</string>
+    <string name="action_more">Accions</string>
+    <string name="action_move">Mou…</string>
+    <string name="action_new_subfolder">Nova subcarpeta</string>
+    <string name="action_ok">D\'acord</string>
+    <string name="action_rename">Reanomena</string>
+    <string name="action_reset_north">Reorienta al nord</string>
+    <string name="action_save">Desa</string>
+    <string name="action_show">Mostra</string>
+    <string name="action_show_folder">Mostra la carpeta</string>
+    <string name="action_zoom_to_layer">Zoom a la capa</string>
+    <string name="action_center_on_location">Centra en la meva posició</string>
+    <string name="action_reset_avatar">Restableix l\'avatar</string>
+    <string name="action_pin_image">Fixa com a imatge de portada</string>
+    <string name="action_unpin_image">Desfixa</string>
+    <string name="action_create_composite">Crea un mapa base compost</string>
+    <string name="action_reset_defaults">Restableix els valors per defecte</string>
+    <string name="action_change_avatar">Canvia l\'avatar</string>
+    <string name="action_load_image_from_phone">Carrega una imatge</string>
+    <string name="action_manage_providers">Gestiona els proveïdors</string>
+
+    <!-- Etiquetes genèriques -->
+    <string name="label_root">— Arrel —</string>
+    <string name="label_new_folder">Nova carpeta</string>
+    <string name="gps_label">GPS</string>
+    <string name="content_desc_gps_position">Posició GPS</string>
+
+    <!-- Diàlegs -->
+    <string name="dialog_composite_title">Nou mapa base compost</string>
+    <string name="dialog_import_into_title">Importa a…</string>
+    <string name="dialog_gps_disabled_title">Sensor GPS inactiu</string>
+    <string name="dialog_gps_disabled_text">La localització està desactivada. Vols activar-la?</string>
+    <string name="dialog_move_to_title">Mou a…</string>
+    <string name="dialog_color_title">Color de visualització</string>
+    <string name="dialog_edit_bubble_title">Edita la bombolla informativa</string>
+
+    <!-- Menú lateral -->
+    <string name="drawer_default_title">Itineraris</string>
+
+    <!-- Configuració: pestanyes -->
+    <string name="settings_title">Configuració</string>
+    <string name="settings_tab_general">Sistema</string>
+    <string name="settings_tab_profile">Perfil</string>
+    <string name="settings_tab_map">Mapa</string>
+    <string name="settings_tab_tiles">Tessel·les</string>
+
+    <!-- Configuració: Sistema -->
+    <string name="settings_section_avatar">Avatar</string>
+    <string name="settings_section_language">Idioma</string>
+    <string name="avatar_url_placeholder">https://…</string>
+    <string name="settings_section_units">Unitats</string>
+    <string name="unit_metric">Mètric</string>
+    <string name="unit_imperial">Imperial</string>
+    <string name="settings_section_theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Clar</string>
+    <string name="theme_dark">Fosc</string>
+    <string name="settings_section_side_menu">Menú lateral</string>
+    <string name="side_menu_burger">Burger</string>
+    <string name="side_menu_swipe">Lliscar</string>
+    <string name="side_menu_both">Tots dos</string>
+    <string name="settings_section_tap_tolerance">Tolerància de toc: %1$d dp</string>
+    <string name="settings_section_status_bar">Barra d\'estat</string>
+    <string name="settings_status_bar_transparent">Transparent (el mapa es veu a sota)</string>
+
+    <!-- Configuració: Perfil -->
+    <string name="settings_section_display">Visualització</string>
+    <string name="settings_profile_grid">Quadrícula</string>
+    <string name="settings_profile_color_by_slope">Acoloreix l\'àrea segons el pendent</string>
+    <string name="settings_profile_slope_legend">Llegenda de pendents</string>
+    <string name="settings_section_font_sizes">Mides de lletra (sp)</string>
+    <string name="font_axes">Eixos</string>
+    <string name="font_title">Títol</string>
+    <string name="font_title_bar_info">Info (barra de títol)</string>
+    <string name="font_cursor_point">Punt actual</string>
+    <string name="settings_section_title_line_info">Info de la línia de títol</string>
+    <string name="chip_distance">Distància</string>
+    <string name="chip_ascent">Pujada</string>
+    <string name="chip_descent">Baixada</string>
+    <string name="chip_duration">Durada</string>
+    <string name="chip_alt_min">Alt mín</string>
+    <string name="chip_alt_max">Alt màx</string>
+    <string name="settings_section_cursor_info">Info del punt actual</string>
+    <string name="chip_altitude">Altitud</string>
+    <string name="chip_slope">Pendent</string>
+    <string name="chip_time">Temps</string>
+
+    <!-- Configuració: Bombolles -->
+    <string name="settings_section_bubbles">Bombolles informatives</string>
+    <string name="settings_font_size">Mida de lletra</string>
+    <string name="settings_bold_abbrev">N</string>
+
+    <!-- Configuració: Mapa -->
+    <string name="settings_section_scale">Escala</string>
+    <string name="settings_show_scale_bar">Mostra l\'escala gràfica</string>
+    <string name="settings_section_rotation">Rotació</string>
+    <string name="settings_allow_rotation">Permet la rotació del mapa (gest de 2 dits)</string>
+    <string name="settings_section_gps_position">Posició GPS</string>
+    <string name="settings_show_gps_button">Mostra el botó de localització GPS</string>
+    <string name="settings_section_markers">Marcadors (mapa)</string>
+    <string name="settings_marker_size">Mida dels marcadors (dp)</string>
+    <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>
+    <string name="settings_default_system">Per defecte del sistema</string>
+    <string name="settings_section_basemap_control">Gestor de mapes base</string>
+    <string name="settings_show_basemap_control_button">Mostra el botó del gestor de mapes base</string>
+    <string name="settings_basemap_control_width">Amplada del panell: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Transparència del panell: %1$d%%</string>
+    <string name="settings_section_default_basemap">Mapa base predeterminat</string>
+    <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
+    <string name="settings_app_folder_default">Carpeta de l\'app (per defecte)</string>
+    <string name="settings_section_basemaps">Mapes base</string>
+    <string name="settings_section_providers">Proveïdors</string>
+    <string name="settings_basemap_label">Mapa base</string>
+    <string name="settings_field_mbtiles_file">Fitxer MBTiles</string>
+    <string name="settings_field_name">Nom</string>
+    <string name="settings_field_url">URL</string>
+    <string name="settings_field_api_key">Clau API</string>
+    <string name="settings_field_tile_size">Mida de tessel·la (px) — sovint 256 o 512</string>
+
+    <!-- Bombolla informativa -->
+    <string name="bubble_title_marker">Marcador</string>
+    <string name="bubble_no_properties">Sense propietats</string>
+    <string name="bubble_image_not_found">(imatge no trobada)</string>
+    <string name="field_display_text">Text mostrat</string>
+    <string name="field_image_source">Imatge (fitxer o URL)</string>
+    <string name="field_composite_name">Nom del compost</string>
+    <string name="field_foreground_opacity">Transparència de la capa de primer pla: %1$d%%</string>
+    <string name="label_foreground_layer">Capa de primer pla</string>
+    <string name="label_background_layer">Capa de fons</string>
+    <string name="basemap_control_title">Mapes base</string>
+    <string name="content_desc_basemap_control">Gestor de mapes base</string>
+
+    <!-- Estat / errors -->
+    <string name="error_cannot_open_file">No s\'ha pogut obrir el fitxer</string>
+    <string name="status_imported_format">Importat: %1$s (zoom %2$d–%3$d)</string>
+    <string name="error_mbtiles_import_failed">Ha fallat la importació de MBTiles</string>
+    <string name="error_mbtiles_vector_unsupported">MBTiles vectorial (pbf) encara no compatible: %1$s</string>
+
+    <!-- Restabliment -->
+    <string name="settings_section_reset">Restabliment</string>
+    <string name="action_reset_all_settings">Restableix tots els ajustos</string>
+    <string name="dialog_reset_all_settings_text">Aquesta acció restableix tots els ajustos (idioma, tema, avatar, ajustos del mapa…). Es conserven les URL i claus API dels proveïdors, els mapes base compostos creats per l\'usuari i els fitxers MBTiles importats.</string>
+
+    <!-- Importació/exportació de proveïdors -->
+    <string name="dialog_import_providers_title">Vols importar els proveïdors?</string>
+    <string name="dialog_import_providers_text">S\'importaran %1$d proveïdor(s). Els proveïdors existents amb el mateix id se sobreescriuran.</string>
+</resources>
