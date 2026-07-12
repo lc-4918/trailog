@@ -33,6 +33,7 @@ val appVersionName = gitVersion.removePrefix("v")
 android {
     namespace = "fr.lc4918.trailog"
     compileSdk = 35
+    ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "fr.lc4918.trailog"
