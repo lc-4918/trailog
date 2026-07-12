@@ -211,6 +211,12 @@ object LayerImporter {
     }
 
     // ---------------- KML ----------------
+    /** Nom de dossier généré par l'assistant d'import GPS de Google Earth pour dupliquer chaque
+     *  point de trace en Placemark individuel (analyse vitesse/altitude), à côté d'un Placemark
+     *  "Path" qui porte déjà la trace complète en LineString : ces points font doublon avec la
+     *  trace et ne sont jamais de vrais waypoints (ceux-ci vont dans un dossier "Waypoints" séparé). */
+    private const val KML_REDUNDANT_TRACK_POINTS_FOLDER = "Points"
+
     private fun parseKml(input: InputStream, fileName: String): ParsedLayer {
         val parser = Xml.newPullParser()
         parser.setInput(input, null)
@@ -218,6 +224,7 @@ object LayerImporter {
         val lines = ArrayList<List<TrackPoint>>()
         var docName: String? = null
         var inPlacemark = false
+        val folderStack = ArrayList<String?>()
         var placemarkProps = LinkedHashMap<String, PropValue>()
         var placemarkPoint: Pair<Double, Double>? = null
         var placemarkLine: List<TrackPoint>? = null
@@ -228,11 +235,16 @@ object LayerImporter {
             when (ev) {
                 XmlPullParser.START_TAG -> when (parser.name) {
                     "Placemark" -> { inPlacemark = true; placemarkProps = LinkedHashMap(); placemarkPoint = null; placemarkLine = null }
+                    "Folder" -> folderStack.add(null)
                     "Data" -> dataName = parser.getAttributeValue(null, "name")
                 }
                 XmlPullParser.TEXT -> text = parser.text
                 XmlPullParser.END_TAG -> when (parser.name) {
-                    "name" -> if (inPlacemark) placemarkProps["name"] = PropValue.Text(text.trim()) else if (docName == null) docName = text.trim()
+                    "name" -> when {
+                        inPlacemark -> placemarkProps["name"] = PropValue.Text(text.trim())
+                        folderStack.isNotEmpty() && folderStack.last() == null -> folderStack[folderStack.size - 1] = text.trim()
+                        docName == null -> docName = text.trim()
+                    }
                     "description" -> if (inPlacemark && text.isNotBlank()) placemarkProps["description"] = detectPropValue(text.trim())
                     "value" -> if (inPlacemark && dataName != null) { placemarkProps[dataName!!] = detectPropValue(text.trim()); dataName = null }
                     // une seule coordonnée -> point ; plusieurs -> trace (une <coordinates> par géométrie KML simple)
@@ -245,10 +257,12 @@ object LayerImporter {
                         if (tuples.size == 1) placemarkPoint = tuples[0].first to tuples[0].second
                         else if (tuples.size > 1) placemarkLine = tuples.map { TrackPoint(it.first, it.second, it.third, null) }
                     }
+                    "Folder" -> if (folderStack.isNotEmpty()) folderStack.removeAt(folderStack.size - 1)
                     "Placemark" -> {
                         val line = placemarkLine; val pt = placemarkPoint
+                        val inRedundantPointsFolder = folderStack.contains(KML_REDUNDANT_TRACK_POINTS_FOLDER)
                         if (line != null) lines.add(line)
-                        else if (pt != null) points.add(PointFeature("p${pIdx++}", pt.first, pt.second, placemarkProps))
+                        else if (pt != null && !inRedundantPointsFolder) points.add(PointFeature("p${pIdx++}", pt.first, pt.second, placemarkProps))
                         inPlacemark = false
                     }
                 }
