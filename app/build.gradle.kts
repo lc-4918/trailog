@@ -6,6 +6,30 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Version dérivée du tag git (cf. WORKFLOW.md §4 : tag vMAJOR.MINOR.PATCH avant release) plutôt
+// que codée en dur, sinon toutes les releases se déclarent avec le même versionCode/versionName
+// (cassant la mise à jour Android et empêchant toute publication sur un store).
+// Sur un commit exactement taggé (déclencheur de la CI release), "git describe" rend le tag brut
+// ("v1.2.0") ; sinon un identifiant descriptif ("v1.2.0-3-g413b197") utile pour les builds de dev.
+fun gitDescribe(): String = try {
+    val process = ProcessBuilder("git", "describe", "--tags", "--always", "--dirty")
+        .directory(rootDir)
+        .redirectErrorStream(true)
+        .start()
+    val output = process.inputStream.bufferedReader().readText().trim()
+    process.waitFor()
+    output.ifBlank { "v0.0.0" }
+} catch (e: Exception) {
+    "v0.0.0"
+}
+
+val gitVersion = gitDescribe()
+val semver = Regex("""^v?(\d+)\.(\d+)\.(\d+)""").find(gitVersion)
+val appVersionCode = semver?.destructured?.let { (maj, min, patch) ->
+    maj.toInt() * 10_000 + min.toInt() * 100 + patch.toInt()
+} ?: 1
+val appVersionName = gitVersion.removePrefix("v")
+
 android {
     namespace = "fr.lc4918.trailog"
     compileSdk = 35
@@ -14,8 +38,8 @@ android {
         applicationId = "fr.lc4918.trailog"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode.coerceAtLeast(1)
+        versionName = appVersionName
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -56,6 +80,17 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
+}
+
+// Noms de fichier APK explicites (au lieu de app-release.apk / app-debug.apk) : c'est le nom
+// que voit l'utilisateur en téléchargeant l'APK depuis la page GitHub Releases (§WORKFLOW.md §5).
+androidComponents {
+    onVariants { variant ->
+        val fileName = if (variant.buildType == "release") "trailog-$gitVersion.apk" else "trailog-debug-$gitVersion.apk"
+        variant.outputs.forEach { output ->
+            (output as com.android.build.api.variant.impl.VariantOutputImpl).outputFileName.set(fileName)
+        }
+    }
 }
 
 dependencies {
