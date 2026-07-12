@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Avatar ändern</string>
     <string name="action_load_image_from_phone">Bild laden</string>
     <string name="action_manage_providers">Anbieter verwalten</string>
+    <string name="action_offline_download">Offlinekarte</string>
+    <string name="offline_bbox_points_count">%1$d/2 Punkte</string>
+    <string name="offline_action_cancel_point">Punkt rückgängig</string>
+    <string name="offline_action_back">Zurück</string>
+    <string name="offline_action_validate">Bestätigen</string>
+    <string name="offline_config_title">Download-Konfiguration</string>
+    <string name="offline_config_zoom_label">Zoomstufen</string>
+    <string name="offline_config_zoom_range">Zoom %1$d bis %2$d</string>
+    <string name="offline_config_stat_tiles">Anzahl Kacheln: %1$s</string>
+    <string name="offline_config_stat_size">Geschätzte Größe: %1$s</string>
+    <string name="offline_config_name_label">Name der Ebene</string>
+    <string name="offline_config_name_placeholder">z. B. Meine Wanderung Juli 2026</string>
+    <string name="offline_config_continue_on_error_label">Bei Fehler fortfahren</string>
+    <string name="offline_config_continue_on_error_desc">Wenn aktiviert, wird der Download fortgesetzt, auch wenn eine Kachel nicht heruntergeladen werden konnte</string>
+    <string name="offline_action_download">Herunterladen</string>
 
     <!-- Allgemeine Bezeichnungen -->
     <string name="label_root">— Stammverzeichnis —</string>

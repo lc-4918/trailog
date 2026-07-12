@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Cambiar avatar</string>
     <string name="action_load_image_from_phone">Cargar una imagen</string>
     <string name="action_manage_providers">Gestionar proveedores</string>
+    <string name="action_offline_download">Mapa sin conexión</string>
+    <string name="offline_bbox_points_count">%1$d/2 puntos</string>
+    <string name="offline_action_cancel_point">Deshacer punto</string>
+    <string name="offline_action_back">Volver</string>
+    <string name="offline_action_validate">Validar</string>
+    <string name="offline_config_title">Configuración de la descarga</string>
+    <string name="offline_config_zoom_label">Niveles de zoom</string>
+    <string name="offline_config_zoom_range">Zoom %1$d a %2$d</string>
+    <string name="offline_config_stat_tiles">Número de teselas: %1$s</string>
+    <string name="offline_config_stat_size">Tamaño estimado: %1$s</string>
+    <string name="offline_config_name_label">Nombre de la capa</string>
+    <string name="offline_config_name_placeholder">ej. Mi ruta de julio de 2026</string>
+    <string name="offline_config_continue_on_error_label">Continuar en caso de error</string>
+    <string name="offline_config_continue_on_error_desc">Si está activado, la descarga continúa aunque no se haya podido descargar alguna tesela</string>
+    <string name="offline_action_download">Descargar</string>
 
     <!-- Etiquetas genéricas -->
     <string name="label_root">— Raíz —</string>

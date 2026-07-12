@@ -69,11 +69,15 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.map.compositeIdFromBasemapId
+import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
+import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
+import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.profile.ElevationProfile
@@ -94,6 +98,22 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val basemapFolders by vm.basemapFolders.collectAsState()
     val settings by vm.settings.collectAsState()
     var basemapControlOpen by remember { mutableStateOf(false) }
+
+    // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
+    var offlineDrawingActive by remember { mutableStateOf(false) }
+    var offlineBboxPoints by remember { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }  // (lon, lat)
+    var offlineConfigBbox by remember { mutableStateOf<Bbox?>(null) }
+    // Referme complètement le flux (annulation ou fin de config) : sans réinitialiser les points, le
+    // rectangle tracé resterait affiché indéfiniment sur la carte une fois l'écran de config quitté.
+    fun closeOfflineFlow() { offlineConfigBbox = null; offlineBboxPoints = emptyList() }
+    // Quitte le tracé de bbox (bouton "Annuler" ou retour système) : contrairement à "Réinitialiser",
+    // referme aussi entièrement le mode de saisie, pas seulement les points déjà posés.
+    fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
+    // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
+    var offlineBarHeightPx by remember { mutableIntStateOf(0) }
+    // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC §1.
+    val offlineButtonVisible = compositeIdFromBasemapId(settings?.defaultBasemapId ?: "") == null &&
+        providers.firstOrNull { it.id == settings?.defaultBasemapId }?.type?.let { it != "MBTILES" && it != "DEM" } == true
 
     val renderLayers by vm.renderLayers.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
@@ -214,11 +234,22 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     var bearingTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(controller) {
-        controller.onPickPoint = { key, fid -> vm.onPickPoint(key, fid) }
-        controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
-        controller.onTapEmpty = { vm.closeOnEmpty() }
         controller.onCameraMove = { bearingTick++ }
         controller.onUserMoveBegin = { if (gpsActive) gpsButtonDimmed = true }
+    }
+    // Pendant le tracé de la bounding box hors-ligne, tout tap pose un coin (mode exclusif : on
+    // n'utilise pas la sélection point/ligne habituelle, même si le tap tombe sur une trace existante).
+    LaunchedEffect(controller, offlineDrawingActive) {
+        if (offlineDrawingActive) {
+            controller.onRawTap = { lon, lat ->
+                if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
+            }
+        } else {
+            controller.onRawTap = null
+            controller.onPickPoint = { key, fid -> vm.onPickPoint(key, fid) }
+            controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
+            controller.onTapEmpty = { vm.closeOnEmpty() }
+        }
     }
     val bearing = remember(bearingTick) { controller.bearing() }
     // cadrage sur les couches récemment importées à la fermeture du menu
@@ -256,6 +287,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val density = LocalDensity.current
     val markerPx = with(density) { (settings?.markerSize ?: 36).dp.toPx() }
     LaunchedEffect(renderLayers, styleTick, markerPx) { if (controller.style != null) controller.setLayers(renderLayers, markerPx) }
+    // Coins/rectangle du tracé bbox hors-ligne (SPEC §2) : source/couches dédiées (croix "viseur"),
+    // indépendantes du système de couches importées ci-dessus.
+    LaunchedEffect(offlineBboxPoints, styleTick) { if (controller.style != null) controller.setBboxDraw(offlineBboxPoints) }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
@@ -304,6 +338,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Priorité plus haute (déclaré après = intercepté en premier) : si le menu latéral est ouvert,
     // le retour le referme d'abord, avant tout autre comportement (y compris le retour système par défaut).
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
+    // Retour = annule le tracé bbox / ferme la config, plutôt que de quitter l'app (priorité la plus haute :
+    // ces deux états ne sont jamais actifs simultanément, mais l'ordre reflète "config au-dessus du tracé").
+    BackHandler(enabled = offlineDrawingActive) { cancelOfflineDrawing() }
+    BackHandler(enabled = offlineConfigBbox != null) { closeOfflineFlow() }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -315,6 +353,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     onSettings = { scope.launch { drawerState.snapTo(DrawerValue.Closed) }; onSettings() },
                     onClose = { scope.launch { drawerState.close() } },
                     onImport = { folderPicker = true },
+                    showOfflineButton = offlineButtonVisible,
+                    onDownloadOffline = {
+                        scope.launch { drawerState.close() }
+                        offlineBboxPoints = emptyList()
+                        offlineDrawingActive = true
+                    },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
                         when (kind) {
@@ -407,10 +451,32 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 onEdit = { editing = true }, onClose = { vm.closeMarker() })
                         }
                     }
-                    // échelle graphique (uniquement quand le profil n'est pas actif)
+                    // tracé de la bounding box hors-ligne (SPEC §2)
+                    if (offlineDrawingActive) {
+                        BboxDrawingOverlay(
+                            pointCount = offlineBboxPoints.size,
+                            onCancelPoint = { offlineBboxPoints = offlineBboxPoints.dropLast(1) },
+                            onCancelAll = { cancelOfflineDrawing() },
+                            onValidate = {
+                                val (lon1, lat1) = offlineBboxPoints[0]
+                                val (lon2, lat2) = offlineBboxPoints[1]
+                                offlineConfigBbox = Bbox.of(lon1, lat1, lon2, lat2)
+                                offlineDrawingActive = false
+                            },
+                            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                                .onGloballyPositioned { offlineBarHeightPx = it.size.height },
+                        )
+                    }
+                    // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
+                    // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
                     if (computed == null && settings?.showScale != false) {
-                        ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f,
-                            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding())
+                        val scaleBarModifier = if (offlineDrawingActive) {
+                            val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
+                            Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
+                        } else {
+                            Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
+                        }
+                        ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
                     }
                     // infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil,
                     // pas incluses dans le fond du panneau de profil (largeur adaptée au contenu, pas plein écran)
@@ -493,6 +559,21 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         onClose = { basemapControlOpen = false },
                     )
                 }
+            }
+            // Configuration du téléchargement hors-ligne (SPEC §3), plein écran par-dessus tout le reste.
+            offlineConfigBbox?.let { bbox ->
+                val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
+                OfflineDownloadConfigScreen(
+                    bbox = bbox,
+                    providerMinZoom = currentProvider?.minZoom ?: 0,
+                    providerMaxZoom = currentProvider?.maxZoom ?: 19,
+                    onDismiss = { closeOfflineFlow() },
+                    onDownload = {
+                        // Domaine B (moteur de téléchargement) pas encore branché : la requête validée
+                        // n'est pour l'instant pas consommée.
+                        closeOfflineFlow()
+                    },
+                )
             }
         }
     }
@@ -633,6 +714,7 @@ private fun LegendContent(
     folders: List<FolderEntity>, layers: List<LayerEntity>, settings: SettingsEntity?,
     vm: MainViewModel,
     onSettings: () -> Unit, onClose: () -> Unit, onImport: () -> Unit,
+    showOfflineButton: Boolean, onDownloadOffline: () -> Unit,
     onZoom: (String, Long) -> Unit,
 ) {
     var renameTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
@@ -725,22 +807,25 @@ private fun LegendContent(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(12.dp))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        // Boutons avec contour + libellé (au lieu de simples icônes), centrés horizontalement
-                        // dans la ligne (poids égaux de chaque côté), espacement entre eux agrandi de 50 % (4dp -> 6dp).
-                        Spacer(Modifier.weight(1f))
+                    // "Nouveau dossier" en icône seule (sans contour, comme les IconButton du header)
+                    // pour laisser assez de place à "Importer" et "Carte hors-ligne" sans déborder.
+                    // SpaceBetween (équivalent CSS) : 1er élément à gauche, dernier à droite, espace réparti.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { openNewFolder(null) }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder))
+                        }
                         OutlinedButton(onClick = onImport, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
                             Icon(Icons.Filled.FileUpload, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.action_import))
+                            Text(stringResource(R.string.action_import), maxLines = 1)
                         }
-                        Spacer(Modifier.width(6.dp))
-                        OutlinedButton(onClick = { openNewFolder(null) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                            Icon(Icons.Filled.CreateNewFolder, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.label_new_folder))
+                        if (showOfflineButton) {
+                            OutlinedButton(onClick = onDownloadOffline, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
+                                Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.action_offline_download), maxLines = 1)
+                            }
                         }
-                        Spacer(Modifier.weight(1f))
                     }
                 }
                 // Décalé au maximum vers l'angle haut-droit (SPEC §6.1), superposé aux 2 lignes ci-dessus

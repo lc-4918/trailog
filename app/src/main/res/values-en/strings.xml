@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Change avatar</string>
     <string name="action_load_image_from_phone">Load an image</string>
     <string name="action_manage_providers">Manage providers</string>
+    <string name="action_offline_download">Offline map</string>
+    <string name="offline_bbox_points_count">%1$d/2 points</string>
+    <string name="offline_action_cancel_point">Undo point</string>
+    <string name="offline_action_back">Back</string>
+    <string name="offline_action_validate">Validate</string>
+    <string name="offline_config_title">Download configuration</string>
+    <string name="offline_config_zoom_label">Zoom levels</string>
+    <string name="offline_config_zoom_range">Zoom %1$d to %2$d</string>
+    <string name="offline_config_stat_tiles">Number of tiles: %1$s</string>
+    <string name="offline_config_stat_size">Estimated size: %1$s</string>
+    <string name="offline_config_name_label">Layer name</string>
+    <string name="offline_config_name_placeholder">e.g. My hike July 2026</string>
+    <string name="offline_config_continue_on_error_label">Continue on error</string>
+    <string name="offline_config_continue_on_error_desc">If enabled, the download continues even if a tile could not be downloaded</string>
+    <string name="offline_action_download">Download</string>
 
     <!-- Generic labels -->
     <string name="label_root">— Root —</string>

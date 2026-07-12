@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas as AndroidCanvas
+import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
 import androidx.compose.runtime.Composable
@@ -41,6 +42,9 @@ class MapController {
     var onPickPoint: ((String, String) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
+    /** Si défini, intercepte tout tap sur la carte AVANT le test de sélection point/ligne habituel
+     *  (mode de saisie exclusif, ex. tracé de bounding box hors-ligne) : reçoit (lon, lat). */
+    var onRawTap: ((Double, Double) -> Unit)? = null
     var onCameraIdle: (() -> Unit)? = null
     var onCameraMove: (() -> Unit)? = null
     var onUserMoveBegin: (() -> Unit)? = null
@@ -152,6 +156,74 @@ class MapController {
 
     fun clearLayers() = setLayers(emptyList(), 96f)
 
+    /** Coins posés pendant le tracé de la bbox hors-ligne : rendus en croix "viseur" (pas les épingles
+     *  habituelles) + contour du rectangle une fois 2 coins posés. Source/couches dédiées, indépendantes
+     *  du système générique [setLayers]/[RenderLayer] (overlay propre à l'app, pas une couche importée). */
+    fun setBboxDraw(points: List<Pair<Double, Double>>) {
+        val s = style ?: return
+        if (points.isEmpty()) {
+            s.getLayer("bbox-draw-line")?.let { s.removeLayer(it) }
+            s.getLayer("bbox-draw-pt")?.let { s.removeLayer(it) }
+            s.getSource("bbox-draw-src")?.let { s.removeSource(it) }
+            return
+        }
+        val geojson = bboxDrawGeoJson(points)
+        val existing = s.getSourceAs<GeoJsonSource>("bbox-draw-src")
+        if (existing == null) {
+            s.addSource(GeoJsonSource("bbox-draw-src", geojson))
+            addLayerSafe(LineLayer("bbox-draw-line", "bbox-draw-src").withProperties(
+                PropertyFactory.lineColor("#FF6D00"), PropertyFactory.lineWidth(3f))
+                .withFilter(lineGeometryFilter))
+            val img = "bbox_crosshair"
+            s.addImage(img, crosshairBitmap(android.graphics.Color.BLACK, (40 * density).toInt()))
+            // Explicitement au-dessus du rectangle (pas seulement dans l'ordre d'ajout) : la croix doit
+            // rester visible même là où elle touche le contour du rectangle.
+            s.addLayerAbove(
+                SymbolLayer("bbox-draw-pt", "bbox-draw-src").withProperties(
+                    PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f), PropertyFactory.iconAnchor("center"),
+                    PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                    .withFilter(pointGeometryFilter),
+                "bbox-draw-line",
+            )
+        } else {
+            existing.setGeoJson(geojson)
+        }
+    }
+
+    private fun bboxDrawGeoJson(points: List<Pair<Double, Double>>): String {
+        val features = StringBuilder()
+        points.forEach { (lon, lat) ->
+            if (features.isNotEmpty()) features.append(',')
+            features.append("""{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}""")
+        }
+        if (points.size >= 2) {
+            val (lon1, lat1) = points[0]; val (lon2, lat2) = points[1]
+            val w = minOf(lon1, lon2); val e = maxOf(lon1, lon2)
+            val south = minOf(lat1, lat2); val n = maxOf(lat1, lat2)
+            if (features.isNotEmpty()) features.append(',')
+            features.append(
+                """{"type":"Feature","geometry":{"type":"LineString","coordinates":""" +
+                    """[[$w,$south],[$e,$south],[$e,$n],[$w,$n],[$w,$south]]},"properties":{}}"""
+            )
+        }
+        return """{"type":"FeatureCollection","features":[$features]}"""
+    }
+
+    /** Croix "+" simple : les deux traits se croisent exactement au centre (le point exact posé),
+     *  contrairement à un viseur à cercle qui laisse un vide au milieu. */
+    private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {
+        val size = sizePx.coerceIn(16, 128)
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = colorInt; style = Paint.Style.STROKE; strokeWidth = size * 0.07f
+        }
+        val cx = size / 2f; val cy = size / 2f
+        c.drawLine(cx, 0f, cx, size.toFloat(), paint)
+        c.drawLine(0f, cy, size.toFloat(), cy, paint)
+        return bmp
+    }
+
     /** Crée (une fois) une épingle de la couleur et taille demandées. */
     private fun ensurePin(s: Style, context: Context?, colorHex: String, heightPx: Float): String {
         val h = heightPx.toInt().coerceIn(24, 256)
@@ -245,6 +317,7 @@ class MapController {
     }
 
     fun handleTap(latLng: LatLng, screen: PointF) {
+        onRawTap?.let { it(latLng.longitude, latLng.latitude); return }
         val m = map ?: return
         val tol = tapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)

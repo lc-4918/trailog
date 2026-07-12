@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Cambia avatar</string>
     <string name="action_load_image_from_phone">Carica un\'immagine</string>
     <string name="action_manage_providers">Gestisci fornitori</string>
+    <string name="action_offline_download">Mappa offline</string>
+    <string name="offline_bbox_points_count">%1$d/2 punti</string>
+    <string name="offline_action_cancel_point">Annulla punto</string>
+    <string name="offline_action_back">Indietro</string>
+    <string name="offline_action_validate">Convalida</string>
+    <string name="offline_config_title">Configurazione del download</string>
+    <string name="offline_config_zoom_label">Livelli di zoom</string>
+    <string name="offline_config_zoom_range">Zoom da %1$d a %2$d</string>
+    <string name="offline_config_stat_tiles">Numero di tile: %1$s</string>
+    <string name="offline_config_stat_size">Dimensione stimata: %1$s</string>
+    <string name="offline_config_name_label">Nome del livello</string>
+    <string name="offline_config_name_placeholder">es. La mia escursione luglio 2026</string>
+    <string name="offline_config_continue_on_error_label">Continua in caso di errore</string>
+    <string name="offline_config_continue_on_error_desc">Se attivato, il download continua anche se non è stato possibile scaricare un tile</string>
+    <string name="offline_action_download">Scarica</string>
 
     <!-- Etichette generiche -->
     <string name="label_root">— Radice —</string>

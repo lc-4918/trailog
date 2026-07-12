@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Aldatu avatarra</string>
     <string name="action_load_image_from_phone">Kargatu irudi bat</string>
     <string name="action_manage_providers">Kudeatu hornitzaileak</string>
+    <string name="action_offline_download">Lineaz kanpoko mapa</string>
+    <string name="offline_bbox_points_count">%1$d/2 puntu</string>
+    <string name="offline_action_cancel_point">Desegin puntua</string>
+    <string name="offline_action_back">Atzera</string>
+    <string name="offline_action_validate">Balioztatu</string>
+    <string name="offline_config_title">Deskargaren konfigurazioa</string>
+    <string name="offline_config_zoom_label">Zoom mailak</string>
+    <string name="offline_config_zoom_range">Zoom %1$d - %2$d</string>
+    <string name="offline_config_stat_tiles">Lauza kopurua: %1$s</string>
+    <string name="offline_config_stat_size">Kalkulatutako tamaina: %1$s</string>
+    <string name="offline_config_name_label">Geruzaren izena</string>
+    <string name="offline_config_name_placeholder">adib. Nire ibilaldia 2026ko uztaila</string>
+    <string name="offline_config_continue_on_error_label">Jarraitu errorea gertatuz gero</string>
+    <string name="offline_config_continue_on_error_desc">Aktibatuta badago, deskarga jarraituko da lauzaren bat deskargatu ez bada ere</string>
+    <string name="offline_action_download">Deskargatu</string>
 
     <!-- Etiketa orokorrak -->
     <string name="label_root">— Erroa —</string>

@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Canvia l\'avatar</string>
     <string name="action_load_image_from_phone">Carrega una imatge</string>
     <string name="action_manage_providers">Gestiona els proveïdors</string>
+    <string name="action_offline_download">Mapa sense connexió</string>
+    <string name="offline_bbox_points_count">%1$d/2 punts</string>
+    <string name="offline_action_cancel_point">Desfés el punt</string>
+    <string name="offline_action_back">Enrere</string>
+    <string name="offline_action_validate">Valida</string>
+    <string name="offline_config_title">Configuració de la baixada</string>
+    <string name="offline_config_zoom_label">Nivells de zoom</string>
+    <string name="offline_config_zoom_range">Zoom %1$d a %2$d</string>
+    <string name="offline_config_stat_tiles">Nombre de tessel·les: %1$s</string>
+    <string name="offline_config_stat_size">Mida estimada: %1$s</string>
+    <string name="offline_config_name_label">Nom de la capa</string>
+    <string name="offline_config_name_placeholder">p. ex. La meva ruta juliol 2026</string>
+    <string name="offline_config_continue_on_error_label">Continua en cas d\'error</string>
+    <string name="offline_config_continue_on_error_desc">Si està activat, la baixada continua encara que no s\'hagi pogut baixar alguna tessel·la</string>
+    <string name="offline_action_download">Baixa</string>
 
     <!-- Etiquetes genèriques -->
     <string name="label_root">— Arrel —</string>

@@ -44,6 +44,21 @@
     <string name="action_change_avatar">Alterar avatar</string>
     <string name="action_load_image_from_phone">Carregar uma imagem</string>
     <string name="action_manage_providers">Gerir fornecedores</string>
+    <string name="action_offline_download">Mapa offline</string>
+    <string name="offline_bbox_points_count">%1$d/2 pontos</string>
+    <string name="offline_action_cancel_point">Desfazer ponto</string>
+    <string name="offline_action_back">Voltar</string>
+    <string name="offline_action_validate">Validar</string>
+    <string name="offline_config_title">Configuração da descarga</string>
+    <string name="offline_config_zoom_label">Níveis de zoom</string>
+    <string name="offline_config_zoom_range">Zoom %1$d a %2$d</string>
+    <string name="offline_config_stat_tiles">Número de peças: %1$s</string>
+    <string name="offline_config_stat_size">Tamanho estimado: %1$s</string>
+    <string name="offline_config_name_label">Nome da camada</string>
+    <string name="offline_config_name_placeholder">ex. O meu trilho julho 2026</string>
+    <string name="offline_config_continue_on_error_label">Continuar em caso de erro</string>
+    <string name="offline_config_continue_on_error_desc">Se ativado, a descarga continua mesmo que uma peça não tenha sido descarregada</string>
+    <string name="offline_action_download">Descarregar</string>
 
     <!-- Etiquetas genéricas -->
     <string name="label_root">— Raiz —</string>
