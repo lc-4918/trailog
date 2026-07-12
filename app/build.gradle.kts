@@ -41,6 +41,13 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        debug {
+            // applicationId distinct du release (signé avec une autre clé, cf. keystore CI) :
+            // permet d'installer le build de dev à côté de la version officielle sans que
+            // l'un ne bloque l'autre avec un conflit de signature (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
