@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Ukitze-tolerantzia: %1$d dp</string>
     <string name="settings_section_status_bar">Egoera-barra</string>
     <string name="settings_status_bar_transparent">Gardena (mapa azpitik ikusten da)</string>
+    <string name="settings_section_performance">Errendimendua</string>
+    <string name="settings_simplify_render">Ibilbideak sinplifikatu (bizkorrago bistaratu)</string>
+    <string name="settings_simplify_render_hint">Ezarpen hau ondoren inportatutako geruzei aplikatzen zaie. Jada inportatutako geruzek egungo errendatzea gordetzen dute berriro inportatu arte.</string>
 
     <!-- Ezarpenak: Profila -->
     <string name="settings_section_display">Bistaratzea</string>

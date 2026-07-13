@@ -406,6 +406,10 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     Section(stringResource(R.string.settings_section_tap_tolerance, cur.tapToleranceDp))
     CompactSlider(value = cur.tapToleranceDp.toFloat(), valueRange = 4f..40f, steps = 35,
         onValueChange = { vm.save(cur.copy(tapToleranceDp = it.toInt())) })
+    Section(stringResource(R.string.settings_section_performance))
+    SwitchRow(stringResource(R.string.settings_simplify_render), cur.simplifyRender) { vm.save(cur.copy(simplifyRender = it)) }
+    Text(stringResource(R.string.settings_simplify_render_hint),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Section(stringResource(R.string.settings_section_units))
     SegRow(listOf("meters" to stringResource(R.string.unit_metric), "imperial" to stringResource(R.string.unit_imperial)), cur.units) { vm.save(cur.copy(units = it)) }
 

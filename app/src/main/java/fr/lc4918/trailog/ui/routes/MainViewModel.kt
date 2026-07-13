@@ -70,6 +70,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val computed = _computed.asStateFlow()
     private val _cursor = MutableStateFlow<Int?>(null)
     val cursor = _cursor.asStateFlow()
+    // vrai entre le tap sur une trace et l'affichage de son profil (spinner dans la zone du graphique).
+    private val _profileLoading = MutableStateFlow(false)
+    val profileLoading = _profileLoading.asStateFlow()
 
     // --- marqueur sélectionné (infobulle) ---
     private val _markerLayerData = MutableStateFlow<PointLayerData?>(null)
@@ -78,21 +81,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedMarkerId = MutableStateFlow<String?>(null)
     val selectedMarkerId = _selectedMarkerId.asStateFlow()
 
-    // Cache du GeoJSON de rendu par couche (id -> fichier géométrie + GeoJSON prêt pour la carte). Évite
-    // de relire/re-sérialiser toutes les couches à chaque changement de la liste (import de N couches
-    // = O(N²) sinon). La même instance String est réutilisée -> MapLibreView peut sauter setGeoJson.
-    private val geojsonCache = HashMap<Long, Pair<String, String>>()
-
     init {
         viewModelScope.launch {
             combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
+                val simplify = settings.value?.simplifyRender ?: true
                 val rl = withContext(Dispatchers.IO) {
-                    geojsonCache.keys.retainAll(list.mapTo(HashSet()) { it.id })  // purge des couches supprimées
-                    list.filter { it.visible }.map { ly ->
-                        val cached = geojsonCache[ly.id]
-                        val gj = if (cached != null && cached.first == ly.geometryFile) cached.second
-                        else repo.layerGeojsonForMap(ly).also { geojsonCache[ly.id] = ly.geometryFile to it }
-                        RenderLayer("ly${ly.id}", gj, ly.color)
+                    list.filter { it.visible }.mapNotNull { ly ->
+                        val f = repo.layerMapFile(ly, simplify) ?: return@mapNotNull null
+                        // URI file:// (3 slashes : le chemin absolu commence par /) : MapLibre lit et parse le
+                        // .map sur son thread de travail. La révision (horodatage ^ taille) change quand le
+                        // fichier est réécrit (édition de points) et force un rechargement de la source.
+                        val revision = f.lastModified() xor (f.length() * 1000003L)
+                        RenderLayer("ly${ly.id}", "file://" + f.absolutePath, revision, ly.color)
                     }
                 }
                 _renderLayers.value = rl
@@ -113,23 +113,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val layer = layers.value.firstOrNull { it.id == id } ?: return
         if (!layer.hasLine) return
         closeMarker()
+        // Affichage immédiat du panneau (titre + spinner) : on remet le profil à zéro et on marque le chargement.
         _activeLayerId.value = id
+        _computed.value = null
+        _cursor.value = null
+        _profileLoading.value = true
         viewModelScope.launch {
-            // une couche peut avoir plusieurs segments (traces) : on ne calcule le profil que sur celui
-            // le plus proche du tap, pas sur une concaténation de tous les segments (saut fantôme sinon).
-            val segments = repo.loadTrackLines(layer)
-            val nearest = segments.minByOrNull { seg ->
-                seg.minOfOrNull { p -> TrackMath.haversine(lon, lat, p.lon, p.lat) } ?: Double.MAX_VALUE
-            } ?: emptyList()
-            val c = TrackMath.compute(nearest, ignoreStops = true, stopSpeed = 0.5)
-            _computed.value = c
-            // curseur au point le plus proche du tap
-            var best = -1; var bestD = Double.MAX_VALUE
-            c.samples.forEachIndexed { i, sm ->
-                val d = TrackMath.haversine(lon, lat, sm.lon, sm.lat)
-                if (d < bestD) { bestD = d; best = i }
+            val result = withContext(Dispatchers.Default) {
+                // Profils précalculés (lecture du .prof, pas de parse DOM au tap). Une couche peut avoir
+                // plusieurs segments : on retient celui le plus proche du tap (pas de concaténation).
+                val profiles = repo.loadProfiles(layer)
+                val nearest = profiles.minByOrNull { ct ->
+                    ct.samples.minOfOrNull { s -> TrackMath.haversine(lon, lat, s.lon, s.lat) } ?: Double.MAX_VALUE
+                } ?: return@withContext null
+                var best = -1; var bestD = Double.MAX_VALUE
+                nearest.samples.forEachIndexed { i, s ->
+                    val d = TrackMath.haversine(lon, lat, s.lon, s.lat)
+                    if (d < bestD) { bestD = d; best = i }
+                }
+                nearest to (if (best >= 0) best else null)
             }
-            _cursor.value = if (best >= 0) best else null
+            // Ne pas écraser si l'utilisateur a retapé une autre trace pendant le calcul.
+            if (_activeLayerId.value == id) {
+                _computed.value = result?.first
+                _cursor.value = result?.second
+                _profileLoading.value = false
+            }
         }
     }
 
@@ -146,7 +155,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun closeProfile() { _activeLayerId.value = null; _computed.value = null; _cursor.value = null }
+    fun closeProfile() { _activeLayerId.value = null; _computed.value = null; _cursor.value = null; _profileLoading.value = false }
     fun closeMarker() { _selectedMarkerId.value = null; _markerLayerId.value = null; _markerLayerData.value = null }
     fun setCursor(index: Int?) { _cursor.value = index }
 
@@ -174,8 +183,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _markerLayerData.value = data.copy()
         viewModelScope.launch {
             repo.saveFeatures(layer, data)
-            geojsonCache.remove(layer.id)   // le fichier géométrie est réécrit sous le même nom -> invalider
-            renderTick.value++              // rafraîchit les marqueurs sur la carte
+            renderTick.value++              // le .map réécrit change de révision -> rechargement des marqueurs
         }
     }
 

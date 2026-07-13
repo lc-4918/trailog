@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Tolleranza tocco: %1$d dp</string>
     <string name="settings_section_status_bar">Barra di stato</string>
     <string name="settings_status_bar_transparent">Trasparente (la mappa è visibile sotto)</string>
+    <string name="settings_section_performance">Prestazioni</string>
+    <string name="settings_simplify_render">Semplifica le tracce (visualizzazione più veloce)</string>
+    <string name="settings_simplify_render_hint">Questa impostazione si applica ai livelli importati in seguito. I livelli già importati mantengono la resa attuale fino a un nuovo import.</string>
 
     <!-- Impostazioni: Profilo -->
     <string name="settings_section_display">Visualizzazione</string>

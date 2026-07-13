@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Tolerância de toque: %1$d dp</string>
     <string name="settings_section_status_bar">Barra de estado</string>
     <string name="settings_status_bar_transparent">Transparente (o mapa vê-se por baixo)</string>
+    <string name="settings_section_performance">Desempenho</string>
+    <string name="settings_simplify_render">Simplificar os trajetos (exibição mais rápida)</string>
+    <string name="settings_simplify_render_hint">Esta definição aplica-se às camadas importadas depois. As camadas já importadas mantêm a sua representação atual até serem reimportadas.</string>
 
     <!-- Definições: Perfil -->
     <string name="settings_section_display">Visualização</string>

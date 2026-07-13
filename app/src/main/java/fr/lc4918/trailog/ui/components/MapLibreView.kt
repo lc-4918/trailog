@@ -34,7 +34,7 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 
-data class RenderLayer(val key: String, val geojson: String, val color: String)
+data class RenderLayer(val key: String, val uri: String, val revision: Long, val color: String)
 
 class MapController {
     var map: MapLibreMap? = null
@@ -59,9 +59,10 @@ class MapController {
 
     // une couche peut contenir points ET lignes : une seule source, deux style layers filtrés par géométrie.
     private val layerKeys = linkedSetOf<String>()
-    // Dernier (geojson, couleur) réellement poussé à MapLibre par clé, pour éviter de re-parser un
-    // GeoJSON volumineux inchangé (comparaison d'identité : le ViewModel réutilise la même instance).
-    private val applied = HashMap<String, Pair<String, String>>()
+    // Derniere (revision, couleur) reellement appliquee a MapLibre par cle : evite de recharger une source
+    // dont le fichier .map n'a pas change. La geometrie est chargee par MapLibre depuis une URI file:// sur
+    // son propre thread de travail, jamais conservee en String cote JVM (revision = horodatage ^ taille).
+    private val applied = HashMap<String, Pair<Long, String>>()
     private val pinImages = hashSetOf<String>()
 
     // style en attente / appliqué (évite le rechargement à chaque recomposition)
@@ -134,10 +135,21 @@ class MapController {
             applied.remove(k)
         }
         list.forEach { r ->
+            val prev = applied[r.key]
             val source = s.getSourceAs<GeoJsonSource>(src(r.key))
-            if (source == null) {
+            if (source == null || prev == null || prev.first != r.revision) {
+                // (Re)cree la source depuis l'URI file:// du .map : MapLibre lit et parse le fichier sur son
+                // propre thread de travail (pas de blocage UI, pas de GeoJSON volumineux garde en memoire JVM).
+                // Si la revision a change (edition de points), on retire d'abord l'ancienne source : reutiliser
+                // la meme URI ne garantit pas un rechargement du contenu.
+                if (source != null) {
+                    s.getLayer(pointLayerId(r.key))?.let { s.removeLayer(it) }
+                    s.getLayer(lineLayerId(r.key))?.let { s.removeLayer(it) }
+                    s.getSource(src(r.key))?.let { s.removeSource(it) }
+                    layerKeys.remove(r.key)
+                }
                 val img = ensurePin(s, appContext, r.color, markerHeightPx)
-                s.addSource(GeoJsonSource(src(r.key), r.geojson))
+                s.addSource(GeoJsonSource(src(r.key), java.net.URI(r.uri)))
                 addLayerSafe(LineLayer(lineLayerId(r.key), src(r.key)).withProperties(
                     PropertyFactory.lineColor(r.color), PropertyFactory.lineWidth(4f),
                     PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
@@ -150,19 +162,12 @@ class MapController {
                     PropertyFactory.iconIgnorePlacement(true))
                     .withFilter(pointGeometryFilter))
                 layerKeys.add(r.key)
-                applied[r.key] = r.geojson to r.color
-            } else {
-                val prev = applied[r.key]
-                // Ne re-pousser le GeoJSON que s'il a réellement changé (identité) : setGeoJson re-parse
-                // toute la trace, coûteux pour de gros itinéraires (cause des minutes d'attente).
-                if (prev == null || prev.first !== r.geojson) source.setGeoJson(r.geojson)
-                if (prev == null || prev.second != r.color) {
-                    val img = ensurePin(s, appContext, r.color, markerHeightPx)
-                    (s.getLayer(lineLayerId(r.key)) as? LineLayer)?.setProperties(PropertyFactory.lineColor(r.color))
-                    (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
-                }
-                applied[r.key] = r.geojson to r.color
+            } else if (prev.second != r.color) {
+                val img = ensurePin(s, appContext, r.color, markerHeightPx)
+                (s.getLayer(lineLayerId(r.key)) as? LineLayer)?.setProperties(PropertyFactory.lineColor(r.color))
+                (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
             }
+            applied[r.key] = r.revision to r.color
         }
     }
 

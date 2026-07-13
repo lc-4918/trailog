@@ -126,6 +126,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val offlineDownload by vm.offlineDownload.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
     val computed by vm.computed.collectAsState()
+    val profileLoading by vm.profileLoading.collectAsState()
     val cursor by vm.cursor.collectAsState()
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
     val markerLayerData by vm.markerLayerData.collectAsState()
@@ -341,6 +342,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // conserve le dernier profil pour l'animation de disparition
     var lastComputed by remember { mutableStateOf<ComputedTrack?>(null) }
     LaunchedEffect(computed) { if (computed != null) lastComputed = computed }
+    // titre + couleur de la trace active : mis à jour dès le tap (avant le calcul du profil), et conservés
+    // pendant l'animation de fermeture (activeLayerId repassé à null).
+    var profileTitle by remember { mutableStateOf("") }
+    var profileLineColor by remember { mutableStateOf(Color.Unspecified) }
+    val profilePrimary = MaterialTheme.colorScheme.primary
+    LaunchedEffect(activeLayerId) {
+        vm.activeLayer()?.let { ly ->
+            profileTitle = ly.name
+            profileLineColor = runCatching { Color(android.graphics.Color.parseColor(ly.color)) }.getOrDefault(profilePrimary)
+        }
+    }
     // 1er retour Android : ferme le profil s'il est affiché, au lieu du comportement par défaut.
     BackHandler(enabled = computed != null) { vm.closeProfile() }
     // Priorité plus haute (déclaré après = intercepté en premier) : si le menu latéral est ouvert,
@@ -487,7 +499,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     }
                     // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
                     // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
-                    if (computed == null && settings?.showScale != false) {
+                    if (activeLayerId == null && settings?.showScale != false) {
                         val scaleBarModifier = if (offlineDrawingActive) {
                             val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
                             Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
@@ -510,39 +522,45 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 .padding(horizontal = 4.dp, vertical = 1.dp))
                     }
                 }
-                // profil (visible au tap sur une trace) - animé pour un décalage doux de la carte
-                AnimatedVisibility(visible = computed != null, enter = expandVertically(), exit = shrinkVertically()) {
-                    val c = lastComputed
-                    if (c != null) {
-                        val imp = settings?.units == "imperial"
-                        val profileLayer = vm.activeLayer()
-                        val lineCol = profileLayer?.let { Color(android.graphics.Color.parseColor(it.color)) }
-                            ?: MaterialTheme.colorScheme.primary
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp).navigationBarsPadding()) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(profileLayer?.name ?: "", fontSize = (settings?.profTitleFont ?: 13).sp,
-                                    fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
-                                    maxLines = 1, modifier = Modifier.padding(end = 8.dp))
-                                Text(titleInfoText(c.stats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
+                // profil (visible dès le tap sur une trace) - animé pour un décalage doux de la carte.
+                // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
+                AnimatedVisibility(visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically()) {
+                    val imp = settings?.units == "imperial"
+                    // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
+                    // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
+                    val shown = computed ?: if (!profileLoading) lastComputed else null
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp).navigationBarsPadding()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(profileTitle, fontSize = (settings?.profTitleFont ?: 13).sp,
+                                fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1, modifier = Modifier.padding(end = 8.dp))
+                            if (shown != null) {
+                                Text(titleInfoText(shown.stats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
                                     fontSize = (settings?.profBarFont ?: 11).sp,
                                     fontWeight = if (settings?.profBarBold == true) FontWeight.Bold else null,
                                     modifier = Modifier.weight(1f))
                             }
-                            if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
-                                SlopeLegend(c.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
-                                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                    bold = settings?.profLegendBold == true)
+                        }
+                        if (shown != null && settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+                            SlopeLegend(shown.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                bold = settings?.profLegendBold == true)
+                        }
+                        Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+                            if (shown != null && !profileLoading) {
+                                ElevationProfile(
+                                    samples = shown.samples, stats = shown.stats,
+                                    grid = settings?.profileGrid ?: true,
+                                    slope = settings?.profileSlope ?: true,
+                                    lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
+                                    axisFontSp = settings?.profAxisFont ?: 9,
+                                    axisBold = settings?.profAxisBold == true,
+                                    cursorIndex = cursor, onScrub = { vm.setCursor(it) },
+                                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                                )
+                            } else {
+                                CircularProgressIndicator()
                             }
-                            ElevationProfile(
-                                samples = c.samples, stats = c.stats,
-                                grid = settings?.profileGrid ?: true,
-                                slope = settings?.profileSlope ?: true,
-                                lineColor = lineCol,
-                                axisFontSp = settings?.profAxisFont ?: 9,
-                                axisBold = settings?.profAxisBold == true,
-                                cursorIndex = cursor, onScrub = { vm.setCursor(it) },
-                                modifier = Modifier.fillMaxWidth().height(120.dp),
-                            )
                         }
                     }
                 }

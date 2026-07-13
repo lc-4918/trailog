@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Antipptoleranz: %1$d dp</string>
     <string name="settings_section_status_bar">Statusleiste</string>
     <string name="settings_status_bar_transparent">Transparent (Karte scheint durch)</string>
+    <string name="settings_section_performance">Leistung</string>
+    <string name="settings_simplify_render">Tracks vereinfachen (schnellere Anzeige)</string>
+    <string name="settings_simplify_render_hint">Diese Einstellung gilt für danach importierte Ebenen. Bereits importierte Ebenen behalten ihre aktuelle Darstellung bis zum erneuten Import.</string>
 
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>

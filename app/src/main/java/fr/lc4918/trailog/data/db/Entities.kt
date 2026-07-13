@@ -130,4 +130,5 @@ data class SettingsEntity(
     val basemapControlOpacityPct: Int = 20,         // transparence du panneau (%)
     val bubbleTitleFont: Int = 14,                  // taille police du titre de l'infobulle ("Marqueur")
     val bubbleTitleBold: Boolean = true,
+    val simplifyRender: Boolean = true,             // simplifier la géométrie des traces dans le rendu de carte
 )

@@ -90,8 +90,15 @@ object LayerGeoJson {
         return ParsedLayerGeometry(points, lines)
     }
 
-    /** GeoJSON destiné à la carte : points avec __id/title (pour le tap), lignes brutes. */
-    fun writeForMap(points: List<PointFeature>, lines: List<List<TrackPoint>>): String = buildJsonObject {
+    /** Tolérance de simplification (Douglas-Peucker) des lignes dans le fichier de rendu, en mètres.
+     *  Quasi sans perte : ne retire que la redondance des portions droites et le bruit GPS, invisible même
+     *  au zoom maximal. La géométrie source complète reste dans le fichier de couche (profil/édition/export). */
+    private const val MAP_SIMPLIFY_TOLERANCE_M = 1.0
+
+    /** GeoJSON destiné à la carte : points avec __id/title (pour le tap), lignes simplifiées pour le rendu.
+     *  [simplify] est le flag haut-niveau d'activation de la simplification (piloté par le réglage système) :
+     *  à false, les lignes sont écrites telles quelles (géométrie de rendu identique à la source). */
+    fun writeForMap(points: List<PointFeature>, lines: List<List<TrackPoint>>, simplify: Boolean = true): String = buildJsonObject {
         put("type", "FeatureCollection")
         put("features", buildJsonArray {
             points.forEach { ft ->
@@ -105,9 +112,50 @@ object LayerGeoJson {
                     put("properties", buildJsonObject { put("__id", ft.id); put("title", title) })
                 })
             }
-            lines.forEach { seg -> add(lineFeatureJson(seg)) }
+            val tol = if (simplify) MAP_SIMPLIFY_TOLERANCE_M else 0.0
+            lines.forEach { seg -> add(lineFeatureJson(simplifyLine(seg, tol))) }
         })
     }.toString()
+
+    /** Douglas-Peucker sur une trace, tolérance en mètres (projection planaire locale : suffisant pour
+     *  décider quels points retirer à cette échelle). Conserve chaque TrackPoint retenu tel quel (altitude
+     *  et temps restent alignés sur les coordonnées). N'affecte que le rendu, jamais la géométrie source. */
+    fun simplifyLine(points: List<TrackPoint>, toleranceMeters: Double): List<TrackPoint> {
+        if (points.size <= 2 || toleranceMeters <= 0.0) return points
+        val mPerDegLat = 110540.0
+        val mPerDegLon = 111320.0 * Math.cos(Math.toRadians(points[points.size / 2].lat))
+        fun px(p: TrackPoint) = p.lon * mPerDegLon
+        fun py(p: TrackPoint) = p.lat * mPerDegLat
+        val keep = BooleanArray(points.size)
+        keep[0] = true; keep[points.size - 1] = true
+        val tol2 = toleranceMeters * toleranceMeters
+        // pile explicite plutôt que récursion : une trace de plusieurs centaines de km déborderait la pile.
+        val stack = ArrayDeque<Pair<Int, Int>>()
+        stack.addLast(0 to points.size - 1)
+        while (stack.isNotEmpty()) {
+            val (a, b) = stack.removeLast()
+            if (b <= a + 1) continue
+            val ax = px(points[a]); val ay = py(points[a])
+            val dx = px(points[b]) - ax; val dy = py(points[b]) - ay
+            val len2 = dx * dx + dy * dy
+            var maxD2 = -1.0; var idx = -1
+            for (i in a + 1 until b) {
+                val qx = px(points[i]); val qy = py(points[i])
+                val d2 = if (len2 == 0.0) {
+                    val ex = qx - ax; val ey = qy - ay; ex * ex + ey * ey
+                } else {
+                    val t = (((qx - ax) * dx + (qy - ay) * dy) / len2).coerceIn(0.0, 1.0)
+                    val ex = qx - (ax + t * dx); val ey = qy - (ay + t * dy); ex * ex + ey * ey
+                }
+                if (d2 > maxD2) { maxD2 = d2; idx = i }
+            }
+            if (maxD2 > tol2 && idx > 0) {
+                keep[idx] = true
+                stack.addLast(a to idx); stack.addLast(idx to b)
+            }
+        }
+        return points.filterIndexed { i, _ -> keep[i] }
+    }
 
     // ---- helpers points ----
     private fun pointFeatureJson(ft: PointFeature) = buildJsonObject {

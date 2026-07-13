@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Tolérance de tap : %1$d dp</string>
     <string name="settings_section_status_bar">Barre de statut</string>
     <string name="settings_status_bar_transparent">Transparente (la carte passe dessous)</string>
+    <string name="settings_section_performance">Performance</string>
+    <string name="settings_simplify_render">Simplifier les traces (affichage plus rapide)</string>
+    <string name="settings_simplify_render_hint">Ce réglage s\'applique aux couches importées ensuite. Les couches déjà importées gardent leur rendu actuel jusqu\'à leur ré-import.</string>
 
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>

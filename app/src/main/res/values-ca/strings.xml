@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Tolerància de toc: %1$d dp</string>
     <string name="settings_section_status_bar">Barra d\'estat</string>
     <string name="settings_status_bar_transparent">Transparent (el mapa es veu a sota)</string>
+    <string name="settings_section_performance">Rendiment</string>
+    <string name="settings_simplify_render">Simplifica els traçats (visualització més ràpida)</string>
+    <string name="settings_simplify_render_hint">Aquest ajust s\'aplica a les capes importades després. Les capes ja importades mantenen la seva representació actual fins que es tornin a importar.</string>
 
     <!-- Configuració: Perfil -->
     <string name="settings_section_display">Visualització</string>

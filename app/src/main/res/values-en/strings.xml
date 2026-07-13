@@ -116,6 +116,9 @@
     <string name="settings_section_tap_tolerance">Tap tolerance: %1$d dp</string>
     <string name="settings_section_status_bar">Status bar</string>
     <string name="settings_status_bar_transparent">Transparent (map shows through)</string>
+    <string name="settings_section_performance">Performance</string>
+    <string name="settings_simplify_render">Simplify tracks (faster display)</string>
+    <string name="settings_simplify_render_hint">This setting applies to layers imported afterwards. Already-imported layers keep their current rendering until re-imported.</string>
 
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>
