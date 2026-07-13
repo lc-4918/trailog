@@ -193,6 +193,9 @@
     <string name="label_background_layer">Capa de fondo</string>
     <string name="basemap_control_title">Mapas base</string>
     <string name="content_desc_basemap_control">Gestor de mapas base</string>
+    <string name="content_desc_profile_zoom_start">Inicio de la selección de zoom</string>
+    <string name="content_desc_profile_zoom_end">Fin de la selección de zoom</string>
+    <string name="content_desc_profile_zoom_expand">Reducir el zoom del perfil</string>
 
     <!-- Estado / errores -->
     <string name="error_cannot_open_file">No se pudo abrir el archivo</string>

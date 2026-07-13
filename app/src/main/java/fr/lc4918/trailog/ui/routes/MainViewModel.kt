@@ -27,6 +27,7 @@ import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,9 @@ import kotlinx.coroutines.withContext
 
 /** Position de dépose lors d'un drag & drop dans la légende : avant/après un sibling, ou dedans (dossier cible). */
 enum class DropPosition { BEFORE, INTO, AFTER }
+
+/** Sélection en cours pour un zoom sur le profil (bouton "début"/"fin" tapé, en attente d'un tap sur le graphique). */
+enum class ProfilePickMode { A, B }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
@@ -73,6 +77,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // vrai entre le tap sur une trace et l'affichage de son profil (spinner dans la zone du graphique).
     private val _profileLoading = MutableStateFlow(false)
     val profileLoading = _profileLoading.asStateFlow()
+
+    // --- zoom sur le profil (boutons A/B, jusqu'a 3 niveaux imbriques) ---
+    // Empile les plages (indices absolus dans computed.samples) successivement zoomees ; le sommet de la
+    // pile est la vue courante, la pile vide = vue complete. Remise a zero a chaque nouvelle trace tapee
+    // ou fermeture du profil (jamais lors d'un simple "expand", qui ne fait que depiler un niveau).
+    private val _profileZoomStack = MutableStateFlow<List<IntRange>>(emptyList())
+    val profileZoomStack = _profileZoomStack.asStateFlow()
+    private val _profilePickMode = MutableStateFlow<ProfilePickMode?>(null)
+    val profilePickMode = _profilePickMode.asStateFlow()
+    private val _profilePointA = MutableStateFlow<Int?>(null)
+    val profilePointA = _profilePointA.asStateFlow()
+    private val _profilePointB = MutableStateFlow<Int?>(null)
+    val profilePointB = _profilePointB.asStateFlow()
 
     // --- marqueur sélectionné (infobulle) ---
     private val _markerLayerData = MutableStateFlow<PointLayerData?>(null)
@@ -118,6 +135,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _computed.value = null
         _cursor.value = null
         _profileLoading.value = true
+        resetProfileZoom()
         viewModelScope.launch {
             val result = withContext(Dispatchers.Default) {
                 // Profils précalculés (lecture du .prof, pas de parse DOM au tap). Une couche peut avoir
@@ -155,9 +173,62 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun closeProfile() { _activeLayerId.value = null; _computed.value = null; _cursor.value = null; _profileLoading.value = false }
+    fun closeProfile() {
+        _activeLayerId.value = null; _computed.value = null; _cursor.value = null; _profileLoading.value = false
+        // Les zooms disparaissent mais la carte ne bouge pas (pas d'effet de bord ici, juste l'etat local).
+        resetProfileZoom()
+    }
     fun closeMarker() { _selectedMarkerId.value = null; _markerLayerId.value = null; _markerLayerData.value = null }
     fun setCursor(index: Int?) { _cursor.value = index }
+
+    private fun resetProfileZoom() {
+        _profileZoomStack.value = emptyList()
+        _profilePickMode.value = null
+        _profilePointA.value = null
+        _profilePointB.value = null
+    }
+
+    /** Bouton "début" : le prochain tap sur le graphique posera le point A. */
+    fun startProfilePickA() { _profilePickMode.value = ProfilePickMode.A; _profilePointA.value = null }
+    /** Bouton "fin" : le prochain tap sur le graphique posera le point B et zoomera sur [A, B]. */
+    fun startProfilePickB() { _profilePickMode.value = ProfilePickMode.B }
+
+    /** Un niveau de zoom en moins (le dernier empilé) ; ne touche pas a la position de la carte ailleurs
+     *  que via l'effet de recadrage observant profileZoomStack (cf. MainScreen). */
+    fun expandProfileZoom() { _profileZoomStack.update { it.dropLast(1) } }
+
+    /**
+     * Tap sur le graphique du profil. [localIndex] est relatif a la fenêtre actuellement affichée (la
+     * plage zoomée courante, ou la trace complète si aucun zoom). Hors sélection A/B, comportement normal
+     * (déplace le curseur). En sélection A, pose le point A. En sélection B, pose B et empile une nouvelle
+     * plage [min(A,B), max(A,B)] (jusqu'à 3 niveaux) ; A et B restent affichés brièvement avant que la vue
+     * zoomée (sans ces repères, ses propres bords en tenant lieu) ne les remplace.
+     */
+    fun onProfileTap(localIndex: Int) {
+        val windowStart = _profileZoomStack.value.lastOrNull()?.first ?: 0
+        val absolute = windowStart + localIndex
+        when (_profilePickMode.value) {
+            ProfilePickMode.A -> {
+                _profilePointA.value = absolute
+                _profilePickMode.value = null
+            }
+            ProfilePickMode.B -> {
+                val a = _profilePointA.value
+                _profilePickMode.value = null
+                if (a != null && a != absolute && _profileZoomStack.value.size < 3) {
+                    _profilePointB.value = absolute
+                    val range = minOf(a, absolute)..maxOf(a, absolute)
+                    _profileZoomStack.update { it.plusElement(range) }
+                    viewModelScope.launch {
+                        delay(400)
+                        _profilePointA.value = null
+                        _profilePointB.value = null
+                    }
+                }
+            }
+            null -> _cursor.value = absolute
+        }
+    }
 
     /** Import d'une image choisie par l'utilisateur pour un champ IMAGE d'infobulle. */
     fun importFeatureImage(uri: Uri, onImported: (String) -> Unit) {

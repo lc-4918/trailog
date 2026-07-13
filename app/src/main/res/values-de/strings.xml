@@ -193,6 +193,9 @@
     <string name="label_background_layer">Hintergrundebene</string>
     <string name="basemap_control_title">Kartengrundlagen</string>
     <string name="content_desc_basemap_control">Kartengrundlagen-Verwaltung</string>
+    <string name="content_desc_profile_zoom_start">Anfang der Zoomauswahl</string>
+    <string name="content_desc_profile_zoom_end">Ende der Zoomauswahl</string>
+    <string name="content_desc_profile_zoom_expand">Profilzoom verkleinern</string>
 
     <!-- Status / Fehler -->
     <string name="error_cannot_open_file">Datei kann nicht geöffnet werden</string>

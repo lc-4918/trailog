@@ -193,6 +193,9 @@
     <string name="label_background_layer">Capa de fons</string>
     <string name="basemap_control_title">Mapes base</string>
     <string name="content_desc_basemap_control">Gestor de mapes base</string>
+    <string name="content_desc_profile_zoom_start">Inici de la selecció de zoom</string>
+    <string name="content_desc_profile_zoom_end">Final de la selecció de zoom</string>
+    <string name="content_desc_profile_zoom_expand">Redueix el zoom del perfil</string>
 
     <!-- Estat / errors -->
     <string name="error_cannot_open_file">No s\'ha pogut obrir el fitxer</string>

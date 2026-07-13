@@ -193,6 +193,9 @@
     <string name="label_background_layer">Atzeko planoko geruza</string>
     <string name="basemap_control_title">Oinarrizko mapak</string>
     <string name="content_desc_basemap_control">Oinarrizko mapen kudeatzailea</string>
+    <string name="content_desc_profile_zoom_start">Zoom hautapenaren hasiera</string>
+    <string name="content_desc_profile_zoom_end">Zoom hautapenaren amaiera</string>
+    <string name="content_desc_profile_zoom_expand">Profilaren zooma txikitu</string>
 
     <!-- Egoera / erroreak -->
     <string name="error_cannot_open_file">Ezin izan da fitxategia ireki</string>

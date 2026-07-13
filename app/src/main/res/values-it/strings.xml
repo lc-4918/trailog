@@ -193,6 +193,9 @@
     <string name="label_background_layer">Livello di sfondo</string>
     <string name="basemap_control_title">Mappe di base</string>
     <string name="content_desc_basemap_control">Gestione mappe di base</string>
+    <string name="content_desc_profile_zoom_start">Inizio della selezione dello zoom</string>
+    <string name="content_desc_profile_zoom_end">Fine della selezione dello zoom</string>
+    <string name="content_desc_profile_zoom_expand">Riduci lo zoom del profilo</string>
 
     <!-- Stato / errori -->
     <string name="error_cannot_open_file">Impossibile aprire il file</string>

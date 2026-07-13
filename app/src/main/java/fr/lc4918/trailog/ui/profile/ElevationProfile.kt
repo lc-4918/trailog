@@ -62,6 +62,10 @@ fun ElevationProfile(
     textColor: Color = Color(0xFF555555),
     cursorIndex: Int? = null,
     onScrub: (Int) -> Unit = {},
+    // Repères de sélection du zoom A/B (index dans [samples]) : barre verticale + label, tant que le
+    // second point n'est pas posé (puis brièvement le temps que la vue zoomée les remplace - cf. MainScreen).
+    markA: Int? = null,
+    markB: Int? = null,
 ) {
     if (samples.size < 2) return
     val areaColor = lineColor.copy(alpha = 0.30f)   // aire = couleur de la trace si pentes inactives
@@ -81,6 +85,7 @@ fun ElevationProfile(
 
     val cache = remember { ProfileDrawCache() }
     val labelPaint = remember { Paint().apply { isAntiAlias = true } }
+    val markPaint = remember { Paint().apply { isAntiAlias = true; isFakeBoldText = true; textAlign = Paint.Align.CENTER } }
 
     Canvas(
         modifier = modifier
@@ -163,8 +168,25 @@ fun ElevationProfile(
                 drawCircle(lineColor, radius = 7f, center = Offset(cx, cy), style = Stroke(width = 3.5f))
             }
         }
+
+        // Repères A/B du zoom : barre verticale pleine largeur + label juste sous le bord haut du graphique
+        // (la légende de pente, elle, est un composable externe au-dessus de ce Canvas).
+        if (markA != null || markB != null) {
+            markPaint.textSize = (axisFontSp + 2).sp.toPx()
+            markPaint.color = MARK_COLOR.toArgb()
+            fun drawMark(idx: Int, label: String) {
+                if (idx !in samples.indices) return
+                val x = sx(samples[idx].x)
+                drawLine(MARK_COLOR, Offset(x, padT), Offset(x, baseY), strokeWidth = 2f)
+                drawContext.canvas.nativeCanvas.drawText(label, x, padT + markPaint.textSize, markPaint)
+            }
+            markA?.let { drawMark(it, "A") }
+            markB?.let { drawMark(it, "B") }
+        }
     }
 }
+
+private val MARK_COLOR = Color(0xFFE8590C)
 
 /** Regroupe les segments consécutifs de même couleur (classe de pente) en un seul Path : évite
  *  jusqu'à ~2000 Path/drawPath (un par segment) pour n'en garder qu'un par plage de pente stable. */

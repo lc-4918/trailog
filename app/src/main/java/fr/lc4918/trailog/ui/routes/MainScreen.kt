@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -68,6 +69,7 @@ import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
@@ -131,6 +133,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val computed by vm.computed.collectAsState()
     val profileLoading by vm.profileLoading.collectAsState()
     val cursor by vm.cursor.collectAsState()
+    val profileZoomStack by vm.profileZoomStack.collectAsState()
+    val profilePickMode by vm.profilePickMode.collectAsState()
+    val profilePointA by vm.profilePointA.collectAsState()
+    val profilePointB by vm.profilePointB.collectAsState()
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
     val markerLayerData by vm.markerLayerData.collectAsState()
 
@@ -307,7 +313,22 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
         else controller.clearCursor()
     }
-    LaunchedEffect(activeLayerId) { vm.activeLayer()?.let { controller.fitTo(it.west, it.south, it.east, it.north) } }
+    // Cadrage de la carte sur la trace active : sur toute son emprise si aucun zoom de profil n'est actif,
+    // sinon sur l'emprise de la seule portion zoomée (synchronise carte et profil). Se déclenche aussi à
+    // chaque changement de niveau de zoom (empilage d'un niveau ou "expand" pour en retirer un). Fermer le
+    // profil ne redéclenche rien ici (activeLayerId devient null -> vm.activeLayer() aussi).
+    LaunchedEffect(activeLayerId, profileZoomStack, computed) {
+        val layer = vm.activeLayer() ?: return@LaunchedEffect
+        val range = profileZoomStack.lastOrNull()
+        if (range == null) {
+            controller.fitTo(layer.west, layer.south, layer.east, layer.north)
+        } else {
+            val samples = computed?.samples ?: return@LaunchedEffect
+            if (range.last >= samples.size) return@LaunchedEffect
+            val sub = samples.subList(range.first, range.last + 1)
+            controller.fitTo(sub.minOf { it.lon }, sub.minOf { it.lat }, sub.maxOf { it.lon }, sub.maxOf { it.lat })
+        }
+    }
 
     // positionnement initial : dernier affichage si enregistré, sinon données visibles, sinon France
     var positioned by remember { mutableStateOf(false) }
@@ -510,19 +531,77 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     }
                     ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
                 }
+                // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
+                // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
+                val shown = computed ?: if (!profileLoading) lastComputed else null
+                // Portion actuellement affichée (zoom A/B) : sous-liste de shown.samples, ou la trace
+                // complète si aucun zoom. Le kilométrage (Sample.x) n'est jamais remis à zéro (cumulé depuis
+                // le début de la trace) ; seules les infos (distance/D+/D- du bandeau titre) sont recalculées
+                // pour la seule portion visible (cf. TrackMath.statsOf, réutilisable sur une sous-plage).
+                val zoomRange = profileZoomStack.lastOrNull()
+                val windowStart = zoomRange?.first ?: 0
+                val windowSamples = shown?.samples?.let { s ->
+                    if (zoomRange != null && zoomRange.last < s.size) s.subList(zoomRange.first, zoomRange.last + 1) else s
+                }
+                val windowStats = if (zoomRange != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
+                fun toWindow(absolute: Int?) = absolute?.let { a -> windowSamples?.let { (a - windowStart).takeIf { i -> i in it.indices } } }
+                val cursorInWindow = toWindow(cursor)
+                val markAInWindow = toWindow(profilePointA)
+                val markBInWindow = toWindow(profilePointB)
+
                 // infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
                 // (décalées de la hauteur mesurée du panneau, superposé à la carte - cf. profileBarHeightPx).
-                val cIdx = cursor; val cComputed = lastComputed
-                if (computed != null && cComputed != null && cIdx != null && cIdx in cComputed.samples.indices) {
+                val cIdx = cursorInWindow; val cSamples = windowSamples
+                if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
                     val imp = settings?.units == "imperial"
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
-                    Text(cursorInfoText(cComputed.samples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
+                    Text(cursorInfoText(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
                         fontSize = (settings?.profCursorFont ?: 11).sp,
                         fontWeight = if (settings?.profCursorBold == true) FontWeight.Bold else null,
                         color = Color.Black,
                         modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = cursorBottomDp + 4.dp)
                             .background(Color.White.copy(alpha = 0.7f))
                             .padding(horizontal = 4.dp, vertical = 1.dp))
+                }
+                // Boutons de zoom sur le profil (début/fin de sélection A/B, expand pour dézoomer d'un niveau) :
+                // même hauteur que les infos du curseur ci-dessus, alignés à droite.
+                if (activeLayerId != null && shown != null) {
+                    val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = cursorBottomDp + 4.dp)
+                            .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+                    ) {
+                        if (profileZoomStack.isNotEmpty()) {
+                            IconButton(onClick = { vm.expandProfileZoom() }, modifier = Modifier.size(32.dp)) {
+                                Icon(painterResource(R.drawable.ic_profile_zoom_expand),
+                                    stringResource(R.string.content_desc_profile_zoom_expand), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        if (profileZoomStack.size < 3) {
+                            IconButton(
+                                onClick = { vm.startProfilePickA() },
+                                modifier = Modifier.size(32.dp).background(
+                                    if (profilePickMode == ProfilePickMode.A) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    RoundedCornerShape(6.dp)),
+                            ) {
+                                Icon(painterResource(R.drawable.ic_profile_zoom_start),
+                                    stringResource(R.string.content_desc_profile_zoom_start), modifier = Modifier.size(18.dp),
+                                    tint = if (profilePickMode == ProfilePickMode.A) Color.White else LocalContentColor.current)
+                            }
+                            IconButton(
+                                onClick = { vm.startProfilePickB() },
+                                modifier = Modifier.size(32.dp).background(
+                                    if (profilePickMode == ProfilePickMode.B) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    RoundedCornerShape(6.dp)),
+                            ) {
+                                Icon(painterResource(R.drawable.ic_profile_zoom_end),
+                                    stringResource(R.string.content_desc_profile_zoom_end), modifier = Modifier.size(18.dp),
+                                    tint = if (profilePickMode == ProfilePickMode.B) Color.White else LocalContentColor.current)
+                            }
+                        }
+                    }
                 }
                 // profil (visible dès le tap sur une trace) - superposé à la carte, qui garde toujours sa
                 // taille pleine : ne jamais la redimensionner ici, une AndroidView type SurfaceView flashe en
@@ -533,9 +612,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     modifier = Modifier.align(Alignment.BottomCenter),
                 ) {
                     val imp = settings?.units == "imperial"
-                    // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
-                    // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
-                    val shown = computed ?: if (!profileLoading) lastComputed else null
                     Column(
                         Modifier.fillMaxWidth().background(Color.White)
                             .padding(horizontal = 8.dp).navigationBarsPadding()
@@ -545,28 +621,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             Text(profileTitle, fontSize = (settings?.profTitleFont ?: 13).sp,
                                 fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
                                 maxLines = 1, modifier = Modifier.padding(end = 8.dp))
-                            if (shown != null) {
-                                Text(titleInfoText(shown.stats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
+                            if (windowStats != null) {
+                                Text(titleInfoText(windowStats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
                                     fontSize = (settings?.profBarFont ?: 11).sp,
                                     fontWeight = if (settings?.profBarBold == true) FontWeight.Bold else null,
                                     modifier = Modifier.weight(1f))
                             }
                         }
-                        if (shown != null && settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
-                            SlopeLegend(shown.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                        if (windowStats != null && settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+                            SlopeLegend(windowStats.maxAbsSlope, settings?.profLegendFont ?: 9,
                                 Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 bold = settings?.profLegendBold == true)
                         }
                         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                            if (shown != null && !profileLoading) {
+                            if (windowSamples != null && windowStats != null && !profileLoading) {
                                 ElevationProfile(
-                                    samples = shown.samples, stats = shown.stats,
+                                    samples = windowSamples, stats = windowStats,
                                     grid = settings?.profileGrid ?: true,
                                     slope = settings?.profileSlope ?: true,
                                     lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
                                     axisFontSp = settings?.profAxisFont ?: 9,
                                     axisBold = settings?.profAxisBold == true,
-                                    cursorIndex = cursor, onScrub = { vm.setCursor(it) },
+                                    cursorIndex = cursorInWindow, onScrub = { vm.onProfileTap(it) },
+                                    markA = markAInWindow, markB = markBInWindow,
                                     modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                                 )
                             } else {

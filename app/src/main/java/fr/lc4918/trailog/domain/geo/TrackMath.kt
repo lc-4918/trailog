@@ -114,7 +114,10 @@ object TrackMath {
         System.arraycopy(out, 0, z, 0, n)
     }
 
-    private fun statsOf(s: List<Sample>): TrackStats {
+    /** Stats (distance/D+/D-/min/max/duree) d'une liste de samples : reutilisable telle quelle sur une
+     *  sous-plage (x/t deja cumules depuis le debut de la trace, la difference premier/dernier donne la
+     *  valeur relative a la sous-plage) - cf. zoom sur profil dans MainViewModel. */
+    fun statsOf(s: List<Sample>): TrackStats {
         var ascent = 0.0; var descent = 0.0
         var zmin = Double.POSITIVE_INFINITY; var zmax = Double.NEGATIVE_INFINITY
         var maxAbs = 0.0

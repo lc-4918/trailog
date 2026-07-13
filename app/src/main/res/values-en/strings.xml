@@ -193,6 +193,9 @@
     <string name="label_background_layer">Background layer</string>
     <string name="basemap_control_title">Basemaps</string>
     <string name="content_desc_basemap_control">Basemap manager</string>
+    <string name="content_desc_profile_zoom_start">Start of zoom selection</string>
+    <string name="content_desc_profile_zoom_end">End of zoom selection</string>
+    <string name="content_desc_profile_zoom_expand">Zoom out on profile</string>
 
     <!-- Status / errors -->
     <string name="error_cannot_open_file">Unable to open the file</string>

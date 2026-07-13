@@ -193,6 +193,9 @@
     <string name="label_background_layer">Couche arrière-plan</string>
     <string name="basemap_control_title">Fonds de plan</string>
     <string name="content_desc_basemap_control">Gestionnaire de fonds de plan</string>
+    <string name="content_desc_profile_zoom_start">Début de la sélection de zoom</string>
+    <string name="content_desc_profile_zoom_end">Fin de la sélection de zoom</string>
+    <string name="content_desc_profile_zoom_expand">Réduire le zoom du profil</string>
 
     <!-- Statuts / erreurs -->
     <string name="error_cannot_open_file">Impossible d\'ouvrir le fichier</string>
