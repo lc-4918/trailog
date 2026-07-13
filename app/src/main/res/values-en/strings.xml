@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Actions</string>
-    <string name="action_move">Move…</string>
+    <string name="action_move">Move...</string>
     <string name="action_new_subfolder">New subfolder</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Rename</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Continue on error</string>
     <string name="offline_config_continue_on_error_desc">If enabled, the download continues even if a tile could not be downloaded</string>
     <string name="offline_action_download">Download</string>
-    <string name="offline_progress_title">Downloading…</string>
+    <string name="offline_progress_title">Downloading...</string>
     <string name="offline_progress_total">Total to download: %1$d</string>
     <string name="offline_progress_downloaded">Tiles downloaded: %1$d</string>
     <string name="offline_progress_failed">Tiles not downloaded: %1$d</string>
-    <string name="offline_progress_success">Layer “%1$s” created!</string>
+    <string name="offline_progress_success">Layer \"%1$s\" created!</string>
     <string name="offline_progress_error">Download stopped: %1$d tile(s) missing</string>
     <string name="offline_action_minimize">Minimize</string>
     <string name="offline_action_reopen">Reopen download</string>
 
     <!-- Generic labels -->
-    <string name="label_root">— Root —</string>
+    <string name="label_root">- Root -</string>
     <string name="label_new_folder">New folder</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS position</string>
 
     <!-- Dialogs -->
     <string name="dialog_composite_title">New composite basemap</string>
-    <string name="dialog_import_into_title">Import into…</string>
+    <string name="dialog_import_into_title">Import into...</string>
     <string name="dialog_gps_disabled_title">GPS sensor inactive</string>
     <string name="dialog_gps_disabled_text">Location sensing is disabled. Do you want to enable it?</string>
-    <string name="dialog_move_to_title">Move to…</string>
+    <string name="dialog_move_to_title">Move to...</string>
     <string name="dialog_color_title">Display color</string>
     <string name="dialog_edit_bubble_title">Edit info bubble</string>
 
@@ -96,7 +96,7 @@
     <!-- Settings: System -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Language</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Units</string>
     <string name="unit_metric">Metric</string>
     <string name="unit_imperial">Imperial</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Name</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
-    <string name="settings_field_tile_size">Tile size (px) — usually 256 or 512</string>
-    <string name="settings_field_zoom_levels">Zoom levels: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Tile size (px) - usually 256 or 512</string>
+    <string name="settings_field_zoom_levels">Zoom levels: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Location: %1$s</string>
     <string name="offline_thumb_location_title">Global location</string>
     <string name="offline_thumb_detail_title">Detail preview</string>
@@ -186,14 +186,14 @@
 
     <!-- Status / errors -->
     <string name="error_cannot_open_file">Unable to open the file</string>
-    <string name="status_imported_format">Imported: %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Imported: %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">MBTiles import failed</string>
     <string name="error_mbtiles_vector_unsupported">Vector MBTiles (pbf) not supported yet: %1$s</string>
 
     <!-- Reset -->
     <string name="settings_section_reset">Reset</string>
     <string name="action_reset_all_settings">Reset all settings</string>
-    <string name="dialog_reset_all_settings_text">This restores all settings (language, theme, avatar, map settings…). Provider URLs and API keys, user-created composite basemaps, and imported MBTiles files are kept.</string>
+    <string name="dialog_reset_all_settings_text">This restores all settings (language, theme, avatar, map settings...). Provider URLs and API keys, user-created composite basemaps, and imported MBTiles files are kept.</string>
 
     <!-- Provider import/export -->
     <string name="dialog_import_providers_title">Import providers?</string>

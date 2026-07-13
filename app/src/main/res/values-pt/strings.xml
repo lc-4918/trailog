@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Ações</string>
-    <string name="action_move">Mover…</string>
+    <string name="action_move">Mover...</string>
     <string name="action_new_subfolder">Nova subpasta</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Renomear</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Continuar em caso de erro</string>
     <string name="offline_config_continue_on_error_desc">Se ativado, a descarga continua mesmo que uma peça não tenha sido descarregada</string>
     <string name="offline_action_download">Descarregar</string>
-    <string name="offline_progress_title">A descarregar…</string>
+    <string name="offline_progress_title">A descarregar...</string>
     <string name="offline_progress_total">Total a descarregar: %1$d</string>
     <string name="offline_progress_downloaded">Mosaicos descarregados: %1$d</string>
     <string name="offline_progress_failed">Mosaicos não descarregados: %1$d</string>
-    <string name="offline_progress_success">Camada «%1$s» criada!</string>
+    <string name="offline_progress_success">Camada \"%1$s\" criada!</string>
     <string name="offline_progress_error">Descarga interrompida: faltam %1$d mosaico(s)</string>
     <string name="offline_action_minimize">Minimizar</string>
     <string name="offline_action_reopen">Reabrir a descarga</string>
 
     <!-- Etiquetas genéricas -->
-    <string name="label_root">— Raiz —</string>
+    <string name="label_root">- Raiz -</string>
     <string name="label_new_folder">Nova pasta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posição GPS</string>
 
     <!-- Diálogos -->
     <string name="dialog_composite_title">Novo mapa base composto</string>
-    <string name="dialog_import_into_title">Importar para…</string>
+    <string name="dialog_import_into_title">Importar para...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inativo</string>
     <string name="dialog_gps_disabled_text">A localização está desativada. Pretende ativá-la?</string>
-    <string name="dialog_move_to_title">Mover para…</string>
+    <string name="dialog_move_to_title">Mover para...</string>
     <string name="dialog_color_title">Cor de visualização</string>
     <string name="dialog_edit_bubble_title">Editar o balão informativo</string>
 
@@ -96,7 +96,7 @@
     <!-- Definições: Sistema -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Idioma</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Unidades</string>
     <string name="unit_metric">Métrico</string>
     <string name="unit_imperial">Imperial</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Nome</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chave API</string>
-    <string name="settings_field_tile_size">Tamanho do mosaico (px) — geralmente 256 ou 512</string>
-    <string name="settings_field_zoom_levels">Níveis de zoom: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Tamanho do mosaico (px) - geralmente 256 ou 512</string>
+    <string name="settings_field_zoom_levels">Níveis de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Localização: %1$s</string>
     <string name="offline_thumb_location_title">Localização global</string>
     <string name="offline_thumb_detail_title">Pré-visualização de detalhe</string>
@@ -186,14 +186,14 @@
 
     <!-- Estado / erros -->
     <string name="error_cannot_open_file">Não foi possível abrir o ficheiro</string>
-    <string name="status_imported_format">Importado: %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Importado: %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">Falha ao importar MBTiles</string>
     <string name="error_mbtiles_vector_unsupported">MBTiles vetorial (pbf) ainda não suportado: %1$s</string>
 
     <!-- Reposição -->
     <string name="settings_section_reset">Reposição</string>
     <string name="action_reset_all_settings">Repor todas as definições</string>
-    <string name="dialog_reset_all_settings_text">Esta ação repõe todas as definições (idioma, tema, avatar, definições do mapa…). Os URLs e chaves API dos fornecedores, os mapas base compostos criados pelo utilizador e os ficheiros MBTiles importados são mantidos.</string>
+    <string name="dialog_reset_all_settings_text">Esta ação repõe todas as definições (idioma, tema, avatar, definições do mapa...). Os URLs e chaves API dos fornecedores, os mapas base compostos criados pelo utilizador e os ficheiros MBTiles importados são mantidos.</string>
 
     <!-- Importação/exportação de fornecedores -->
     <string name="dialog_import_providers_title">Importar os fornecedores?</string>

@@ -38,7 +38,7 @@ private val ColorCancelAll = Color(0xFFD32F2F)    // rouge
 private val ColorValidate = Color(0xFF2E7D32)     // vert
 private val BarBackground = Color(0xFF1B1B1B).copy(alpha = 0.9f)   // gris très foncé, 10% transparent
 
-/** Barre du bas pendant la saisie de la bounding box (SPEC offline_map.md §2, ajustée) : compteur de
+/** Barre du bas pendant la saisie de la bounding box (SPEC offline_map.md section 2, ajustée) : compteur de
  *  points en haut, une seule ligne des 3 boutons en-dessous (barre plus basse). */
 @Composable
 fun BboxDrawingOverlay(
@@ -97,7 +97,7 @@ private fun BboxActionButton(
             Icon(icon, null, Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             // maxLines = 2 (pas 1) : "Annuler point" ne tient pas sur une ligne dans le tiers de
-            // largeur alloué à 3 boutons — en une seule ligne, la fin du texte ("point") était
+            // largeur alloué à 3 boutons - en une seule ligne, la fin du texte ("point") était
             // tronquée sans le montrer (retour visuel juste "Annuler").
             Text(label, fontSize = 12.sp, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 13.sp)
         }

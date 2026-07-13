@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
  * Remplacement compact d'OutlinedTextField pour toute l'application : le padding vertical par défaut de
  * Material3 (16dp haut/bas, cf. TextFieldImpl.TextFieldPadding) est trop généreux, réduit ici à 8dp.
  * [label] (si fourni) est une légende fixe au-dessus du champ, pas le label flottant M3 qui mord sur la
- * bordure (jugé inutile) — [placeholder] reste le simple indice affiché tant que le champ est vide.
+ * bordure (jugé inutile) - [placeholder] reste le simple indice affiché tant que le champ est vide.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -17,7 +17,7 @@ data class Bbox(val west: Double, val south: Double, val east: Double, val north
 
 /**
  * Calculs de pavage de tuiles XYZ (Web Mercator) pour l'estimation du téléchargement hors-ligne
- * (SPEC offline_map.md §3). Ne gère pas le franchissement de l'antiméridien (west > east après
+ * (SPEC offline_map.md section 3). Ne gère pas le franchissement de l'antiméridien (west > east après
  * projection) : cas non pertinent pour une app de randonnée centrée sur l'Europe.
  */
 object TileMath {

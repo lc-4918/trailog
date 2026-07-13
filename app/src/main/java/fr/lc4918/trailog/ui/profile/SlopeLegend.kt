@@ -26,7 +26,7 @@ fun SlopeLegend(maxAbsSlope: Double, fontSp: Int, modifier: Modifier = Modifier,
             Box(Modifier.size(sq).clip(RoundedCornerShape(2.dp)).background(col))
             Spacer(Modifier.width(3.dp))
             val lo = i * classSize
-            val label = if (i == maxIdx) "≥${fmt(lo)}%" else "${fmt(lo)}–${fmt(lo + classSize)}%"
+            val label = if (i == maxIdx) ">=${fmt(lo)}%" else "${fmt(lo)}-${fmt(lo + classSize)}%"
             Text(label, fontSize = fontSp.sp, fontWeight = if (bold) androidx.compose.ui.text.font.FontWeight.Bold else null)
             Spacer(Modifier.width(10.dp))
         }

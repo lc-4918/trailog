@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Actions</string>
-    <string name="action_move">Déplacer…</string>
+    <string name="action_move">Déplacer...</string>
     <string name="action_new_subfolder">Nouveau sous-dossier</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Renommer</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Continuer en cas d\'erreur</string>
     <string name="offline_config_continue_on_error_desc">Si activé, le téléchargement continue même si une tuile n\'a pu être téléchargée</string>
     <string name="offline_action_download">Télécharger</string>
-    <string name="offline_progress_title">Téléchargement en cours…</string>
+    <string name="offline_progress_title">Téléchargement en cours...</string>
     <string name="offline_progress_total">Total à télécharger : %1$d</string>
     <string name="offline_progress_downloaded">Tuiles téléchargées : %1$d</string>
     <string name="offline_progress_failed">Tuiles non téléchargées : %1$d</string>
-    <string name="offline_progress_success">Couche « %1$s » créée !</string>
+    <string name="offline_progress_success">Couche \"%1$s\" créée !</string>
     <string name="offline_progress_error">Téléchargement interrompu : %1$d tuile(s) manquante(s)</string>
     <string name="offline_action_minimize">Réduire</string>
     <string name="offline_action_reopen">Rouvrir le téléchargement</string>
 
     <!-- Libellés génériques -->
-    <string name="label_root">— Racine —</string>
+    <string name="label_root">- Racine -</string>
     <string name="label_new_folder">Nouveau dossier</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Position GPS</string>
 
     <!-- Dialogues -->
     <string name="dialog_composite_title">Nouveau fond de plan composite</string>
-    <string name="dialog_import_into_title">Importer dans…</string>
+    <string name="dialog_import_into_title">Importer dans...</string>
     <string name="dialog_gps_disabled_title">Capteur GPS inactif</string>
     <string name="dialog_gps_disabled_text">Le capteur de localisation est désactivé. Voulez-vous l\'activer ?</string>
-    <string name="dialog_move_to_title">Déplacer vers…</string>
+    <string name="dialog_move_to_title">Déplacer vers...</string>
     <string name="dialog_color_title">Couleur d\'affichage</string>
     <string name="dialog_edit_bubble_title">Éditer l\'infobulle</string>
 
@@ -96,7 +96,7 @@
     <!-- Réglages : Système -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Langue</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Unités</string>
     <string name="unit_metric">Métrique</string>
     <string name="unit_imperial">Impérial</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Nom</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
-    <string name="settings_field_tile_size">Taille de tuile (px) — souvent 256 ou 512</string>
-    <string name="settings_field_zoom_levels">Niveaux de zoom : %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Taille de tuile (px) - souvent 256 ou 512</string>
+    <string name="settings_field_zoom_levels">Niveaux de zoom : %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Emplacement : %1$s</string>
     <string name="offline_thumb_location_title">Localisation globale</string>
     <string name="offline_thumb_detail_title">Aperçu détail</string>
@@ -186,14 +186,14 @@
 
     <!-- Statuts / erreurs -->
     <string name="error_cannot_open_file">Impossible d\'ouvrir le fichier</string>
-    <string name="status_imported_format">Importé : %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Importé : %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">Échec de l\'import MBTiles</string>
     <string name="error_mbtiles_vector_unsupported">MBTiles vectoriel (pbf) non géré pour l\'instant : %1$s</string>
 
     <!-- Réinitialisation -->
     <string name="settings_section_reset">Réinitialisation</string>
     <string name="action_reset_all_settings">Réinitialiser tous les paramètres</string>
-    <string name="dialog_reset_all_settings_text">Cette action restaure tous les paramètres (langue, thème, avatar, réglages carte…). Les URLs et clés des fournisseurs, les fonds composites créés par l\'utilisateur et les fichiers MBTiles importés sont conservés.</string>
+    <string name="dialog_reset_all_settings_text">Cette action restaure tous les paramètres (langue, thème, avatar, réglages carte...). Les URLs et clés des fournisseurs, les fonds composites créés par l\'utilisateur et les fichiers MBTiles importés sont conservés.</string>
 
     <!-- Import/Export des fournisseurs -->
     <string name="dialog_import_providers_title">Importer les fournisseurs ?</string>

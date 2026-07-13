@@ -6,7 +6,7 @@ enum class PropType { TEXT, IMAGE, LINK }
 /** Valeur typée d'une propriété. */
 sealed interface PropValue {
     data class Text(val value: String) : PropValue
-    data class Image(val path: String) : PropValue          // chemin fichier local (filesDir/images/…) ou URL http(s)
+    data class Image(val path: String) : PropValue          // chemin fichier local (filesDir/images/...) ou URL http(s)
     data class Link(val text: String, val url: String) : PropValue
 }
 

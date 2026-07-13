@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menua</string>
     <string name="action_more">Ekintzak</string>
-    <string name="action_move">Mugitu…</string>
+    <string name="action_move">Mugitu...</string>
     <string name="action_new_subfolder">Azpikarpeta berria</string>
     <string name="action_ok">Ados</string>
     <string name="action_rename">Berrizendatu</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Jarraitu errorea gertatuz gero</string>
     <string name="offline_config_continue_on_error_desc">Aktibatuta badago, deskarga jarraituko da lauzaren bat deskargatu ez bada ere</string>
     <string name="offline_action_download">Deskargatu</string>
-    <string name="offline_progress_title">Deskargatzen…</string>
+    <string name="offline_progress_title">Deskargatzen...</string>
     <string name="offline_progress_total">Deskargatzeko guztira: %1$d</string>
     <string name="offline_progress_downloaded">Deskargatutako lauzak: %1$d</string>
     <string name="offline_progress_failed">Deskargatu gabeko lauzak: %1$d</string>
-    <string name="offline_progress_success">«%1$s» geruza sortu da!</string>
+    <string name="offline_progress_success">\"%1$s\" geruza sortu da!</string>
     <string name="offline_progress_error">Deskarga eten da: %1$d lauza falta dira</string>
     <string name="offline_action_minimize">Txikitu</string>
     <string name="offline_action_reopen">Deskarga berriz ireki</string>
 
     <!-- Etiketa orokorrak -->
-    <string name="label_root">— Erroa —</string>
+    <string name="label_root">- Erroa -</string>
     <string name="label_new_folder">Karpeta berria</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS kokapena</string>
 
     <!-- Elkarrizketa-koadroak -->
     <string name="dialog_composite_title">Oinarrizko mapa konposatu berria</string>
-    <string name="dialog_import_into_title">Inportatu hemen…</string>
+    <string name="dialog_import_into_title">Inportatu hemen...</string>
     <string name="dialog_gps_disabled_title">GPS sentsorea inaktibo</string>
     <string name="dialog_gps_disabled_text">Kokapen-detekzioa desgaituta dago. Gaitu nahi duzu?</string>
-    <string name="dialog_move_to_title">Mugitu hona…</string>
+    <string name="dialog_move_to_title">Mugitu hona...</string>
     <string name="dialog_color_title">Bistaratze-kolorea</string>
     <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>
 
@@ -96,7 +96,7 @@
     <!-- Ezarpenak: Sistema -->
     <string name="settings_section_avatar">Avatarra</string>
     <string name="settings_section_language">Hizkuntza</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Unitateak</string>
     <string name="unit_metric">Metrikoa</string>
     <string name="unit_imperial">Inperiala</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Izena</string>
     <string name="settings_field_url">URLa</string>
     <string name="settings_field_api_key">API gakoa</string>
-    <string name="settings_field_tile_size">Lauza-tamaina (px) — normalean 256 edo 512</string>
-    <string name="settings_field_zoom_levels">Zoom-mailak: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Lauza-tamaina (px) - normalean 256 edo 512</string>
+    <string name="settings_field_zoom_levels">Zoom-mailak: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Kokapena: %1$s</string>
     <string name="offline_thumb_location_title">Kokapen orokorra</string>
     <string name="offline_thumb_detail_title">Xehetasun-aurrebista</string>
@@ -186,14 +186,14 @@
 
     <!-- Egoera / erroreak -->
     <string name="error_cannot_open_file">Ezin izan da fitxategia ireki</string>
-    <string name="status_imported_format">Inportatuta: %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Inportatuta: %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">MBTiles inportazioak huts egin du</string>
     <string name="error_mbtiles_vector_unsupported">MBTiles bektoriala (pbf) oraindik ez da onartzen: %1$s</string>
 
     <!-- Berrezarpena -->
     <string name="settings_section_reset">Berrezarpena</string>
     <string name="action_reset_all_settings">Berrezarri ezarpen guztiak</string>
-    <string name="dialog_reset_all_settings_text">Ekintza honek ezarpen guztiak berrezartzen ditu (hizkuntza, gaia, avatarra, maparen ezarpenak…). Hornitzaileen URLak eta API gakoak, erabiltzaileak sortutako oinarrizko mapa konposatuak eta inportatutako MBTiles fitxategiak mantendu egingo dira.</string>
+    <string name="dialog_reset_all_settings_text">Ekintza honek ezarpen guztiak berrezartzen ditu (hizkuntza, gaia, avatarra, maparen ezarpenak...). Hornitzaileen URLak eta API gakoak, erabiltzaileak sortutako oinarrizko mapa konposatuak eta inportatutako MBTiles fitxategiak mantendu egingo dira.</string>
 
     <!-- Hornitzaileen inportazioa/esportazioa -->
     <string name="dialog_import_providers_title">Hornitzaileak inportatu?</string>

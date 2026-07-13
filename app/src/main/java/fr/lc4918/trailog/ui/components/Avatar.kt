@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 
 /** Avatar circulaire (image locale ou URL, cropée en cercle) ; logo Trailog par défaut si `source` est vide
- *  (clair/sombre selon le thème réellement actif, affiché tel quel — sans recadrage circulaire). */
+ *  (clair/sombre selon le thème réellement actif, affiché tel quel - sans recadrage circulaire). */
 @Composable
 fun Avatar(source: String, size: Dp, modifier: Modifier = Modifier, contentDescription: String? = null) {
     if (source.isBlank()) {

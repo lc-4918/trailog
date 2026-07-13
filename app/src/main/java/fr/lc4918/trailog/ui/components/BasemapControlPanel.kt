@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
 private enum class BHoverZone { BEFORE, INTO, AFTER }
 private data class BDragInfo(val kind: String, val id: String, val offset: Float)
 private data class BHoverTarget(val kind: String, val id: String, val zone: BHoverZone)
-/** Bornes mesurées d'une ligne (position root Y, hauteur réelle) — utilisées pour la détection de zone de dépose. */
+/** Bornes mesurées d'une ligne (position root Y, hauteur réelle) - utilisées pour la détection de zone de dépose. */
 private data class BRowBounds(val top: Float, val height: Float)
 
 private class BDragCtx(
@@ -73,7 +73,7 @@ private fun combinedBasemapChildren(
 ): List<Any> {
     val f = folders.filter { it.parentId == parentId }
     // Le relief (DEM) reste toujours visible dans l'arbre, activé ou non : son "enabled" sert désormais de
-    // bascule tap-pour-activer/désactiver (bug relief), pas de filtre de visibilité comme les autres fonds —
+    // bascule tap-pour-activer/désactiver (bug relief), pas de filtre de visibilité comme les autres fonds -
     // sinon un tap qui l'éteint le ferait disparaître, sans plus aucun moyen de le rallumer.
     val p = providers.filter { (it.enabled || it.type == "DEM") && it.folderId == parentId }
     val c = composites.filter { it.enabled && it.folderId == parentId }
@@ -229,7 +229,7 @@ fun BasemapControlPanel(
     var newFolderDialog by remember { mutableStateOf(false) }
 
     // Surface (et non Box+background) : fournit LocalContentColor adapté au thème pour le texte/les icônes
-    // du panneau — un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
+    // du panneau - un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
     // textes/icônes illisibles en thème sombre.
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 1f - backgroundAlpha),
@@ -239,16 +239,16 @@ fun BasemapControlPanel(
         // Défilement désactivé pendant un drag actif : sans ça, le scroll du panneau peut reprendre la main
         // sur le geste en cours de route et casser le suivi du glisser (indicateurs de zone qui "sautent").
         // CompositionLocalProvider : désactive le plancher tactile de 48dp que Material3 impose par défaut
-        // aux IconButton (cf. Groupe N) — nécessaire à la fois pour le header 1 ligne compact (§7.1) et pour
+        // aux IconButton (cf. Groupe N) - nécessaire à la fois pour le header 1 ligne compact (section 7.1) et pour
         // que le chevron plie/déplie des dossiers fasse bien 32dp comme le Spacer d'alignement des basemaps
-        // racine, sans quoi les deux ne s'alignent pas (§7.2).
+        // racine, sans quoi les deux ne s'alignent pas (section 7.2).
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState(), enabled = dragInfo == null)) {
             Box(Modifier.fillMaxWidth().padding(4.dp)) {
                 IconButton(onClick = { newFolderDialog = true }, modifier = Modifier.align(Alignment.CenterStart).size(32.dp)) {
                     Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
                 }
-                // Décalé au maximum vers l'angle haut-droit du gestionnaire (SPEC §7.1).
+                // Décalé au maximum vers l'angle haut-droit du gestionnaire (SPEC section 7.1).
                 IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
                     Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
                 }

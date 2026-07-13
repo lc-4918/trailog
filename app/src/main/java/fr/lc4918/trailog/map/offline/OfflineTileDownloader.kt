@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Moteur de téléchargement des tuiles (SPEC offline_map.md §4). Télécharge en parallèle borné, écrit
+ * Moteur de téléchargement des tuiles (SPEC offline_map.md section 4). Télécharge en parallèle borné, écrit
  * dans un [MbtilesWriter] via un unique thread consommateur (contrainte de thread de SQLite), et
  * remonte l'avancement par [onProgress]. Annulable via l'annulation de coroutine.
  */

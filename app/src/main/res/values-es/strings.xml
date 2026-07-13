@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menú</string>
     <string name="action_more">Acciones</string>
-    <string name="action_move">Mover…</string>
+    <string name="action_move">Mover...</string>
     <string name="action_new_subfolder">Nueva subcarpeta</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Renombrar</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Continuar en caso de error</string>
     <string name="offline_config_continue_on_error_desc">Si está activado, la descarga continúa aunque no se haya podido descargar alguna tesela</string>
     <string name="offline_action_download">Descargar</string>
-    <string name="offline_progress_title">Descargando…</string>
+    <string name="offline_progress_title">Descargando...</string>
     <string name="offline_progress_total">Total a descargar: %1$d</string>
     <string name="offline_progress_downloaded">Teselas descargadas: %1$d</string>
     <string name="offline_progress_failed">Teselas no descargadas: %1$d</string>
-    <string name="offline_progress_success">¡Capa «%1$s» creada!</string>
+    <string name="offline_progress_success">¡Capa \"%1$s\" creada!</string>
     <string name="offline_progress_error">Descarga interrumpida: faltan %1$d tesela(s)</string>
     <string name="offline_action_minimize">Minimizar</string>
     <string name="offline_action_reopen">Reabrir la descarga</string>
 
     <!-- Etiquetas genéricas -->
-    <string name="label_root">— Raíz —</string>
+    <string name="label_root">- Raíz -</string>
     <string name="label_new_folder">Nueva carpeta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posición GPS</string>
 
     <!-- Diálogos -->
     <string name="dialog_composite_title">Nuevo mapa base compuesto</string>
-    <string name="dialog_import_into_title">Importar en…</string>
+    <string name="dialog_import_into_title">Importar en...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inactivo</string>
     <string name="dialog_gps_disabled_text">La localización está desactivada. ¿Quieres activarla?</string>
-    <string name="dialog_move_to_title">Mover a…</string>
+    <string name="dialog_move_to_title">Mover a...</string>
     <string name="dialog_color_title">Color de visualización</string>
     <string name="dialog_edit_bubble_title">Editar la burbuja informativa</string>
 
@@ -96,7 +96,7 @@
     <!-- Ajustes: Sistema -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Idioma</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Unidades</string>
     <string name="unit_metric">Métrico</string>
     <string name="unit_imperial">Imperial</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Nombre</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clave API</string>
-    <string name="settings_field_tile_size">Tamaño de tesela (px) — normalmente 256 o 512</string>
-    <string name="settings_field_zoom_levels">Niveles de zoom: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Tamaño de tesela (px) - normalmente 256 o 512</string>
+    <string name="settings_field_zoom_levels">Niveles de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicación: %1$s</string>
     <string name="offline_thumb_location_title">Ubicación global</string>
     <string name="offline_thumb_detail_title">Vista de detalle</string>
@@ -186,14 +186,14 @@
 
     <!-- Estado / errores -->
     <string name="error_cannot_open_file">No se pudo abrir el archivo</string>
-    <string name="status_imported_format">Importado: %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Importado: %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">Error al importar MBTiles</string>
     <string name="error_mbtiles_vector_unsupported">MBTiles vectorial (pbf) aún no compatible: %1$s</string>
 
     <!-- Restablecimiento -->
     <string name="settings_section_reset">Restablecimiento</string>
     <string name="action_reset_all_settings">Restablecer todos los ajustes</string>
-    <string name="dialog_reset_all_settings_text">Esta acción restaura todos los ajustes (idioma, tema, avatar, ajustes del mapa…). Se conservan las URL y claves API de los proveedores, los mapas base compuestos creados por el usuario y los archivos MBTiles importados.</string>
+    <string name="dialog_reset_all_settings_text">Esta acción restaura todos los ajustes (idioma, tema, avatar, ajustes del mapa...). Se conservan las URL y claves API de los proveedores, los mapas base compuestos creados por el usuario y los archivos MBTiles importados.</string>
 
     <!-- Importación/exportación de proveedores -->
     <string name="dialog_import_providers_title">¿Importar los proveedores?</string>

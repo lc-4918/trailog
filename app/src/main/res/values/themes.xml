@@ -2,7 +2,7 @@
     <style name="Theme.TrailogApp" parent="android:Theme.Material.Light.NoActionBar" />
 
     <!-- Thème initial de l'activité (posé dans le manifeste) : écran de démarrage système natif, sans délai
-         ni écran intermédiaire ajouté par l'app — juste l'icône (foreground seul, transparent autour, pas
+         ni écran intermédiaire ajouté par l'app - juste l'icône (foreground seul, transparent autour, pas
          le mipmap adaptatif complet dont le calque de fond blanc opaque créait un carré parasite derrière
          le logo) sur un fond uni. Bascule automatiquement vers Theme.TrailogApp une fois l'activité prête. -->
     <style name="Theme.TrailogApp.Splash" parent="Theme.SplashScreen">

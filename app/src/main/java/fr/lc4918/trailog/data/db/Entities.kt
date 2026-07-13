@@ -50,7 +50,7 @@ data class BasemapFolderEntity(
     val sortOrder: Int = 0,
 )
 
-/** Fond de carte / overlay. URL et apiKey personnalisables (cf. SPEC §4). */
+/** Fond de carte / overlay. URL et apiKey personnalisables (cf. SPEC section 4). */
 @Entity(tableName = "providers")
 data class ProviderEntity(
     @PrimaryKey val id: String,

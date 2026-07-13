@@ -232,8 +232,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- réordonnancement unifié par drag & drop (dossiers/couches mélangés) ----------
     /**
-     * Dépose l'élément (`kind`,`id`) juste avant/après (`targetKind`,`targetId`) — comme nouveau sibling dans le
-     * parent de la cible —, ou dedans si `position == INTO` (la cible doit alors être un dossier). Renumérote
+     * Dépose l'élément (`kind`,`id`) juste avant/après (`targetKind`,`targetId`) - comme nouveau sibling dans le
+     * parent de la cible -, ou dedans si `position == INTO` (la cible doit alors être un dossier). Renumérote
      * l'ensemble combiné (dossiers+couches) du parent d'arrivée, et celui de départ si le parent change.
      */
     suspend fun reorderDrop(kind: String, id: Long, targetKind: String, targetId: Long, position: DropPosition) {
@@ -287,13 +287,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Active/désactive le relief (tap sur son entrée dans le gestionnaire de couches) : contrairement aux
      *  autres fonds, le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes illisibles
-     *  telles quelles) — tapoter dessus bascule simplement son affichage en overlay sur le fond courant. */
+     *  telles quelles) - tapoter dessus bascule simplement son affichage en overlay sur le fond courant. */
     fun toggleProviderEnabled(id: String) = viewModelScope.launch {
         val p = providers.value.firstOrNull { it.id == id } ?: return@launch
         db.providers().upsert(p.copy(enabled = !p.enabled))
     }
 
-    /** Réordonnancement unifié du Basemap Control : kind ∈ {"folder","provider","composite"}, id en String
+    /** Réordonnancement unifié du Basemap Control : kind dans {"folder","provider","composite"}, id en String
      *  (id de provider natif, id de dossier/composite converti). Même logique que reorderDrop pour la légende. */
     suspend fun reorderBasemapDrop(kind: String, id: String, targetKind: String, targetId: String, position: DropPosition) {
         val newParentId: Long? = if (position == DropPosition.INTO) targetId.toLongOrNull() else basemapParentOf(targetKind, targetId)
@@ -340,7 +340,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun basemapTypeRank(kind: String) = when (kind) { "folder" -> 0; "provider" -> 1; else -> 2 }
 
     // ---------- style ----------
-    // ---------- téléchargement de carte hors-ligne, domaine B (SPEC offline_map.md §4-5) ----------
+    // ---------- téléchargement de carte hors-ligne, domaine B (SPEC offline_map.md section 4-5) ----------
     private val _offlineDownload = MutableStateFlow<OfflineDownloadState?>(null)
     val offlineDownload: StateFlow<OfflineDownloadState?> = _offlineDownload.asStateFlow()
     private var offlineJob: Job? = null
@@ -359,7 +359,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 _offlineDownload.update { st ->
                     when (result) {
-                        // Fin en mode réduit : on force minimized=false pour rouvrir la popup (SPEC §4).
+                        // Fin en mode réduit : on force minimized=false pour rouvrir la popup (SPEC section 4).
                         is OfflineDownloadResult.Success -> st?.copy(phase = OfflinePhase.SUCCESS, minimized = false)
                         is OfflineDownloadResult.Failed ->
                             st?.copy(phase = OfflinePhase.ERROR, failed = result.failed, minimized = false)

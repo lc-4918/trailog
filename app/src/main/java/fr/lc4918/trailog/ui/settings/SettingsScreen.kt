@@ -517,7 +517,7 @@ private val CompactChipHeight = 28.dp
 }
 
 /** Slider compact : le thumb accepte une taille personnalisée via [SliderDefaults.Thumb], mais le
- *  track par défaut a une hauteur fixe non surchageable — on le redessine donc à la main. */
+ *  track par défaut a une hauteur fixe non surchageable - on le redessine donc à la main. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun CompactSlider(
     value: Float, onValueChange: (Float) -> Unit,
@@ -655,7 +655,7 @@ private val CompactChipHeight = 28.dp
     }
 }
 
-/** Miniature titrée (SPEC §6), affichée en lecture seule côte à côte dans l'éditeur d'un MBTILES, avec
+/** Miniature titrée (SPEC section 6), affichée en lecture seule côte à côte dans l'éditeur d'un MBTILES, avec
  *  un bouton d'agrandissement qui ouvre l'image en grand (~80 % de l'écran). */
 @Composable private fun ThumbColumn(title: String, file: File, modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
@@ -722,7 +722,7 @@ private val CompactChipHeight = 28.dp
             Text("${p.name}  (${p.type})", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             CompactIconButton(
                 onClick = {
-                    // Fermer sans "Enregistrer" annule les modifications en cours (SPEC §4.3, scénario 1).
+                    // Fermer sans "Enregistrer" annule les modifications en cours (SPEC section 4.3, scénario 1).
                     if (expanded) resetFields()
                     expanded = !expanded
                 },
@@ -767,7 +767,7 @@ private val CompactChipHeight = 28.dp
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
-                // Miniatures générées à la fin du téléchargement (SPEC §6), affichées si présentes.
+                // Miniatures générées à la fin du téléchargement (SPEC section 6), affichées si présentes.
                 val ctx = LocalContext.current
                 val (locFile, detailFile) = remember(p.id) { OfflineThumbnails.files(ctx, p.urlTemplate) }
                 if (locFile.exists() || detailFile.exists()) {

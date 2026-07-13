@@ -28,7 +28,7 @@ data class ParsedLayer(
 )
 
 /** Parse GPX / KML / KMZ / GeoJSON vers une couche interne : points ET lignes lus dans la même passe
- *  (un fichier peut mélanger waypoints et traces — on ne garde plus qu'un seul type selon l'importeur choisi). */
+ *  (un fichier peut mélanger waypoints et traces - on ne garde plus qu'un seul type selon l'importeur choisi). */
 object LayerImporter {
 
     fun parse(bytes: ByteArray, fileName: String): ParsedLayer {
@@ -140,7 +140,7 @@ object LayerImporter {
     }
 
     // ---------------- GPX ----------------
-    /** Dossier par défaut d'OruxMaps pour les photos référencées par nom seul (chemin relatif, cf. §4.3). */
+    /** Dossier par défaut d'OruxMaps pour les photos référencées par nom seul (chemin relatif, cf. section 4.3). */
     private const val ORUXMAPS_PHOTOS_DIR = "/sdcard/oruxmaps/waypoints/"
 
     private fun parseGpx(input: InputStream, fileName: String): ParsedLayer {
@@ -189,7 +189,7 @@ object LayerImporter {
                     "desc", "cmt", "sym", "type" -> if (inWpt && text.isNotBlank()) wptProps[parser.name] = detectPropValue(text.trim())
                     // OsmAnd : <osmand:photo>chemin absolu</osmand:photo>
                     "osmand:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(text.trim())
-                    // OruxMaps : <orux:photo>nom.jpg</orux:photo> — chemin RELATIF, à reconstituer
+                    // OruxMaps : <orux:photo>nom.jpg</orux:photo> - chemin RELATIF, à reconstituer
                     "orux:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(ORUXMAPS_PHOTOS_DIR + text.trim())
                     // Komoot : <komoot:photo>url distante</komoot:photo>
                     "komoot:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(text.trim())

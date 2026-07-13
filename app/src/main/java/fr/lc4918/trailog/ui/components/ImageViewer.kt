@@ -25,7 +25,7 @@ import java.io.File
 fun imageModel(source: String): Any =
     if (source.startsWith("http://") || source.startsWith("https://")) source else File(source)
 
-/** Popup plein écran (92%×80%) pour agrandir une image ; fermeture par clic extérieur ou bouton X. */
+/** Popup plein écran (92%x80%) pour agrandir une image ; fermeture par clic extérieur ou bouton X. */
 @Composable
 fun FullscreenImageDialog(source: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {

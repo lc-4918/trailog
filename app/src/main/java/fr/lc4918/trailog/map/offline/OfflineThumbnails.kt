@@ -20,12 +20,12 @@ import kotlin.math.log10
 import kotlin.math.tan
 
 /**
- * Génère les deux miniatures d'une couche MBTiles (SPEC offline_map.md §6) :
- *  1. « Localisation globale » : vue simple à l'échelle du pays sur un fond permissif fixe (Carto
+ * Génère les deux miniatures d'une couche MBTiles (SPEC offline_map.md section 6) :
+ *  1. "Localisation globale" : vue simple à l'échelle du pays sur un fond permissif fixe (Carto
  *     Positron), rectangle rouge opaque. On n'utilise PAS le fond source ici : s'il s'agit d'OSM (ou
- *     d'un service à politique stricte), il renvoie des tuiles « access blocked » ; Carto sert un fond
+ *     d'un service à politique stricte), il renvoie des tuiles "access blocked" ; Carto sert un fond
  *     clair sans clé, adapté à un usage léger de localisation.
- *  2. « Aperçu détail » : tuiles du fond source autour de la zone (~20 % de marge), rectangle rouge
+ *  2. "Aperçu détail" : tuiles du fond source autour de la zone (~20 % de marge), rectangle rouge
  *     semi-transparent + échelle graphique.
  * Les fichiers sont nommés d'après le .mbtiles et rendus à une résolution suffisante pour la vue
  * agrandie ; l'éditeur les affiche s'ils existent (cache). Best-effort : les tuiles manquantes laissent
@@ -33,10 +33,10 @@ import kotlin.math.tan
  */
 object OfflineThumbnails {
     private const val TILE = 256
-    private const val LOC_ZOOM = 6            // vue « pays » (quelques centaines de km)
-    private const val LOC_RADIUS = 2          // grille (2*r+1)² de tuiles autour du centre
-    private const val MAX_OUT = 1280          // largeur max de sortie (px) — nette en vue agrandie
-    // Fond fixe et permissif (sans clé) pour la localisation globale — évite les blocages d'OSM & co.
+    private const val LOC_ZOOM = 6            // vue "pays" (quelques centaines de km)
+    private const val LOC_RADIUS = 2          // grille (2*r+1)^2 de tuiles autour du centre
+    private const val MAX_OUT = 1280          // largeur max de sortie (px) - nette en vue agrandie
+    // Fond fixe et permissif (sans clé) pour la localisation globale - évite les blocages d'OSM & co.
     private const val LOCATOR_URL = "https://basemaps.cartocdn.com/light_all/%d/%d/%d.png"
     private val RED = Color.rgb(0xD3, 0x2F, 0x2F)
 
@@ -203,7 +203,7 @@ object OfflineThumbnails {
         canvas.drawText(label, x2, y - tick - textSize * 0.3f, textFg)
     }
 
-    /** Arrondi « joli » (1, 2, 5 × 10^k) le plus proche par le bas de [m]. */
+    /** Arrondi "joli" (1, 2, 5 x 10^k) le plus proche par le bas de [m]. */
     private fun niceDistance(m: Double): Double {
         val pow = Math.pow(10.0, floor(log10(m)))
         val f = m / pow

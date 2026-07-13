@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Azioni</string>
-    <string name="action_move">Sposta…</string>
+    <string name="action_move">Sposta...</string>
     <string name="action_new_subfolder">Nuova sottocartella</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Rinomina</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Continua in caso di errore</string>
     <string name="offline_config_continue_on_error_desc">Se attivato, il download continua anche se non è stato possibile scaricare un tile</string>
     <string name="offline_action_download">Scarica</string>
-    <string name="offline_progress_title">Download in corso…</string>
+    <string name="offline_progress_title">Download in corso...</string>
     <string name="offline_progress_total">Totale da scaricare: %1$d</string>
     <string name="offline_progress_downloaded">Tessere scaricate: %1$d</string>
     <string name="offline_progress_failed">Tessere non scaricate: %1$d</string>
-    <string name="offline_progress_success">Livello «%1$s» creato!</string>
+    <string name="offline_progress_success">Livello \"%1$s\" creato!</string>
     <string name="offline_progress_error">Download interrotto: %1$d tessera/e mancante/i</string>
     <string name="offline_action_minimize">Riduci</string>
     <string name="offline_action_reopen">Riapri il download</string>
 
     <!-- Etichette generiche -->
-    <string name="label_root">— Radice —</string>
+    <string name="label_root">- Radice -</string>
     <string name="label_new_folder">Nuova cartella</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posizione GPS</string>
 
     <!-- Finestre di dialogo -->
     <string name="dialog_composite_title">Nuova mappa di base composita</string>
-    <string name="dialog_import_into_title">Importa in…</string>
+    <string name="dialog_import_into_title">Importa in...</string>
     <string name="dialog_gps_disabled_title">Sensore GPS inattivo</string>
     <string name="dialog_gps_disabled_text">Il rilevamento della posizione è disattivato. Vuoi attivarlo?</string>
-    <string name="dialog_move_to_title">Sposta in…</string>
+    <string name="dialog_move_to_title">Sposta in...</string>
     <string name="dialog_color_title">Colore di visualizzazione</string>
     <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>
 
@@ -96,7 +96,7 @@
     <!-- Impostazioni: Sistema -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Lingua</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Unità</string>
     <string name="unit_metric">Metrico</string>
     <string name="unit_imperial">Imperiale</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Nome</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chiave API</string>
-    <string name="settings_field_tile_size">Dimensione tile (px) — solitamente 256 o 512</string>
-    <string name="settings_field_zoom_levels">Livelli di zoom: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Dimensione tile (px) - solitamente 256 o 512</string>
+    <string name="settings_field_zoom_levels">Livelli di zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Posizione: %1$s</string>
     <string name="offline_thumb_location_title">Posizione globale</string>
     <string name="offline_thumb_detail_title">Anteprima dettaglio</string>
@@ -186,14 +186,14 @@
 
     <!-- Stato / errori -->
     <string name="error_cannot_open_file">Impossibile aprire il file</string>
-    <string name="status_imported_format">Importato: %1$s (zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Importato: %1$s (zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">Importazione MBTiles non riuscita</string>
     <string name="error_mbtiles_vector_unsupported">MBTiles vettoriale (pbf) non ancora supportato: %1$s</string>
 
     <!-- Ripristino -->
     <string name="settings_section_reset">Ripristino</string>
     <string name="action_reset_all_settings">Ripristina tutte le impostazioni</string>
-    <string name="dialog_reset_all_settings_text">Questa azione ripristina tutte le impostazioni (lingua, tema, avatar, impostazioni della mappa…). URL e chiavi API dei fornitori, le mappe di base composite create dall\'utente e i file MBTiles importati vengono conservati.</string>
+    <string name="dialog_reset_all_settings_text">Questa azione ripristina tutte le impostazioni (lingua, tema, avatar, impostazioni della mappa...). URL e chiavi API dei fornitori, le mappe di base composite create dall\'utente e i file MBTiles importati vengono conservati.</string>
 
     <!-- Importazione/esportazione dei fornitori -->
     <string name="dialog_import_providers_title">Importare i fornitori?</string>

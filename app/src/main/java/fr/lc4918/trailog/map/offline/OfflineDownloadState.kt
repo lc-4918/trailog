@@ -1,6 +1,6 @@
 package fr.lc4918.trailog.map.offline
 
-/** Étape où en est le téléchargement (SPEC offline_map.md §4, "États de la popup de progression"). */
+/** Étape où en est le téléchargement (SPEC offline_map.md section 4, "États de la popup de progression"). */
 enum class OfflinePhase { RUNNING, SUCCESS, ERROR }
 
 /**

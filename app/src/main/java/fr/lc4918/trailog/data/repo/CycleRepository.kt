@@ -56,7 +56,7 @@ class CycleRepository(private val ctx: Context) {
     suspend fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?): DoubleArray =
         withContext(Dispatchers.IO) {
             val parsedRaw = LayerImporter.parse(bytes, fileName)
-            // les champs image détectés qui pointent vers un fichier local (photo de waypoint GPX, cf. §4.3)
+            // les champs image détectés qui pointent vers un fichier local (photo de waypoint GPX, cf. section 4.3)
             // sont copiés dans le stockage privé de l'app : le chemin d'origine peut disparaître (stockage
             // amovible/temporaire) ou nécessiter une permission qu'on ne conservera pas après l'import.
             val parsed = parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) })
@@ -201,8 +201,8 @@ class CycleRepository(private val ctx: Context) {
         }
 
     /**
-     * Télécharge une zone hors-ligne (SPEC offline_map.md §4-5) : écrit un MBTiles dans le dossier
-     * réel, puis — en cas de succès — enregistre un provider MBTILES (comme un import). En cas d'arrêt
+     * Télécharge une zone hors-ligne (SPEC offline_map.md section 4-5) : écrit un MBTiles dans le dossier
+     * réel, puis - en cas de succès - enregistre un provider MBTILES (comme un import). En cas d'arrêt
      * sur erreur ou d'annulation, le fichier partiel est supprimé et aucun provider n'est créé.
      */
     suspend fun downloadOfflineMap(
@@ -239,7 +239,7 @@ class CycleRepository(private val ctx: Context) {
                         sortOrder = 1000,
                     )
                     db.providers().upsert(prov)
-                    // Miniatures (SPEC §6) : best-effort et bornées, elles n'empêchent jamais le succès
+                    // Miniatures (SPEC section 6) : best-effort et bornées, elles n'empêchent jamais le succès
                     // ni ne le retardent au-delà de 30 s si le réseau se dégrade juste après le DL.
                     runCatching {
                         withTimeoutOrNull(30_000) {

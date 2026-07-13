@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Doit être appelé avant super.onCreate() : affiche l'écran de démarrage système natif (thème
-        // Theme.TrailogApp.Splash, manifeste) — aucun code/écran Compose ajouté dans la boucle, donc aucun
+        // Theme.TrailogApp.Splash, manifeste) - aucun code/écran Compose ajouté dans la boucle, donc aucun
         // délai ni écran vide supplémentaire par rapport à l'écran de démarrage par défaut d'Android.
         installSplashScreen()
         super.onCreate(savedInstanceState)

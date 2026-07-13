@@ -37,12 +37,12 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 
-private val OrangeMinimized = Color(0xFFF57C00)   // bouton réduit, bien visible sur la carte (SPEC §4)
+private val OrangeMinimized = Color(0xFFF57C00)   // bouton réduit, bien visible sur la carte (SPEC section 4)
 private val GreenSuccess = Color(0xFF2E7D32)
 private val RedError = Color(0xFFD32F2F)
 
 /**
- * Popup de progression du téléchargement hors-ligne (SPEC offline_map.md §4). Un seul composable gère
+ * Popup de progression du téléchargement hors-ligne (SPEC offline_map.md section 4). Un seul composable gère
  * les trois phases : en cours (barre + stats + Réduire/Annuler), succès et erreur (message + Fermer).
  */
 @Composable
@@ -128,7 +128,7 @@ private fun ResultContent(icon: @Composable () -> Unit, message: String, onClose
 }
 
 /**
- * Popup réduite : petit bouton rond orange sur la carte (SPEC §4). Affiche l'icône download et le
+ * Popup réduite : petit bouton rond orange sur la carte (SPEC section 4). Affiche l'icône download et le
  * pourcentage courant ; un clic rouvre la popup.
  */
 @Composable

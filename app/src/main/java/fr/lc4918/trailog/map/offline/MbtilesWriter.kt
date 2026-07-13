@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import java.io.File
 
 /**
- * Écrit un conteneur MBTiles (SQLite) au format raster (SPEC offline_map.md §5). Toutes les méthodes
+ * Écrit un conteneur MBTiles (SQLite) au format raster (SPEC offline_map.md section 5). Toutes les méthodes
  * doivent être appelées depuis un seul et même thread (le natif SQLite lie une transaction à son
  * thread) : le moteur de téléchargement les confine sur un dispatcher mono-thread dédié.
  *

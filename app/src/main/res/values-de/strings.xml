@@ -26,7 +26,7 @@
     <string name="action_increase">+</string>
     <string name="action_menu">Menü</string>
     <string name="action_more">Aktionen</string>
-    <string name="action_move">Verschieben…</string>
+    <string name="action_move">Verschieben...</string>
     <string name="action_new_subfolder">Neuer Unterordner</string>
     <string name="action_ok">OK</string>
     <string name="action_rename">Umbenennen</string>
@@ -59,27 +59,27 @@
     <string name="offline_config_continue_on_error_label">Bei Fehler fortfahren</string>
     <string name="offline_config_continue_on_error_desc">Wenn aktiviert, wird der Download fortgesetzt, auch wenn eine Kachel nicht heruntergeladen werden konnte</string>
     <string name="offline_action_download">Herunterladen</string>
-    <string name="offline_progress_title">Wird heruntergeladen…</string>
+    <string name="offline_progress_title">Wird heruntergeladen...</string>
     <string name="offline_progress_total">Insgesamt herunterzuladen: %1$d</string>
     <string name="offline_progress_downloaded">Heruntergeladene Kacheln: %1$d</string>
     <string name="offline_progress_failed">Nicht heruntergeladene Kacheln: %1$d</string>
-    <string name="offline_progress_success">Ebene „%1$s“ erstellt!</string>
+    <string name="offline_progress_success">Ebene \"%1$s\" erstellt!</string>
     <string name="offline_progress_error">Download abgebrochen: %1$d Kachel(n) fehlen</string>
     <string name="offline_action_minimize">Minimieren</string>
     <string name="offline_action_reopen">Download wieder öffnen</string>
 
     <!-- Allgemeine Bezeichnungen -->
-    <string name="label_root">— Stammverzeichnis —</string>
+    <string name="label_root">- Stammverzeichnis -</string>
     <string name="label_new_folder">Neuer Ordner</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS-Position</string>
 
     <!-- Dialoge -->
     <string name="dialog_composite_title">Neue kombinierte Kartengrundlage</string>
-    <string name="dialog_import_into_title">Importieren nach…</string>
+    <string name="dialog_import_into_title">Importieren nach...</string>
     <string name="dialog_gps_disabled_title">GPS-Sensor inaktiv</string>
     <string name="dialog_gps_disabled_text">Die Standorterkennung ist deaktiviert. Möchten Sie sie aktivieren?</string>
-    <string name="dialog_move_to_title">Verschieben nach…</string>
+    <string name="dialog_move_to_title">Verschieben nach...</string>
     <string name="dialog_color_title">Anzeigefarbe</string>
     <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>
 
@@ -96,7 +96,7 @@
     <!-- Einstellungen: System -->
     <string name="settings_section_avatar">Avatar</string>
     <string name="settings_section_language">Sprache</string>
-    <string name="avatar_url_placeholder">https://…</string>
+    <string name="avatar_url_placeholder">https://...</string>
     <string name="settings_section_units">Einheiten</string>
     <string name="unit_metric">Metrisch</string>
     <string name="unit_imperial">Imperial</string>
@@ -164,8 +164,8 @@
     <string name="settings_field_name">Name</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API-Schlüssel</string>
-    <string name="settings_field_tile_size">Kachelgröße (px) — meist 256 oder 512</string>
-    <string name="settings_field_zoom_levels">Zoomstufen: %1$d–%2$d</string>
+    <string name="settings_field_tile_size">Kachelgröße (px) - meist 256 oder 512</string>
+    <string name="settings_field_zoom_levels">Zoomstufen: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Speicherort: %1$s</string>
     <string name="offline_thumb_location_title">Globale Lage</string>
     <string name="offline_thumb_detail_title">Detailvorschau</string>
@@ -186,14 +186,14 @@
 
     <!-- Status / Fehler -->
     <string name="error_cannot_open_file">Datei kann nicht geöffnet werden</string>
-    <string name="status_imported_format">Importiert: %1$s (Zoom %2$d–%3$d)</string>
+    <string name="status_imported_format">Importiert: %1$s (Zoom %2$d-%3$d)</string>
     <string name="error_mbtiles_import_failed">MBTiles-Import fehlgeschlagen</string>
     <string name="error_mbtiles_vector_unsupported">Vektor-MBTiles (pbf) derzeit nicht unterstützt: %1$s</string>
 
     <!-- Zurücksetzen -->
     <string name="settings_section_reset">Zurücksetzen</string>
     <string name="action_reset_all_settings">Alle Einstellungen zurücksetzen</string>
-    <string name="dialog_reset_all_settings_text">Dadurch werden alle Einstellungen zurückgesetzt (Sprache, Design, Avatar, Karteneinstellungen …). URLs und API-Schlüssel der Anbieter, vom Nutzer erstellte zusammengesetzte Kartengrundlagen und importierte MBTiles-Dateien bleiben erhalten.</string>
+    <string name="dialog_reset_all_settings_text">Dadurch werden alle Einstellungen zurückgesetzt (Sprache, Design, Avatar, Karteneinstellungen ...). URLs und API-Schlüssel der Anbieter, vom Nutzer erstellte zusammengesetzte Kartengrundlagen und importierte MBTiles-Dateien bleiben erhalten.</string>
 
     <!-- Import/Export von Anbietern -->
     <string name="dialog_import_providers_title">Anbieter importieren?</string>

@@ -5,10 +5,10 @@ import android.content.res.Configuration
 import java.util.Locale
 
 /**
- * Langue de l'application, indépendante de la langue système (SPEC §1.3). Stockée en SharedPreferences
+ * Langue de l'application, indépendante de la langue système (SPEC section 1.3). Stockée en SharedPreferences
  * (et non en base Room) car elle doit être lisible de façon synchrone dans attachBaseContext, avant que
  * la base de données ne soit accessible. Français par défaut pour les nouvelles installations (aucune
- * option "suivre le système" proposée dans le sélecteur — cf. bug 1.1).
+ * option "suivre le système" proposée dans le sélecteur - cf. bug 1.1).
  */
 object LocalePrefs {
     private const val PREFS_NAME = "locale_prefs"

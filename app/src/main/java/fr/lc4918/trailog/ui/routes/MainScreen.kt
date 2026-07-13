@@ -114,9 +114,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
     // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
     var offlineBarHeightPx by remember { mutableIntStateOf(0) }
-    // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC §1.
+    // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC section 1.
     // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
-    // téléchargement en masse et renvoie des tuiles « access blocked ».
+    // téléchargement en masse et renvoie des tuiles "access blocked".
     val offlineButtonVisible = compositeIdFromBasemapId(settings?.defaultBasemapId ?: "") == null &&
         providers.firstOrNull { it.id == settings?.defaultBasemapId }?.let {
             it.type != "MBTILES" && it.type != "DEM" && !it.urlTemplate.contains("tile.openstreetmap.org", ignoreCase = true)
@@ -295,7 +295,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val density = LocalDensity.current
     val markerPx = with(density) { (settings?.markerSize ?: 36).dp.toPx() }
     LaunchedEffect(renderLayers, styleTick, markerPx) { if (controller.style != null) controller.setLayers(renderLayers, markerPx) }
-    // Coins/rectangle du tracé bbox hors-ligne (SPEC §2) : source/couches dédiées (croix "viseur"),
+    // Coins/rectangle du tracé bbox hors-ligne (SPEC section 2) : source/couches dédiées (croix "viseur"),
     // indépendantes du système de couches importées ci-dessus.
     LaunchedEffect(offlineBboxPoints, styleTick) { if (controller.style != null) controller.setBboxDraw(offlineBboxPoints) }
     LaunchedEffect(cursor, computed) {
@@ -469,7 +469,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 onEdit = { editing = true }, onClose = { vm.closeMarker() })
                         }
                     }
-                    // tracé de la bounding box hors-ligne (SPEC §2)
+                    // tracé de la bounding box hors-ligne (SPEC section 2)
                     if (offlineDrawingActive) {
                         BboxDrawingOverlay(
                             pointCount = offlineBboxPoints.size,
@@ -510,7 +510,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 .padding(horizontal = 4.dp, vertical = 1.dp))
                     }
                 }
-                // profil (visible au tap sur une trace) — animé pour un décalage doux de la carte
+                // profil (visible au tap sur une trace) - animé pour un décalage doux de la carte
                 AnimatedVisibility(visible = computed != null, enter = expandVertically(), exit = shrinkVertically()) {
                     val c = lastComputed
                     if (c != null) {
@@ -578,7 +578,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     )
                 }
             }
-            // Configuration du téléchargement hors-ligne (SPEC §3), plein écran par-dessus tout le reste.
+            // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
             offlineConfigBbox?.let { bbox ->
                 val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
                 OfflineDownloadConfigScreen(
@@ -594,7 +594,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     },
                 )
             }
-            // Popup de progression du téléchargement hors-ligne (SPEC §4), par-dessus la carte. Le mode
+            // Popup de progression du téléchargement hors-ligne (SPEC section 4), par-dessus la carte. Le mode
             // réduit (bouton orange) est rendu dans la barre de boutons en haut à gauche, pas ici.
             offlineDownload?.let { dl ->
                 if (!dl.minimized) {
@@ -822,7 +822,7 @@ private fun LegendContent(
     val openNewFolder: (Long?) -> Unit = { parentId -> newFolderParent = parentId; newFolderName = ""; newFolderDialog = true }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())) {
-        // Header 2 lignes à hauteur totale inchangée (SPEC §6.1) : l'ancien Row faisait 48dp de
+        // Header 2 lignes à hauteur totale inchangée (SPEC section 6.1) : l'ancien Row faisait 48dp de
         // contenu (IconButton) + 32dp de padding vertical = 80dp. On désactive le plancher tactile
         // de 48dp de Material3 (cf. Groupe N) pour tenir 2 lignes de 32dp dans le même budget.
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -868,7 +868,7 @@ private fun LegendContent(
                         }
                     }
                 }
-                // Décalé au maximum vers l'angle haut-droit (SPEC §6.1), superposé aux 2 lignes ci-dessus
+                // Décalé au maximum vers l'angle haut-droit (SPEC section 6.1), superposé aux 2 lignes ci-dessus
                 // sans agrandir la hauteur du Box (32dp < hauteur totale du Column).
                 IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
                     Icon(Icons.Filled.Close, stringResource(R.string.action_close_menu), Modifier.size(18.dp))

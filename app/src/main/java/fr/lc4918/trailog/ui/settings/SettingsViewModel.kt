@@ -24,7 +24,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
-/** Entrée d'un fournisseur dans le fichier JSON d'import/export (SPEC §4.2). Distincte de
+/** Entrée d'un fournisseur dans le fichier JSON d'import/export (SPEC section 4.2). Distincte de
  *  [ProviderEntity] : n'inclut pas `folderId`/`sortOrder` (placement propre à cette installation,
  *  préservé pour les fournisseurs déjà connus, ajouté en fin de liste pour les nouveaux). */
 @Serializable
@@ -56,7 +56,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     val status = _status.asStateFlow()
     fun clearStatus() { _status.value = null }
 
-    /** Import de fournisseurs en attente de confirmation utilisateur (SPEC §4.2 : demander
+    /** Import de fournisseurs en attente de confirmation utilisateur (SPEC section 4.2 : demander
      *  confirmation avant d'écraser des fournisseurs existants). Null = aucun import en attente. */
     private val _pendingProvidersImport = MutableStateFlow<List<ProviderExportEntry>?>(null)
     val pendingProvidersImport = _pendingProvidersImport.asStateFlow()
@@ -92,9 +92,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         db.settings().upsert(s.copy(avatarSource = path))
     }
 
-    /** Restaure les paramètres initiaux (SPEC §3.1) : réglages, avatar, thème, titre, langue et
+    /** Restaure les paramètres initiaux (SPEC section 3.1) : réglages, avatar, thème, titre, langue et
      *  toggle-slides des fonds de plan intégrés. Préserve en revanche URLs/clés API, fonds composites
-     *  créés par l'utilisateur et fichiers MBTiles importés — ces derniers n'ont pas d'équivalent dans
+     *  créés par l'utilisateur et fichiers MBTiles importés - ces derniers n'ont pas d'équivalent dans
      *  Providers.defaults() donc ne sont jamais touchés par la boucle ci-dessous. */
     fun resetAllSettings() = viewModelScope.launch {
         val ctx = getApplication<Application>()
@@ -108,7 +108,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         if (toReset.isNotEmpty()) db.providers().upsertAll(toReset)
     }
 
-    /** Exporte tous les fournisseurs (SPEC §4.2), API keys en clair. */
+    /** Exporte tous les fournisseurs (SPEC section 4.2), API keys en clair. */
     fun exportProviders(uri: Uri) = viewModelScope.launch {
         val ctx = getApplication<Application>()
         val entries = providers.value.map {
@@ -126,7 +126,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Lit et parse le fichier JSON choisi ; l'import réel n'a lieu qu'après confirmation
-     *  utilisateur via [confirmImportProviders] (SPEC §4.2). */
+     *  utilisateur via [confirmImportProviders] (SPEC section 4.2). */
     fun requestImportProviders(uri: Uri) = viewModelScope.launch {
         val ctx = getApplication<Application>()
         val entries = runCatching {

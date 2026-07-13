@@ -40,7 +40,7 @@ import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 
 /**
- * Étape 2 (SPEC offline_map.md §3) : plage de zoom, statistiques live (tuiles/taille), nom de la
+ * Étape 2 (SPEC offline_map.md section 3) : plage de zoom, statistiques live (tuiles/taille), nom de la
  * couche, gestion des erreurs. Le calcul (domaine A) et le téléchargement réel (domaine B, pas
  * encore branché) sont volontairement séparés : [onDownload] ne fait que remonter la requête validée.
  */
@@ -53,7 +53,7 @@ fun OfflineDownloadConfigScreen(
     onDownload: (OfflineDownloadRequest) -> Unit,
 ) {
     val zoomBounds = providerMinZoom.toFloat()..providerMaxZoom.toFloat().coerceAtLeast(providerMinZoom.toFloat())
-    // plage par défaut raisonnable : [min, min+6] bornée à la plage du provider (cf. SPEC §3, "Détermination des niveaux").
+    // plage par défaut raisonnable : [min, min+6] bornée à la plage du provider (cf. SPEC section 3, "Détermination des niveaux").
     var zoomRange by remember {
         mutableStateOf(providerMinZoom.toFloat()..(providerMinZoom + 6).coerceAtMost(providerMaxZoom).toFloat())
     }
