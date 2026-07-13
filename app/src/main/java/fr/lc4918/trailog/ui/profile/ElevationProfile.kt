@@ -4,6 +4,8 @@ import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -13,10 +15,36 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.Composable
 import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.domain.model.TrackStats
 import kotlin.math.roundToInt
+
+/** Contenu statique du profil (grille, labels, aire, ligne), reconstruit uniquement quand les
+ *  données ou l'apparence changent (cf. les champs ci-dessous comparés dans le Canvas). Un simple
+ *  déplacement du curseur ne les invalide pas : sans ce cache, tout (jusqu'à ~2000 points) était
+ *  reconstruit et redessiné à chaque frame de scrub. */
+private class ProfileDrawCache {
+    var samplesRef: List<Sample>? = null
+    var stats: TrackStats? = null
+    var grid: Boolean? = null
+    var slope: Boolean? = null
+    var lineColor: Color? = null
+    var axisFontSp: Int? = null
+    var axisBold: Boolean? = null
+    var axisColor: Color? = null
+    var gridColor: Color? = null
+    var textColor: Color? = null
+    var w: Float = -1f
+    var h: Float = -1f
+
+    var gridLines: List<Pair<Offset, Offset>> = emptyList()
+    var yLabels: List<Triple<String, Float, Float>> = emptyList()
+    var xLabels: List<Triple<String, Float, Float>> = emptyList()
+    var axisPath: Path = Path()
+    // aire : par plages de couleur identique (pente) au lieu d'un Path+drawPath par segment.
+    var areaRuns: List<Pair<Path, Color>> = emptyList()
+    var linePath: Path = Path()
+}
 
 /** Profil : axes/ticks/grille + aire (pente ou couleur de la trace) + ligne + curseur. La légende est externe. */
 @Composable
@@ -51,6 +79,9 @@ fun ElevationProfile(
         return lo
     }
 
+    val cache = remember { ProfileDrawCache() }
+    val labelPaint = remember { Paint().apply { isAntiAlias = true } }
+
     Canvas(
         modifier = modifier
             .pointerInput(samples) { detectTapGestures { onScrub(idxAt(it.x, size.width.toFloat())) } }
@@ -65,44 +96,64 @@ fun ElevationProfile(
         fun sx(x: Double) = padLpx + ((x - minX) / spanX * plotW).toFloat()
         fun sy(z: Double) = padT + ((maxZ - z) / spanZ * plotH).toFloat()
 
-        val labelPaint = Paint().apply {
-            isAntiAlias = true; color = textColor.toArgb(); textSize = axisFontSp.sp.toPx(); isFakeBoldText = axisBold
-        }
+        val stale = cache.samplesRef !== samples || cache.stats != stats || cache.grid != grid ||
+            cache.slope != slope || cache.lineColor != lineColor || cache.axisFontSp != axisFontSp ||
+            cache.axisBold != axisBold || cache.axisColor != axisColor || cache.gridColor != gridColor ||
+            cache.textColor != textColor || cache.w != w || cache.h != h
+        if (stale) {
+            labelPaint.textSize = axisFontSp.sp.toPx(); labelPaint.isFakeBoldText = axisBold; labelPaint.color = textColor.toArgb()
 
-        val yTicks = 3
-        for (i in 0..yTicks) {
-            val z = minZ + spanZ * i / yTicks; val y = sy(z)
-            if (grid) drawLine(gridColor, Offset(padLpx, y), Offset(padLpx + plotW, y), strokeWidth = 1f)
-            labelPaint.textAlign = Paint.Align.RIGHT
-            drawContext.canvas.nativeCanvas.drawText("${z.roundToInt()}", padLpx - 5f, y + axisFontSp.sp.toPx() / 3f, labelPaint)
-        }
-        val xTicks = 4
-        for (i in 0..xTicks) {
-            val xVal = minX + spanX * i / xTicks; val x = sx(xVal)
-            if (grid && i in 1 until xTicks) drawLine(gridColor, Offset(x, padT), Offset(x, baseY), strokeWidth = 1f)
-            labelPaint.textAlign = Paint.Align.CENTER
-            drawContext.canvas.nativeCanvas.drawText(fmtKm((xVal - minX) / 1000.0), x, baseY + axisFontSp.sp.toPx() + 6f, labelPaint)
-        }
-        drawLine(axisColor, Offset(padLpx, padT), Offset(padLpx, baseY), strokeWidth = 2f)
-        drawLine(axisColor, Offset(padLpx, baseY), Offset(padLpx + plotW, baseY), strokeWidth = 2f)
-
-        if (slope) {
-            for (i in 1 until samples.size) {
-                val a = samples[i - 1]; val b = samples[i]
-                val col = SlopeRamp.colorFor(b.slope, stats.maxAbsSlope)
-                drawPath(Path().apply {
-                    moveTo(sx(a.x), baseY); lineTo(sx(a.x), sy(a.z)); lineTo(sx(b.x), sy(b.z)); lineTo(sx(b.x), baseY); close()
-                }, col)
+            val gridLines = ArrayList<Pair<Offset, Offset>>()
+            val yLabels = ArrayList<Triple<String, Float, Float>>()
+            val xLabels = ArrayList<Triple<String, Float, Float>>()
+            val yTicks = 3
+            for (i in 0..yTicks) {
+                val z = minZ + spanZ * i / yTicks; val y = sy(z)
+                if (grid) gridLines.add(Offset(padLpx, y) to Offset(padLpx + plotW, y))
+                yLabels.add(Triple("${z.roundToInt()}", padLpx - 5f, y + axisFontSp.sp.toPx() / 3f))
             }
-        } else {
-            drawPath(Path().apply {
-                moveTo(sx(minX), baseY); samples.forEach { lineTo(sx(it.x), sy(it.z)) }; lineTo(sx(maxX), baseY); close()
-            }, areaColor)
+            val xTicks = 4
+            for (i in 0..xTicks) {
+                val xVal = minX + spanX * i / xTicks; val x = sx(xVal)
+                if (grid && i in 1 until xTicks) gridLines.add(Offset(x, padT) to Offset(x, baseY))
+                xLabels.add(Triple(fmtKm((xVal - minX) / 1000.0), x, baseY + axisFontSp.sp.toPx() + 6f))
+            }
+
+            cache.gridLines = gridLines
+            cache.yLabels = yLabels
+            cache.xLabels = xLabels
+            cache.axisPath = Path().apply {
+                moveTo(padLpx, padT); lineTo(padLpx, baseY)
+                moveTo(padLpx, baseY); lineTo(padLpx + plotW, baseY)
+            }
+            cache.areaRuns = if (slope) {
+                buildAreaRuns(samples, stats.maxAbsSlope, ::sx, ::sy, baseY)
+            } else {
+                listOf(
+                    Path().apply {
+                        moveTo(sx(minX), baseY); samples.forEach { lineTo(sx(it.x), sy(it.z)) }; lineTo(sx(maxX), baseY); close()
+                    } to areaColor
+                )
+            }
+            cache.linePath = Path().apply {
+                moveTo(sx(samples.first().x), sy(samples.first().z)); samples.forEach { lineTo(sx(it.x), sy(it.z)) }
+            }
+
+            cache.samplesRef = samples; cache.stats = stats; cache.grid = grid; cache.slope = slope
+            cache.lineColor = lineColor; cache.axisFontSp = axisFontSp; cache.axisBold = axisBold
+            cache.axisColor = axisColor; cache.gridColor = gridColor; cache.textColor = textColor
+            cache.w = w; cache.h = h
         }
 
-        drawPath(Path().apply {
-            moveTo(sx(samples.first().x), sy(samples.first().z)); samples.forEach { lineTo(sx(it.x), sy(it.z)) }
-        }, lineColor, style = Stroke(width = 2.5f))
+        cache.gridLines.forEach { (a, b) -> drawLine(gridColor, a, b, strokeWidth = 1f) }
+        labelPaint.textAlign = Paint.Align.RIGHT
+        cache.yLabels.forEach { (t, x, y) -> drawContext.canvas.nativeCanvas.drawText(t, x, y, labelPaint) }
+        labelPaint.textAlign = Paint.Align.CENTER
+        cache.xLabels.forEach { (t, x, y) -> drawContext.canvas.nativeCanvas.drawText(t, x, y, labelPaint) }
+        drawPath(cache.axisPath, axisColor, style = Stroke(width = 2f))
+
+        cache.areaRuns.forEach { (path, col) -> drawPath(path, col) }
+        drawPath(cache.linePath, lineColor, style = Stroke(width = 2.5f))
 
         cursorIndex?.let { idx ->
             if (idx in samples.indices) {
@@ -113,6 +164,34 @@ fun ElevationProfile(
             }
         }
     }
+}
+
+/** Regroupe les segments consécutifs de même couleur (classe de pente) en un seul Path : évite
+ *  jusqu'à ~2000 Path/drawPath (un par segment) pour n'en garder qu'un par plage de pente stable. */
+private fun buildAreaRuns(
+    samples: List<Sample>,
+    maxAbsSlope: Double,
+    sx: (Double) -> Float,
+    sy: (Double) -> Float,
+    baseY: Float,
+): List<Pair<Path, Color>> {
+    val runs = ArrayList<Pair<Path, Color>>()
+    var i = 1
+    while (i < samples.size) {
+        val col = SlopeRamp.colorFor(samples[i].slope, maxAbsSlope)
+        var j = i
+        while (j + 1 < samples.size && SlopeRamp.colorFor(samples[j + 1].slope, maxAbsSlope) == col) j++
+        val path = Path().apply {
+            moveTo(sx(samples[i - 1].x), baseY)
+            lineTo(sx(samples[i - 1].x), sy(samples[i - 1].z))
+            for (k in i..j) lineTo(sx(samples[k].x), sy(samples[k].z))
+            lineTo(sx(samples[j].x), baseY)
+            close()
+        }
+        runs.add(path to col)
+        i = j + 1
+    }
+    return runs
 }
 
 private const val padR = 8f
