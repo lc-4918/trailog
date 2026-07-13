@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Tamaño de tesela (px) — normalmente 256 o 512</string>
     <string name="settings_field_zoom_levels">Niveles de zoom: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicación: %1$s</string>
+    <string name="offline_thumb_location_title">Ubicación global</string>
+    <string name="offline_thumb_detail_title">Vista de detalle</string>
+    <string name="offline_thumb_expand">Ampliar</string>
 
     <!-- Burbuja informativa -->
     <string name="bubble_title_marker">Marcador</string>

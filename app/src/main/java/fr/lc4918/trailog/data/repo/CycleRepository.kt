@@ -11,6 +11,7 @@ import fr.lc4918.trailog.data.imp.LayerImporter
 import fr.lc4918.trailog.data.seed.Providers
 import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
+import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.map.offline.OfflineTileDownloader
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.domain.geo.TrackMath
@@ -22,6 +23,7 @@ import fr.lc4918.trailog.domain.model.SchemaItem
 import fr.lc4918.trailog.domain.model.TrackPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.InputStream
 
@@ -237,6 +239,13 @@ class CycleRepository(private val ctx: Context) {
                         sortOrder = 1000,
                     )
                     db.providers().upsert(prov)
+                    // Miniatures (SPEC §6) : best-effort et bornées, elles n'empêchent jamais le succès
+                    // ni ne le retardent au-delà de 30 s si le réseau se dégrade juste après le DL.
+                    runCatching {
+                        withTimeoutOrNull(30_000) {
+                            OfflineThumbnails.generate(ctx, provider, req.bbox, req.minZoom, req.maxZoom, file.name)
+                        }
+                    }
                     OfflineDownloadResult.Success(prov.id)
                 }
             }

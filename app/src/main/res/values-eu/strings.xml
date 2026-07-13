@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Lauza-tamaina (px) — normalean 256 edo 512</string>
     <string name="settings_field_zoom_levels">Zoom-mailak: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Kokapena: %1$s</string>
+    <string name="offline_thumb_location_title">Kokapen orokorra</string>
+    <string name="offline_thumb_detail_title">Xehetasun-aurrebista</string>
+    <string name="offline_thumb_expand">Handitu</string>
 
     <!-- Informazio-burbuila -->
     <string name="bubble_title_marker">Markatzailea</string>

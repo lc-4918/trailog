@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Tamanho do mosaico (px) — geralmente 256 ou 512</string>
     <string name="settings_field_zoom_levels">Níveis de zoom: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Localização: %1$s</string>
+    <string name="offline_thumb_location_title">Localização global</string>
+    <string name="offline_thumb_detail_title">Pré-visualização de detalhe</string>
+    <string name="offline_thumb_expand">Ampliar</string>
 
     <!-- Balão informativo -->
     <string name="bubble_title_marker">Marcador</string>

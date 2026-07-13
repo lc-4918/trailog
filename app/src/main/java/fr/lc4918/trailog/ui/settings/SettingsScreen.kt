@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FlipToBack
 import androidx.compose.material.icons.filled.FlipToFront
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
@@ -44,8 +46,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import java.io.File
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -651,6 +655,49 @@ private val CompactChipHeight = 28.dp
     }
 }
 
+/** Miniature titrée (SPEC §6), affichée en lecture seule côte à côte dans l'éditeur d'un MBTILES, avec
+ *  un bouton d'agrandissement qui ouvre l'image en grand (~80 % de l'écran). */
+@Composable private fun ThumbColumn(title: String, file: File, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val model = "file://${file.absolutePath}"
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth()) {
+            AsyncImage(
+                model = model, contentDescription = title, contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
+            )
+            ThumbOverlayButton(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
+                Modifier.align(Alignment.TopEnd).padding(4.dp)) { expanded = true }
+        }
+    }
+    if (expanded) {
+        Dialog(onDismissRequest = { expanded = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.8f)) {
+                Surface(Modifier.fillMaxSize(), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
+                    AsyncImage(
+                        model = model, contentDescription = title, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                    )
+                }
+                ThumbOverlayButton(Icons.Filled.FullscreenExit, stringResource(R.string.action_close),
+                    Modifier.align(Alignment.TopEnd).padding(8.dp)) { expanded = false }
+            }
+        }
+    }
+}
+
+/** Bouton d'icône noire sur fond opaque à 30 %, superposé au coin d'une miniature. */
+@Composable private fun ThumbOverlayButton(icon: ImageVector, desc: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier.size(28.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(4.dp)),
+    ) {
+        Icon(icon, desc, tint = Color.Black, modifier = Modifier.size(18.dp))
+    }
+}
+
 @Composable private fun ProviderRow(
     p: ProviderEntity, onSave: (ProviderEntity) -> Unit, onDelete: (() -> Unit)? = null,
     mbtilesDirPath: String? = null,
@@ -695,7 +742,8 @@ private val CompactChipHeight = 28.dp
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             if (!isMbtiles) CompactOutlinedTextField(key, { key = it }, label = { Text(stringResource(R.string.settings_field_api_key)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
-            CompactOutlinedTextField(tile, { tile = it.filter { ch -> ch.isDigit() } },
+            // Taille de tuile masquée pour un MBTILES (toujours 256, non pertinent) ; `tile` garde sa valeur.
+            if (!isMbtiles) CompactOutlinedTextField(tile, { tile = it.filter { ch -> ch.isDigit() } },
                 label = { Text(stringResource(R.string.settings_field_tile_size)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             // Plage de zoom réellement contenue dans le MBTiles (fixée au téléchargement/import) : en
@@ -719,11 +767,40 @@ private val CompactChipHeight = 28.dp
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
+                // Miniatures générées à la fin du téléchargement (SPEC §6), affichées si présentes.
+                val ctx = LocalContext.current
+                val (locFile, detailFile) = remember(p.id) { OfflineThumbnails.files(ctx, p.urlTemplate) }
+                if (locFile.exists() || detailFile.exists()) {
+                    Spacer(Modifier.height(8.dp))
+                    // Empilées : localisation compacte, puis l'aperçu détail sur toute la largeur disponible.
+                    Column(
+                        Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        if (locFile.exists()) {
+                            ThumbColumn(stringResource(R.string.offline_thumb_location_title), locFile, Modifier.fillMaxWidth(0.6f))
+                        }
+                        if (detailFile.exists()) {
+                            ThumbColumn(stringResource(R.string.offline_thumb_detail_title), detailFile, Modifier.fillMaxWidth())
+                        }
+                    }
+                }
             }
-            TextButton(onClick = {
-                onSave(p.copy(name = name, urlTemplate = url, apiKey = key.ifBlank { null }, tileSize = tile.toIntOrNull() ?: p.tileSize))
-                expanded = false
-            }) { Text(stringResource(R.string.action_save)) }
+            // "Enregistrer" (outlined, centré) seulement si un champ a changé par rapport à l'enregistré.
+            // (Pour un MBTILES, url/taille sont masqués et conservent leur valeur : seul le nom peut varier.)
+            val dirty = name != p.name || url != p.urlTemplate ||
+                key != (p.apiKey ?: "") || tile != p.tileSize.toString()
+            if (dirty) {
+                Spacer(Modifier.height(8.dp))   // léger espacement au-dessus du bouton
+                OutlinedButton(
+                    onClick = {
+                        onSave(p.copy(name = name, urlTemplate = url, apiKey = key.ifBlank { null }, tileSize = tile.toIntOrNull() ?: p.tileSize))
+                        expanded = false
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) { Text(stringResource(R.string.action_save)) }
+            }
+            Spacer(Modifier.height(12.dp))   // margin-bottom de l'éditeur
         }
     }
 }

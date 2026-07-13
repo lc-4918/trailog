@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Mida de tessel·la (px) — sovint 256 o 512</string>
     <string name="settings_field_zoom_levels">Nivells de zoom: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicació: %1$s</string>
+    <string name="offline_thumb_location_title">Localització global</string>
+    <string name="offline_thumb_detail_title">Vista de detall</string>
+    <string name="offline_thumb_expand">Amplia</string>
 
     <!-- Bombolla informativa -->
     <string name="bubble_title_marker">Marcador</string>

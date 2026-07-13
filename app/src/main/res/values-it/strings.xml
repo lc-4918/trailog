@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Dimensione tile (px) — solitamente 256 o 512</string>
     <string name="settings_field_zoom_levels">Livelli di zoom: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Posizione: %1$s</string>
+    <string name="offline_thumb_location_title">Posizione globale</string>
+    <string name="offline_thumb_detail_title">Anteprima dettaglio</string>
+    <string name="offline_thumb_expand">Ingrandisci</string>
 
     <!-- Fumetto informativo -->
     <string name="bubble_title_marker">Indicatore</string>

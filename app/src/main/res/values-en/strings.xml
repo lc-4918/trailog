@@ -167,6 +167,9 @@
     <string name="settings_field_tile_size">Tile size (px) — usually 256 or 512</string>
     <string name="settings_field_zoom_levels">Zoom levels: %1$d–%2$d</string>
     <string name="settings_field_mbtiles_location">Location: %1$s</string>
+    <string name="offline_thumb_location_title">Global location</string>
+    <string name="offline_thumb_detail_title">Detail preview</string>
+    <string name="offline_thumb_expand">Enlarge</string>
 
     <!-- Info bubble -->
     <string name="bubble_title_marker">Marker</string>

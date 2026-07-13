@@ -8,8 +8,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -86,7 +84,7 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
                         for ((x, y, z) in tileChannel) {
                             if (stopped.get()) break
                             ensureActive()
-                            val bytes = runCatching { fetch(buildUrl(x, y, z)) }.getOrNull()
+                            val bytes = runCatching { TileHttp.get(TileUrl.build(provider, x, y, z)) }.getOrNull()
                             if (bytes != null && bytes.isNotEmpty()) {
                                 writeChannel.send(Tile(x, y, z, bytes))
                                 onProgress(done.incrementAndGet(), failed.get())
@@ -112,51 +110,9 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
 
     private class Tile(val x: Int, val y: Int, val z: Int, val data: ByteArray)
 
-    /** Développe les gabarits d'URL supportés par MapLibre : {z}/{x}/{y}, {s}, {KEY}, {bbox-epsg-3857}. */
-    private fun buildUrl(x: Int, y: Int, z: Int): String {
-        var u = provider.urlTemplate.replace("{KEY}", provider.apiKey ?: "")
-        u = u.replace("{z}", z.toString()).replace("{x}", x.toString()).replace("{y}", y.toString())
-        if (u.contains("{s}")) {
-            val subs = provider.subdomains?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
-            if (!subs.isNullOrEmpty()) u = u.replace("{s}", subs[Math.floorMod(x + y, subs.size)])
-        }
-        if (u.contains("{bbox-epsg-3857}")) u = u.replace("{bbox-epsg-3857}", mercatorBbox(x, y, z))
-        return u
-    }
-
-    private fun fetch(url: String): ByteArray? {
-        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-            connectTimeout = CONNECT_TIMEOUT_MS
-            readTimeout = READ_TIMEOUT_MS
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", USER_AGENT)
-        }
-        return try {
-            if (conn.responseCode in 200..299) conn.inputStream.use { it.readBytes() } else null
-        } catch (e: Exception) {
-            null
-        } finally {
-            conn.disconnect()
-        }
-    }
-
     companion object {
         private const val PARALLELISM = 6
         private const val FLUSH_EVERY = 128
-        private const val CONNECT_TIMEOUT_MS = 15_000
-        private const val READ_TIMEOUT_MS = 20_000
-        private const val USER_AGENT = "Trailog/1.0 (offline map download)"
-        private const val ORIGIN_SHIFT = 20037508.342789244   // demi-circonférence Web Mercator (m)
-
-        /** Emprise d'une tuile XYZ en EPSG:3857 (mètres), ordre WMS 1.3.0 : minx,miny,maxx,maxy. */
-        private fun mercatorBbox(x: Int, y: Int, z: Int): String {
-            val size = 2.0 * ORIGIN_SHIFT / (1 shl z)
-            val minX = x * size - ORIGIN_SHIFT
-            val maxX = minX + size
-            val maxY = ORIGIN_SHIFT - y * size
-            val minY = maxY - size
-            return "$minX,$minY,$maxX,$maxY"
-        }
 
         /** Format raster d'après la signature magique des octets (PNG sinon JPEG par défaut). */
         private fun detectFormat(data: ByteArray): String =

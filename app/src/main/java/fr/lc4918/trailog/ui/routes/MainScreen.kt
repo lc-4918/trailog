@@ -115,8 +115,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
     var offlineBarHeightPx by remember { mutableIntStateOf(0) }
     // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC §1.
+    // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
+    // téléchargement en masse et renvoie des tuiles « access blocked ».
     val offlineButtonVisible = compositeIdFromBasemapId(settings?.defaultBasemapId ?: "") == null &&
-        providers.firstOrNull { it.id == settings?.defaultBasemapId }?.type?.let { it != "MBTILES" && it != "DEM" } == true
+        providers.firstOrNull { it.id == settings?.defaultBasemapId }?.let {
+            it.type != "MBTILES" && it.type != "DEM" && !it.urlTemplate.contains("tile.openstreetmap.org", ignoreCase = true)
+        } == true
 
     val renderLayers by vm.renderLayers.collectAsState()
     val offlineDownload by vm.offlineDownload.collectAsState()
