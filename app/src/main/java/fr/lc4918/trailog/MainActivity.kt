@@ -10,7 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.ui.nav.AppRoot
-import fr.lc4918.trailog.ui.theme.CycleTheme
+import fr.lc4918.trailog.ui.theme.TrailogTheme
 
 class MainActivity : ComponentActivity() {
     override fun attachBaseContext(newBase: Context) {
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by repo.settingsFlow.collectAsState(initial = null)
             // La couleur des icônes de la barre de statut est gérée dans MainScreen.
-            CycleTheme(themePref = settings?.theme ?: "system") { AppRoot() }
+            TrailogTheme(themePref = settings?.theme ?: "system") { AppRoot() }
         }
     }
 }

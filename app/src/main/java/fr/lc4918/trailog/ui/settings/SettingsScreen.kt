@@ -214,7 +214,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         Icon(Icons.Filled.Layers, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.action_create_composite))
     }
     Spacer(Modifier.height(8.dp))
-    // Dossier réel des .mbtiles (miroir de CycleRepository.mbtilesDir) : affiché dans l'éditeur MBTILES.
+    // Dossier réel des .mbtiles (miroir de TrailogRepository.mbtilesDir) : affiché dans l'éditeur MBTILES.
     val ctx = LocalContext.current
     val mbtilesDirPath = if (cur.mbtilesDir.isBlank()) File(ctx.filesDir, "mbtiles").absolutePath else cur.mbtilesDir
     basemapEntries.forEach { p ->

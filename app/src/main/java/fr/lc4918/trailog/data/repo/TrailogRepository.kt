@@ -31,7 +31,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.InputStream
 
-class CycleRepository(private val ctx: Context) {
+class TrailogRepository(private val ctx: Context) {
     private val db = AppDatabase.get(ctx)
     val folders = db.folders()
     val layers = db.layers()

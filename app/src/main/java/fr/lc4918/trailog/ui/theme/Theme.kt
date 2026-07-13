@@ -12,7 +12,7 @@ private val Dark = darkColorScheme(primary = Color(0xFF6FB6E8), secondary = Colo
 
 /** themePref : "system" | "light" | "dark". */
 @Composable
-fun CycleTheme(themePref: String = "system", content: @Composable () -> Unit) {
+fun TrailogTheme(themePref: String = "system", content: @Composable () -> Unit) {
     val dark = when (themePref) {
         "light" -> false
         "dark" -> true
