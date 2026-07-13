@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Continua in caso di errore</string>
     <string name="offline_config_continue_on_error_desc">Se attivato, il download continua anche se non è stato possibile scaricare un tile</string>
     <string name="offline_action_download">Scarica</string>
+    <string name="offline_progress_title">Download in corso…</string>
+    <string name="offline_progress_total">Totale da scaricare: %1$d</string>
+    <string name="offline_progress_downloaded">Tessere scaricate: %1$d</string>
+    <string name="offline_progress_failed">Tessere non scaricate: %1$d</string>
+    <string name="offline_progress_success">Livello «%1$s» creato!</string>
+    <string name="offline_progress_error">Download interrotto: %1$d tessera/e mancante/i</string>
+    <string name="offline_action_minimize">Riduci</string>
+    <string name="offline_action_reopen">Riapri il download</string>
 
     <!-- Etichette generiche -->
     <string name="label_root">— Radice —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chiave API</string>
     <string name="settings_field_tile_size">Dimensione tile (px) — solitamente 256 o 512</string>
+    <string name="settings_field_zoom_levels">Livelli di zoom: %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Posizione: %1$s</string>
 
     <!-- Fumetto informativo -->
     <string name="bubble_title_marker">Indicatore</string>

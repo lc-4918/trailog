@@ -18,8 +18,15 @@ import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.map.StyleBuilder
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
+import fr.lc4918.trailog.map.offline.OfflineDownloadResult
+import fr.lc4918.trailog.map.offline.OfflineDownloadState
+import fr.lc4918.trailog.map.offline.OfflinePhase
+import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
+import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -332,6 +340,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun basemapTypeRank(kind: String) = when (kind) { "folder" -> 0; "provider" -> 1; else -> 2 }
 
     // ---------- style ----------
+    // ---------- téléchargement de carte hors-ligne, domaine B (SPEC offline_map.md §4-5) ----------
+    private val _offlineDownload = MutableStateFlow<OfflineDownloadState?>(null)
+    val offlineDownload: StateFlow<OfflineDownloadState?> = _offlineDownload.asStateFlow()
+    private var offlineJob: Job? = null
+
+    /** Lance le téléchargement de la zone validée avec le fond en ligne courant. */
+    fun startOfflineDownload(req: OfflineDownloadRequest) {
+        val s = settings.value ?: return
+        val provider = providers.value.firstOrNull { it.id == s.defaultBasemapId } ?: return
+        val total = TileMath.totalTileCount(req.bbox, req.minZoom, req.maxZoom).toInt()
+        _offlineDownload.value = OfflineDownloadState(name = req.name, total = total)
+        offlineJob = viewModelScope.launch {
+            try {
+                val result = repo.downloadOfflineMap(provider, req, s) { done, failed ->
+                    // Le moteur rappelle depuis plusieurs threads : update() (CAS) est thread-safe.
+                    _offlineDownload.update { it?.copy(done = done, failed = failed) }
+                }
+                _offlineDownload.update { st ->
+                    when (result) {
+                        // Fin en mode réduit : on force minimized=false pour rouvrir la popup (SPEC §4).
+                        is OfflineDownloadResult.Success -> st?.copy(phase = OfflinePhase.SUCCESS, minimized = false)
+                        is OfflineDownloadResult.Failed ->
+                            st?.copy(phase = OfflinePhase.ERROR, failed = result.failed, minimized = false)
+                    }
+                }
+            } catch (c: CancellationException) {
+                throw c   // annulation utilisateur : l'état est déjà remis à null par cancelOfflineDownload()
+            } catch (e: Exception) {
+                _offlineDownload.update { it?.copy(phase = OfflinePhase.ERROR, minimized = false) }
+            }
+        }
+    }
+
+    fun cancelOfflineDownload() {
+        offlineJob?.cancel()
+        offlineJob = null
+        _offlineDownload.value = null
+    }
+
+    fun setOfflineDownloadMinimized(minimized: Boolean) =
+        _offlineDownload.update { it?.copy(minimized = minimized) }
+
+    /** Ferme la popup après succès/erreur (le provider est déjà enregistré en cas de succès). */
+    fun dismissOfflineDownload() {
+        offlineJob = null
+        _offlineDownload.value = null
+    }
+
     // Réactif (pas une simple fonction synchrone) : un fond composite peut inclure un fond VECTOR, dont la
     // fusion nécessite de récupérer son style.json distant (suspend), donc de recalculer hors du thread UI.
     private val _mapStyle = MutableStateFlow<StyleBuilder.Result?>(null)

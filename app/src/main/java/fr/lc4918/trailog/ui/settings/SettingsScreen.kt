@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import java.io.File
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -209,9 +210,12 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         Icon(Icons.Filled.Layers, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.action_create_composite))
     }
     Spacer(Modifier.height(8.dp))
+    // Dossier réel des .mbtiles (miroir de CycleRepository.mbtilesDir) : affiché dans l'éditeur MBTILES.
+    val ctx = LocalContext.current
+    val mbtilesDirPath = if (cur.mbtilesDir.isBlank()) File(ctx.filesDir, "mbtiles").absolutePath else cur.mbtilesDir
     basemapEntries.forEach { p ->
         val onDelete: (() -> Unit)? = if (!p.builtin) { { vm.deleteProvider(p) } } else null
-        ProviderRow(p, onSave = vm::saveProvider, onDelete = onDelete)
+        ProviderRow(p, onSave = vm::saveProvider, onDelete = onDelete, mbtilesDirPath = mbtilesDirPath)
     }
     composites.forEach { c ->
         CompositeRow(c, onToggle = { vm.saveComposite(c.copy(enabled = it)) },
@@ -647,7 +651,10 @@ private val CompactChipHeight = 28.dp
     }
 }
 
-@Composable private fun ProviderRow(p: ProviderEntity, onSave: (ProviderEntity) -> Unit, onDelete: (() -> Unit)? = null) {
+@Composable private fun ProviderRow(
+    p: ProviderEntity, onSave: (ProviderEntity) -> Unit, onDelete: (() -> Unit)? = null,
+    mbtilesDirPath: String? = null,
+) {
     var expanded by remember { mutableStateOf(false) }
     var name by remember(p.id) { mutableStateOf(p.name) }
     var url by remember(p.id) { mutableStateOf(p.urlTemplate) }
@@ -682,13 +689,37 @@ private val CompactChipHeight = 28.dp
         if (expanded) {
             CompactOutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.settings_field_name)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
-            CompactOutlinedTextField(url, { url = it }, label = { Text(if (isMbtiles) stringResource(R.string.settings_field_mbtiles_file) else stringResource(R.string.settings_field_url)) },
+            // Pour un MBTILES, le fichier est fixe (résolu via le dossier mbtiles) et son emplacement est
+            // affiché plus bas en lecture seule : pas de champ éditable. `url` conserve sa valeur d'origine.
+            if (!isMbtiles) CompactOutlinedTextField(url, { url = it }, label = { Text(stringResource(R.string.settings_field_url)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             if (!isMbtiles) CompactOutlinedTextField(key, { key = it }, label = { Text(stringResource(R.string.settings_field_api_key)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             CompactOutlinedTextField(tile, { tile = it.filter { ch -> ch.isDigit() } },
                 label = { Text(stringResource(R.string.settings_field_tile_size)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
+            // Plage de zoom réellement contenue dans le MBTiles (fixée au téléchargement/import) : en
+            // lecture seule, l'éditer ne changerait pas les tuiles présentes.
+            if (isMbtiles) {
+                Text(
+                    stringResource(R.string.settings_field_zoom_levels, p.minZoom, p.maxZoom),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                )
+                // Chemin réel du fichier (urlTemplate ne porte que le nom, résolu via le dossier mbtiles).
+                val fullPath = when {
+                    p.urlTemplate.startsWith("mbtiles://") -> p.urlTemplate.removePrefix("mbtiles://")
+                    mbtilesDirPath != null -> "$mbtilesDirPath/${p.urlTemplate}"
+                    else -> p.urlTemplate
+                }
+                Text(
+                    stringResource(R.string.settings_field_mbtiles_location, fullPath),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 2.dp),
+                )
+            }
             TextButton(onClick = {
                 onSave(p.copy(name = name, urlTemplate = url, apiKey = key.ifBlank { null }, tileSize = tile.toIntOrNull() ?: p.tileSize))
                 expanded = false

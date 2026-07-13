@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Continua en cas d\'error</string>
     <string name="offline_config_continue_on_error_desc">Si està activat, la baixada continua encara que no s\'hagi pogut baixar alguna tessel·la</string>
     <string name="offline_action_download">Baixa</string>
+    <string name="offline_progress_title">S\'està baixant…</string>
+    <string name="offline_progress_total">Total per baixar: %1$d</string>
+    <string name="offline_progress_downloaded">Tessel·les baixades: %1$d</string>
+    <string name="offline_progress_failed">Tessel·les no baixades: %1$d</string>
+    <string name="offline_progress_success">Capa «%1$s» creada!</string>
+    <string name="offline_progress_error">Baixada aturada: falten %1$d tessel·la/es</string>
+    <string name="offline_action_minimize">Minimitza</string>
+    <string name="offline_action_reopen">Torna a obrir la baixada</string>
 
     <!-- Etiquetes genèriques -->
     <string name="label_root">— Arrel —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clau API</string>
     <string name="settings_field_tile_size">Mida de tessel·la (px) — sovint 256 o 512</string>
+    <string name="settings_field_zoom_levels">Nivells de zoom: %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Ubicació: %1$s</string>
 
     <!-- Bombolla informativa -->
     <string name="bubble_title_marker">Marcador</string>

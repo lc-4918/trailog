@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Continuar em caso de erro</string>
     <string name="offline_config_continue_on_error_desc">Se ativado, a descarga continua mesmo que uma peça não tenha sido descarregada</string>
     <string name="offline_action_download">Descarregar</string>
+    <string name="offline_progress_title">A descarregar…</string>
+    <string name="offline_progress_total">Total a descarregar: %1$d</string>
+    <string name="offline_progress_downloaded">Mosaicos descarregados: %1$d</string>
+    <string name="offline_progress_failed">Mosaicos não descarregados: %1$d</string>
+    <string name="offline_progress_success">Camada «%1$s» criada!</string>
+    <string name="offline_progress_error">Descarga interrompida: faltam %1$d mosaico(s)</string>
+    <string name="offline_action_minimize">Minimizar</string>
+    <string name="offline_action_reopen">Reabrir a descarga</string>
 
     <!-- Etiquetas genéricas -->
     <string name="label_root">— Raiz —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chave API</string>
     <string name="settings_field_tile_size">Tamanho do mosaico (px) — geralmente 256 ou 512</string>
+    <string name="settings_field_zoom_levels">Níveis de zoom: %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Localização: %1$s</string>
 
     <!-- Balão informativo -->
     <string name="bubble_title_marker">Marcador</string>

@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Continuer en cas d\'erreur</string>
     <string name="offline_config_continue_on_error_desc">Si activé, le téléchargement continue même si une tuile n\'a pu être téléchargée</string>
     <string name="offline_action_download">Télécharger</string>
+    <string name="offline_progress_title">Téléchargement en cours…</string>
+    <string name="offline_progress_total">Total à télécharger : %1$d</string>
+    <string name="offline_progress_downloaded">Tuiles téléchargées : %1$d</string>
+    <string name="offline_progress_failed">Tuiles non téléchargées : %1$d</string>
+    <string name="offline_progress_success">Couche « %1$s » créée !</string>
+    <string name="offline_progress_error">Téléchargement interrompu : %1$d tuile(s) manquante(s)</string>
+    <string name="offline_action_minimize">Réduire</string>
+    <string name="offline_action_reopen">Rouvrir le téléchargement</string>
 
     <!-- Libellés génériques -->
     <string name="label_root">— Racine —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
     <string name="settings_field_tile_size">Taille de tuile (px) — souvent 256 ou 512</string>
+    <string name="settings_field_zoom_levels">Niveaux de zoom : %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Emplacement : %1$s</string>
 
     <!-- Infobulle -->
     <string name="bubble_title_marker">Marqueur</string>

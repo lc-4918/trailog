@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Bei Fehler fortfahren</string>
     <string name="offline_config_continue_on_error_desc">Wenn aktiviert, wird der Download fortgesetzt, auch wenn eine Kachel nicht heruntergeladen werden konnte</string>
     <string name="offline_action_download">Herunterladen</string>
+    <string name="offline_progress_title">Wird heruntergeladen…</string>
+    <string name="offline_progress_total">Insgesamt herunterzuladen: %1$d</string>
+    <string name="offline_progress_downloaded">Heruntergeladene Kacheln: %1$d</string>
+    <string name="offline_progress_failed">Nicht heruntergeladene Kacheln: %1$d</string>
+    <string name="offline_progress_success">Ebene „%1$s“ erstellt!</string>
+    <string name="offline_progress_error">Download abgebrochen: %1$d Kachel(n) fehlen</string>
+    <string name="offline_action_minimize">Minimieren</string>
+    <string name="offline_action_reopen">Download wieder öffnen</string>
 
     <!-- Allgemeine Bezeichnungen -->
     <string name="label_root">— Stammverzeichnis —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API-Schlüssel</string>
     <string name="settings_field_tile_size">Kachelgröße (px) — meist 256 oder 512</string>
+    <string name="settings_field_zoom_levels">Zoomstufen: %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Speicherort: %1$s</string>
 
     <!-- Infoblase -->
     <string name="bubble_title_marker">Markierung</string>

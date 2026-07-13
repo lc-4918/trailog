@@ -59,6 +59,14 @@
     <string name="offline_config_continue_on_error_label">Continue on error</string>
     <string name="offline_config_continue_on_error_desc">If enabled, the download continues even if a tile could not be downloaded</string>
     <string name="offline_action_download">Download</string>
+    <string name="offline_progress_title">Downloading…</string>
+    <string name="offline_progress_total">Total to download: %1$d</string>
+    <string name="offline_progress_downloaded">Tiles downloaded: %1$d</string>
+    <string name="offline_progress_failed">Tiles not downloaded: %1$d</string>
+    <string name="offline_progress_success">Layer “%1$s” created!</string>
+    <string name="offline_progress_error">Download stopped: %1$d tile(s) missing</string>
+    <string name="offline_action_minimize">Minimize</string>
+    <string name="offline_action_reopen">Reopen download</string>
 
     <!-- Generic labels -->
     <string name="label_root">— Root —</string>
@@ -157,6 +165,8 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
     <string name="settings_field_tile_size">Tile size (px) — usually 256 or 512</string>
+    <string name="settings_field_zoom_levels">Zoom levels: %1$d–%2$d</string>
+    <string name="settings_field_mbtiles_location">Location: %1$s</string>
 
     <!-- Info bubble -->
     <string name="bubble_title_marker">Marker</string>

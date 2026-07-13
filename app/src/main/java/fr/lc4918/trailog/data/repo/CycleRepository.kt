@@ -9,6 +9,10 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.LayerImporter
 import fr.lc4918.trailog.data.seed.Providers
+import fr.lc4918.trailog.map.offline.MbtilesWriter
+import fr.lc4918.trailog.map.offline.OfflineDownloadResult
+import fr.lc4918.trailog.map.offline.OfflineTileDownloader
+import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
@@ -193,6 +197,55 @@ class CycleRepository(private val ctx: Context) {
             db.providers().upsert(prov)
             prov
         }
+
+    /**
+     * Télécharge une zone hors-ligne (SPEC offline_map.md §4-5) : écrit un MBTiles dans le dossier
+     * réel, puis — en cas de succès — enregistre un provider MBTILES (comme un import). En cas d'arrêt
+     * sur erreur ou d'annulation, le fichier partiel est supprimé et aucun provider n'est créé.
+     */
+    suspend fun downloadOfflineMap(
+        provider: ProviderEntity,
+        req: OfflineDownloadRequest,
+        settings: SettingsEntity,
+        onProgress: (done: Int, failed: Int) -> Unit,
+    ): OfflineDownloadResult = withContext(Dispatchers.IO) {
+        val dir = mbtilesDir(settings)
+        val base = sanitize(req.name).ifBlank { "carte_${System.currentTimeMillis()}" }
+        val file = uniqueFile(dir, "$base.mbtiles")
+        // Le moteur possède le cycle de vie du writer (contrainte de thread SQLite) ; le dépôt ne
+        // décide que du sort du fichier et de l'enregistrement du provider selon l'issue.
+        val writer = MbtilesWriter(file)
+        try {
+            when (val outcome = OfflineTileDownloader(provider).download(req, writer, onProgress)) {
+                is OfflineTileDownloader.Outcome.Failed -> {
+                    file.delete()
+                    OfflineDownloadResult.Failed(outcome.failed)
+                }
+                is OfflineTileDownloader.Outcome.Success -> {
+                    val prov = ProviderEntity(
+                        id = "mb_${System.currentTimeMillis()}",
+                        name = req.name.ifBlank { base },
+                        groupName = "Local",
+                        type = "MBTILES",
+                        urlTemplate = file.name,               // résolu via mbtilesDir dans StyleBuilder
+                        minZoom = req.minZoom,
+                        maxZoom = req.maxZoom,
+                        tileSize = 256,
+                        attribution = provider.attribution,
+                        transparent = false,
+                        builtin = false,
+                        sortOrder = 1000,
+                    )
+                    db.providers().upsert(prov)
+                    OfflineDownloadResult.Success(prov.id)
+                }
+            }
+        } catch (t: Throwable) {
+            // Annulation (coroutine) comme erreur inattendue : pas de MBTiles partiel orphelin.
+            file.delete()
+            throw t
+        }
+    }
 
     private fun readMbtilesMeta(file: File): Map<String, String> {
         val out = HashMap<String, String>()

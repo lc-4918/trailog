@@ -71,13 +71,16 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
+import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
+import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
+import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
 import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.profile.ElevationProfile
@@ -116,6 +119,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         providers.firstOrNull { it.id == settings?.defaultBasemapId }?.type?.let { it != "MBTILES" && it != "DEM" } == true
 
     val renderLayers by vm.renderLayers.collectAsState()
+    val offlineDownload by vm.offlineDownload.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
     val computed by vm.computed.collectAsState()
     val cursor by vm.cursor.collectAsState()
@@ -342,6 +346,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // ces deux états ne sont jamais actifs simultanément, mais l'ordre reflète "config au-dessus du tracé").
     BackHandler(enabled = offlineDrawingActive) { cancelOfflineDrawing() }
     BackHandler(enabled = offlineConfigBbox != null) { closeOfflineFlow() }
+    // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
+    BackHandler(enabled = offlineDownload?.minimized == false) {
+        val dl = offlineDownload
+        if (dl?.phase == OfflinePhase.RUNNING) vm.setOfflineDownloadMinimized(true) else vm.dismissOfflineDownload()
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -413,6 +422,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
                                 }
                             }
+                        }
+                        // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
+                        // GPS, dans la même barre (donc même espacement latéral de 4.dp).
+                        offlineDownload?.takeIf { it.minimized }?.let { dl ->
+                            OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
                         }
                     }
                     // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
@@ -568,12 +582,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     providerMinZoom = currentProvider?.minZoom ?: 0,
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
                     onDismiss = { closeOfflineFlow() },
-                    onDownload = {
-                        // Domaine B (moteur de téléchargement) pas encore branché : la requête validée
-                        // n'est pour l'instant pas consommée.
+                    onDownload = { request ->
+                        // Domaine B : lance le moteur, puis revient à la carte où la popup de progression
+                        // (observée via vm.offlineDownload) prend le relais.
+                        vm.startOfflineDownload(request)
                         closeOfflineFlow()
                     },
                 )
+            }
+            // Popup de progression du téléchargement hors-ligne (SPEC §4), par-dessus la carte. Le mode
+            // réduit (bouton orange) est rendu dans la barre de boutons en haut à gauche, pas ici.
+            offlineDownload?.let { dl ->
+                if (!dl.minimized) {
+                    // Scrim opaque : bloque les interactions avec la carte derrière la popup.
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f))
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {})
+                    OfflineDownloadCard(
+                        state = dl,
+                        onMinimize = { vm.setOfflineDownloadMinimized(true) },
+                        onCancel = { vm.cancelOfflineDownload() },
+                        onClose = { vm.dismissOfflineDownload() },
+                        modifier = Modifier.align(Alignment.Center).padding(24.dp).widthIn(max = 420.dp),
+                    )
+                }
             }
         }
     }
@@ -809,8 +840,13 @@ private fun LegendContent(
                     Spacer(Modifier.height(12.dp))
                     // "Nouveau dossier" en icône seule (sans contour, comme les IconButton du header)
                     // pour laisser assez de place à "Importer" et "Carte hors-ligne" sans déborder.
-                    // SpaceBetween (équivalent CSS) : 1er élément à gauche, dernier à droite, espace réparti.
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    // 3 boutons : SpaceBetween (répartis sur la largeur). Sans "Carte hors-ligne" (2 boutons)
+                    // : alignés à gauche avec un espacement, plutôt que collés aux deux bords.
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = if (showOfflineButton) Arrangement.SpaceBetween else Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         IconButton(onClick = { openNewFolder(null) }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder))
                         }
