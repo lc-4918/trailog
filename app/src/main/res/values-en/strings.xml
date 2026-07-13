@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Performance</string>
     <string name="settings_simplify_render">Simplify tracks (faster display)</string>
     <string name="settings_simplify_render_hint">This setting applies to layers imported afterwards. Already-imported layers keep their current rendering until re-imported.</string>
+    <string name="settings_section_profile_smoothing">Profile smoothing: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Smooths elevation over the given distance before computing the profile: speeds up its display and softens the curve. Applies to layers imported afterwards, or whose profile isn\'t cached yet.</string>
 
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>

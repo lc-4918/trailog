@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Prestazioni</string>
     <string name="settings_simplify_render">Semplifica le tracce (visualizzazione più veloce)</string>
     <string name="settings_simplify_render_hint">Questa impostazione si applica ai livelli importati in seguito. I livelli già importati mantengono la resa attuale fino a un nuovo import.</string>
+    <string name="settings_section_profile_smoothing">Levigatura del profilo: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Leviga l\'altitudine sulla distanza indicata prima di calcolare il profilo: velocizza la visualizzazione e ammorbidisce la curva. Si applica ai livelli importati in seguito, o il cui profilo non è ancora in cache.</string>
 
     <!-- Impostazioni: Profilo -->
     <string name="settings_section_display">Visualizzazione</string>

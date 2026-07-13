@@ -367,6 +367,11 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SwitchRow(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
     SwitchRow(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
     SwitchRow(stringResource(R.string.settings_profile_slope_legend), cur.profileSlopeLegend) { vm.save(cur.copy(profileSlopeLegend = it)) }
+    Section(stringResource(R.string.settings_section_profile_smoothing, cur.profileSmoothingM))
+    CompactSlider(value = cur.profileSmoothingM.toFloat(), valueRange = 1f..30f, steps = 28,
+        onValueChange = { vm.save(cur.copy(profileSmoothingM = it.toInt())) })
+    Text(stringResource(R.string.settings_profile_smoothing_hint),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Section(stringResource(R.string.settings_section_title_line_info))
     InfoChips(listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent), "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration), "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
         cur.titleInfos) { vm.save(cur.copy(titleInfos = it)) }

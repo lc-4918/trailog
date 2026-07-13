@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Rendiment</string>
     <string name="settings_simplify_render">Simplifica els traçats (visualització més ràpida)</string>
     <string name="settings_simplify_render_hint">Aquest ajust s\'aplica a les capes importades després. Les capes ja importades mantenen la seva representació actual fins que es tornin a importar.</string>
+    <string name="settings_section_profile_smoothing">Suavitzat del perfil: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Suavitza l\'altitud sobre la distància indicada abans de calcular el perfil: accelera la seva visualització i suavitza la corba. S\'aplica a les capes importades després, o que encara no tenen el perfil a la memòria cau.</string>
 
     <!-- Configuració: Perfil -->
     <string name="settings_section_display">Visualització</string>

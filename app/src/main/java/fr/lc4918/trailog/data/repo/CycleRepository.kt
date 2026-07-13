@@ -50,11 +50,17 @@ class CycleRepository(private val ctx: Context) {
 
     // Paramètres du profil, identiques au tap comme au précalcul (sinon le .prof ne correspondrait pas).
     private val profileJson = Json { ignoreUnknownKeys = true }
-    private fun computeProfiles(lines: List<List<TrackPoint>>): List<ComputedTrack> =
-        lines.map { TrackMath.compute(it, ignoreStops = true, stopSpeed = 0.5) }
+    // Lissage de l'altitude avant calcul du profil affiché : moins de bruit -> moins de changements de
+    // classe de pente -> moins de segments de couleur à dessiner (cf. ElevationProfile.buildAreaRuns).
+    // N'affecte que le profil affiché, jamais segmentStats (distance/D+/D-) qui reste sur l'altitude brute.
+    private fun computeProfiles(lines: List<List<TrackPoint>>, smoothingM: Double): List<ComputedTrack> =
+        lines.map { TrackMath.compute(it, smoothingM = smoothingM, ignoreStops = true, stopSpeed = 0.5) }
 
     /** État courant du réglage de simplification du rendu (défaut activé si les réglages ne sont pas encore lus). */
     private suspend fun simplifyRender(): Boolean = db.settings().get()?.simplifyRender ?: true
+
+    /** Lissage du profil (m), réglage utilisateur (5 m par défaut si non lu). */
+    private suspend fun profileSmoothing(): Double = (db.settings().get()?.profileSmoothingM ?: 5).toDouble()
 
     suspend fun ensureSeed() = withContext(Dispatchers.IO) {
         if (db.providers().count() == 0) db.providers().upsertAll(Providers.defaults())
@@ -90,6 +96,7 @@ class CycleRepository(private val ctx: Context) {
             val parsed = parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) })
             val hasLine = parsed.lines.isNotEmpty()
             val simplify = simplifyRender()
+            val smoothingM = profileSmoothing()
 
             // Stats, schéma, GeoJSON (source + rendu) et profil = CPU pur -> un seul passage sur
             // Dispatchers.Default (les écritures fichier et la lecture des réglages restent sur IO).
@@ -119,7 +126,7 @@ class CycleRepository(private val ctx: Context) {
                     // de grosses traces) : le rendu se contente de relire ce fichier .map.
                     mapGeoJson = LayerGeoJson.writeForMap(parsed.points, parsed.lines, simplify),
                     // Profil précalculé par segment (affichage instantané au tap, sans re-parser toute la trace).
-                    prof = profileJson.encodeToString(computeProfiles(parsed.lines)),
+                    prof = profileJson.encodeToString(computeProfiles(parsed.lines, smoothingM)),
                     bounds = bounds,
                 )
             }
@@ -191,10 +198,11 @@ class CycleRepository(private val ctx: Context) {
         }
         val lines = loadTrackLines(layer)
         if (lines.isEmpty()) return@withContext emptyList()
+        val smoothingM = profileSmoothing()
         // Calcul + sérialisation = CPU pur -> isolés en un seul passage sur Dispatchers.Default (seul le
         // writeText reste sur IO).
         val (profiles, prof) = withContext(Dispatchers.Default) {
-            val p = computeProfiles(lines); p to profileJson.encodeToString(p)
+            val p = computeProfiles(lines, smoothingM); p to profileJson.encodeToString(p)
         }
         runCatching { profFile.writeText(prof) }   // cache pour les prochains taps
         profiles

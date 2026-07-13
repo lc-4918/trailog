@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Desempenho</string>
     <string name="settings_simplify_render">Simplificar os trajetos (exibição mais rápida)</string>
     <string name="settings_simplify_render_hint">Esta definição aplica-se às camadas importadas depois. As camadas já importadas mantêm a sua representação atual até serem reimportadas.</string>
+    <string name="settings_section_profile_smoothing">Suavização do perfil: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Suaviza a altitude ao longo da distância indicada antes de calcular o perfil: acelera a sua exibição e suaviza a curva. Aplica-se às camadas importadas depois, ou cujo perfil ainda não está em cache.</string>
 
     <!-- Definições: Perfil -->
     <string name="settings_section_display">Visualização</string>

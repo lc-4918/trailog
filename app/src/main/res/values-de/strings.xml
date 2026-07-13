@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Leistung</string>
     <string name="settings_simplify_render">Tracks vereinfachen (schnellere Anzeige)</string>
     <string name="settings_simplify_render_hint">Diese Einstellung gilt für danach importierte Ebenen. Bereits importierte Ebenen behalten ihre aktuelle Darstellung bis zum erneuten Import.</string>
+    <string name="settings_section_profile_smoothing">Profilglättung: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Glättet die Höhe über die angegebene Distanz, bevor das Profil berechnet wird: beschleunigt dessen Anzeige und glättet die Kurve. Gilt für danach importierte Ebenen oder solche, deren Profil noch nicht zwischengespeichert ist.</string>
 
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>

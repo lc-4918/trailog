@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Rendimiento</string>
     <string name="settings_simplify_render">Simplificar los tracks (visualización más rápida)</string>
     <string name="settings_simplify_render_hint">Este ajuste se aplica a las capas importadas después. Las capas ya importadas mantienen su representación actual hasta que se vuelvan a importar.</string>
+    <string name="settings_section_profile_smoothing">Suavizado del perfil: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Suaviza la altitud a lo largo de la distancia indicada antes de calcular el perfil: acelera su visualización y suaviza la curva. Se aplica a las capas importadas después, o cuyo perfil aún no está en caché.</string>
 
     <!-- Ajustes: Perfil -->
     <string name="settings_section_display">Visualización</string>

@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Errendimendua</string>
     <string name="settings_simplify_render">Ibilbideak sinplifikatu (bizkorrago bistaratu)</string>
     <string name="settings_simplify_render_hint">Ezarpen hau ondoren inportatutako geruzei aplikatzen zaie. Jada inportatutako geruzek egungo errendatzea gordetzen dute berriro inportatu arte.</string>
+    <string name="settings_section_profile_smoothing">Profilaren leuntzea: %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Adierazitako distantzian altuera leuntzen du profila kalkulatu aurretik: bistaratzea bizkortzen du eta kurba leuntzen du. Ondoren inportatutako geruzei aplikatzen zaie, edo profila oraindik cachean ez dutenei.</string>
 
     <!-- Ezarpenak: Profila -->
     <string name="settings_section_display">Bistaratzea</string>

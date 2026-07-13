@@ -119,6 +119,8 @@
     <string name="settings_section_performance">Performance</string>
     <string name="settings_simplify_render">Simplifier les traces (affichage plus rapide)</string>
     <string name="settings_simplify_render_hint">Ce réglage s\'applique aux couches importées ensuite. Les couches déjà importées gardent leur rendu actuel jusqu\'à leur ré-import.</string>
+    <string name="settings_section_profile_smoothing">Lissage du profil : %1$d m</string>
+    <string name="settings_profile_smoothing_hint">Lisse l\'altitude sur la distance indiquée avant de calculer le profil : accélère son affichage et adoucit la courbe. S\'applique aux couches importées ensuite, ou dont le profil n\'est pas encore en cache.</string>
 
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>
