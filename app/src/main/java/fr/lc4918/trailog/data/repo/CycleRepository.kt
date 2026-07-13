@@ -15,6 +15,7 @@ import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.map.offline.OfflineTileDownloader
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.PropType
@@ -24,6 +25,9 @@ import fr.lc4918.trailog.domain.model.TrackPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.InputStream
 
@@ -39,7 +43,18 @@ class CycleRepository(private val ctx: Context) {
     private val layersDir: File by lazy { File(ctx.filesDir, "layers").apply { mkdirs() } }
     private val imagesDir: File by lazy { File(ctx.filesDir, "images").apply { mkdirs() } }
 
-    private companion object { const val MAP_SUFFIX = ".map" }   // fichier GeoJSON prêt-pour-carte précalculé
+    private companion object {
+        const val MAP_SUFFIX = ".map"     // fichier GeoJSON prêt-pour-carte précalculé
+        const val PROF_SUFFIX = ".prof"   // profil (samples décimés + stats) précalculé par segment
+    }
+
+    // Paramètres du profil, identiques au tap comme au précalcul (sinon le .prof ne correspondrait pas).
+    private val profileJson = Json { ignoreUnknownKeys = true }
+    private fun computeProfiles(lines: List<List<TrackPoint>>): List<ComputedTrack> =
+        lines.map { TrackMath.compute(it, ignoreStops = true, stopSpeed = 0.5) }
+
+    /** État courant du réglage de simplification du rendu (défaut activé si les réglages ne sont pas encore lus). */
+    private suspend fun simplifyRender(): Boolean = db.settings().get()?.simplifyRender ?: true
 
     suspend fun ensureSeed() = withContext(Dispatchers.IO) {
         if (db.providers().count() == 0) db.providers().upsertAll(Providers.defaults())
@@ -54,6 +69,17 @@ class CycleRepository(private val ctx: Context) {
         d.mkdirs(); return d
     }
 
+    /** Résultat des calculs CPU purs de l'import (stats, schéma, GeoJSON, profil, bornes), regroupés en un
+     *  seul passage sur Dispatchers.Default (cf. importLayer). */
+    private data class ImportComputation(
+        val segmentStats: List<ComputedTrack>,
+        val schemaJson: String,
+        val geoJson: String,
+        val mapGeoJson: String,
+        val prof: String,
+        val bounds: DoubleArray,
+    )
+
     /** Importe une couche (gpx/kml/kmz/geojson) : peut contenir des points et/ou des traces. */
     suspend fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?): DoubleArray =
         withContext(Dispatchers.IO) {
@@ -63,33 +89,56 @@ class CycleRepository(private val ctx: Context) {
             // amovible/temporaire) ou nécessiter une permission qu'on ne conservera pas après l'import.
             val parsed = parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) })
             val hasLine = parsed.lines.isNotEmpty()
-            // stats par segment puis agrégées (somme distance/D+/D-/temps, min/max altitude) : une concaténation
-            // globale des segments créerait un "saut" fantôme entre la fin d'un segment et le début du suivant.
-            val segmentStats = parsed.lines.map { TrackMath.compute(it) }
-            val allTrackPoints = parsed.lines.flatten()
+            val simplify = simplifyRender()
 
-            val schemaKeys = LinkedHashMap<String, PropType>()
-            parsed.points.forEach { pt -> pt.props.forEach { (k, v) -> schemaKeys.putIfAbsent(k, typeOf(v)) } }
-            val schema = schemaKeys.map { (k, t) -> SchemaItem(k, t) }
+            // Stats, schéma, GeoJSON (source + rendu) et profil = CPU pur -> un seul passage sur
+            // Dispatchers.Default (les écritures fichier et la lecture des réglages restent sur IO).
+            val computed = withContext(Dispatchers.Default) {
+                // stats par segment puis agrégées (somme distance/D+/D-/temps, min/max altitude) : une
+                // concaténation globale des segments créerait un "saut" fantôme entre la fin d'un segment
+                // et le début du suivant.
+                val segmentStats = parsed.lines.map { TrackMath.compute(it) }
+                val allTrackPoints = parsed.lines.flatten()
+
+                val schemaKeys = LinkedHashMap<String, PropType>()
+                parsed.points.forEach { pt -> pt.props.forEach { (k, v) -> schemaKeys.putIfAbsent(k, typeOf(v)) } }
+                val schema = schemaKeys.map { (k, t) -> SchemaItem(k, t) }
+
+                val lons = parsed.points.map { it.lon } + allTrackPoints.map { it.lon }
+                val lats = parsed.points.map { it.lat } + allTrackPoints.map { it.lat }
+                val bounds = doubleArrayOf(
+                    lons.minOrNull() ?: 0.0, lats.minOrNull() ?: 0.0,
+                    lons.maxOrNull() ?: 0.0, lats.maxOrNull() ?: 0.0,
+                )
+
+                ImportComputation(
+                    segmentStats = segmentStats,
+                    schemaJson = LayerGeoJson.writeSchema(schema),
+                    geoJson = LayerGeoJson.write(parsed.points, parsed.lines),
+                    // GeoJSON prêt-pour-carte précalculé (évite un parse+re-sérialisation coûteux au rendu
+                    // de grosses traces) : le rendu se contente de relire ce fichier .map.
+                    mapGeoJson = LayerGeoJson.writeForMap(parsed.points, parsed.lines, simplify),
+                    // Profil précalculé par segment (affichage instantané au tap, sans re-parser toute la trace).
+                    prof = profileJson.encodeToString(computeProfiles(parsed.lines)),
+                    bounds = bounds,
+                )
+            }
 
             val file = File(layersDir, "layer_${System.currentTimeMillis()}.geojson")
-            file.writeText(LayerGeoJson.write(parsed.points, parsed.lines))
-            // GeoJSON prêt-pour-carte précalculé (évite un parse+re-sérialisation coûteux au rendu de
-            // grosses traces) : le rendu se contente de relire ce fichier .map.
-            File(layersDir, file.name + MAP_SUFFIX).writeText(LayerGeoJson.writeForMap(parsed.points, parsed.lines))
+            file.writeText(computed.geoJson)
+            File(layersDir, file.name + MAP_SUFFIX).writeText(computed.mapGeoJson)
+            File(layersDir, file.name + PROF_SUFFIX).writeText(computed.prof)
 
-            val lons = parsed.points.map { it.lon } + allTrackPoints.map { it.lon }
-            val lats = parsed.points.map { it.lat } + allTrackPoints.map { it.lat }
+            val (w, s, e, n) = computed.bounds
+            val segmentStats = computed.segmentStats
             val color = Palette.pick(db.layers().colorsInFolder(folderId))
             val order = db.layers().maxSort(folderId) + 1
-            val w = lons.minOrNull() ?: 0.0; val s = lats.minOrNull() ?: 0.0
-            val e = lons.maxOrNull() ?: 0.0; val n = lats.maxOrNull() ?: 0.0
             db.layers().insert(
                 LayerEntity(
                     name = parsed.name, folderId = folderId, link = parsed.link,
                     description = parsed.description, source = "import",
                     geometryFile = file.name, color = color, sortOrder = order,
-                    schemaJson = LayerGeoJson.writeSchema(schema),
+                    schemaJson = computed.schemaJson,
                     distance = segmentStats.sumOf { it.stats.distance },
                     ascent = segmentStats.sumOf { it.stats.ascent },
                     descent = segmentStats.sumOf { it.stats.descent },
@@ -116,41 +165,84 @@ class CycleRepository(private val ctx: Context) {
         db.layers().delete(layer)
         File(layersDir, layer.geometryFile).delete()
         File(layersDir, layer.geometryFile + MAP_SUFFIX).delete()
+        File(layersDir, layer.geometryFile + PROF_SUFFIX).delete()
     }
 
     /** Segments de lignes de la couche, chacun avec ses propres points (pour un profil par segment tapé). */
     suspend fun loadTrackLines(layer: LayerEntity): List<List<TrackPoint>> = withContext(Dispatchers.IO) {
         val f = File(layersDir, layer.geometryFile)
-        if (!f.exists()) emptyList() else LayerGeoJson.parse(f.readText()).lines
+        if (!f.exists()) return@withContext emptyList()
+        val text = f.readText()
+        // Parse JSON = CPU pur -> un seul passage sur Dispatchers.Default.
+        withContext(Dispatchers.Default) { LayerGeoJson.parse(text).lines }
     }
 
-    /** GeoJSON prêt-pour-carte : lit le fichier .map précalculé ; le génère une fois s'il manque
-     *  (couche importée avant l'introduction du précalcul). */
-    fun layerGeojsonForMap(layer: LayerEntity): String {
+    /** Profils précalculés de la couche (un par segment, samples décimés + stats). Lit le .prof s'il existe
+     *  (quasi instantané) ; sinon le génère depuis la géométrie complète et le met en cache (couche importée
+     *  avant l'introduction du précalcul, ou fichier absent). Évite le parse DOM complet au tap. */
+    suspend fun loadProfiles(layer: LayerEntity): List<ComputedTrack> = withContext(Dispatchers.IO) {
+        val profFile = File(layersDir, layer.geometryFile + PROF_SUFFIX)
+        if (profFile.exists()) {
+            val text = profFile.readText()
+            val cached = withContext(Dispatchers.Default) {
+                runCatching { profileJson.decodeFromString<List<ComputedTrack>>(text) }.getOrNull()
+            }
+            if (cached != null) return@withContext cached
+        }
+        val lines = loadTrackLines(layer)
+        if (lines.isEmpty()) return@withContext emptyList()
+        // Calcul + sérialisation = CPU pur -> isolés en un seul passage sur Dispatchers.Default (seul le
+        // writeText reste sur IO).
+        val (profiles, prof) = withContext(Dispatchers.Default) {
+            val p = computeProfiles(lines); p to profileJson.encodeToString(p)
+        }
+        runCatching { profFile.writeText(prof) }   // cache pour les prochains taps
+        profiles
+    }
+
+    /** Fichier .map prêt-pour-carte (GeoJSON précalculé), chargé directement par MapLibre via une URI
+     *  file:// (lecture + parse sur son thread de travail). Le génère une fois s'il manque (couche importée
+     *  avant l'introduction du précalcul). Null si la couche n'a plus de fichier géométrie (rien à afficher). */
+    suspend fun layerMapFile(layer: LayerEntity, simplify: Boolean): File? {
         val mapFile = File(layersDir, layer.geometryFile + MAP_SUFFIX)
-        if (mapFile.exists()) return mapFile.readText()
+        if (mapFile.exists()) return mapFile
         val f = File(layersDir, layer.geometryFile)
-        if (!f.exists()) return "{\"type\":\"FeatureCollection\",\"features\":[]}"
-        val g = LayerGeoJson.parse(f.readText())
-        val gj = LayerGeoJson.writeForMap(g.points, g.lines)
-        runCatching { mapFile.writeText(gj) }   // met en cache pour les prochains rendus
-        return gj
+        if (!f.exists()) return null
+        val text = f.readText()
+        // Parse + re-sérialisation = CPU pur -> un seul passage sur Dispatchers.Default.
+        val mapGeoJson = withContext(Dispatchers.Default) {
+            val g = LayerGeoJson.parse(text)
+            LayerGeoJson.writeForMap(g.points, g.lines, simplify)
+        }
+        return runCatching { mapFile.writeText(mapGeoJson); mapFile }.getOrNull()
     }
 
-    fun loadLayer(layer: LayerEntity): PointLayerData {
+    suspend fun loadLayer(layer: LayerEntity): PointLayerData = withContext(Dispatchers.IO) {
         val f = File(layersDir, layer.geometryFile)
-        val points = if (f.exists()) LayerGeoJson.parse(f.readText()).points.toMutableList() else mutableListOf()
-        return PointLayerData(layer.name, LayerGeoJson.parseSchema(layer.schemaJson), points)
+        val text = if (f.exists()) f.readText() else null
+        // Parse JSON = CPU pur -> un seul passage sur Dispatchers.Default.
+        val points = withContext(Dispatchers.Default) {
+            text?.let { LayerGeoJson.parse(it).points.toMutableList() } ?: mutableListOf()
+        }
+        PointLayerData(layer.name, LayerGeoJson.parseSchema(layer.schemaJson), points)
     }
 
     /** Réécrit les points (et le schéma) tout en préservant les lignes existantes du fichier. */
     suspend fun saveFeatures(layer: LayerEntity, data: PointLayerData) =
         withContext(Dispatchers.IO) {
             val f = File(layersDir, layer.geometryFile)
-            val existingLines = if (f.exists()) LayerGeoJson.parse(f.readText()).lines else emptyList()
-            f.writeText(LayerGeoJson.write(data.features, existingLines))
+            val existingText = if (f.exists()) f.readText() else null
+            val simplify = simplifyRender()
+            // Parse de l'existant + ré-écriture GeoJSON (source + rendu) = CPU pur -> un seul passage sur
+            // Dispatchers.Default (les écritures fichier restent sur IO).
+            val (geoJson, mapGeoJson) = withContext(Dispatchers.Default) {
+                val existingLines = existingText?.let { LayerGeoJson.parse(it).lines } ?: emptyList()
+                LayerGeoJson.write(data.features, existingLines) to
+                    LayerGeoJson.writeForMap(data.features, existingLines, simplify)
+            }
+            f.writeText(geoJson)
             // Régénère le .map précalculé (les points ont changé).
-            File(layersDir, layer.geometryFile + MAP_SUFFIX).writeText(LayerGeoJson.writeForMap(data.features, existingLines))
+            File(layersDir, layer.geometryFile + MAP_SUFFIX).writeText(mapGeoJson)
             db.layers().updateSchema(layer.id, LayerGeoJson.writeSchema(data.schema))
         }
 
