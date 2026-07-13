@@ -537,7 +537,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
                     val shown = computed ?: if (!profileLoading) lastComputed else null
                     Column(
-                        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+                        Modifier.fillMaxWidth().background(Color.White)
                             .padding(horizontal = 8.dp).navigationBarsPadding()
                             .onGloballyPositioned { profileBarHeightPx = it.size.height },
                     ) {
