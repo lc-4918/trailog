@@ -114,6 +114,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
     // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
     var offlineBarHeightPx by remember { mutableIntStateOf(0) }
+    // Hauteur mesurée du panneau de profil (superposé à la carte, qui garde toujours sa taille pleine),
+    // pour décaler les infos du curseur juste au-dessus.
+    var profileBarHeightPx by remember { mutableIntStateOf(0) }
     // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC section 1.
     // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
     // téléchargement en masse et renvoie des tuiles "access blocked".
@@ -396,140 +399,148 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         }
     ) {
         Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    MapLibreView(
-                        modifier = Modifier.fillMaxSize(), controller = controller,
-                        styleJson = style?.styleJson, styleUrl = style?.styleUrl,
-                        onReady = { styleTick++ },
-                    )
-                    // bande de barre de statut : couleur du thème, ou transparente (carte dessous)
-                    val transparent = settings?.statusBarTransparent ?: false
-                    Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
-                        .windowInsetsTopHeight(WindowInsets.statusBars)
-                        .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
-                    Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (mode != "swipe") {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
-                            }
-                        }
-                        if (settings?.showGpsButton == true) {
-                            IconButton(
-                                onClick = { onGpsButtonTap() },
-                                modifier = Modifier
-                                    .alpha(if (gpsButtonDimmed) 0.6f else 1f)
-                                    .background(
-                                        if (gpsActive) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                        RoundedCornerShape(8.dp)),
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
-                                        tint = if (gpsActive) Color.White else LocalContentColor.current)
-                                    Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
-                                        color = if (gpsActive) Color.White else LocalContentColor.current)
-                                }
-                            }
-                            // recentre la carte sur la position GPS courante ; même style que le bouton menu
-                            // (couleur, taille, transparence par défaut d'un IconButton)
-                            if (gpsActive) {
-                                IconButton(onClick = { recenterOnGps() }) {
-                                    Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
-                                }
-                            }
-                        }
-                        // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
-                        // GPS, dans la même barre (donc même espacement latéral de 4.dp).
-                        offlineDownload?.takeIf { it.minimized }?.let { dl ->
-                            OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                MapLibreView(
+                    modifier = Modifier.fillMaxSize(), controller = controller,
+                    styleJson = style?.styleJson, styleUrl = style?.styleUrl,
+                    onReady = { styleTick++ },
+                )
+                // bande de barre de statut : couleur du thème, ou transparente (carte dessous)
+                val transparent = settings?.statusBarTransparent ?: false
+                Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
+                Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (mode != "swipe") {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
                         }
                     }
-                    // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
-                    Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (kotlin.math.abs(bearing) > 0.5) {
-                            IconButton(onClick = { controller.resetNorth() }) {
-                                Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
-                                    modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() })
+                    if (settings?.showGpsButton == true) {
+                        IconButton(
+                            onClick = { onGpsButtonTap() },
+                            modifier = Modifier
+                                .alpha(if (gpsButtonDimmed) 0.6f else 1f)
+                                .background(
+                                    if (gpsActive) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    RoundedCornerShape(8.dp)),
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
+                                    tint = if (gpsActive) Color.White else LocalContentColor.current)
+                                Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
+                                    color = if (gpsActive) Color.White else LocalContentColor.current)
                             }
                         }
-                        if (settings?.showBasemapControlButton == true) {
-                            IconButton(onClick = { basemapControlOpen = true }) {
-                                // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
-                                // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
-                                Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control))
+                        // recentre la carte sur la position GPS courante ; même style que le bouton menu
+                        // (couleur, taille, transparence par défaut d'un IconButton)
+                        if (gpsActive) {
+                            IconButton(onClick = { recenterOnGps() }) {
+                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
                             }
                         }
                     }
-                    // infobulle bornée à l'écran
-                    val feature = vm.selectedFeature()
-                    val off = bubbleOffset
-                    if (feature != null && off != null && !editing) {
-                        val d = LocalDensity.current
-                        val cardW = with(d) { 280.dp.toPx() }; val cardH = with(d) { 240.dp.toPx() }
-                        val maxW = constraints.maxWidth.toFloat(); val maxH = constraints.maxHeight.toFloat()
-                        var bx = off.x - cardW / 2f
-                        var by = off.y + 30f
-                        if (by + cardH > maxH) by = off.y - cardH - 30f
-                        bx = bx.coerceIn(8f, (maxW - cardW - 8f).coerceAtLeast(8f))
-                        by = by.coerceIn(8f, (maxH - cardH - 8f).coerceAtLeast(8f))
-                        Box(Modifier.offset { IntOffset(bx.toInt(), by.toInt()) }) {
-                            InfoBubble(feature = feature, schema = markerLayerData?.schema ?: emptyList(),
-                                fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
-                                titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
-                                onEdit = { editing = true }, onClose = { vm.closeMarker() })
-                        }
-                    }
-                    // tracé de la bounding box hors-ligne (SPEC section 2)
-                    if (offlineDrawingActive) {
-                        BboxDrawingOverlay(
-                            pointCount = offlineBboxPoints.size,
-                            onCancelPoint = { offlineBboxPoints = offlineBboxPoints.dropLast(1) },
-                            onCancelAll = { cancelOfflineDrawing() },
-                            onValidate = {
-                                val (lon1, lat1) = offlineBboxPoints[0]
-                                val (lon2, lat2) = offlineBboxPoints[1]
-                                offlineConfigBbox = Bbox.of(lon1, lat1, lon2, lat2)
-                                offlineDrawingActive = false
-                            },
-                            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                                .onGloballyPositioned { offlineBarHeightPx = it.size.height },
-                        )
-                    }
-                    // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
-                    // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
-                    if (activeLayerId == null && settings?.showScale != false) {
-                        val scaleBarModifier = if (offlineDrawingActive) {
-                            val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
-                            Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
-                        } else {
-                            Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
-                        }
-                        ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
-                    }
-                    // infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil,
-                    // pas incluses dans le fond du panneau de profil (largeur adaptée au contenu, pas plein écran)
-                    val cIdx = cursor; val cComputed = lastComputed
-                    if (computed != null && cComputed != null && cIdx != null && cIdx in cComputed.samples.indices) {
-                        val imp = settings?.units == "imperial"
-                        Text(cursorInfoText(cComputed.samples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
-                            fontSize = (settings?.profCursorFont ?: 11).sp,
-                            fontWeight = if (settings?.profCursorBold == true) FontWeight.Bold else null,
-                            color = Color.Black,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 4.dp)
-                                .background(Color.White.copy(alpha = 0.7f))
-                                .padding(horizontal = 4.dp, vertical = 1.dp))
+                    // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
+                    // GPS, dans la même barre (donc même espacement latéral de 4.dp).
+                    offlineDownload?.takeIf { it.minimized }?.let { dl ->
+                        OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
                     }
                 }
-                // profil (visible dès le tap sur une trace) - animé pour un décalage doux de la carte.
+                // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
+                Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (kotlin.math.abs(bearing) > 0.5) {
+                        IconButton(onClick = { controller.resetNorth() }) {
+                            Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
+                                modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() })
+                        }
+                    }
+                    if (settings?.showBasemapControlButton == true) {
+                        IconButton(onClick = { basemapControlOpen = true }) {
+                            // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
+                            // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
+                            Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control))
+                        }
+                    }
+                }
+                // infobulle bornée à l'écran
+                val feature = vm.selectedFeature()
+                val off = bubbleOffset
+                if (feature != null && off != null && !editing) {
+                    val d = LocalDensity.current
+                    val cardW = with(d) { 280.dp.toPx() }; val cardH = with(d) { 240.dp.toPx() }
+                    val maxW = constraints.maxWidth.toFloat(); val maxH = constraints.maxHeight.toFloat()
+                    var bx = off.x - cardW / 2f
+                    var by = off.y + 30f
+                    if (by + cardH > maxH) by = off.y - cardH - 30f
+                    bx = bx.coerceIn(8f, (maxW - cardW - 8f).coerceAtLeast(8f))
+                    by = by.coerceIn(8f, (maxH - cardH - 8f).coerceAtLeast(8f))
+                    Box(Modifier.offset { IntOffset(bx.toInt(), by.toInt()) }) {
+                        InfoBubble(feature = feature, schema = markerLayerData?.schema ?: emptyList(),
+                            fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
+                            titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
+                            onEdit = { editing = true }, onClose = { vm.closeMarker() })
+                    }
+                }
+                // tracé de la bounding box hors-ligne (SPEC section 2)
+                if (offlineDrawingActive) {
+                    BboxDrawingOverlay(
+                        pointCount = offlineBboxPoints.size,
+                        onCancelPoint = { offlineBboxPoints = offlineBboxPoints.dropLast(1) },
+                        onCancelAll = { cancelOfflineDrawing() },
+                        onValidate = {
+                            val (lon1, lat1) = offlineBboxPoints[0]
+                            val (lon2, lat2) = offlineBboxPoints[1]
+                            offlineConfigBbox = Bbox.of(lon1, lat1, lon2, lat2)
+                            offlineDrawingActive = false
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                            .onGloballyPositioned { offlineBarHeightPx = it.size.height },
+                    )
+                }
+                // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
+                // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
+                if (activeLayerId == null && settings?.showScale != false) {
+                    val scaleBarModifier = if (offlineDrawingActive) {
+                        val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
+                        Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
+                    } else {
+                        Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
+                    }
+                    ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
+                }
+                // infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
+                // (décalées de la hauteur mesurée du panneau, superposé à la carte - cf. profileBarHeightPx).
+                val cIdx = cursor; val cComputed = lastComputed
+                if (computed != null && cComputed != null && cIdx != null && cIdx in cComputed.samples.indices) {
+                    val imp = settings?.units == "imperial"
+                    val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
+                    Text(cursorInfoText(cComputed.samples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
+                        fontSize = (settings?.profCursorFont ?: 11).sp,
+                        fontWeight = if (settings?.profCursorBold == true) FontWeight.Bold else null,
+                        color = Color.Black,
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = cursorBottomDp + 4.dp)
+                            .background(Color.White.copy(alpha = 0.7f))
+                            .padding(horizontal = 4.dp, vertical = 1.dp))
+                }
+                // profil (visible dès le tap sur une trace) - superposé à la carte, qui garde toujours sa
+                // taille pleine : ne jamais la redimensionner ici, une AndroidView type SurfaceView flashe en
+                // noir le temps de son prochain frame quand elle est redimensionnée pendant une animation.
                 // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
-                AnimatedVisibility(visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically()) {
+                AnimatedVisibility(
+                    visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
                     val imp = settings?.units == "imperial"
                     // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
                     // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
                     val shown = computed ?: if (!profileLoading) lastComputed else null
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp).navigationBarsPadding()) {
+                    Column(
+                        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)
+                            .padding(horizontal = 8.dp).navigationBarsPadding()
+                            .onGloballyPositioned { profileBarHeightPx = it.size.height },
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(profileTitle, fontSize = (settings?.profTitleFont ?: 13).sp,
                                 fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
