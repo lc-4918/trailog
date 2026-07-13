@@ -39,6 +39,8 @@ class CycleRepository(private val ctx: Context) {
     private val layersDir: File by lazy { File(ctx.filesDir, "layers").apply { mkdirs() } }
     private val imagesDir: File by lazy { File(ctx.filesDir, "images").apply { mkdirs() } }
 
+    private companion object { const val MAP_SUFFIX = ".map" }   // fichier GeoJSON prêt-pour-carte précalculé
+
     suspend fun ensureSeed() = withContext(Dispatchers.IO) {
         if (db.providers().count() == 0) db.providers().upsertAll(Providers.defaults())
         if (db.settings().get() == null) {
@@ -72,6 +74,9 @@ class CycleRepository(private val ctx: Context) {
 
             val file = File(layersDir, "layer_${System.currentTimeMillis()}.geojson")
             file.writeText(LayerGeoJson.write(parsed.points, parsed.lines))
+            // GeoJSON prêt-pour-carte précalculé (évite un parse+re-sérialisation coûteux au rendu de
+            // grosses traces) : le rendu se contente de relire ce fichier .map.
+            File(layersDir, file.name + MAP_SUFFIX).writeText(LayerGeoJson.writeForMap(parsed.points, parsed.lines))
 
             val lons = parsed.points.map { it.lon } + allTrackPoints.map { it.lon }
             val lats = parsed.points.map { it.lat } + allTrackPoints.map { it.lat }
@@ -106,18 +111,30 @@ class CycleRepository(private val ctx: Context) {
         is PropValue.Text -> PropType.TEXT
     }
 
+    /** Supprime la couche (ligne en base + fichier géométrie + .map précalculé). */
+    suspend fun deleteLayer(layer: LayerEntity) = withContext(Dispatchers.IO) {
+        db.layers().delete(layer)
+        File(layersDir, layer.geometryFile).delete()
+        File(layersDir, layer.geometryFile + MAP_SUFFIX).delete()
+    }
+
     /** Segments de lignes de la couche, chacun avec ses propres points (pour un profil par segment tapé). */
     suspend fun loadTrackLines(layer: LayerEntity): List<List<TrackPoint>> = withContext(Dispatchers.IO) {
         val f = File(layersDir, layer.geometryFile)
         if (!f.exists()) emptyList() else LayerGeoJson.parse(f.readText()).lines
     }
 
-    /** GeoJSON complet (points + lignes) destiné au rendu carte. */
+    /** GeoJSON prêt-pour-carte : lit le fichier .map précalculé ; le génère une fois s'il manque
+     *  (couche importée avant l'introduction du précalcul). */
     fun layerGeojsonForMap(layer: LayerEntity): String {
+        val mapFile = File(layersDir, layer.geometryFile + MAP_SUFFIX)
+        if (mapFile.exists()) return mapFile.readText()
         val f = File(layersDir, layer.geometryFile)
         if (!f.exists()) return "{\"type\":\"FeatureCollection\",\"features\":[]}"
         val g = LayerGeoJson.parse(f.readText())
-        return LayerGeoJson.writeForMap(g.points, g.lines)
+        val gj = LayerGeoJson.writeForMap(g.points, g.lines)
+        runCatching { mapFile.writeText(gj) }   // met en cache pour les prochains rendus
+        return gj
     }
 
     fun loadLayer(layer: LayerEntity): PointLayerData {
@@ -132,6 +149,8 @@ class CycleRepository(private val ctx: Context) {
             val f = File(layersDir, layer.geometryFile)
             val existingLines = if (f.exists()) LayerGeoJson.parse(f.readText()).lines else emptyList()
             f.writeText(LayerGeoJson.write(data.features, existingLines))
+            // Régénère le .map précalculé (les points ont changé).
+            File(layersDir, layer.geometryFile + MAP_SUFFIX).writeText(LayerGeoJson.writeForMap(data.features, existingLines))
             db.layers().updateSchema(layer.id, LayerGeoJson.writeSchema(data.schema))
         }
 

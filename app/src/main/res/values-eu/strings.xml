@@ -6,6 +6,11 @@
     <string name="action_browse">Arakatu</string>
     <string name="action_cancel">Utzi</string>
     <string name="action_close">Itxi</string>
+    <string name="action_yes">Bai</string>
+    <string name="action_no">Ez</string>
+    <string name="dialog_delete_folder_title">Ezabatu karpeta</string>
+    <string name="dialog_delete_folder_text">Karpetaren edukia ere ezabatu?</string>
+    <string name="import_in_progress">Inportatzen...</string>
     <string name="action_close_menu">Itxi menua</string>
     <string name="action_collapse">Bildu</string>
     <string name="action_color">Kolorea</string>

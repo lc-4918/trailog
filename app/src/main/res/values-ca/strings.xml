@@ -6,6 +6,11 @@
     <string name="action_browse">Navega</string>
     <string name="action_cancel">Cancel·la</string>
     <string name="action_close">Tanca</string>
+    <string name="action_yes">Sí</string>
+    <string name="action_no">No</string>
+    <string name="dialog_delete_folder_title">Elimina la carpeta</string>
+    <string name="dialog_delete_folder_text">Voleu eliminar també el contingut de la carpeta?</string>
+    <string name="import_in_progress">S\'està important...</string>
     <string name="action_close_menu">Tanca el menú</string>
     <string name="action_collapse">Replega</string>
     <string name="action_color">Color</string>

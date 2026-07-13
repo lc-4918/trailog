@@ -59,6 +59,9 @@ class MapController {
 
     // une couche peut contenir points ET lignes : une seule source, deux style layers filtrés par géométrie.
     private val layerKeys = linkedSetOf<String>()
+    // Dernier (geojson, couleur) réellement poussé à MapLibre par clé, pour éviter de re-parser un
+    // GeoJSON volumineux inchangé (comparaison d'identité : le ViewModel réutilise la même instance).
+    private val applied = HashMap<String, Pair<String, String>>()
     private val pinImages = hashSetOf<String>()
 
     // style en attente / appliqué (évite le rechargement à chaque recomposition)
@@ -100,7 +103,7 @@ class MapController {
         val b = if (desiredUrl != null) Style.Builder().fromUri(desiredUrl!!) else Style.Builder().fromJson(desiredJson!!)
         m.setStyle(b) { st ->
             style = st
-            layerKeys.clear(); pinImages.clear()  // le nouveau style a vidé sources/couches
+            layerKeys.clear(); pinImages.clear(); applied.clear()  // le nouveau style a vidé sources/couches
             onStyleApplied?.invoke()
         }
     }
@@ -128,11 +131,12 @@ class MapController {
             s.getLayer(lineLayerId(k))?.let { s.removeLayer(it) }
             s.getSource(src(k))?.let { s.removeSource(it) }
             layerKeys.remove(k)
+            applied.remove(k)
         }
         list.forEach { r ->
-            val img = ensurePin(s, appContext, r.color, markerHeightPx)
             val source = s.getSourceAs<GeoJsonSource>(src(r.key))
             if (source == null) {
+                val img = ensurePin(s, appContext, r.color, markerHeightPx)
                 s.addSource(GeoJsonSource(src(r.key), r.geojson))
                 addLayerSafe(LineLayer(lineLayerId(r.key), src(r.key)).withProperties(
                     PropertyFactory.lineColor(r.color), PropertyFactory.lineWidth(4f),
@@ -146,10 +150,18 @@ class MapController {
                     PropertyFactory.iconIgnorePlacement(true))
                     .withFilter(pointGeometryFilter))
                 layerKeys.add(r.key)
+                applied[r.key] = r.geojson to r.color
             } else {
-                source.setGeoJson(r.geojson)
-                (s.getLayer(lineLayerId(r.key)) as? LineLayer)?.setProperties(PropertyFactory.lineColor(r.color))
-                (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+                val prev = applied[r.key]
+                // Ne re-pousser le GeoJSON que s'il a réellement changé (identité) : setGeoJson re-parse
+                // toute la trace, coûteux pour de gros itinéraires (cause des minutes d'attente).
+                if (prev == null || prev.first !== r.geojson) source.setGeoJson(r.geojson)
+                if (prev == null || prev.second != r.color) {
+                    val img = ensurePin(s, appContext, r.color, markerHeightPx)
+                    (s.getLayer(lineLayerId(r.key)) as? LineLayer)?.setProperties(PropertyFactory.lineColor(r.color))
+                    (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+                }
+                applied[r.key] = r.geojson to r.color
             }
         }
     }

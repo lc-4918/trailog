@@ -6,6 +6,11 @@
     <string name="action_browse">Examinar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_close">Cerrar</string>
+    <string name="action_yes">Sí</string>
+    <string name="action_no">No</string>
+    <string name="dialog_delete_folder_title">Eliminar carpeta</string>
+    <string name="dialog_delete_folder_text">¿Eliminar también el contenido de la carpeta?</string>
+    <string name="import_in_progress">Importando...</string>
     <string name="action_close_menu">Cerrar el menú</string>
     <string name="action_collapse">Contraer</string>
     <string name="action_color">Color</string>

@@ -643,7 +643,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             title = { Text(stringResource(R.string.label_new_folder)) },
             text = {
                 CompactOutlinedTextField(newFolderName, { newFolderName = it }, singleLine = true,
-                    modifier = Modifier.focusRequester(focus))
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -821,7 +821,12 @@ private fun LegendContent(
     val defaultFolderName = stringResource(R.string.label_new_folder)
     val openNewFolder: (Long?) -> Unit = { parentId -> newFolderParent = parentId; newFolderName = ""; newFolderDialog = true }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())) {
+    // Dossiers avec un import en cours (null = racine) : spinner ; et confirmation de suppression de dossier.
+    val importing by vm.importing.collectAsState()
+    val importingIds = importing.keys
+    var deleteFolderTarget by remember { mutableStateOf<FolderEntity?>(null) }
+
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
         // Header 2 lignes à hauteur totale inchangée (SPEC section 6.1) : l'ancien Row faisait 48dp de
         // contenu (IconButton) + 32dp de padding vertical = 80dp. On désactive le plancher tactile
         // de 48dp de Material3 (cf. Groupe N) pour tenir 2 lignes de 32dp dans le même budget.
@@ -877,14 +882,29 @@ private fun LegendContent(
         }
         HorizontalDivider()
 
-        combinedChildren(null, folders, layers).forEach { item ->
-            when (item) {
-                is FolderEntity -> key("folder", item.id) {
-                    FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom)
+        // Seule la liste défile verticalement ; le header reste fixe (SPEC menu latéral).
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+            if (null in importingIds) ImportSpinnerRow(0)
+            combinedChildren(null, folders, layers).forEach { item ->
+                when (item) {
+                    is FolderEntity -> key("folder", item.id) {
+                        FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds) { deleteFolderTarget = it }
+                    }
+                    is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom) }
                 }
-                is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom) }
             }
         }
+    }
+
+    deleteFolderTarget?.let { f ->
+        AlertDialog(
+            onDismissRequest = { deleteFolderTarget = null },
+            title = { Text(stringResource(R.string.dialog_delete_folder_title)) },
+            text = { Text(stringResource(R.string.dialog_delete_folder_text)) },
+            // "Oui" (confirmButton, à droite) supprime aussi le contenu ; "Non" (à gauche) le remonte au parent.
+            confirmButton = { TextButton(onClick = { vm.deleteFolder(f, deleteContents = true); deleteFolderTarget = null }) { Text(stringResource(R.string.action_yes)) } },
+            dismissButton = { TextButton(onClick = { vm.deleteFolder(f, deleteContents = false); deleteFolderTarget = null }) { Text(stringResource(R.string.action_no)) } },
+        )
     }
 
     if (newFolderDialog) {
@@ -895,7 +915,7 @@ private fun LegendContent(
             title = { Text(stringResource(R.string.label_new_folder)) },
             text = {
                 CompactOutlinedTextField(newFolderName, { newFolderName = it }, singleLine = true,
-                    modifier = Modifier.focusRequester(focus))
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -946,6 +966,7 @@ private fun FolderNode(
     folder: FolderEntity, allFolders: List<FolderEntity>, allLayers: List<LayerEntity>,
     depth: Int, vm: MainViewModel, dctx: DragCtx,
     onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onNewFolder: (Long?) -> Unit, onZoom: (String, Long) -> Unit,
+    importingIds: Set<Long?>, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
     val context = LocalContext.current
@@ -959,7 +980,7 @@ private fun FolderNode(
         .zIndex(if (isDragging) 1f else 0f)
         .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
         .background(if (hoverZone == HoverZone.INTO) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-        .padding(start = (4 + depth * 16).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+        .padding(start = (4 + depth * 20).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         val allVisible = folderAllVisible(folder.id, allFolders, allLayers)
         IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(40.dp)) {
@@ -982,19 +1003,35 @@ private fun FolderNode(
             onEnd = { dctx.onEnd("folder", folder.id) })
         Spacer(Modifier.width(6.dp))
         RowMenu(onRename = { onRename("folder", folder.id, folder.name) }, onMove = { onMove("folder", folder.id) },
-            onNewSub = { onNewFolder(folder.id) }, onDelete = { vm.deleteFolder(folder) },
+            onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
             onZoom = { onZoom("folder", folder.id) })
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
     if (expanded) {
+        // Spinner d'import entre la ligne du dossier et sa première couche (SPEC).
+        if (folder.id in importingIds) ImportSpinnerRow(depth + 1)
         combinedChildren(folder.id, allFolders, allLayers).forEach { item ->
             when (item) {
                 is FolderEntity -> key("folder", item.id) {
-                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom)
+                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom, importingIds, onDeleteFolder)
                 }
                 is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onMove, onZoom) }
             }
         }
+    }
+}
+
+/** Ligne « import en cours » : petit spinner, indenté comme les couches du dossier. */
+@Composable
+private fun ImportSpinnerRow(depth: Int) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = (4 + depth * 20).dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.import_in_progress), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -1038,7 +1075,7 @@ private fun LayerLine(
         .onGloballyPositioned { dctx.rowBounds[kind to id] = it.positionInRoot().y }
         .zIndex(if (isDragging) 1f else 0f)
         .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
-        .padding(start = (4 + depth * 16).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+        .padding(start = (4 + depth * 20).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onToggle(!visible) }, modifier = Modifier.size(40.dp)) {
             Icon(if (visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,

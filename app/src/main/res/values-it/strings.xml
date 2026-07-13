@@ -6,6 +6,11 @@
     <string name="action_browse">Sfoglia</string>
     <string name="action_cancel">Annulla</string>
     <string name="action_close">Chiudi</string>
+    <string name="action_yes">Sì</string>
+    <string name="action_no">No</string>
+    <string name="dialog_delete_folder_title">Elimina cartella</string>
+    <string name="dialog_delete_folder_text">Eliminare anche il contenuto della cartella?</string>
+    <string name="import_in_progress">Importazione in corso...</string>
     <string name="action_close_menu">Chiudi il menu</string>
     <string name="action_collapse">Comprimi</string>
     <string name="action_color">Colore</string>

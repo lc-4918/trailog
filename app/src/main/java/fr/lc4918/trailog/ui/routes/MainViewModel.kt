@@ -78,11 +78,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedMarkerId = MutableStateFlow<String?>(null)
     val selectedMarkerId = _selectedMarkerId.asStateFlow()
 
+    // Cache du GeoJSON de rendu par couche (id -> fichier géométrie + GeoJSON prêt pour la carte). Évite
+    // de relire/re-sérialiser toutes les couches à chaque changement de la liste (import de N couches
+    // = O(N²) sinon). La même instance String est réutilisée -> MapLibreView peut sauter setGeoJson.
+    private val geojsonCache = HashMap<Long, Pair<String, String>>()
+
     init {
         viewModelScope.launch {
             combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
                 val rl = withContext(Dispatchers.IO) {
-                    list.filter { it.visible }.map { RenderLayer("ly${it.id}", repo.layerGeojsonForMap(it), it.color) }
+                    geojsonCache.keys.retainAll(list.mapTo(HashSet()) { it.id })  // purge des couches supprimées
+                    list.filter { it.visible }.map { ly ->
+                        val cached = geojsonCache[ly.id]
+                        val gj = if (cached != null && cached.first == ly.geometryFile) cached.second
+                        else repo.layerGeojsonForMap(ly).also { geojsonCache[ly.id] = ly.geometryFile to it }
+                        RenderLayer("ly${ly.id}", gj, ly.color)
+                    }
                 }
                 _renderLayers.value = rl
             }
@@ -163,7 +174,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _markerLayerData.value = data.copy()
         viewModelScope.launch {
             repo.saveFeatures(layer, data)
-            renderTick.value++   // rafraîchit les marqueurs sur la carte
+            geojsonCache.remove(layer.id)   // le fichier géométrie est réécrit sous le même nom -> invalider
+            renderTick.value++              // rafraîchit les marqueurs sur la carte
         }
     }
 
@@ -203,8 +215,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- import (avec dossier de destination) ----------
     private var pendingFit: DoubleArray? = null
+
+    // Nombre d'imports en cours par dossier de destination (null = racine) : pour afficher un spinner
+    // dans le dossier concerné tant que l'import n'est pas terminé.
+    private val _importing = MutableStateFlow<Map<Long?, Int>>(emptyMap())
+    val importing: StateFlow<Map<Long?, Int>> = _importing.asStateFlow()
+    private fun bumpImporting(folderId: Long?, delta: Int) {
+        _importing.update { m -> (m + (folderId to ((m[folderId] ?: 0) + delta))).filterValues { it > 0 } }
+    }
+
     fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?) =
-        viewModelScope.launch { unionPendingFit(repo.importLayer(bytes, fileName, folderId)) }
+        viewModelScope.launch {
+            bumpImporting(folderId, +1)
+            try { unionPendingFit(repo.importLayer(bytes, fileName, folderId)) }
+            finally { bumpImporting(folderId, -1) }
+        }
 
     private fun unionPendingFit(b: DoubleArray) {
         if (b.size < 4 || (b[0] == 0.0 && b[2] == 0.0)) return
@@ -224,11 +249,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun renameFolder(id: Long, name: String) = viewModelScope.launch { db.folders().rename(id, name) }
     fun moveFolder(id: Long, parentId: Long?) = viewModelScope.launch { db.folders().move(id, parentId) }
-    fun deleteFolder(f: FolderEntity) = viewModelScope.launch { db.folders().delete(f) }
+
+    /**
+     * Supprime un dossier. Si [deleteContents], supprime récursivement ses sous-dossiers et toutes leurs
+     * couches (retirées aussi de la carte via le flux `layers`) ; sinon remonte le contenu direct au
+     * dossier parent (racine si le dossier était au premier niveau) avant de le supprimer.
+     */
+    fun deleteFolder(f: FolderEntity, deleteContents: Boolean) = viewModelScope.launch {
+        if (deleteContents) {
+            val ids = descendantFolderIds(f.id, folders.value)
+            layers.value.filter { it.folderId in ids }.forEach { repo.deleteLayer(it) }
+            folders.value.filter { it.id in ids }.forEach { db.folders().delete(it) }
+        } else {
+            layers.value.filter { it.folderId == f.id }.forEach { db.layers().move(it.id, f.parentId) }
+            folders.value.filter { it.parentId == f.id }.forEach { db.folders().move(it.id, f.parentId) }
+            db.folders().delete(f)
+        }
+    }
+
+    /** [rootId] et l'ensemble de ses descendants (dossiers), pour une suppression récursive. */
+    private fun descendantFolderIds(rootId: Long, all: List<FolderEntity>): Set<Long> {
+        val result = linkedSetOf(rootId)
+        var frontier = listOf(rootId)
+        while (frontier.isNotEmpty()) {
+            frontier = all.filter { it.parentId in frontier && result.add(it.id) }.map { it.id }
+        }
+        return result
+    }
 
     fun renameLayer(id: Long, name: String) = viewModelScope.launch { db.layers().rename(id, name) }
     fun moveLayer(id: Long, folderId: Long?) = viewModelScope.launch { db.layers().move(id, folderId) }
-    fun deleteLayer(l: LayerEntity) = viewModelScope.launch { db.layers().delete(l) }
+    fun deleteLayer(l: LayerEntity) = viewModelScope.launch { repo.deleteLayer(l) }
 
     // ---------- réordonnancement unifié par drag & drop (dossiers/couches mélangés) ----------
     /**

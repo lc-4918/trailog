@@ -6,6 +6,11 @@
     <string name="action_browse">Durchsuchen</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="action_close">Schließen</string>
+    <string name="action_yes">Ja</string>
+    <string name="action_no">Nein</string>
+    <string name="dialog_delete_folder_title">Ordner löschen</string>
+    <string name="dialog_delete_folder_text">Auch den Inhalt des Ordners löschen?</string>
+    <string name="import_in_progress">Wird importiert...</string>
     <string name="action_close_menu">Menü schließen</string>
     <string name="action_collapse">Einklappen</string>
     <string name="action_color">Farbe</string>

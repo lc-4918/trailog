@@ -6,6 +6,11 @@
     <string name="action_browse">Procurar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="action_close">Fechar</string>
+    <string name="action_yes">Sim</string>
+    <string name="action_no">Não</string>
+    <string name="dialog_delete_folder_title">Eliminar pasta</string>
+    <string name="dialog_delete_folder_text">Eliminar também o conteúdo da pasta?</string>
+    <string name="import_in_progress">A importar...</string>
     <string name="action_close_menu">Fechar o menu</string>
     <string name="action_collapse">Recolher</string>
     <string name="action_color">Cor</string>
