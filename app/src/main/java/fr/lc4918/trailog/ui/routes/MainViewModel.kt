@@ -34,6 +34,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -284,13 +287,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Tap dans le vide sur la carte : ferme profil et infobulle. */
     fun closeOnEmpty() { closeProfile(); closeMarker() }
 
-    /** Enregistre la position caméra (pour rouvrir sur le dernier affichage). */
-    fun saveCameraState(lat: Double, lon: Double, zoom: Double) {
-        val s = settings.value ?: return
-        if (s.hasCamera && kotlin.math.abs(s.lastLat - lat) < 1e-6 &&
-            kotlin.math.abs(s.lastLon - lon) < 1e-6 && kotlin.math.abs(s.lastZoom - zoom) < 1e-4) return
-        viewModelScope.launch { db.settings().upsert(s.copy(lastLat = lat, lastLon = lon, lastZoom = zoom, hasCamera = true)) }
+    // Position caméra en attente d'enregistrement : la carte émet un "idle" à chaque micro-arrêt pendant un
+    // déplacement (~20 en quelques secondes). On débounce pour n'écrire qu'une fois la carte réellement
+    // stabilisée, au lieu de marteler la base (chaque écriture réémet le flow settings -> recompositions).
+    private val _cameraToSave = MutableStateFlow<Triple<Double, Double, Double>?>(null)
+
+    init {
+        viewModelScope.launch {
+            _cameraToSave.filterNotNull().debounce(600).collect { (lat, lon, zoom) ->
+                val s = settings.value ?: return@collect
+                if (s.hasCamera && kotlin.math.abs(s.lastLat - lat) < 1e-6 &&
+                    kotlin.math.abs(s.lastLon - lon) < 1e-6 && kotlin.math.abs(s.lastZoom - zoom) < 1e-4) return@collect
+                db.settings().upsert(s.copy(lastLat = lat, lastLon = lon, lastZoom = zoom, hasCamera = true))
+            }
+        }
     }
+
+    /** Enregistre la position caméra (pour rouvrir sur le dernier affichage), débouncée (cf. _cameraToSave). */
+    fun saveCameraState(lat: Double, lon: Double, zoom: Double) { _cameraToSave.value = Triple(lat, lon, zoom) }
 
     // ---------- import (avec dossier de destination) ----------
     private var pendingFit: DoubleArray? = null
@@ -525,7 +539,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            combine(settings, providers, composites) { s, p, c -> Triple(s, p, c) }.collectLatest { (s, provs, comps) ->
+            // Ne réémettre que sur un changement pertinent pour le style (fond de plan, dossier MBTiles) :
+            // la position caméra est aussi stockée dans SettingsEntity et écrite à chaque arrêt de la carte ;
+            // sans ce distinctUntilChanged, chaque déplacement relançait buildStyle (et un éventuel fetch du
+            // style vectoriel distant) + recomposait tout l'écran, saturant le CPU (cf. lenteur du profil).
+            val styleRelevantSettings = settings.distinctUntilChanged { a, b ->
+                a?.defaultBasemapId == b?.defaultBasemapId && a?.mbtilesDir == b?.mbtilesDir
+            }
+            combine(styleRelevantSettings, providers, composites) { s, p, c -> Triple(s, p, c) }.collectLatest { (s, provs, comps) ->
                 _mapStyle.value = s?.let { buildStyle(it, provs, comps) }
             }
         }

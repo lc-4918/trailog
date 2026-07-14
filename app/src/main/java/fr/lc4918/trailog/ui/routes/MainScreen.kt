@@ -540,10 +540,18 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // pour la seule portion visible (cf. TrackMath.statsOf, réutilisable sur une sous-plage).
                 val zoomRange = profileZoomStack.lastOrNull()
                 val windowStart = zoomRange?.first ?: 0
-                val windowSamples = shown?.samples?.let { s ->
-                    if (zoomRange != null && zoomRange.last < s.size) s.subList(zoomRange.first, zoomRange.last + 1) else s
+                // Mémorisé sur (shown, zoomRange) : sinon subList()/statsOf() recréaient une liste d'identité
+                // différente à CHAQUE recomposition (déplacement du curseur, etc.), invalidant le cache de
+                // rendu de ElevationProfile (comparaison par référence) -> reconstruction de tous les chemins
+                // à chaque frame pendant un zoom (jusqu'à ~2000 points), d'où une surcharge CPU.
+                val windowSamples = remember(shown, zoomRange) {
+                    shown?.samples?.let { s ->
+                        if (zoomRange != null && zoomRange.last < s.size) s.subList(zoomRange.first, zoomRange.last + 1) else s
+                    }
                 }
-                val windowStats = if (zoomRange != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
+                val windowStats = remember(shown, zoomRange, windowSamples) {
+                    if (zoomRange != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
+                }
                 fun toWindow(absolute: Int?) = absolute?.let { a -> windowSamples?.let { (a - windowStart).takeIf { i -> i in it.indices } } }
                 val cursorInWindow = toWindow(cursor)
                 val markAInWindow = toWindow(profilePointA)

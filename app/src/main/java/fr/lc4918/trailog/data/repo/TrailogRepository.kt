@@ -50,6 +50,16 @@ class TrailogRepository(private val ctx: Context) {
 
     // Paramètres du profil, identiques au tap comme au précalcul (sinon le .prof ne correspondrait pas).
     private val profileJson = Json { ignoreUnknownKeys = true }
+
+    // Cache mémoire des profils décodés, clé = chemin du .prof + son horodatage (invalidé automatiquement si
+    // le fichier est réécrit). Évite de re-décoder 200+ Ko de JSON (2 à 12 s selon la charge/throttling CPU)
+    // à chaque re-tap d'une trace déjà consultée. Accès concurrents possibles (IO/Default) -> map
+    // synchronisée ; éviction LRU (ordre d'accès) au-delà de 6 traces pour borner la mémoire.
+    private val profileCache = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, List<ComputedTrack>>(8, 0.75f, true) {
+            override fun removeEldestEntry(e: MutableMap.MutableEntry<String, List<ComputedTrack>>) = size > 6
+        }
+    )
     // Lissage de l'altitude avant calcul du profil affiché : moins de bruit -> moins de changements de
     // classe de pente -> moins de segments de couleur à dessiner (cf. ElevationProfile.buildAreaRuns).
     // N'affecte que le profil affiché, jamais segmentStats (distance/D+/D-) qui reste sur l'altitude brute.
@@ -190,11 +200,13 @@ class TrailogRepository(private val ctx: Context) {
     suspend fun loadProfiles(layer: LayerEntity): List<ComputedTrack> = withContext(Dispatchers.IO) {
         val profFile = File(layersDir, layer.geometryFile + PROF_SUFFIX)
         if (profFile.exists()) {
+            val cacheKey = "${profFile.absolutePath}|${profFile.lastModified()}"
+            profileCache[cacheKey]?.let { return@withContext it }   // hit mémoire : aucun décodage
             val text = profFile.readText()
             val cached = withContext(Dispatchers.Default) {
                 runCatching { profileJson.decodeFromString<List<ComputedTrack>>(text) }.getOrNull()
             }
-            if (cached != null) return@withContext cached
+            if (cached != null) { profileCache[cacheKey] = cached; return@withContext cached }
         }
         val lines = loadTrackLines(layer)
         if (lines.isEmpty()) return@withContext emptyList()
@@ -204,7 +216,8 @@ class TrailogRepository(private val ctx: Context) {
         val (profiles, prof) = withContext(Dispatchers.Default) {
             val p = computeProfiles(lines, smoothingM); p to profileJson.encodeToString(p)
         }
-        runCatching { profFile.writeText(prof) }   // cache pour les prochains taps
+        runCatching { profFile.writeText(prof) }   // cache disque pour les prochains démarrages
+        profileCache["${profFile.absolutePath}|${profFile.lastModified()}"] = profiles   // + cache mémoire
         profiles
     }
 
