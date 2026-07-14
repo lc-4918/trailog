@@ -313,21 +313,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
         else controller.clearCursor()
     }
-    // Cadrage de la carte sur la trace active : sur toute son emprise si aucun zoom de profil n'est actif,
-    // sinon sur l'emprise de la seule portion zoomée (synchronise carte et profil). Se déclenche aussi à
-    // chaque changement de niveau de zoom (empilage d'un niveau ou "expand" pour en retirer un). Fermer le
-    // profil ne redéclenche rien ici (activeLayerId devient null -> vm.activeLayer() aussi).
-    LaunchedEffect(activeLayerId, profileZoomStack, computed) {
-        val layer = vm.activeLayer() ?: return@LaunchedEffect
-        val range = profileZoomStack.lastOrNull()
-        if (range == null) {
-            controller.fitTo(layer.west, layer.south, layer.east, layer.north)
-        } else {
-            val samples = computed?.samples ?: return@LaunchedEffect
-            if (range.last >= samples.size) return@LaunchedEffect
-            val sub = samples.subList(range.first, range.last + 1)
-            controller.fitTo(sub.minOf { it.lon }, sub.minOf { it.lat }, sub.maxOf { it.lon }, sub.maxOf { it.lat })
-        }
+    // Synchronisation carte <-> zoom du profil : on recadre UNIQUEMENT sur l'emprise de la portion zoomée
+    // (sélection A/B). Un simple tap sur une trace, sans zoom actif, ne déplace jamais la carte : on garde la
+    // vue courante de l'utilisateur (pas de "zoom global" sur toute la trace, qui recadrait brutalement et
+    // dont l'animation ralentissait l'affichage du premier profil). L'"expand" jusqu'à la vue complète laisse
+    // donc la carte là où elle est. Fermer le profil ne redéclenche rien ici (profileZoomStack revidé).
+    LaunchedEffect(profileZoomStack, computed) {
+        val range = profileZoomStack.lastOrNull() ?: return@LaunchedEffect
+        val samples = computed?.samples ?: return@LaunchedEffect
+        if (range.last >= samples.size) return@LaunchedEffect
+        val sub = samples.subList(range.first, range.last + 1)
+        controller.fitTo(sub.minOf { it.lon }, sub.minOf { it.lat }, sub.maxOf { it.lon }, sub.maxOf { it.lat })
     }
 
     // positionnement initial : dernier affichage si enregistré, sinon données visibles, sinon France
@@ -582,32 +578,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
                     ) {
                         if (profileZoomStack.isNotEmpty()) {
-                            IconButton(onClick = { vm.expandProfileZoom() }, modifier = Modifier.size(32.dp)) {
-                                Icon(painterResource(R.drawable.ic_profile_zoom_expand),
-                                    stringResource(R.string.content_desc_profile_zoom_expand), modifier = Modifier.size(18.dp))
-                            }
+                            ProfileZoomButton(R.drawable.ic_profile_zoom_expand,
+                                stringResource(R.string.content_desc_profile_zoom_expand), active = false) { vm.expandProfileZoom() }
                         }
                         if (profileZoomStack.size < 3) {
-                            IconButton(
-                                onClick = { vm.startProfilePickA() },
-                                modifier = Modifier.size(32.dp).background(
-                                    if (profilePickMode == ProfilePickMode.A) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    RoundedCornerShape(6.dp)),
-                            ) {
-                                Icon(painterResource(R.drawable.ic_profile_zoom_start),
-                                    stringResource(R.string.content_desc_profile_zoom_start), modifier = Modifier.size(18.dp),
-                                    tint = if (profilePickMode == ProfilePickMode.A) Color.White else LocalContentColor.current)
-                            }
-                            IconButton(
-                                onClick = { vm.startProfilePickB() },
-                                modifier = Modifier.size(32.dp).background(
-                                    if (profilePickMode == ProfilePickMode.B) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    RoundedCornerShape(6.dp)),
-                            ) {
-                                Icon(painterResource(R.drawable.ic_profile_zoom_end),
-                                    stringResource(R.string.content_desc_profile_zoom_end), modifier = Modifier.size(18.dp),
-                                    tint = if (profilePickMode == ProfilePickMode.B) Color.White else LocalContentColor.current)
-                            }
+                            ProfileZoomButton(R.drawable.ic_profile_zoom_start,
+                                stringResource(R.string.content_desc_profile_zoom_start),
+                                active = profilePickMode == ProfilePickMode.A) { vm.startProfilePickA() }
+                            ProfileZoomButton(R.drawable.ic_profile_zoom_end,
+                                stringResource(R.string.content_desc_profile_zoom_end),
+                                active = profilePickMode == ProfilePickMode.B) { vm.startProfilePickB() }
                         }
                     }
                 }
@@ -643,6 +623,26 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                             if (windowSamples != null && windowStats != null && !profileLoading) {
+                                // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit
+                                // de l'écran. On calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et
+                                // non le rayon plein, qui n'est atteint que tout en bas) : le label est remonté
+                                // par la barre de navigation, l'angle y mord donc bien moins.
+                                //   - r = rayon de l'angle (px, API 31+, sinon 0 = écran plat)
+                                //   - dy = distance verticale du label au bord bas de l'écran (barre de nav +
+                                //     ~6 px entre la ligne de base du label et le bas du tracé)
+                                //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
+                                //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
+                                val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+                                val lastLabelInsetPx = remember(view, navBottomPx) {
+                                    val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                                        view.rootWindowInsets?.getRoundedCorner(android.view.RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
+                                    else 0).toFloat()
+                                    if (r <= 0f) 0f else {
+                                        val dy = navBottomPx + 6f
+                                        val intrusion = if (dy >= r) 0f else r - kotlin.math.sqrt(r * r - (r - dy) * (r - dy))
+                                        (intrusion - with(density) { 10.dp.toPx() }).coerceAtLeast(0f)
+                                    }
+                                }
                                 ElevationProfile(
                                     samples = windowSamples, stats = windowStats,
                                     grid = settings?.profileGrid ?: true,
@@ -652,6 +652,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     axisBold = settings?.profAxisBold == true,
                                     cursorIndex = cursorInWindow, onScrub = { vm.onProfileTap(it) },
                                     markA = markAInWindow, markB = markBInWindow,
+                                    lastLabelInsetPx = lastLabelInsetPx,
                                     modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                                 )
                             } else {
@@ -792,6 +793,24 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             },
             dismissButton = { TextButton(onClick = { showLocationDisabledDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
+    }
+}
+
+/** Petit bouton carré (24 dp) des contrôles de zoom du profil (début/fin/expand). Contrairement à
+ *  IconButton, sa couche d'état (ripple + fond bleu de sélection) est bornée à sa propre taille via clip :
+ *  IconButton force une couche d'état de 40 dp qui déborderait de ce bouton réduit. */
+@Composable
+private fun ProfileZoomButton(
+    @androidx.annotation.DrawableRes iconRes: Int, contentDesc: String, active: Boolean, onClick: () -> Unit,
+) {
+    Box(
+        Modifier.size(24.dp).clip(RoundedCornerShape(6.dp))
+            .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(iconRes), contentDesc, modifier = Modifier.size(16.dp),
+            tint = if (active) Color.White else LocalContentColor.current)
     }
 }
 

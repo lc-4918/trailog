@@ -133,6 +133,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val layer = layers.value.firstOrNull { it.id == id } ?: return
         if (!layer.hasLine) return
         closeMarker()
+        // Trace déjà décrite par le profil affiché : un tap dessus ne fait que déplacer le curseur sur le point
+        // le plus proche, sans réinitialiser le zoom ni recadrer la carte (surtout pas de "dézoom global" comme
+        // au premier appui). On cherche le point le plus proche dans le profil courant, pas dans toute la couche.
+        val current = _computed.value
+        if (_activeLayerId.value == id && current != null) {
+            viewModelScope.launch {
+                val idx = withContext(Dispatchers.Default) {
+                    var best = -1; var bestD = Double.MAX_VALUE
+                    current.samples.forEachIndexed { i, s ->
+                        val d = TrackMath.haversine(lon, lat, s.lon, s.lat)
+                        if (d < bestD) { bestD = d; best = i }
+                    }
+                    if (best >= 0) best else null
+                }
+                if (_activeLayerId.value == id) _cursor.value = idx
+            }
+            return
+        }
         // Affichage immédiat du panneau (titre + spinner) : on remet le profil à zéro et on marque le chargement.
         _activeLayerId.value = id
         _computed.value = null

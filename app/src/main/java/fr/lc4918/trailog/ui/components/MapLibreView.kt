@@ -283,8 +283,8 @@ class MapController {
         if (s.getSourceAs<GeoJsonSource>("cursor") == null) {
             s.addSource(GeoJsonSource("cursor", emptyFc()))
             s.addLayer(CircleLayer("cursor-dot", "cursor").withProperties(
-                PropertyFactory.circleRadius(8f), PropertyFactory.circleColor("#ffffff"),
-                PropertyFactory.circleStrokeColor("#1F6FB2"), PropertyFactory.circleStrokeWidth(4f)))
+                PropertyFactory.circleRadius(4f), PropertyFactory.circleColor("#ffffff"),
+                PropertyFactory.circleStrokeColor("#1F6FB2"), PropertyFactory.circleStrokeWidth(2f)))
         }
         s.getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(
             "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}")

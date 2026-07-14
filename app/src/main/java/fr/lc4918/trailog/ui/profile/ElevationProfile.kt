@@ -34,6 +34,7 @@ private class ProfileDrawCache {
     var axisColor: Color? = null
     var gridColor: Color? = null
     var textColor: Color? = null
+    var vscale: Int? = null
     var w: Float = -1f
     var h: Float = -1f
 
@@ -66,6 +67,14 @@ fun ElevationProfile(
     // second point n'est pas posé (puis brièvement le temps que la vue zoomée les remplace - cf. MainScreen).
     markA: Int? = null,
     markB: Int? = null,
+    // Marge (px) dont on rentre le dernier label de l'axe X, pour dégager la courbure de l'angle bas-droit
+    // de l'écran. 0 si l'écran n'a pas d'angle arrondi (détecté par l'appelant via l'API RoundedCorner).
+    lastLabelInsetPx: Float = 0f,
+    // Échelle verticale du profil : mètres d'altitude par centimètre physique de l'écran. 0 = Auto (le profil
+    // remplit la hauteur, échelle ajustée au dénivelé). Une valeur fixe (ex. 100 = 1 cm pour 100 m) donne un
+    // rendu absolu et honnête : le même dénivelé occupe toujours la même hauteur, une pente de 2% ne ressemble
+    // plus à un mur. Le profil est alors ancré sur la ligne de base (borné au remplissage pour ne pas déborder).
+    verticalScaleMPerCm: Int = 0,
 ) {
     if (samples.size < 2) return
     val areaColor = lineColor.copy(alpha = 0.30f)   // aire = couleur de la trace si pentes inactives
@@ -147,14 +156,24 @@ fun ElevationProfile(
             cache.samplesRef = samples; cache.stats = stats; cache.grid = grid; cache.slope = slope
             cache.lineColor = lineColor; cache.axisFontSp = axisFontSp; cache.axisBold = axisBold
             cache.axisColor = axisColor; cache.gridColor = gridColor; cache.textColor = textColor
-            cache.w = w; cache.h = h
+            cache.vscale = verticalScaleMPerCm; cache.w = w; cache.h = h
         }
 
         cache.gridLines.forEach { (a, b) -> drawLine(gridColor, a, b, strokeWidth = 1f) }
         labelPaint.textAlign = Paint.Align.RIGHT
         cache.yLabels.forEach { (t, x, y) -> drawContext.canvas.nativeCanvas.drawText(t, x, y, labelPaint) }
-        labelPaint.textAlign = Paint.Align.CENTER
-        cache.xLabels.forEach { (t, x, y) -> drawContext.canvas.nativeCanvas.drawText(t, x, y, labelPaint) }
+        // Tous centrés sous leur tick, sauf le dernier : centré, il déborderait à droite et serait rogné par
+        // l'angle arrondi de l'écran -> on l'aligne à droite ET on le rentre de [lastLabelInsetPx] vers
+        // l'intérieur (0 si l'écran est plat, cf. détection RoundedCorner côté appelant).
+        cache.xLabels.forEachIndexed { i, (t, x, y) ->
+            if (i == cache.xLabels.lastIndex) {
+                labelPaint.textAlign = Paint.Align.RIGHT
+                drawContext.canvas.nativeCanvas.drawText(t, x - lastLabelInsetPx, y, labelPaint)
+            } else {
+                labelPaint.textAlign = Paint.Align.CENTER
+                drawContext.canvas.nativeCanvas.drawText(t, x, y, labelPaint)
+            }
+        }
         drawPath(cache.axisPath, axisColor, style = Stroke(width = 2f))
 
         cache.areaRuns.forEach { (path, col) -> drawPath(path, col) }
@@ -177,8 +196,10 @@ fun ElevationProfile(
             fun drawMark(idx: Int, label: String) {
                 if (idx !in samples.indices) return
                 val x = sx(samples[idx].x)
-                drawLine(MARK_COLOR, Offset(x, padT), Offset(x, baseY), strokeWidth = 2f)
-                drawContext.canvas.nativeCanvas.drawText(label, x, padT + markPaint.textSize, markPaint)
+                val labelBaseline = padT + markPaint.textSize
+                drawContext.canvas.nativeCanvas.drawText(label, x, labelBaseline, markPaint)
+                // La barre démarre sous la lettre (baseline + descente) pour ne pas la traverser.
+                drawLine(MARK_COLOR, Offset(x, labelBaseline + markPaint.descent() + 2f), Offset(x, baseY), strokeWidth = 2f)
             }
             markA?.let { drawMark(it, "A") }
             markB?.let { drawMark(it, "B") }
