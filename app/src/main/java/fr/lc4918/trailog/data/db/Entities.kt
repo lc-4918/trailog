@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -132,4 +133,8 @@ data class SettingsEntity(
     val bubbleTitleBold: Boolean = true,
     val simplifyRender: Boolean = true,             // simplifier la géométrie des traces dans le rendu de carte
     val profileSmoothingM: Int = 5,                 // lissage de l'altitude (m) avant calcul du profil affiché
+    // Échelle verticale du profil : mètres d'altitude par centimètre physique ; 0 = Auto (remplit la hauteur).
+    // Colonne DB nommée "verticalExaggeration" (le réglage était d'abord une exagération, remplacé par une
+    // échelle absolue) : on garde le nom de colonne pour éviter une migration supplémentaire.
+    @ColumnInfo(name = "verticalExaggeration") val profileVerticalScaleMPerCm: Int = 0,
 )

@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.domain.model.TrackStats
@@ -107,20 +108,32 @@ fun ElevationProfile(
         val w = size.width; val h = size.height
         val plotW = w - padLpx - padR; val plotH = h - padT - padBpx
         val baseY = padT + plotH
-        fun sx(x: Double) = padLpx + ((x - minX) / spanX * plotW).toFloat()
-        fun sy(z: Double) = padT + ((maxZ - z) / spanZ * plotH).toFloat()
+        // Échelle horizontale (px/m). Échelle verticale (px/m) : Auto (<=0) remplit la hauteur (plotH/spanZ) ;
+        // sinon échelle absolue = cmPx / (m par cm), bornée par le remplissage pour ne pas déborder du cadre.
+        // Dans les deux cas le profil est ancré sur la ligne de base (minZ en bas) ; à échelle fixe fine il
+        // n'occupe alors qu'une partie de la hauteur (relief honnête, pas étiré).
+        val cmPx = (160f / 2.54f).dp.toPx()      // 1 cm physique en px (dp de base = 1/160 pouce)
+        val xScale = plotW / spanX
+        val yScale = if (verticalScaleMPerCm <= 0) (plotH / spanZ).toDouble()
+            else minOf((plotH / spanZ).toDouble(), (cmPx / verticalScaleMPerCm).toDouble())
+        val drawnH = (spanZ * yScale).toFloat()
+        fun sx(x: Double) = padLpx + ((x - minX) * xScale).toFloat()
+        fun sy(z: Double) = baseY - ((z - minZ) * yScale).toFloat()
 
         val stale = cache.samplesRef !== samples || cache.stats != stats || cache.grid != grid ||
             cache.slope != slope || cache.lineColor != lineColor || cache.axisFontSp != axisFontSp ||
             cache.axisBold != axisBold || cache.axisColor != axisColor || cache.gridColor != gridColor ||
-            cache.textColor != textColor || cache.w != w || cache.h != h
+            cache.textColor != textColor || cache.vscale != verticalScaleMPerCm || cache.w != w || cache.h != h
         if (stale) {
             labelPaint.textSize = axisFontSp.sp.toPx(); labelPaint.isFakeBoldText = axisBold; labelPaint.color = textColor.toArgb()
 
             val gridLines = ArrayList<Pair<Offset, Offset>>()
             val yLabels = ArrayList<Triple<String, Float, Float>>()
             val xLabels = ArrayList<Triple<String, Float, Float>>()
-            val yTicks = 3
+            // À échelle fixe le profil peut n'occuper qu'une faible hauteur : on réduit le nombre de
+            // graduations Y pour que les labels ne se chevauchent pas.
+            val yTicks = if (verticalScaleMPerCm <= 0) 3
+                else (drawnH / (axisFontSp.sp.toPx() * 2.2f)).toInt().coerceIn(1, 3)
             for (i in 0..yTicks) {
                 val z = minZ + spanZ * i / yTicks; val y = sy(z)
                 if (grid) gridLines.add(Offset(padLpx, y) to Offset(padLpx + plotW, y))

@@ -653,6 +653,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     cursorIndex = cursorInWindow, onScrub = { vm.onProfileTap(it) },
                                     markA = markAInWindow, markB = markBInWindow,
                                     lastLabelInsetPx = lastLabelInsetPx,
+                                    verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
                                     modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                                 )
                             } else {

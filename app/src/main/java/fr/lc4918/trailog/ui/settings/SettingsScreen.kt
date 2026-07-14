@@ -367,10 +367,32 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SwitchRow(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
     SwitchRow(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
     SwitchRow(stringResource(R.string.settings_profile_slope_legend), cur.profileSlopeLegend) { vm.save(cur.copy(profileSlopeLegend = it)) }
+    // Valeurs autorisées : 1 m, puis pas de 5 jusqu'à 100 m (souvent ~1 point GPS tous les 80 m). Non
+    // équidistantes (1->5) -> le slider parcourt un index et mappe vers ces valeurs, plutôt qu'une plage
+    // continue. Un réglage existant hors liste est ramené à la valeur la plus proche.
+    val smoothingValues = remember { listOf(1) + (5..100 step 5).toList() }
+    val smoothingIdx = smoothingValues.indexOf(cur.profileSmoothingM).let { exact ->
+        if (exact >= 0) exact
+        else smoothingValues.indices.minByOrNull { kotlin.math.abs(smoothingValues[it] - cur.profileSmoothingM) } ?: 0
+    }
     Section(stringResource(R.string.settings_section_profile_smoothing, cur.profileSmoothingM))
-    CompactSlider(value = cur.profileSmoothingM.toFloat(), valueRange = 1f..30f, steps = 28,
-        onValueChange = { vm.save(cur.copy(profileSmoothingM = it.toInt())) })
+    CompactSlider(value = smoothingIdx.toFloat(), valueRange = 0f..(smoothingValues.size - 1).toFloat(),
+        steps = smoothingValues.size - 2,
+        onValueChange = { vm.save(cur.copy(profileSmoothingM = smoothingValues[(it + 0.5f).toInt().coerceIn(0, smoothingValues.lastIndex)])) })
     Text(stringResource(R.string.settings_profile_smoothing_hint),
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // Échelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (mètres d'altitude par cm physique).
+    // Bornes choisies d'après la hauteur du graphe (~1,6 cm) : de 50 (le graphe couvre ~80 m) à 1200 m/cm
+    // (~1900 m). Valeurs non équidistantes -> slider indexé, comme le lissage.
+    val vsValues = remember { listOf(0, 50, 100, 150, 200, 250, 300, 500, 800, 1200) }
+    val vsIdx = vsValues.indexOf(cur.profileVerticalScaleMPerCm).let { if (it >= 0) it else 0 }
+    val vsLabel = if (cur.profileVerticalScaleMPerCm <= 0) stringResource(R.string.settings_vertical_scale_auto)
+        else stringResource(R.string.settings_vertical_scale_value, cur.profileVerticalScaleMPerCm)
+    Section(stringResource(R.string.settings_section_vertical_scale, vsLabel))
+    CompactSlider(value = vsIdx.toFloat(), valueRange = 0f..(vsValues.size - 1).toFloat(),
+        steps = vsValues.size - 2,
+        onValueChange = { vm.save(cur.copy(profileVerticalScaleMPerCm = vsValues[(it + 0.5f).toInt().coerceIn(0, vsValues.lastIndex)])) })
+    Text(stringResource(R.string.settings_vertical_scale_hint),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Section(stringResource(R.string.settings_section_title_line_info))
     InfoChips(listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent), "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration), "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),

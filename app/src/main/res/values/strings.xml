@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Ce réglage s\'applique aux couches importées ensuite. Les couches déjà importées gardent leur rendu actuel jusqu\'à leur ré-import.</string>
     <string name="settings_section_profile_smoothing">Lissage du profil : %1$d m</string>
     <string name="settings_profile_smoothing_hint">Lisse l\'altitude sur la distance indiquée avant de calculer le profil : accélère son affichage et adoucit la courbe. S\'applique aux couches importées ensuite, ou dont le profil n\'est pas encore en cache.</string>
+    <string name="settings_section_vertical_scale">Échelle verticale : %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto ajuste l\'échelle verticale au dénivelé (le profil remplit la hauteur). Une échelle fixe (ex. 1 cm = 100 m) donne un rendu absolu et honnête : le même dénivelé occupe toujours la même hauteur, une pente de 2 %% n\'apparaît plus comme un mur.</string>
 
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>
