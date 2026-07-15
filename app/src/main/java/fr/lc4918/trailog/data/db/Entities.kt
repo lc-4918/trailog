@@ -145,4 +145,8 @@ data class SettingsEntity(
     // basculée au-dessus si ça ne tient pas, bornée à l'écran, sans jamais bouger la carte. Les 9 autres
     // valeurs imposent un placement fixe autour du point et peuvent recentrer la carte pour tenir à l'écran.
     val bubblePosition: String = "auto",
+    // Vérification des mises à jour : "auto" au démarrage, ou "manual" (bouton dans les réglages).
+    // Sans effet en build debug, qui a son propre applicationId et ne peut pas se remplacer par une
+    // release signée d'une autre clé (cf. UpdateManager.isSupported).
+    val updateCheckMode: String = "auto",
 )

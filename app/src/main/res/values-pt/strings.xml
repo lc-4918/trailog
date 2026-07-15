@@ -243,4 +243,21 @@
     <string name="bubble_pos_bottom_left">Baixo-esquerda</string>
     <string name="bubble_pos_bottom">Baixo</string>
     <string name="bubble_pos_bottom_right">Baixo-direita</string>
+    <string name="settings_section_updates">Atualizações</string>
+    <string name="update_mode_auto">Auto</string>
+    <string name="update_mode_manual">Manual</string>
+    <string name="update_action_check">Procurar atualizações</string>
+    <string name="update_none_available">Nenhuma atualização disponível.</string>
+    <string name="update_check_failed">Não foi possível verificar. Verifique a sua ligação.</string>
+    <string name="update_unsupported_debug">As atualizações não se aplicam a uma versão de desenvolvimento.</string>
+    <string name="update_available_title">Atualização disponível</string>
+    <string name="update_available_text">A versão %1$s está disponível (publicada a %2$s).\n\nInstalar agora?</string>
+    <string name="update_available_text_changelog">A versão %1$s está disponível (publicada a %2$s).\n\n%3$s\n\nInstalar agora?</string>
+    <string name="update_action_install">Instalar</string>
+    <string name="update_action_later">Mais tarde</string>
+    <string name="update_unknown_sources_title">Autorização necessária</string>
+    <string name="update_unknown_sources_text">O Android tem de lhe pedir para autorizar o Trailog a instalar aplicações. Abra a definição, conceda a autorização e reinicie a atualização.</string>
+    <string name="update_download_title">Atualização do Trailog</string>
+    <string name="update_download_desc">A transferir a versão %1$s</string>
+
 </resources>

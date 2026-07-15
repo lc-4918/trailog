@@ -75,3 +75,39 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           files: app/build/outputs/apk/release/*.apk
+
+      # Manifeste lu par l'app pour se savoir perimee (cf. update/UpdateManager). Publie sur main plutot
+      # que sur une branche dediee : servi par raw.githubusercontent.com, sans quota, contrairement a
+      # l'API GitHub (60 requetes/h par IP). Un push par GITHUB_TOKEN ne redeclenche aucun workflow, donc
+      # pas de boucle avec le job debug qui ecoute toutes les branches.
+      - name: Publish latest-release.json on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # versionCode : meme calcul que build.gradle.kts (maj*10000 + min*100 + patch), c'est lui que
+          # l'app compare. Les deux doivent rester d'accord.
+          VERSION="${TAG#v}"
+          IFS='.' read -r MAJ MIN PATCH <<< "$VERSION"
+          VERSION_CODE=$(( MAJ * 10000 + MIN * 100 + PATCH ))
+          # Nom d'APK fixe par androidComponents dans build.gradle.kts : trailog-<tag>.apk
+          APK_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${TAG}/trailog-${TAG}.apk"
+          # Le nom du fichier publie doit exister, sinon l'app telechargerait une URL morte.
+          test -f "app/build/outputs/apk/release/trailog-${TAG}.apk"
+
+          git fetch origin main
+          git checkout main
+          jq -n --arg v "$VERSION" --argjson c "$VERSION_CODE" \
+                --arg d "$(date -u +%Y-%m-%d)" --arg u "$APK_URL" \
+                '{version:$v, versionCode:$c, releaseDate:$d, apkUrl:$u, changelog:""}' \
+            > latest-release.json
+          cat latest-release.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest-release.json
+          # Rien a faire si le manifeste est deja a jour (re-run du workflow sur le meme tag).
+          git diff --staged --quiet || {
+            git commit -m "chore: latest-release.json pour ${TAG}"
+            git push origin main
+          }

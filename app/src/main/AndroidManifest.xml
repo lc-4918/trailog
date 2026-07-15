@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Mise a jour hors store : l'app telecharge l'APK publie par sa propre CI et lance l'installateur
+         systeme (cf. update/UpdateManager). Permission sensible, sans objet ici puisque la distribution
+         se fait par GitHub Releases et non par un store. L'utilisateur garde le dernier mot : Android
+         exige en plus son autorisation explicite, par application, depuis la version 8. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Lecture des photos locales referencees par les waypoints GPX (OruxMaps/OsmAnd/Locus/Garmin) pour les
          copier dans le stockage de l'app a l'import. Images uniquement ; READ_EXTERNAL_STORAGE borne a Android 12. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />

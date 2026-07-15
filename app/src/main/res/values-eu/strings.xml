@@ -243,4 +243,21 @@
     <string name="bubble_pos_bottom_left">Behean-ezkerrean</string>
     <string name="bubble_pos_bottom">Behean</string>
     <string name="bubble_pos_bottom_right">Behean-eskuinean</string>
+    <string name="settings_section_updates">Eguneraketak</string>
+    <string name="update_mode_auto">Auto</string>
+    <string name="update_mode_manual">Eskuz</string>
+    <string name="update_action_check">Bilatu eguneraketak</string>
+    <string name="update_none_available">Ez dago eguneraketarik eskuragarri.</string>
+    <string name="update_check_failed">Ezin izan da egiaztatu. Egiaztatu zure konexioa.</string>
+    <string name="update_unsupported_debug">Eguneraketak ez zaizkio garapen-bertsio bati aplikatzen.</string>
+    <string name="update_available_title">Eguneraketa eskuragarri</string>
+    <string name="update_available_text">%1$s bertsioa eskuragarri dago (%2$s(e)an argitaratua).\n\nOrain instalatu nahi duzu?</string>
+    <string name="update_available_text_changelog">%1$s bertsioa eskuragarri dago (%2$s(e)an argitaratua).\n\n%3$s\n\nOrain instalatu nahi duzu?</string>
+    <string name="update_action_install">Instalatu</string>
+    <string name="update_action_later">Geroago</string>
+    <string name="update_unknown_sources_title">Baimena beharrezkoa</string>
+    <string name="update_unknown_sources_text">Androidek Trailog-i aplikazioak instalatzeko baimena emateko eskatu behar dizu. Ireki ezarpena, eman baimena eta abiarazi berriro eguneraketa.</string>
+    <string name="update_download_title">Trailog eguneraketa</string>
+    <string name="update_download_desc">%1$s bertsioa deskargatzen</string>
+
 </resources>

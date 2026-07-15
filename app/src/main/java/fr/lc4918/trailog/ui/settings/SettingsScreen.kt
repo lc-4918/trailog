@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -84,6 +85,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -118,7 +120,12 @@ import fr.lc4918.trailog.map.flagCodeFor
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.update.ReleaseInfo
+import fr.lc4918.trailog.update.UpdateCheck
+import fr.lc4918.trailog.update.UpdateFlow
+import fr.lc4918.trailog.update.UpdateManager
 import java.io.File
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -499,6 +506,57 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     FontStepper(stringResource(R.string.font_cursor_point), cur.profCursorFont, bold = cur.profCursorBold, onBold = { vm.save(cur.copy(profCursorBold = it)) }) { vm.save(cur.copy(profCursorFont = it)) }
 }
 
+/**
+ * Reglage "Mises a jour" : mode Auto/Manuel, et en Manuel seulement le bouton de verification immediate.
+ * En build debug, la verification est inoperante (cf. UpdateManager.isSupported) : on le dit plutot que de
+ * laisser un bouton qui ne repondrait jamais rien.
+ */
+@Composable private fun UpdatesSetting(cur: SettingsEntity, vm: SettingsViewModel) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var checking by remember { mutableStateOf(false) }
+    var found by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val upToDate = stringResource(R.string.update_none_available)
+    val failed = stringResource(R.string.update_check_failed)
+
+    SegRow(
+        listOf("auto" to stringResource(R.string.update_mode_auto), "manual" to stringResource(R.string.update_mode_manual)),
+        cur.updateCheckMode,
+    ) { vm.save(cur.copy(updateCheckMode = it)) }
+
+    if (!UpdateManager.isSupported) {
+        Text(stringResource(R.string.update_unsupported_debug),
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+    if (cur.updateCheckMode == "manual") {
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = {
+                if (checking) return@OutlinedButton
+                checking = true; message = null
+                scope.launch {
+                    when (val r = UpdateManager.check()) {
+                        is UpdateCheck.Available -> found = r.release
+                        UpdateCheck.UpToDate -> message = upToDate
+                        UpdateCheck.Failed -> message = failed
+                    }
+                    checking = false
+                }
+            }, enabled = !checking) { Text(stringResource(R.string.update_action_check)) }
+            if (checking) {
+                Spacer(Modifier.width(12.dp))
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            }
+        }
+        message?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+    UpdateFlow(release = found, onDone = { found = null })
+}
+
 @Composable private fun SystemTab(
     cur: SettingsEntity, vm: SettingsViewModel,
     onPickImportDir: () -> Unit, onPickMbtilesFolder: () -> Unit, onPickAvatar: () -> Unit,
@@ -530,6 +588,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Section(stringResource(R.string.settings_section_units))
     SegRow(listOf("meters" to stringResource(R.string.unit_metric), "imperial" to stringResource(R.string.unit_imperial)), cur.units) { vm.save(cur.copy(units = it)) }
+
+    Section(stringResource(R.string.settings_section_updates))
+    UpdatesSetting(cur, vm)
 
     Section(stringResource(R.string.settings_section_language))
     var currentLang by remember { mutableStateOf(LocalePrefs.get(ctx)) }

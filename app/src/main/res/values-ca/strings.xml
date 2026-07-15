@@ -243,4 +243,21 @@
     <string name="bubble_pos_bottom_left">Baix-esquerra</string>
     <string name="bubble_pos_bottom">Baix</string>
     <string name="bubble_pos_bottom_right">Baix-dreta</string>
+    <string name="settings_section_updates">Actualitzacions</string>
+    <string name="update_mode_auto">Auto</string>
+    <string name="update_mode_manual">Manual</string>
+    <string name="update_action_check">Comprova les actualitzacions</string>
+    <string name="update_none_available">No hi ha cap actualització disponible.</string>
+    <string name="update_check_failed">No s\'ha pogut comprovar. Reviseu la connexió.</string>
+    <string name="update_unsupported_debug">Les actualitzacions no s\'apliquen a una versió de desenvolupament.</string>
+    <string name="update_available_title">Actualització disponible</string>
+    <string name="update_available_text">La versió %1$s està disponible (publicada el %2$s).\n\nVoleu instal·lar-la ara?</string>
+    <string name="update_available_text_changelog">La versió %1$s està disponible (publicada el %2$s).\n\n%3$s\n\nVoleu instal·lar-la ara?</string>
+    <string name="update_action_install">Instal·la</string>
+    <string name="update_action_later">Més tard</string>
+    <string name="update_unknown_sources_title">Cal autorització</string>
+    <string name="update_unknown_sources_text">L\'Android us ha de demanar que autoritzeu el Trailog a instal·lar aplicacions. Obriu el paràmetre, concediu l\'autorització i torneu a iniciar l\'actualització.</string>
+    <string name="update_download_title">Actualització del Trailog</string>
+    <string name="update_download_desc">S\'està baixant la versió %1$s</string>
+
 </resources>

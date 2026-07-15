@@ -28,7 +28,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by repo.settingsFlow.collectAsState(initial = null)
             // La couleur des icônes de la barre de statut est gérée dans MainScreen.
-            TrailogTheme(themePref = settings?.theme ?: "system") { AppRoot() }
+            TrailogTheme(themePref = settings?.theme ?: "system") {
+                // Tant que les réglages chargent, pas de vérification : on ne connaît pas encore le mode.
+                AppRoot(autoCheckUpdates = settings?.updateCheckMode == "auto")
+            }
         }
     }
 }
