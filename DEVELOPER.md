@@ -30,25 +30,28 @@ cd trailog
 
 ```
 app/src/main/java/fr/lc4918/trailog/
-├─ MainActivity.kt              setContent { AppRoot() }
+├─ MainActivity.kt              setContent { AppRoot(autoCheckUpdates) }
 ├─ TrailogApp.kt                Application : init MapLibre + dépôt + amorçage
 ├─ domain/
-│  ├─ model/                    Models.kt (TrackPoint, TrackStats…), Points.kt
-│  └─ geo/                      TrackMath.kt (distance, D+/D-, pente…), Format.kt
+│  ├─ model/                    Models.kt (TrackPoint, TrackStats), Points.kt, BubblePosition.kt
+│  └─ geo/                      TrackMath.kt (distance, D+/D-, pente), Format.kt
 ├─ data/
-│  ├─ db/                       Room : Entities, DAO, AppDatabase
+│  ├─ db/                       Room : Entities, DAO, AppDatabase (migrations explicites)
 │  ├─ seed/Providers.kt         Fonds de carte par défaut
 │  ├─ imp/                      LayerImporter (GPX/GeoJSON/KML), PropertyDetector
-│  └─ repo/                     CycleRepository, LayerGeoJson, StoragePaths
+│  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
 ├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre)
+│  └─ offline/                  TileMath, TileUrl, TileHttp, OfflineTileDownloader, OfflineThumbnails
+├─ update/                      UpdateManager (manifeste + installateur), UpdateDialog
 └─ ui/
-   ├─ components/                MapLibreView, Avatar, ImageViewer, CompactTextField…
+   ├─ components/                MapLibreView, Avatar, ImageViewer, CompactTextField
    ├─ profile/                   ElevationProfile (Canvas), SlopeLegend, SlopeRamp
    ├─ routes/                    MainScreen, MainViewModel
-   ├─ points/                    InfoBubble, PropertyEditor
+   ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement
+   ├─ offline/                   Saisie de la zone et configuration du téléchargement
    ├─ settings/                  SettingsScreen, SettingsViewModel
    ├─ theme/                     Theme.kt
-   └─ nav/                       AppRoot.kt (NavHost)
+   └─ nav/                       AppRoot.kt
 ```
 
 Voir [`SPEC.md`](SPEC.md) pour la spécification fonctionnelle détaillée.
@@ -68,9 +71,19 @@ Logs : `adb logcat` ou la fenêtre **Logcat** d'Android Studio.
 ./gradlew :app:testDebugUnitTest  # tests unitaires JVM (JUnit 4)
 ```
 
-Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` (ex. `TrackMathTest.kt`
-pour la logique de calcul géométrique). Il n'y a pas encore de tests instrumentés (UI),
-contributions bienvenues.
+Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
+
+| Test | Ce qu'il verrouille |
+|---|---|
+| `domain/geo/TrackMathTest` | calculs géométriques (distance, D+/D-, pente) |
+| `ui/points/BubblePlacementTest` | placement de l'infobulle autour du marqueur, bornes d'écran |
+| `update/ReleaseInfoTest` | forme du manifeste écrit par la CI et calcul du `versionCode` |
+
+`ReleaseInfoTest` mérite une note : il garde un contrat entre deux fichiers qui ne se compilent
+pas ensemble, le `jq` du workflow et le parseur Kotlin. Une divergence n'y produirait aucune
+erreur visible, seulement des mises à jour qui cesseraient d'être proposées.
+
+Il n'y a pas encore de tests instrumentés (UI), contributions bienvenues.
 
 ## 6. Workflow de contribution
 
@@ -84,16 +97,22 @@ contributions bienvenues.
 ## 7. Architecture
 
 - **Pattern** : MVVM, `Repository` (accès données) -> `ViewModel` (`StateFlow`) -> écrans Compose.
-- **UI** : Jetpack Compose (Material 3), une seule `Activity`, navigation via Navigation Compose
-  (`AppRoot.kt`, routes *main* / *settings*).
+- **UI** : Jetpack Compose (Material 3), une seule `Activity`. **Pas de NavHost** : `AppRoot.kt`
+  superpose les réglages à `MainScreen` dans une `Box`, pour ne pas détruire la `MapView` (une
+  recréation provoquait une réinitialisation du zoom et un scintillement).
 - **Carte** : MapLibre Native Android, intégrée via `AndroidView` (`MapLibreView.kt`) et pilotée
   par un contrôleur dédié (tracé, curseur, tolérance de tap).
 - **Stockage** : Room (catalogue, dossiers, fournisseurs de tuiles, réglages) + fichiers
-  GeoJSON pour la géométrie des traces.
+  GeoJSON pour la géométrie des traces. Le schéma évolue par **migrations explicites**
+  (`AppDatabase.kt`) et non par recréation destructive, qui effacerait les couches importées.
 - **Asynchrone** : Kotlin Coroutines.
-- **Sérialisation** : kotlinx.serialization (GeoJSON).
-- **Réglages** : DataStore Preferences.
+- **Sérialisation** : kotlinx.serialization (GeoJSON, manifeste de mise à jour).
+- **Réglages** : table `settings` de Room (une seule ligne). Seule la langue est à part, dans des
+  `SharedPreferences` (`LocalePrefs`), devant être lue avant la création de la base.
 - **Images** : Coil 3 (dont support SVG pour les drapeaux, GIF).
+
+> `navigation-compose` et `datastore-preferences` figurent dans les dépendances du module mais
+> ne sont utilisés nulle part dans le code : vestiges du scaffolding initial, supprimables.
 
 ### Dépendances principales
 
@@ -121,9 +140,18 @@ contributions bienvenues.
 
 ## 9. Workflow CI/CD
 
-Le détail du pipeline GitHub Actions (build debug à chaque push, release signée à chaque
-tag) est documenté dans [`WORKFLOW.md`](WORKFLOW.md). En résumé, avant de créer un tag de
-release, vérifiez que le job **Build debug APK** est vert sur votre dernier commit `main`.
+Le détail du pipeline GitHub Actions (build debug à chaque push, release signée à chaque tag,
+publication du manifeste de mise à jour) est documenté dans [`WORKFLOW.md`](WORKFLOW.md). En
+résumé, avant de créer un tag de release, vérifiez que le job **Build debug APK** est vert sur
+votre dernier commit `main`.
+
+Deux points à connaître avant de toucher au versionnement ou aux mises à jour :
+
+- `versionCode` et `versionName` sont **dérivés du tag git** par `app/build.gradle.kts`
+  (`git describe`), jamais codés en dur. Un build hors tag porte un suffixe descriptif
+  (`0.2.0-23-gabc1234`), d'où la comparaison sur `versionCode` et non sur `versionName`.
+- Le même calcul de `versionCode` est refait par la CI pour écrire le manifeste. Les deux
+  doivent rester d'accord, cf. [`WORKFLOW.md` section 6](WORKFLOW.md#6-mises-à-jour-automatiques).
 
 ## 10. Issues et Discussions
 
