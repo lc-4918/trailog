@@ -70,6 +70,10 @@ data class ProviderEntity(
     val builtin: Boolean = true,
     val sortOrder: Int = 0,
     val folderId: Long? = null,            // dossier dans le Basemap Control (basemap_folders)
+    // Legende de ce fond, chemin d'un asset bundle (ex. "legends/af3v.png"), ou null s'il n'en a pas.
+    // Non nul : un bouton "info" apparait sur la carte des que ce fond est affiche, seul ou comme couche
+    // d'un composite, et montre l'image par-dessus la carte (cf. legendAssetModel, MainViewModel.activeLegends).
+    val legendAsset: String? = null,
 )
 
 /** Fond composite = couche arrière-plan (opaque) + couche premier plan (avec transparence réglable). */

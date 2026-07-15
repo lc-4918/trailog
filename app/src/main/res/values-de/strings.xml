@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Diese Einstellung gilt für danach importierte Ebenen. Bereits importierte Ebenen behalten ihre aktuelle Darstellung bis zum erneuten Import.</string>
     <string name="settings_section_profile_smoothing">Profilglättung: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Glättet die Höhe über die angegebene Distanz, bevor das Profil berechnet wird: beschleunigt dessen Anzeige und glättet die Kurve. Gilt für danach importierte Ebenen oder solche, deren Profil noch nicht zwischengespeichert ist.</string>
+    <string name="settings_section_vertical_scale">Vertikaler Maßstab: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto passt den vertikalen Maßstab an den Höhenunterschied an (das Profil füllt die Höhe). Ein fester Maßstab (z. B. 1 cm = 100 m) ergibt eine absolute, ehrliche Darstellung: derselbe Höhenunterschied nimmt immer dieselbe Höhe ein, und eine Steigung von 2 %% sieht nicht mehr wie eine Wand aus.</string>
 
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Hintergrundebene</string>
     <string name="basemap_control_title">Kartengrundlagen</string>
     <string name="content_desc_basemap_control">Kartengrundlagen-Verwaltung</string>
+    <string name="content_desc_basemap_legend">Legende der Hintergrundkarte</string>
     <string name="content_desc_profile_zoom_start">Anfang der Zoomauswahl</string>
     <string name="content_desc_profile_zoom_end">Ende der Zoomauswahl</string>
     <string name="content_desc_profile_zoom_expand">Profilzoom verkleinern</string>

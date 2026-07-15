@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Ezarpen hau ondoren inportatutako geruzei aplikatzen zaie. Jada inportatutako geruzek egungo errendatzea gordetzen dute berriro inportatu arte.</string>
     <string name="settings_section_profile_smoothing">Profilaren leuntzea: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Adierazitako distantzian altuera leuntzen du profila kalkulatu aurretik: bistaratzea bizkortzen du eta kurba leuntzen du. Ondoren inportatutako geruzei aplikatzen zaie, edo profila oraindik cachean ez dutenei.</string>
+    <string name="settings_section_vertical_scale">Eskala bertikala: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto-k eskala bertikala desnibelera egokitzen du (profilak altuera betetzen du). Eskala finko batek (adib. 1 cm = 100 m) errendatze absolutu eta zintzoa ematen du: desnibel berak beti altuera bera hartzen du, eta %% 2ko malda batek ez du jada horma baten itxurarik.</string>
 
     <!-- Ezarpenak: Profila -->
     <string name="settings_section_display">Bistaratzea</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Atzeko planoko geruza</string>
     <string name="basemap_control_title">Oinarrizko mapak</string>
     <string name="content_desc_basemap_control">Oinarrizko mapen kudeatzailea</string>
+    <string name="content_desc_basemap_legend">Oinarrizko maparen legenda</string>
     <string name="content_desc_profile_zoom_start">Zoom hautapenaren hasiera</string>
     <string name="content_desc_profile_zoom_end">Zoom hautapenaren amaiera</string>
     <string name="content_desc_profile_zoom_expand">Profilaren zooma txikitu</string>

@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">This setting applies to layers imported afterwards. Already-imported layers keep their current rendering until re-imported.</string>
     <string name="settings_section_profile_smoothing">Profile smoothing: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Smooths elevation over the given distance before computing the profile: speeds up its display and softens the curve. Applies to layers imported afterwards, or whose profile isn\'t cached yet.</string>
+    <string name="settings_section_vertical_scale">Vertical scale: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto fits the vertical scale to the elevation range (the profile fills the height). A fixed scale (e.g. 1 cm = 100 m) gives an absolute, honest rendering: the same elevation gain always takes the same height, and a 2 %% slope no longer looks like a wall.</string>
 
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Background layer</string>
     <string name="basemap_control_title">Basemaps</string>
     <string name="content_desc_basemap_control">Basemap manager</string>
+    <string name="content_desc_basemap_legend">Basemap legend</string>
     <string name="content_desc_profile_zoom_start">Start of zoom selection</string>
     <string name="content_desc_profile_zoom_end">End of zoom selection</string>
     <string name="content_desc_profile_zoom_expand">Zoom out on profile</string>

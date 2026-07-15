@@ -20,15 +20,23 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +44,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,11 +52,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -59,20 +69,26 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
+import fr.lc4918.trailog.map.legendAssetModel
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.ui.components.Avatar
@@ -84,7 +100,6 @@ import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
-import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.ui.points.BubblePlacement
 import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.InfoBubbleLoading
@@ -92,11 +107,9 @@ import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
-import kotlinx.coroutines.launch
-import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
-import androidx.core.net.toUri
 import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -108,6 +121,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val basemapFolders by vm.basemapFolders.collectAsState()
     val settings by vm.settings.collectAsState()
     var basemapControlOpen by remember { mutableStateOf(false) }
+    var legendOpen by remember { mutableStateOf(false) }
+    // Coin haut-gauche du bouton "info", en px fenêtre : la légende s'y adosse (cf. BasemapLegend).
+    var legendAnchor by remember { mutableStateOf(IntOffset.Zero) }
 
     // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
     var offlineDrawingActive by remember { mutableStateOf(false) }
@@ -145,6 +161,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
     val selectedMarkerPos by vm.selectedMarkerPos.collectAsState()
     val markerLayerData by vm.markerLayerData.collectAsState()
+    val activeLegends by vm.activeLegends.collectAsState()
     // Marqueur sélectionné, dérivé des états collectés (et non lu via vm.selectedFeature(), qui lit
     // StateFlow.value sans que Compose ne s'y abonne : l'arrivée des propriétés ne déclencherait alors
     // aucune recomposition et l'infobulle resterait bloquée sur son spinner).
@@ -499,6 +516,21 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() })
                         }
                     }
+                    // Légende du fond affiché, s'il en fournit une (cf. ProviderEntity.legendAsset) : à
+                    // gauche du gestionnaire de couches, l'image se déployant vers la gauche depuis ici.
+                    // Le bouton reporte sa position : la légende s'y adosse sans supposer de largeur de
+                    // barre, celle-ci variant selon les boutons affichés (nord, gestionnaire de couches).
+                    if (activeLegends.isNotEmpty()) {
+                        IconButton(
+                            onClick = { legendOpen = !legendOpen },
+                            modifier = Modifier.onGloballyPositioned {
+                                val p = it.positionInRoot()          // coin haut-gauche du bouton
+                                legendAnchor = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                            },
+                        ) {
+                            Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend))
+                        }
+                    }
                     if (settings?.showBasemapControlButton == true) {
                         IconButton(onClick = { basemapControlOpen = true }) {
                             // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
@@ -507,6 +539,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
+                BasemapLegend(
+                    legends = activeLegends,
+                    visible = legendOpen && activeLegends.isNotEmpty(),
+                    anchor = legendAnchor,
+                    onDismiss = { legendOpen = false },
+                )
                 // Infobulle. Affichée dès le tap (spinner tant que les propriétés chargent), placée selon le
                 // réglage Carte / Infobulles. Le placement est calculé dans la phase de layout, une fois la
                 // taille réelle mesurée : la bulle apparaît donc directement au bon endroit, sans le saut que
@@ -1300,6 +1338,47 @@ private fun DropIndicatorLine() {
 
 /** Part de la hauteur d'écran que l'infobulle ne dépasse pas ; au-delà, ses propriétés défilent. */
 private const val BubbleMaxHeightRatio = 0.6f
+
+/** Au-delà, la légende ne gagne plus en lisibilité : l'image ne ferait que s'étirer (500 px de large). */
+private val LegendMaxWidth = 260.dp
+
+/**
+ * Légende du fond de plan affiché, dépliée depuis le bouton "info" auquel elle s'adosse : [anchor] est le
+ * coin haut-gauche de ce bouton, en px fenêtre. L'image occupe donc au plus la place entre le bord gauche
+ * de l'écran et le bouton, ce qui la garde entière quels que soient les autres boutons de la barre.
+ * Un tap n'importe où ailleurs la referme, via un voile transparent posé sur la carte le temps qu'elle
+ * s'affiche. Plusieurs légendes s'empilent : un composite peut afficher deux fonds qui en ont chacun une.
+ */
+@Composable
+private fun BasemapLegend(legends: List<String>, visible: Boolean, anchor: IntOffset, onDismiss: () -> Unit) {
+    val density = LocalDensity.current
+    Box(Modifier.fillMaxSize()) {
+        if (visible) {
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { onDismiss() } })
+        }
+        AnimatedVisibility(
+            visible = visible,
+            // Depliement vers la gauche depuis le bouton : le mouvement dit d'ou vient l'image.
+            enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+            exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
+            modifier = Modifier.offset { IntOffset(0, anchor.y) }
+                .width(with(density) { anchor.x.toDp() }),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Column(
+                    Modifier.padding(start = 8.dp).widthIn(max = LegendMaxWidth)
+                        .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                        .padding(6.dp),
+                ) {
+                    legends.forEach { asset ->
+                        AsyncImage(model = legendAssetModel(asset), contentDescription = null,
+                            contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        }
+    }
+}
 
 private val PALETTE = listOf(
     "#1F6FB2", "#1098AD", "#2F9E44", "#7CB342", "#F4B400", "#F08C00", "#E8590C", "#E03131",

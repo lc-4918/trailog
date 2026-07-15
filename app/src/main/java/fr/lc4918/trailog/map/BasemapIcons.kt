@@ -22,3 +22,8 @@ fun flagCodeFor(provider: ProviderEntity): String? =
 
 /** Modèle Coil pointant vers l'asset SVG bundlé du drapeau (aucun appel réseau). */
 fun flagAssetModel(code: String): String = "file:///android_asset/flags/$code.svg"
+
+/** Modèle Coil pointant vers la légende bundlée d'un fond de plan (cf. ProviderEntity.legendAsset).
+ *  Bundlée plutôt que tirée du service : les GetLegendGraphic annonces par les WMS ne sont pas toujours
+ *  joignables (l'AF3V annonce le sien en clair sur un port non standard) et seraient inutilisables hors ligne. */
+fun legendAssetModel(assetPath: String): String = "file:///android_asset/$assetPath"

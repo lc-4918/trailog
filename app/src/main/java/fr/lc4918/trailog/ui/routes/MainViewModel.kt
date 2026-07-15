@@ -596,6 +596,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _mapStyle = MutableStateFlow<StyleBuilder.Result?>(null)
     val mapStyle: StateFlow<StyleBuilder.Result?> = _mapStyle.asStateFlow()
 
+    /** Legendes des fonds actuellement affiches, dans l'ordre d'empilement (fond puis overlay du composite).
+     *  Vide tant qu'aucun fond affiche n'en declare : le bouton "info" de la carte n'apparait qu'ici. */
+    private val _activeLegends = MutableStateFlow<List<String>>(emptyList())
+    val activeLegends: StateFlow<List<String>> = _activeLegends.asStateFlow()
+
     init {
         viewModelScope.launch {
             // Ne réémettre que sur un changement pertinent pour le style (fond de plan, dossier MBTiles) :
@@ -607,8 +612,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             combine(styleRelevantSettings, providers, composites) { s, p, c -> Triple(s, p, c) }.collectLatest { (s, provs, comps) ->
                 _mapStyle.value = s?.let { buildStyle(it, provs, comps) }
+                _activeLegends.value = s?.let { displayedProviders(it, provs, comps).mapNotNull { p -> p.legendAsset } }
+                    ?: emptyList()
             }
         }
+    }
+
+    /** Composite désigné par le fond actif, s'il en est un et qu'il est activé ; null sinon (fond simple). */
+    private fun activeComposite(s: SettingsEntity, comps: List<CompositeEntity>): CompositeEntity? =
+        compositeIdFromBasemapId(s.defaultBasemapId)?.let { id -> comps.firstOrNull { it.id == id && it.enabled } }
+
+    /** Fonds visuellement présents à l'écran, dans l'ordre d'empilement : le fond, puis l'overlay si le fond
+     *  actif est un composite. Le relief en est exclu, n'étant pas un fond en soi (cf. [buildStyle]). Sert au
+     *  bouton "info" : la légende proposée est ainsi toujours celle de ce qui est réellement affiché. */
+    private fun displayedProviders(s: SettingsEntity, provs: List<ProviderEntity>, comps: List<CompositeEntity>): List<ProviderEntity> {
+        val composite = activeComposite(s, comps)
+        if (composite != null) {
+            val bg = provs.firstOrNull { it.id == composite.backgroundProviderId }
+            if (bg != null && bg.type != "DEM") {
+                val fg = provs.firstOrNull { it.id == composite.foregroundProviderId }
+                return listOfNotNull(bg, fg?.takeIf { it.type != "DEM" })
+            }
+        }
+        return listOfNotNull(provs.firstOrNull { it.id == s.defaultBasemapId && it.type != "DEM" }
+            ?: provs.firstOrNull { it.type != "DEM" })
     }
 
     private suspend fun buildStyle(s: SettingsEntity, provs: List<ProviderEntity>, comps: List<CompositeEntity>): StyleBuilder.Result? {
@@ -617,8 +644,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // tap dans le gestionnaire de couches) ou si le composite actif l'inclut en overlay.
         val demProvider = provs.firstOrNull { it.type == "DEM" }
         val toggledDem = demProvider?.takeIf { it.enabled }
-        val compositeId = compositeIdFromBasemapId(s.defaultBasemapId)
-        val composite = compositeId?.let { id -> comps.firstOrNull { it.id == id && it.enabled } }
+        val composite = activeComposite(s, comps)
         if (composite != null) {
             val bg = provs.firstOrNull { it.id == composite.backgroundProviderId }
             val fg = provs.firstOrNull { it.id == composite.foregroundProviderId }

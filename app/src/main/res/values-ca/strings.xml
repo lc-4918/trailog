@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Aquest ajust s\'aplica a les capes importades després. Les capes ja importades mantenen la seva representació actual fins que es tornin a importar.</string>
     <string name="settings_section_profile_smoothing">Suavitzat del perfil: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Suavitza l\'altitud sobre la distància indicada abans de calcular el perfil: accelera la seva visualització i suavitza la corba. S\'aplica a les capes importades després, o que encara no tenen el perfil a la memòria cau.</string>
+    <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto ajusta l\'escala vertical al desnivell (el perfil omple l\'alçada). Una escala fixa (p. ex. 1 cm = 100 m) dóna una representació absoluta i honesta: el mateix desnivell ocupa sempre la mateixa alçada, i un pendent del 2 %% ja no sembla un mur.</string>
 
     <!-- Configuració: Perfil -->
     <string name="settings_section_display">Visualització</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Capa de fons</string>
     <string name="basemap_control_title">Mapes base</string>
     <string name="content_desc_basemap_control">Gestor de mapes base</string>
+    <string name="content_desc_basemap_legend">Llegenda del mapa base</string>
     <string name="content_desc_profile_zoom_start">Inici de la selecció de zoom</string>
     <string name="content_desc_profile_zoom_end">Final de la selecció de zoom</string>
     <string name="content_desc_profile_zoom_expand">Redueix el zoom del perfil</string>

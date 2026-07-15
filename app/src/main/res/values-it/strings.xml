@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Questa impostazione si applica ai livelli importati in seguito. I livelli già importati mantengono la resa attuale fino a un nuovo import.</string>
     <string name="settings_section_profile_smoothing">Levigatura del profilo: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Leviga l\'altitudine sulla distanza indicata prima di calcolare il profilo: velocizza la visualizzazione e ammorbidisce la curva. Si applica ai livelli importati in seguito, o il cui profilo non è ancora in cache.</string>
+    <string name="settings_section_vertical_scale">Scala verticale: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto adatta la scala verticale al dislivello (il profilo riempie l\'altezza). Una scala fissa (es. 1 cm = 100 m) dà una resa assoluta e onesta: lo stesso dislivello occupa sempre la stessa altezza, e una pendenza del 2 %% non sembra più un muro.</string>
 
     <!-- Impostazioni: Profilo -->
     <string name="settings_section_display">Visualizzazione</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Livello di sfondo</string>
     <string name="basemap_control_title">Mappe di base</string>
     <string name="content_desc_basemap_control">Gestione mappe di base</string>
+    <string name="content_desc_basemap_legend">Legenda della mappa di base</string>
     <string name="content_desc_profile_zoom_start">Inizio della selezione dello zoom</string>
     <string name="content_desc_profile_zoom_end">Fine della selezione dello zoom</string>
     <string name="content_desc_profile_zoom_expand">Riduci lo zoom del profilo</string>

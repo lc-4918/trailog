@@ -121,6 +121,10 @@
     <string name="settings_simplify_render_hint">Este ajuste se aplica a las capas importadas después. Las capas ya importadas mantienen su representación actual hasta que se vuelvan a importar.</string>
     <string name="settings_section_profile_smoothing">Suavizado del perfil: %1$d m</string>
     <string name="settings_profile_smoothing_hint">Suaviza la altitud a lo largo de la distancia indicada antes de calcular el perfil: acelera su visualización y suaviza la curva. Se aplica a las capas importadas después, o cuyo perfil aún no está en caché.</string>
+    <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
+    <string name="settings_vertical_scale_auto">Auto</string>
+    <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
+    <string name="settings_vertical_scale_hint">Auto ajusta la escala vertical al desnivel (el perfil llena la altura). Una escala fija (p. ej. 1 cm = 100 m) da una representación absoluta y honesta: el mismo desnivel ocupa siempre la misma altura, y una pendiente del 2 %% ya no parece un muro.</string>
 
     <!-- Ajustes: Perfil -->
     <string name="settings_section_display">Visualización</string>
@@ -209,6 +213,7 @@
     <string name="label_background_layer">Capa de fondo</string>
     <string name="basemap_control_title">Mapas base</string>
     <string name="content_desc_basemap_control">Gestor de mapas base</string>
+    <string name="content_desc_basemap_legend">Leyenda del mapa base</string>
     <string name="content_desc_profile_zoom_start">Inicio de la selección de zoom</string>
     <string name="content_desc_profile_zoom_end">Fin de la selección de zoom</string>
     <string name="content_desc_profile_zoom_expand">Reducir el zoom del perfil</string>

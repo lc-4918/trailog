@@ -48,6 +48,19 @@ object Providers {
             ProviderEntity("way_cycle", "Waymarked Trails Cycle", "Overlays", "XYZ",
                 "https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png",
                 transparent = true, maxZoom = 18, sortOrder = n()),
+            // Trois couches en une requete : le serveur les compose et renvoie une seule image. Elles se
+            // relaient par seuil d'echelle, que QGIS deduit de BBOX et WIDTH : voie_cyclable (synthetique)
+            // ne rend qu'au-dela du 1:2 000 000, soit jusqu'au zoom 8 ; segment_cyclable (detaille) et
+            // poi_travaux prennent le relais en deca, a partir du zoom 9. Demander la seule voie_cyclable,
+            // comme le fait l'URL publique de l'AF3V, donnerait donc un fond vide des qu'on zoome.
+            // STYLES vide = style par defaut de chaque couche (WMS exige sinon autant d'entrees que LAYERS).
+            ProviderEntity("af3v", "Af3v Voies cyclables", "Overlays", "WMS",
+                "https://sig.af3v.org/index.php/lizmap/service/?repository=rep1&project=veloroutes" +
+                    "&LAYERS=voie_cyclable,segment_cyclable,poi_travaux&STYLES=&VERSION=1.3.0" +
+                    "&EXCEPTIONS=application/vnd.ogc.se_inimage&FORMAT=image/png&DPI=96&TRANSPARENT=TRUE" +
+                    "&SERVICE=WMS&REQUEST=GetMap&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}",
+                transparent = true, minZoom = 0, maxZoom = 20, legendAsset = "legends/af3v.png",
+                sortOrder = n()),
 
             // --- Relief (DEM -> hillshade) ---
             ProviderEntity("dem_terrarium", "Relief (DEM terrarium)", "Relief", "DEM",
