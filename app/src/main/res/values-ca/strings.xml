@@ -187,6 +187,22 @@
     <string name="bubble_image_not_found">(imatge no trobada)</string>
     <string name="field_display_text">Text mostrat</string>
     <string name="field_image_source">Imatge (fitxer o URL)</string>
+    <string name="field_alias_name">Títol</string>
+    <string name="field_alias_ele">Altitud</string>
+    <string name="field_alias_desc">Descripció</string>
+    <string name="field_alias_cmt">Comentari</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Nom del camp</string>
+    <string name="action_add_field">Afegeix un camp</string>
+    <string name="action_remove_field">Elimina el camp</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_link">Enllaç</string>
+    <string name="field_type_image">Imatge</string>
+    <string name="error_invalid_url">URL no vàlid (http:// o https://)</string>
+    <string name="action_delete_point">Suprimeix el marcador</string>
+    <string name="dialog_delete_point_title">Voleu suprimir el marcador?</string>
+    <string name="dialog_delete_point_text">Aquest marcador i les seves propietats se suprimiran.</string>
     <string name="field_composite_name">Nom del compost</string>
     <string name="field_foreground_opacity">Transparència de la capa de primer pla: %1$d%%</string>
     <string name="label_foreground_layer">Capa de primer pla</string>
@@ -211,4 +227,15 @@
     <!-- Importació/exportació de proveïdors -->
     <string name="dialog_import_providers_title">Vols importar els proveïdors?</string>
     <string name="dialog_import_providers_text">S\'importaran %1$d proveïdor(s). Els proveïdors existents amb el mateix id se sobreescriuran.</string>
+    <string name="settings_bubble_position">Posició del globus</string>
+    <string name="bubble_pos_auto">Automàtica</string>
+    <string name="bubble_pos_top_left">Dalt-esquerra</string>
+    <string name="bubble_pos_top">Dalt</string>
+    <string name="bubble_pos_top_right">Dalt-dreta</string>
+    <string name="bubble_pos_middle_left">Centre-esquerra</string>
+    <string name="bubble_pos_center">Centre</string>
+    <string name="bubble_pos_middle_right">Centre-dreta</string>
+    <string name="bubble_pos_bottom_left">Baix-esquerra</string>
+    <string name="bubble_pos_bottom">Baix</string>
+    <string name="bubble_pos_bottom_right">Baix-dreta</string>
 </resources>

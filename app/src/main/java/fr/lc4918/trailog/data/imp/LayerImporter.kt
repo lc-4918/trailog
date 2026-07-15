@@ -140,8 +140,33 @@ object LayerImporter {
     }
 
     // ---------------- GPX ----------------
-    /** Dossier par défaut d'OruxMaps pour les photos référencées par nom seul (chemin relatif, cf. section 4.3). */
-    private const val ORUXMAPS_PHOTOS_DIR = "/sdcard/oruxmaps/waypoints/"
+    /** Vrai si le chemin d'une photo est résolvable tel quel : absolu (/ ou file://) ou distant (http/https).
+     *  Un chemin relatif (ex. dossier joint Locus ./xxx-attachments/) n'est pas accessible en important le
+     *  seul fichier .gpx (le sélecteur ne donne pas accès au dossier voisin) : on l'ignore. */
+    private fun isResolvablePhoto(p: String): Boolean =
+        p.startsWith("/") || p.startsWith("file://") || p.startsWith("http://") || p.startsWith("https://")
+
+    /** URLs d'images (href/src se terminant par une extension image) trouvées dans un fragment HTML : ex. la
+     *  description générée par Locus qui embarque la photo en <a href="/..."> et <img src="/...">. SVG exclu. */
+    private val HTML_IMG_URL = Regex("""(?:href|src)\s*=\s*["']([^"']+\.(?:jpe?g|png|webp|gif))["']""", RegexOption.IGNORE_CASE)
+    private fun extractImageUrls(html: String): List<String> =
+        HTML_IMG_URL.findAll(html).map { it.groupValues[1] }.toList()
+
+    /** Convertit un fragment HTML (ex. description générée par Locus) en texte simple lisible : retire les
+     *  balises et commentaires, décode les entités, aplatit les espaces. Renvoie "" si vide après nettoyage.
+     *  Html.fromHtml remplace chaque <img> par U+FFFC (object replacement character), qui n'est pas un blanc :
+     *  sans le retirer, une description ne contenant que la photo se réduirait à un carré "OBJ" affiché comme
+     *  champ texte (la photo, elle, est déjà extraite en champ image par extractImageUrls). */
+    private fun htmlToPlainText(s: String): String =
+        android.text.Html.fromHtml(s, android.text.Html.FROM_HTML_MODE_COMPACT).toString()
+            .replace("\uFFFC", "")
+            .replace(' ', ' ').replace(Regex("[\\s\\u00A0]+"), " ").trim()
+
+    /** Nettoie une description : si elle contient du HTML, la réduit en texte simple ; sinon la renvoie telle quelle. */
+    private fun cleanDescription(raw: String): String {
+        val t = raw.trim()
+        return if (t.contains('<')) htmlToPlainText(t) else t
+    }
 
     private fun parseGpx(input: InputStream, fileName: String): ParsedLayer {
         val parser = Xml.newPullParser()
@@ -154,31 +179,40 @@ object LayerImporter {
         val photoUrls = ArrayList<String>()   // photos du waypoint courant, dans l'ordre du XML (1ère = image de garde)
         var lat = 0.0; var lon = 0.0; var ele: Double? = null; var timeMs: Long? = null
         var inWpt = false; var inTrkPt = false
+        var omExtIsImage = false   // dans un <om:ext type="IMAGEN"> d'OruxMaps (photo, cf. START/END_TAG "om:ext")
         var text = ""
         var ev = parser.eventType
         while (ev != XmlPullParser.END_DOCUMENT) {
             when (ev) {
-                XmlPullParser.START_TAG -> when (parser.name) {
-                    "wpt" -> {
-                        inWpt = true; wptProps = LinkedHashMap(); photoUrls.clear()
-                        lat = parser.getAttributeValue(null, "lat")?.toDoubleOrNull() ?: 0.0
-                        lon = parser.getAttributeValue(null, "lon")?.toDoubleOrNull() ?: 0.0
-                    }
-                    "trk", "rte" -> curTrack = ArrayList()
-                    "trkpt", "rtept" -> {
-                        inTrkPt = true; ele = null; timeMs = null
-                        lat = parser.getAttributeValue(null, "lat")?.toDoubleOrNull() ?: 0.0
-                        lon = parser.getAttributeValue(null, "lon")?.toDoubleOrNull() ?: 0.0
-                    }
-                    // Garmin / GPX standard : <link href="..."/> vers une photo (élément vide, attribut lu ici)
-                    "link" -> if (inWpt) {
-                        parser.getAttributeValue(null, "href")?.let { href -> if (looksLikeImagePath(href)) photoUrls.add(href) }
-                    }
-                    // Locus : <locus:attachment><locus:photo filename=".." path=".."/></locus:attachment> (élément vide)
-                    "locus:photo" -> if (inWpt) {
-                        val filename = parser.getAttributeValue(null, "filename")
-                        val path = parser.getAttributeValue(null, "path") ?: ""
-                        if (!filename.isNullOrBlank()) photoUrls.add(path + filename)
+                XmlPullParser.START_TAG -> {
+                    // Le texte relu au END_TAG doit appartenir a l'element courant : sans cette remise a zero,
+                    // un element vide (<photo .../>) ou deux balises sans blanc entre elles (XML minifie)
+                    // feraient relire le texte de l'element precedent.
+                    text = ""
+                    when (parser.name) {
+                        "wpt" -> {
+                            inWpt = true; wptProps = LinkedHashMap(); photoUrls.clear()
+                            lat = parser.getAttributeValue(null, "lat")?.toDoubleOrNull() ?: 0.0
+                            lon = parser.getAttributeValue(null, "lon")?.toDoubleOrNull() ?: 0.0
+                        }
+                        "trk", "rte" -> curTrack = ArrayList()
+                        "trkpt", "rtept" -> {
+                            inTrkPt = true; ele = null; timeMs = null
+                            lat = parser.getAttributeValue(null, "lat")?.toDoubleOrNull() ?: 0.0
+                            lon = parser.getAttributeValue(null, "lon")?.toDoubleOrNull() ?: 0.0
+                        }
+                        // Garmin / GPX standard : <link href="..."/> vers une photo. On n'ajoute que les chemins
+                        // résolvables (absolus/distants) ; un lien relatif (dossier joint Locus) est ignoré.
+                        "link" -> if (inWpt) {
+                            parser.getAttributeValue(null, "href")?.let { href ->
+                                if (looksLikeImagePath(href) && isResolvablePhoto(href)) photoUrls.add(href)
+                            }
+                        }
+                        // OruxMaps (v7+) : <om:oruxmapsextensions><om:ext type="IMAGEN">chemin absolu</om:ext>.
+                        // Xml.newPullParser() active FEATURE_PROCESS_NAMESPACES : parser.name est le nom LOCAL,
+                        // sans prefixe -> "ext". Le type est un attribut lu ici (on ne retient que IMAGEN) ; la
+                        // valeur (chemin) est lue au END_TAG.
+                        "ext" -> if (inWpt) omExtIsImage = parser.getAttributeValue(null, "type") == "IMAGEN"
                     }
                 }
                 XmlPullParser.TEXT -> text = parser.text
@@ -186,18 +220,25 @@ object LayerImporter {
                     "ele" -> if (inTrkPt) ele = text.trim().toDoubleOrNull() else if (inWpt) wptProps["ele"] = PropValue.Text(text.trim())
                     "time" -> if (inTrkPt) timeMs = isoToMs(text.trim())
                     "name" -> if (inWpt) wptProps["name"] = PropValue.Text(text.trim()) else if (trackName == null) trackName = text.trim()
-                    "desc", "cmt", "sym", "type" -> if (inWpt && text.isNotBlank()) wptProps[parser.name] = detectPropValue(text.trim())
-                    // OsmAnd : <osmand:photo>chemin absolu</osmand:photo>
-                    "osmand:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(text.trim())
-                    // OruxMaps : <orux:photo>nom.jpg</orux:photo> - chemin RELATIF, à reconstituer
-                    "orux:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(ORUXMAPS_PHOTOS_DIR + text.trim())
-                    // Komoot : <komoot:photo>url distante</komoot:photo>
-                    "komoot:photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(text.trim())
-                    // GPX standard générique : <extensions><photo>chemin ou URL</photo></extensions>
+                    "cmt", "sym", "type" -> if (inWpt && text.isNotBlank()) wptProps[parser.name] = detectPropValue(text.trim())
+                    "desc" -> if (inWpt && text.isNotBlank()) {
+                        // Locus (et autres) embarquent la/les photo(s) dans le HTML de la description : on en
+                        // extrait les URLs d'images résolvables (le lien relatif du dossier joint est ignoré),
+                        // puis on réduit la description en texte simple (sinon on afficherait du HTML brut).
+                        extractImageUrls(text).forEach { if (isResolvablePhoto(it)) photoUrls.add(it) }
+                        val clean = cleanDescription(text)
+                        if (clean.isNotBlank()) wptProps["desc"] = detectPropValue(clean)
+                    }
+                    // Photo portee par le texte d'un element : <photo> du GPX standard, mais aussi
+                    // <osmand:photo> et <komoot:photo> - le prefixe de namespace est retire par le parseur,
+                    // tous ces cas arrivent donc ici sous le nom local "photo".
                     "photo" -> if (inWpt && text.isNotBlank()) photoUrls.add(text.trim())
+                    // OruxMaps : valeur du <om:ext type="IMAGEN"> (chemin absolu de la photo) ; nom local "ext".
+                    "ext" -> { if (inWpt && omExtIsImage && text.isNotBlank()) photoUrls.add(text.trim()); omExtIsImage = false }
                     "wpt" -> {
-                        photoUrls.forEachIndexed { i, url -> wptProps["image_${i + 1}"] = PropValue.Image(url) }
-                        val pin = if (photoUrls.isNotEmpty()) "image_1" else null
+                        val urls = photoUrls.distinct()   // une meme photo peut etre listee 2x (ex. href + src du desc)
+                        urls.forEachIndexed { i, url -> wptProps["image_${i + 1}"] = PropValue.Image(url) }
+                        val pin = if (urls.isNotEmpty()) "image_1" else null
                         points.add(PointFeature("p${pIdx++}", lon, lat, wptProps, pin))
                         inWpt = false
                     }
@@ -233,10 +274,13 @@ object LayerImporter {
         var ev = parser.eventType
         while (ev != XmlPullParser.END_DOCUMENT) {
             when (ev) {
-                XmlPullParser.START_TAG -> when (parser.name) {
-                    "Placemark" -> { inPlacemark = true; placemarkProps = LinkedHashMap(); placemarkPoint = null; placemarkLine = null }
-                    "Folder" -> folderStack.add(null)
-                    "Data" -> dataName = parser.getAttributeValue(null, "name")
+                XmlPullParser.START_TAG -> {
+                    text = ""   // idem parseGpx : le texte relu au END_TAG doit appartenir a l'element courant
+                    when (parser.name) {
+                        "Placemark" -> { inPlacemark = true; placemarkProps = LinkedHashMap(); placemarkPoint = null; placemarkLine = null }
+                        "Folder" -> folderStack.add(null)
+                        "Data" -> dataName = parser.getAttributeValue(null, "name")
+                    }
                 }
                 XmlPullParser.TEXT -> text = parser.text
                 XmlPullParser.END_TAG -> when (parser.name) {
@@ -245,7 +289,10 @@ object LayerImporter {
                         folderStack.isNotEmpty() && folderStack.last() == null -> folderStack[folderStack.size - 1] = text.trim()
                         docName == null -> docName = text.trim()
                     }
-                    "description" -> if (inPlacemark && text.isNotBlank()) placemarkProps["description"] = detectPropValue(text.trim())
+                    "description" -> if (inPlacemark && text.isNotBlank()) {
+                        val clean = cleanDescription(text)
+                        if (clean.isNotBlank()) placemarkProps["description"] = detectPropValue(clean)
+                    }
                     "value" -> if (inPlacemark && dataName != null) { placemarkProps[dataName!!] = detectPropValue(text.trim()); dataName = null }
                     // une seule coordonnée -> point ; plusieurs -> trace (une <coordinates> par géométrie KML simple)
                     "coordinates" -> if (inPlacemark) {

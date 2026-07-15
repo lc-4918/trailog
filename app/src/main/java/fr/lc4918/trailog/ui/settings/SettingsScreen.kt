@@ -2,7 +2,6 @@ package fr.lc4918.trailog.ui.settings
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -15,12 +14,27 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -29,18 +43,49 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.FlipToBack
 import androidx.compose.material.icons.filled.FlipToFront
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +94,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import fr.lc4918.trailog.map.offline.OfflineThumbnails
-import java.io.File
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +102,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
@@ -67,11 +111,14 @@ import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
+import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.map.compositeBasemapId
 import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.map.flagCodeFor
+import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,7 +155,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     }
     LaunchedEffect(status) { status?.let { snackbar.showSnackbar(it); vm.clearStatus() } }
 
-    var tab by rememberSaveable { mutableStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf(
         stringResource(R.string.settings_tab_map) to Icons.Filled.Map,
         stringResource(R.string.settings_tab_tiles) to Icons.Filled.Layers,
@@ -188,6 +235,51 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     Section(stringResource(R.string.settings_section_bubbles))
     FontStepper(stringResource(R.string.settings_font_size), cur.bubbleFont, bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
     FontStepper(stringResource(R.string.font_title), cur.bubbleTitleFont, bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
+    Text(stringResource(R.string.settings_bubble_position), style = MaterialTheme.typography.bodyMedium)
+    BubblePositionPicker(BubblePosition.of(cur.bubblePosition)) { vm.save(cur.copy(bubblePosition = it.key)) }
+}
+
+/** Libellé traduit d'un placement d'infobulle. */
+@Composable private fun bubblePositionLabel(p: BubblePosition): String = stringResource(
+    when (p) {
+        BubblePosition.AUTO -> R.string.bubble_pos_auto
+        BubblePosition.TOP_LEFT -> R.string.bubble_pos_top_left
+        BubblePosition.TOP -> R.string.bubble_pos_top
+        BubblePosition.TOP_RIGHT -> R.string.bubble_pos_top_right
+        BubblePosition.MIDDLE_LEFT -> R.string.bubble_pos_middle_left
+        BubblePosition.CENTER -> R.string.bubble_pos_center
+        BubblePosition.MIDDLE_RIGHT -> R.string.bubble_pos_middle_right
+        BubblePosition.BOTTOM_LEFT -> R.string.bubble_pos_bottom_left
+        BubblePosition.BOTTOM -> R.string.bubble_pos_bottom
+        BubblePosition.BOTTOM_RIGHT -> R.string.bubble_pos_bottom_right
+    }
+)
+
+/** Select du placement de l'infobulle (même fond/bord compacts que [LanguagePicker]). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun BubblePositionPicker(current: BubblePosition, onSelect: (BubblePosition) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
+        Box(Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth().clip(OutlinedTextFieldDefaults.shape)) {
+            OutlinedTextFieldDefaults.Container(
+                enabled = true, isError = false, interactionSource = interactionSource,
+                modifier = Modifier.matchParentSize(),
+            )
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(bubblePositionLabel(current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                ExposedDropdownMenuDefaults.TrailingIcon(open, modifier = Modifier.requiredSize(CompactIconSize))
+            }
+        }
+        ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            BubblePosition.entries.forEach { p ->
+                DropdownMenuItem(text = { Text(bubblePositionLabel(p)) }, onClick = { open = false; onSelect(p) })
+            }
+        }
+    }
 }
 
 @Composable private fun TilesTab(
@@ -216,7 +308,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     Spacer(Modifier.height(8.dp))
     // Dossier réel des .mbtiles (miroir de TrailogRepository.mbtilesDir) : affiché dans l'éditeur MBTILES.
     val ctx = LocalContext.current
-    val mbtilesDirPath = if (cur.mbtilesDir.isBlank()) File(ctx.filesDir, "mbtiles").absolutePath else cur.mbtilesDir
+    val mbtilesDirPath = cur.mbtilesDir.ifBlank { File(ctx.filesDir, "mbtiles").absolutePath }
     basemapEntries.forEach { p ->
         val onDelete: (() -> Unit)? = if (!p.builtin) { { vm.deleteProvider(p) } } else null
         ProviderRow(p, onSave = vm::saveProvider, onDelete = onDelete, mbtilesDirPath = mbtilesDirPath)
@@ -294,10 +386,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     // Le relief peut être utilisé en overlay (premier plan, ex. superposé à une carte pays) mais jamais
     // comme arrière-plan (tuiles DEM brutes illisibles seules, cf. StyleBuilder).
     val bgSelectable = providers.filter { it.type != "DEM" }
-    val fgSelectable = providers
     var name by remember { mutableStateOf(existing?.name ?: "") }
-    var opacityPct by remember { mutableStateOf(((existing?.foregroundOpacity ?: 0.5f) * 100).toInt()) }
-    var fgId by remember { mutableStateOf(existing?.foregroundProviderId ?: fgSelectable.firstOrNull()?.id ?: "") }
+    var opacityPct by remember { mutableIntStateOf(((existing?.foregroundOpacity ?: 0.5f) * 100).toInt()) }
+    var fgId by remember { mutableStateOf(existing?.foregroundProviderId ?: providers.firstOrNull()?.id ?: "") }
     var bgId by remember { mutableStateOf(existing?.backgroundProviderId ?: bgSelectable.firstOrNull()?.id ?: "") }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -320,7 +411,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.label_foreground_layer), style = MaterialTheme.typography.labelMedium)
                 }
-                LayerSelect(fgSelectable, fgId) { fgId = it }
+                LayerSelect(providers, fgId) { fgId = it }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.FlipToBack, null, tint = Color.Red)
@@ -368,7 +459,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SwitchRow(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
     SwitchRow(stringResource(R.string.settings_profile_slope_legend), cur.profileSlopeLegend) { vm.save(cur.copy(profileSlopeLegend = it)) }
     // Valeurs autorisées : 1 m, puis pas de 5 jusqu'à 100 m (souvent ~1 point GPS tous les 80 m). Non
-    // équidistantes (1->5) -> le slider parcourt un index et mappe vers ces valeurs, plutôt qu'une plage
+    // équidistantes (1->5) → le slider parcourt un index et mappe vers ces valeurs, plutôt qu'une plage
     // continue. Un réglage existant hors liste est ramené à la valeur la plus proche.
     val smoothingValues = remember { listOf(1) + (5..100 step 5).toList() }
     val smoothingIdx = smoothingValues.indexOf(cur.profileSmoothingM).let { exact ->
@@ -383,7 +474,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     // Échelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (mètres d'altitude par cm physique).
     // Bornes choisies d'après la hauteur du graphe (~1,6 cm) : de 50 (le graphe couvre ~80 m) à 1200 m/cm
-    // (~1900 m). Valeurs non équidistantes -> slider indexé, comme le lissage.
+    // (~1900 m). Valeurs non équidistantes → slider indexé, comme le lissage.
     val vsValues = remember { listOf(0, 50, 100, 150, 200, 250, 300, 500, 800, 1200) }
     val vsIdx = vsValues.indexOf(cur.profileVerticalScaleMPerCm).let { if (it >= 0) it else 0 }
     val vsLabel = if (cur.profileVerticalScaleMPerCm <= 0) stringResource(R.string.settings_vertical_scale_auto)
@@ -416,7 +507,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 
     Section(stringResource(R.string.settings_section_import_folder))
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(if (cur.importDir.isBlank()) stringResource(R.string.settings_default_system) else (Uri.parse(cur.importDir).lastPathSegment ?: stringResource(R.string.settings_default_system)),
+        Text(if (cur.importDir.isBlank()) stringResource(R.string.settings_default_system) else (cur.importDir.toUri().lastPathSegment ?: stringResource(R.string.settings_default_system)),
             modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         OutlinedButton(onClick = onPickImportDir) { Icon(Icons.Filled.Folder, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.action_browse)) }
     }
@@ -532,7 +623,7 @@ private val CompactChipHeight = 28.dp
     }
 }
 
-@Composable private fun CompactIconButton(onClick: () -> Unit, contentDescription: String?, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+@Composable private fun CompactIconButton(onClick: () -> Unit, contentDescription: String?, icon: ImageVector) {
     IconButton(onClick = onClick, modifier = Modifier.size(CompactIconButtonSize)) {
         Icon(icon, contentDescription, modifier = Modifier.size(CompactIconSize))
     }
@@ -548,7 +639,7 @@ private val CompactChipHeight = 28.dp
 }
 
 /** Slider compact : le thumb accepte une taille personnalisée via [SliderDefaults.Thumb], mais le
- *  track par défaut a une hauteur fixe non surchageable - on le redessine donc à la main. */
+ *  track par défaut a une hauteur fixe non surchargeable, on le redessine donc à la main. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun CompactSlider(
     value: Float, onValueChange: (Float) -> Unit,
@@ -768,7 +859,7 @@ private val CompactChipHeight = 28.dp
             CompactOutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.settings_field_name)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             // Pour un MBTILES, le fichier est fixe (résolu via le dossier mbtiles) et son emplacement est
-            // affiché plus bas en lecture seule : pas de champ éditable. `url` conserve sa valeur d'origine.
+            // affiché plus bas en lecture seule : pas de champ éditable. 'url' conserve sa valeur d'origine.
             if (!isMbtiles) CompactOutlinedTextField(url, { url = it }, label = { Text(stringResource(R.string.settings_field_url)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
             if (!isMbtiles) CompactOutlinedTextField(key, { key = it }, label = { Text(stringResource(R.string.settings_field_api_key)) },

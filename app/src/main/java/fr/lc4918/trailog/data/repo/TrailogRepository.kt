@@ -238,14 +238,33 @@ class TrailogRepository(private val ctx: Context) {
         return runCatching { mapFile.writeText(mapGeoJson); mapFile }.getOrNull()
     }
 
+    /** Derniers points charges, gardes en memoire. Un tap sur un marqueur relit et re-parse sinon tout le
+     *  fichier de couche - traces comprises - pour n'en garder que les waypoints (~280 ms mesures sur une
+     *  trace de 2700 points), et ce a chaque tap. Cle = (couche, revision du fichier) : toute reecriture
+     *  (saveFeatures, reimport) change la revision et perime l'entree, sans purge explicite a maintenir.
+     *  Une seule entree : on ne consulte qu'une infobulle a la fois. */
+    private class PointCache(val layerId: Long, val revision: Long, val data: PointLayerData)
+    @Volatile private var pointCache: PointCache? = null
+
+    /** Horodatage ^ taille : change des que le fichier est reecrit (meme convention que le .map du rendu). */
+    private fun fileRevision(f: File): Long = if (f.exists()) f.lastModified() xor (f.length() * 1000003L) else 0L
+
+    /** Copie a rendre a l'appelant : saveFeature remplace un element de `features` en place, ce qui
+     *  corromprait l'instance en cache. PointFeature/SchemaItem sont immuables -> copier les listes suffit. */
+    private fun PointLayerData.detached() = PointLayerData(name, schema.toMutableList(), features.toMutableList())
+
     suspend fun loadLayer(layer: LayerEntity): PointLayerData = withContext(Dispatchers.IO) {
         val f = File(layersDir, layer.geometryFile)
+        val revision = fileRevision(f)
+        pointCache?.let { c -> if (c.layerId == layer.id && c.revision == revision) return@withContext c.data.detached() }
         val text = if (f.exists()) f.readText() else null
         // Parse JSON = CPU pur -> un seul passage sur Dispatchers.Default.
         val points = withContext(Dispatchers.Default) {
             text?.let { LayerGeoJson.parse(it).points.toMutableList() } ?: mutableListOf()
         }
-        PointLayerData(layer.name, LayerGeoJson.parseSchema(layer.schemaJson), points)
+        val data = PointLayerData(layer.name, LayerGeoJson.parseSchema(layer.schemaJson), points)
+        pointCache = PointCache(layer.id, revision, data.detached())
+        data
     }
 
     /** Réécrit les points (et le schéma) tout en préservant les lignes existantes du fichier. */
@@ -265,6 +284,9 @@ class TrailogRepository(private val ctx: Context) {
             // Régénère le .map précalculé (les points ont changé).
             File(layersDir, layer.geometryFile + MAP_SUFFIX).writeText(mapGeoJson)
             db.layers().updateSchema(layer.id, LayerGeoJson.writeSchema(data.schema))
+            // On vient d'ecrire le fichier : on connait deja son contenu, autant garder le cache chaud plutot
+            // que de le laisser perimer et faire re-parser le prochain tap. Revision lue APRES l'ecriture.
+            pointCache = PointCache(layer.id, fileRevision(f), data.detached())
         }
 
     suspend fun importImage(input: java.io.InputStream, displayName: String): String =

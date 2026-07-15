@@ -187,6 +187,22 @@
     <string name="bubble_image_not_found">(Bild nicht gefunden)</string>
     <string name="field_display_text">Anzeigetext</string>
     <string name="field_image_source">Bild (Datei oder URL)</string>
+    <string name="field_alias_name">Titel</string>
+    <string name="field_alias_ele">Höhe</string>
+    <string name="field_alias_desc">Beschreibung</string>
+    <string name="field_alias_cmt">Kommentar</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Feldname</string>
+    <string name="action_add_field">Feld hinzufügen</string>
+    <string name="action_remove_field">Feld entfernen</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_link">Link</string>
+    <string name="field_type_image">Bild</string>
+    <string name="error_invalid_url">Ungültige URL (http:// oder https://)</string>
+    <string name="action_delete_point">Markierung löschen</string>
+    <string name="dialog_delete_point_title">Markierung löschen?</string>
+    <string name="dialog_delete_point_text">Diese Markierung und ihre Eigenschaften werden gelöscht.</string>
     <string name="field_composite_name">Name der Kombination</string>
     <string name="field_foreground_opacity">Transparenz der Vordergrundebene: %1$d%%</string>
     <string name="label_foreground_layer">Vordergrundebene</string>
@@ -211,4 +227,15 @@
     <!-- Import/Export von Anbietern -->
     <string name="dialog_import_providers_title">Anbieter importieren?</string>
     <string name="dialog_import_providers_text">%1$d Anbieter werden importiert. Bestehende Anbieter mit derselben ID werden überschrieben.</string>
+    <string name="settings_bubble_position">Position der Sprechblase</string>
+    <string name="bubble_pos_auto">Automatisch</string>
+    <string name="bubble_pos_top_left">Oben links</string>
+    <string name="bubble_pos_top">Oben</string>
+    <string name="bubble_pos_top_right">Oben rechts</string>
+    <string name="bubble_pos_middle_left">Mitte links</string>
+    <string name="bubble_pos_center">Zentriert</string>
+    <string name="bubble_pos_middle_right">Mitte rechts</string>
+    <string name="bubble_pos_bottom_left">Unten links</string>
+    <string name="bubble_pos_bottom">Unten</string>
+    <string name="bubble_pos_bottom_right">Unten rechts</string>
 </resources>

@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -83,8 +84,12 @@ import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
+import fr.lc4918.trailog.domain.model.BubblePosition
+import fr.lc4918.trailog.ui.points.BubblePlacement
 import fr.lc4918.trailog.ui.points.InfoBubble
+import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
+import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import kotlinx.coroutines.launch
@@ -138,7 +143,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val profilePointA by vm.profilePointA.collectAsState()
     val profilePointB by vm.profilePointB.collectAsState()
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
+    val selectedMarkerPos by vm.selectedMarkerPos.collectAsState()
     val markerLayerData by vm.markerLayerData.collectAsState()
+    // Marqueur sélectionné, dérivé des états collectés (et non lu via vm.selectedFeature(), qui lit
+    // StateFlow.value sans que Compose ne s'y abonne : l'arrivée des propriétés ne déclencherait alors
+    // aucune recomposition et l'infobulle resterait bloquée sur son spinner).
+    val selectedFeature = remember(markerLayerData, selectedMarkerId) {
+        markerLayerData?.features?.firstOrNull { it.id == selectedMarkerId }
+    }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -264,7 +276,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             }
         } else {
             controller.onRawTap = null
-            controller.onPickPoint = { key, fid -> vm.onPickPoint(key, fid) }
+            controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
             controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
             controller.onTapEmpty = { vm.closeOnEmpty() }
         }
@@ -293,7 +305,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             vm.importLayer(bytes, name, pendingFolder)
         }
     }
-    fun launchPicker() { picker.launch(settings?.importDir?.takeIf { it.isNotBlank() }?.let { it.toUri() }) }
+    // Photos locales des waypoints (GPX OruxMaps/OsmAnd/Locus/Garmin) : lues en acces fichier direct dans le
+    // stockage partage a l'import (resolveLocalImages) -> permission de lecture des images. Demandee juste
+    // avant le selecteur de fichier ; un refus n'empeche pas l'import (les photos afficheront "introuvable").
+    val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
+    fun doLaunchPicker() { picker.launch(settings?.importDir?.takeIf { it.isNotBlank() }?.let { it.toUri() }) }
+    val mediaPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { doLaunchPicker() }
+    fun launchPicker() {
+        if (ContextCompat.checkSelfPermission(ctx, mediaPermission) == PackageManager.PERMISSION_GRANTED) doLaunchPicker()
+        else mediaPermissionLauncher.launch(mediaPermission)
+    }
 
     // import d'image pour un champ IMAGE d'infobulle (PropertyEditor) : callback enregistré au moment du tap
     var pendingImageCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
@@ -354,9 +376,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         }
     }
     var bubbleOffset by remember { mutableStateOf<IntOffset?>(null) }
-    LaunchedEffect(selectedMarkerId, idleTick, renderLayers) {
-        val f = vm.selectedFeature()
-        bubbleOffset = f?.let { controller.screenOf(it.lon, it.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) } }
+    // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
+    // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
+    LaunchedEffect(selectedMarkerPos, idleTick, renderLayers) {
+        val pos = selectedMarkerPos
+        bubbleOffset = pos?.let { (lon, lat) ->
+            controller.screenOf(lon, lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+        }
     }
     var editing by remember { mutableStateOf(false) }
     // conserve le dernier profil pour l'animation de disparition
@@ -481,23 +507,57 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
-                // infobulle bornée à l'écran
-                val feature = vm.selectedFeature()
+                // Infobulle. Affichée dès le tap (spinner tant que les propriétés chargent), placée selon le
+                // réglage Carte / Infobulles. Le placement est calculé dans la phase de layout, une fois la
+                // taille réelle mesurée : la bulle apparaît donc directement au bon endroit, sans le saut que
+                // provoquait un premier passage à taille nulle.
                 val off = bubbleOffset
-                if (feature != null && off != null && !editing) {
-                    val d = LocalDensity.current
-                    val cardW = with(d) { 280.dp.toPx() }; val cardH = with(d) { 240.dp.toPx() }
-                    val maxW = constraints.maxWidth.toFloat(); val maxH = constraints.maxHeight.toFloat()
-                    var bx = off.x - cardW / 2f
-                    var by = off.y + 30f
-                    if (by + cardH > maxH) by = off.y - cardH - 30f
-                    bx = bx.coerceIn(8f, (maxW - cardW - 8f).coerceAtLeast(8f))
-                    by = by.coerceIn(8f, (maxH - cardH - 8f).coerceAtLeast(8f))
-                    Box(Modifier.offset { IntOffset(bx.toInt(), by.toInt()) }) {
-                        InfoBubble(feature = feature, schema = markerLayerData?.schema ?: emptyList(),
-                            fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
-                            titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
-                            onEdit = { editing = true }, onClose = { vm.closeMarker() })
+                if (off != null && selectedMarkerId != null && !editing) {
+                    val maxH = constraints.maxHeight
+                    val topInset = WindowInsets.statusBars.getTop(density)
+                    val margin = with(density) { 8.dp.roundToPx() }
+                    val gap = with(density) { 10.dp.roundToPx() }
+                    val markerPxI = markerPx.toInt()
+                    // Hauteur max de l'infobulle : elle tient sous la barre de statut (avec marges) sans
+                    // jamais couvrir plus de 60 % de l'écran, pour laisser voir la carte autour.
+                    val maxBubbleHeightDp = with(density) {
+                        minOf(maxH - topInset - 2 * margin, (maxH * BubbleMaxHeightRatio).toInt()).toDp()
+                    }
+                    val bubblePos = BubblePosition.of(settings?.bubblePosition)
+                    // Dernier placement calculé au layout : sert au recentrage de carte (hors AUTO).
+                    var placement by remember(selectedMarkerId) { mutableStateOf<BubblePlacement?>(null) }
+                    Layout(
+                        content = {
+                            if (selectedFeature != null) {
+                                InfoBubble(feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
+                                    fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
+                                    titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
+                                    maxHeightDp = maxBubbleHeightDp,
+                                    onEdit = { editing = true }, onClose = { vm.closeMarker() })
+                            } else {
+                                InfoBubbleLoading()
+                            }
+                        },
+                    ) { measurables, cs ->
+                        val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
+                        val pl = computeBubblePlacement(
+                            pos = bubblePos, markerX = off.x, markerY = off.y,
+                            bubbleW = p.width, bubbleH = p.height,
+                            viewW = cs.maxWidth, viewH = cs.maxHeight,
+                            topInset = topInset, margin = margin, gap = gap, markerHeight = markerPxI,
+                        )
+                        if (placement != pl) placement = pl
+                        layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                    }
+                    // Recentrage de la carte quand le placement demandé ne tient pas (jamais en AUTO).
+                    // Une seule fois par marqueur : la carte bouge -> le marqueur bouge -> nouveau placement,
+                    // qui tient cette fois ; sans ce garde-fou, les deux se relanceraient mutuellement.
+                    var pannedFor by remember { mutableStateOf<String?>(null) }
+                    LaunchedEffect(selectedMarkerId, placement) {
+                        val pl = placement ?: return@LaunchedEffect
+                        if (bubblePos == BubblePosition.AUTO || pannedFor == selectedMarkerId) return@LaunchedEffect
+                        if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+                        pannedFor = selectedMarkerId
                     }
                 }
                 // tracé de la bounding box hors-ligne (SPEC section 2)
@@ -773,10 +833,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     if (editing) {
-        val f = vm.selectedFeature()
-        if (f != null) PropertyEditor(
-            feature = f, schema = markerLayerData?.schema ?: emptyList(),
+        // Même dérivation que l'infobulle : un vm.selectedFeature() ici ne serait pas observé par Compose.
+        if (selectedFeature != null) PropertyEditor(
+            feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
             onSave = { vm.saveFeature(it); editing = false }, onCancel = { editing = false },
+            onDelete = { vm.deleteFeature(selectedFeature); editing = false },
             onPickImage = { onImported -> pendingImageCallback = onImported; imagePicker.launch("image/*") },
         )
     }
@@ -1236,6 +1297,9 @@ private fun LayerLine(
 private fun DropIndicatorLine() {
     Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
 }
+
+/** Part de la hauteur d'écran que l'infobulle ne dépasse pas ; au-delà, ses propriétés défilent. */
+private const val BubbleMaxHeightRatio = 0.6f
 
 private val PALETTE = listOf(
     "#1F6FB2", "#1098AD", "#2F9E44", "#7CB342", "#F4B400", "#F08C00", "#E8590C", "#E03131",

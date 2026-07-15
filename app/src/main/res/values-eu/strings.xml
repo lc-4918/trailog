@@ -187,6 +187,22 @@
     <string name="bubble_image_not_found">(irudia ez da aurkitu)</string>
     <string name="field_display_text">Bistaratutako testua</string>
     <string name="field_image_source">Irudia (fitxategia edo URLa)</string>
+    <string name="field_alias_name">Izenburua</string>
+    <string name="field_alias_ele">Altitudea</string>
+    <string name="field_alias_desc">Deskribapena</string>
+    <string name="field_alias_cmt">Iruzkina</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Eremuaren izena</string>
+    <string name="action_add_field">Gehitu eremu bat</string>
+    <string name="action_remove_field">Kendu eremua</string>
+    <string name="field_type_text">Testua</string>
+    <string name="field_type_link">Esteka</string>
+    <string name="field_type_image">Irudia</string>
+    <string name="error_invalid_url">URL baliogabea (http:// edo https://)</string>
+    <string name="action_delete_point">Ezabatu markatzailea</string>
+    <string name="dialog_delete_point_title">Markatzailea ezabatu?</string>
+    <string name="dialog_delete_point_text">Markatzaile hau eta bere propietateak ezabatuko dira.</string>
     <string name="field_composite_name">Konposatuaren izena</string>
     <string name="field_foreground_opacity">Aurreko planoko geruzaren gardentasuna: %1$d%%</string>
     <string name="label_foreground_layer">Aurreko planoko geruza</string>
@@ -211,4 +227,15 @@
     <!-- Hornitzaileen inportazioa/esportazioa -->
     <string name="dialog_import_providers_title">Hornitzaileak inportatu?</string>
     <string name="dialog_import_providers_text">%1$d hornitzaile inportatuko dira. Id bera duten hornitzaile existenteak gainidatziko dira.</string>
+    <string name="settings_bubble_position">Bunbuiloaren kokapena</string>
+    <string name="bubble_pos_auto">Automatikoa</string>
+    <string name="bubble_pos_top_left">Goian-ezkerrean</string>
+    <string name="bubble_pos_top">Goian</string>
+    <string name="bubble_pos_top_right">Goian-eskuinean</string>
+    <string name="bubble_pos_middle_left">Erdian-ezkerrean</string>
+    <string name="bubble_pos_center">Erdian</string>
+    <string name="bubble_pos_middle_right">Erdian-eskuinean</string>
+    <string name="bubble_pos_bottom_left">Behean-ezkerrean</string>
+    <string name="bubble_pos_bottom">Behean</string>
+    <string name="bubble_pos_bottom_right">Behean-eskuinean</string>
 </resources>

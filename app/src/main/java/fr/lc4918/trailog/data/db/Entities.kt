@@ -137,4 +137,8 @@ data class SettingsEntity(
     // Colonne DB nommée "verticalExaggeration" (le réglage était d'abord une exagération, remplacé par une
     // échelle absolue) : on garde le nom de colonne pour éviter une migration supplémentaire.
     @ColumnInfo(name = "verticalExaggeration") val profileVerticalScaleMPerCm: Int = 0,
+    // Placement de l'infobulle par rapport au marqueur tapé (cf. BubblePosition) : "auto" = sous le marqueur,
+    // basculée au-dessus si ça ne tient pas, bornée à l'écran, sans jamais bouger la carte. Les 9 autres
+    // valeurs imposent un placement fixe autour du point et peuvent recentrer la carte pour tenir à l'écran.
+    val bubblePosition: String = "auto",
 )

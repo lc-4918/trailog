@@ -187,6 +187,22 @@
     <string name="bubble_image_not_found">(immagine non trovata)</string>
     <string name="field_display_text">Testo visualizzato</string>
     <string name="field_image_source">Immagine (file o URL)</string>
+    <string name="field_alias_name">Titolo</string>
+    <string name="field_alias_ele">Altitudine</string>
+    <string name="field_alias_desc">Descrizione</string>
+    <string name="field_alias_cmt">Commento</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Nome del campo</string>
+    <string name="action_add_field">Aggiungi un campo</string>
+    <string name="action_remove_field">Rimuovi il campo</string>
+    <string name="field_type_text">Testo</string>
+    <string name="field_type_link">Collegamento</string>
+    <string name="field_type_image">Immagine</string>
+    <string name="error_invalid_url">URL non valido (http:// o https://)</string>
+    <string name="action_delete_point">Elimina l\'indicatore</string>
+    <string name="dialog_delete_point_title">Eliminare l\'indicatore?</string>
+    <string name="dialog_delete_point_text">Questo indicatore e le sue proprietà saranno eliminati.</string>
     <string name="field_composite_name">Nome del composito</string>
     <string name="field_foreground_opacity">Trasparenza del livello in primo piano: %1$d%%</string>
     <string name="label_foreground_layer">Livello in primo piano</string>
@@ -211,4 +227,15 @@
     <!-- Importazione/esportazione dei fornitori -->
     <string name="dialog_import_providers_title">Importare i fornitori?</string>
     <string name="dialog_import_providers_text">Verranno importati %1$d fornitori. I fornitori esistenti con lo stesso id verranno sovrascritti.</string>
+    <string name="settings_bubble_position">Posizione del fumetto</string>
+    <string name="bubble_pos_auto">Automatica</string>
+    <string name="bubble_pos_top_left">In alto a sinistra</string>
+    <string name="bubble_pos_top">In alto</string>
+    <string name="bubble_pos_top_right">In alto a destra</string>
+    <string name="bubble_pos_middle_left">Al centro a sinistra</string>
+    <string name="bubble_pos_center">Al centro</string>
+    <string name="bubble_pos_middle_right">Al centro a destra</string>
+    <string name="bubble_pos_bottom_left">In basso a sinistra</string>
+    <string name="bubble_pos_bottom">In basso</string>
+    <string name="bubble_pos_bottom_right">In basso a destra</string>
 </resources>

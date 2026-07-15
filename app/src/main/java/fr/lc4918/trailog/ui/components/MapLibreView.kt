@@ -6,6 +6,8 @@ import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +41,9 @@ data class RenderLayer(val key: String, val uri: String, val revision: Long, val
 class MapController {
     var map: MapLibreMap? = null
     var style: Style? = null
-    var onPickPoint: ((String, String) -> Unit)? = null
+    /** (cle de couche, id du marqueur, lon, lat). Les coordonnees viennent de la geometrie interrogee :
+     *  elles permettent de placer l'infobulle des le tap, sans attendre le chargement de la couche. */
+    var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
     /** Si défini, intercepte tout tap sur la carte AVANT le test de sélection point/ligne habituel
@@ -72,7 +76,80 @@ class MapController {
     private var appliedKey: String? = null
 
     fun attachDensity(d: Float) { density = d }
-    fun attachContext(c: Context) { appContext = c.applicationContext }
+    fun attachContext(c: Context) {
+        appContext = c.applicationContext
+        touchSlopPx = android.view.ViewConfiguration.get(c).scaledTouchSlop.toFloat()
+    }
+
+    // ---- tap rapide (voir handleFastTap) : etat du geste en cours, alimente par onMapTouch ----
+    private var downX = 0f
+    private var downY = 0f
+    private var multiTouch = false
+    private var fastPicked = false
+    private var touchSlopPx = 24f
+
+    /** Evenements tactiles bruts de la MapView, observes sans etre consommes : MapLibre continue de gerer
+     *  pan / fling / double-tap-zoom / long press normalement, on se contente d'un signal plus precoce. */
+    fun onMapTouch(e: MotionEvent) {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { downX = e.x; downY = e.y; multiTouch = false; fastPicked = false }
+            MotionEvent.ACTION_POINTER_DOWN -> multiTouch = true
+            MotionEvent.ACTION_UP -> {
+                val moved = Math.hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
+                val heldMs = e.eventTime - e.downTime
+                if (!multiTouch && moved < touchSlopPx && heldMs < ViewConfiguration.getLongPressTimeout()) {
+                    handleFastTap(PointF(e.x, e.y))
+                }
+            }
+        }
+    }
+
+    /**
+     * Selection d'un marqueur des le lever du doigt, sans attendre onMapClick.
+     *
+     * onMapClick = onSingleTapConfirmed : Android arme un message differe de
+     * ViewConfiguration.getDoubleTapTimeout() (300 ms) des l'ACTION_DOWN et ne livre le clic qu'a son
+     * expiration, le temps d'ecarter l'hypothese d'un double-tap. C'est un plancher incompressible sur ce
+     * chemin, mesure a ~306 ms, soit l'essentiel de la latence percue a l'ouverture d'une infobulle.
+     *
+     * Volontairement limite aux MARQUEURS : un double-tap pour zoomer ne doit pas ouvrir le profil d'une
+     * trace ni fermer l'infobulle en cours, donc les taps sur une ligne et dans le vide restent sur le
+     * chemin confirme, au comportement inchange.
+     * Contrepartie assumee : un double-tap pile sur un marqueur ouvre son infobulle en plus de zoomer.
+     */
+    private fun handleFastTap(screen: PointF) {
+        if (onRawTap != null) return          // mode de saisie exclusif (bbox hors-ligne) : pas de selection ici
+        val m = map ?: return
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        for (k in layerKeys) {
+            val feats = m.queryRenderedFeatures(rect, pointLayerId(k))
+            val hit = feats.firstOrNull()?.let { pickOf(k, it) }
+            if (hit != null) {
+                fastPicked = true
+                hit()
+                return
+            }
+        }
+    }
+
+    /** Action de selection d'un marqueur interroge, ou null si la feature n'est pas exploitable. */
+    private fun pickOf(key: String, f: org.maplibre.geojson.Feature): (() -> Unit)? {
+        val id = f.getStringProperty("__id") ?: return null
+        val g = f.geometry() as? org.maplibre.geojson.Point ?: return null
+        return { onPickPoint?.invoke(key, id, g.longitude(), g.latitude()) }
+    }
+
+    /** Decale la carte de (dx, dy) pixels ecran : le contenu, donc le marqueur, se deplace d'autant.
+     *  On deplace le centre courant de (-dx, -dy) puis on y anime la camera. */
+    fun panByScreen(dx: Float, dy: Float) {
+        if (dx == 0f && dy == 0f) return
+        val m = map ?: return
+        val center = m.cameraPosition.target ?: return
+        val p = m.projection.toScreenLocation(center)
+        val newCenter = m.projection.fromScreenLocation(PointF(p.x - dx, p.y - dy))
+        m.easeCamera(CameraUpdateFactory.newLatLng(newCenter), 250)
+    }
 
     fun onMapReady(m: MapLibreMap) {
         map = m
@@ -334,19 +411,20 @@ class MapController {
     }
 
     fun handleTap(latLng: LatLng, screen: PointF) {
+        // Marqueur deja selectionne au lever du doigt (handleFastTap) : ne rien refaire ici.
+        if (fastPicked) return
         onRawTap?.let { it(latLng.longitude, latLng.latitude); return }
         val m = map ?: return
         val tol = tapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
         for (k in layerKeys) {
             val feats = m.queryRenderedFeatures(rect, pointLayerId(k))
-            if (feats.isNotEmpty()) {
-                val id = feats.first().getStringProperty("__id")
-                if (id != null) { onPickPoint?.invoke(k, id); return }
-            }
+            val hit = feats.firstOrNull()?.let { pickOf(k, it) }
+            if (hit != null) { hit(); return }
         }
         for (k in layerKeys) {
-            if (m.queryRenderedFeatures(rect, lineLayerId(k)).isNotEmpty()) {
+            val hit = m.queryRenderedFeatures(rect, lineLayerId(k)).isNotEmpty()
+            if (hit) {
                 onPickLine?.invoke(k, latLng.longitude, latLng.latitude); return
             }
         }
@@ -389,6 +467,9 @@ fun MapLibreView(
 
     AndroidView(modifier = modifier, factory = {
         mapView.also { mv ->
+            // Evenements tactiles bruts : servent au tap rapide (selection d'un marqueur des le lever du
+            // doigt). On renvoie false = evenement non consomme, MapLibre le traite ensuite normalement.
+            mv.setOnTouchListener { _, e -> controller.onMapTouch(e); false }
             mv.getMapAsync { map ->
                 controller.attachDensity(density)
                 controller.attachContext(context)

@@ -187,6 +187,22 @@
     <string name="bubble_image_not_found">(image not found)</string>
     <string name="field_display_text">Display text</string>
     <string name="field_image_source">Image (file or URL)</string>
+    <string name="field_alias_name">Title</string>
+    <string name="field_alias_ele">Elevation</string>
+    <string name="field_alias_desc">Description</string>
+    <string name="field_alias_cmt">Comment</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Field name</string>
+    <string name="action_add_field">Add a field</string>
+    <string name="action_remove_field">Remove field</string>
+    <string name="field_type_text">Text</string>
+    <string name="field_type_link">Link</string>
+    <string name="field_type_image">Image</string>
+    <string name="error_invalid_url">Invalid URL (http:// or https://)</string>
+    <string name="action_delete_point">Delete point</string>
+    <string name="dialog_delete_point_title">Delete point?</string>
+    <string name="dialog_delete_point_text">This marker and its properties will be deleted.</string>
     <string name="field_composite_name">Composite name</string>
     <string name="field_foreground_opacity">Foreground layer transparency: %1$d%%</string>
     <string name="label_foreground_layer">Foreground layer</string>
@@ -211,4 +227,15 @@
     <!-- Provider import/export -->
     <string name="dialog_import_providers_title">Import providers?</string>
     <string name="dialog_import_providers_text">%1$d provider(s) will be imported. Existing providers with the same id will be overwritten.</string>
+    <string name="settings_bubble_position">Bubble position</string>
+    <string name="bubble_pos_auto">Auto</string>
+    <string name="bubble_pos_top_left">Top-left</string>
+    <string name="bubble_pos_top">Top</string>
+    <string name="bubble_pos_top_right">Top-right</string>
+    <string name="bubble_pos_middle_left">Middle-left</string>
+    <string name="bubble_pos_center">Center</string>
+    <string name="bubble_pos_middle_right">Middle-right</string>
+    <string name="bubble_pos_bottom_left">Bottom-left</string>
+    <string name="bubble_pos_bottom">Bottom</string>
+    <string name="bubble_pos_bottom_right">Bottom-right</string>
 </resources>

@@ -191,6 +191,22 @@
     <string name="bubble_image_not_found">(image introuvable)</string>
     <string name="field_display_text">Texte affiché</string>
     <string name="field_image_source">Image (fichier ou URL)</string>
+    <string name="field_alias_name">Titre</string>
+    <string name="field_alias_ele">Altitude</string>
+    <string name="field_alias_desc">Description</string>
+    <string name="field_alias_cmt">Commentaire</string>
+    <string name="unit_meter">m</string>
+    <string name="value_ele_meters">%1$s m</string>
+    <string name="field_name_hint">Nom du champ</string>
+    <string name="action_add_field">Ajouter un champ</string>
+    <string name="action_remove_field">Retirer le champ</string>
+    <string name="field_type_text">Texte</string>
+    <string name="field_type_link">Lien</string>
+    <string name="field_type_image">Image</string>
+    <string name="error_invalid_url">URL invalide (http:// ou https://)</string>
+    <string name="action_delete_point">Supprimer le point</string>
+    <string name="dialog_delete_point_title">Supprimer le point ?</string>
+    <string name="dialog_delete_point_text">Ce marqueur et ses propriétés seront supprimés.</string>
     <string name="field_composite_name">Nom du composite</string>
     <string name="field_foreground_opacity">Transparence de la couche premier plan : %1$d%%</string>
     <string name="label_foreground_layer">Couche premier plan</string>
@@ -215,4 +231,15 @@
     <!-- Import/Export des fournisseurs -->
     <string name="dialog_import_providers_title">Importer les fournisseurs ?</string>
     <string name="dialog_import_providers_text">%1$d fournisseur(s) seront importés. Les fournisseurs existants portant le même identifiant seront écrasés.</string>
+    <string name="settings_bubble_position">Position de l\'infobulle</string>
+    <string name="bubble_pos_auto">Auto</string>
+    <string name="bubble_pos_top_left">Haut-gauche</string>
+    <string name="bubble_pos_top">Haut</string>
+    <string name="bubble_pos_top_right">Haut-droit</string>
+    <string name="bubble_pos_middle_left">Milieu-gauche</string>
+    <string name="bubble_pos_center">Centre</string>
+    <string name="bubble_pos_middle_right">Milieu-droit</string>
+    <string name="bubble_pos_bottom_left">Bas-gauche</string>
+    <string name="bubble_pos_bottom">Bas</string>
+    <string name="bubble_pos_bottom_right">Bas-droit</string>
 </resources>

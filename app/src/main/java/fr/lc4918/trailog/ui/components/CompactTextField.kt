@@ -32,6 +32,9 @@ fun CompactOutlinedTextField(
     placeholder: (@Composable () -> Unit)? = null,
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    suffix: (@Composable () -> Unit)? = null,
+    supportingText: (@Composable () -> Unit)? = null,
+    isError: Boolean = false,
     singleLine: Boolean = false,
     readOnly: Boolean = false,
     enabled: Boolean = true,
@@ -53,9 +56,10 @@ fun CompactOutlinedTextField(
                 visualTransformation = VisualTransformation.None,
                 interactionSource = interactionSource, placeholder = placeholder,
                 leadingIcon = leadingIcon, trailingIcon = trailingIcon,
+                suffix = suffix, supportingText = supportingText, isError = isError,
                 contentPadding = OutlinedTextFieldDefaults.contentPadding(top = 8.dp, bottom = 8.dp),
                 container = {
-                    OutlinedTextFieldDefaults.Container(enabled = enabled, isError = false, interactionSource = interactionSource)
+                    OutlinedTextFieldDefaults.Container(enabled = enabled, isError = isError, interactionSource = interactionSource)
                 },
             )
         }

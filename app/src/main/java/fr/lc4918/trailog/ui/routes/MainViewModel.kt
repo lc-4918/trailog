@@ -100,6 +100,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _markerLayerId = MutableStateFlow<Long?>(null)
     private val _selectedMarkerId = MutableStateFlow<String?>(null)
     val selectedMarkerId = _selectedMarkerId.asStateFlow()
+    // Position du marqueur tapé, connue dès le tap (géométrie interrogée sur la carte) : l'infobulle peut
+    // donc s'afficher et se placer immédiatement, sans attendre le chargement des propriétés de la couche.
+    private val _selectedMarkerPos = MutableStateFlow<Pair<Double, Double>?>(null)
+    val selectedMarkerPos = _selectedMarkerPos.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -182,15 +186,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Tap sur un point d'une couche -> infobulle. key = "ly<id>". */
-    fun onPickPoint(key: String, featureId: String) {
+    fun onPickPoint(key: String, featureId: String, lon: Double, lat: Double) {
         val id = key.removePrefix("ly").toLongOrNull() ?: return
         val layer = layers.value.firstOrNull { it.id == id } ?: return
         if (!layer.hasPoints) return
         closeProfile()
-        _markerLayerId.value = id
-        viewModelScope.launch {
-            _markerLayerData.value = repo.loadLayer(layer)
+        // La position vient de la géométrie tapée : elle suffit à placer l'infobulle tout de suite.
+        _selectedMarkerPos.value = lon to lat
+        // Couche déjà chargée contenant ce marqueur (cas courant : on passe d'un marqueur à l'autre) :
+        // bascule immédiate, sans spinner ni rechargement.
+        val loaded = _markerLayerData.value
+        if (_markerLayerId.value == id && loaded != null && loaded.features.any { it.id == featureId }) {
             _selectedMarkerId.value = featureId
+            return
+        }
+        // Sinon : infobulle affichée vide avec un spinner, les propriétés arrivent ensuite (cf. profil).
+        _markerLayerId.value = id
+        _selectedMarkerId.value = featureId
+        _markerLayerData.value = null
+        viewModelScope.launch {
+            val data = repo.loadLayer(layer)
+            // Un autre marqueur a pu être tapé entre-temps : ne pas écraser la sélection courante.
+            if (_markerLayerId.value != id || _selectedMarkerId.value != featureId) return@launch
+            _markerLayerData.value = data
         }
     }
 
@@ -199,7 +217,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // Les zooms disparaissent mais la carte ne bouge pas (pas d'effet de bord ici, juste l'etat local).
         resetProfileZoom()
     }
-    fun closeMarker() { _selectedMarkerId.value = null; _markerLayerId.value = null; _markerLayerData.value = null }
+    fun closeMarker() {
+        _selectedMarkerId.value = null; _markerLayerId.value = null; _markerLayerData.value = null
+        _selectedMarkerPos.value = null
+    }
     fun setCursor(index: Int?) { _cursor.value = index }
 
     private fun resetProfileZoom() {
@@ -265,16 +286,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun deleteFeature(target: PointFeature) {
+        val id = _markerLayerId.value ?: return
+        val layer = layers.value.firstOrNull { it.id == id } ?: return
+        val data = _markerLayerData.value ?: return
+        val features = data.features.filterTo(mutableListOf()) { it.id != target.id }
+        if (features.size == data.features.size) return
+        val newData = data.copy(features = features)
+        // Tout de suite, pas dans la coroutine : le marqueur n'existe plus, rien à rouvrir. Refermé après
+        // l'écriture, l'infobulle du point supprimé se réafficherait le temps de celle-ci, l'éditeur se
+        // fermant lui sans attendre. La couche et les points à écrire sont déjà capturés ci-dessus.
+        closeMarker()
+        viewModelScope.launch {
+            repo.saveFeatures(layer, newData)
+            renderTick.value++              // le .map réécrit change de révision -> rechargement des marqueurs
+        }
+    }
+
     fun saveFeature(updated: PointFeature) {
         val id = _markerLayerId.value ?: return
         val layer = layers.value.firstOrNull { it.id == id } ?: return
         val data = _markerLayerData.value ?: return
         val idx = data.features.indexOfFirst { it.id == updated.id }
         if (idx < 0) return
-        data.features[idx] = updated
-        _markerLayerData.value = data.copy()
+        // Liste neuve, sans toucher à l'ancienne : muter en place rendrait la valeur déjà publiée égale à
+        // la nouvelle, et StateFlow, qui conflate sur equals, n'émettrait rien. L'infobulle resterait alors
+        // sur le marqueur d'avant jusqu'à sa réouverture.
+        val newData = data.copy(features = data.features.toMutableList().also { it[idx] = updated })
+        _markerLayerData.value = newData
         viewModelScope.launch {
-            repo.saveFeatures(layer, data)
+            repo.saveFeatures(layer, newData)
             renderTick.value++              // le .map réécrit change de révision -> rechargement des marqueurs
         }
     }
