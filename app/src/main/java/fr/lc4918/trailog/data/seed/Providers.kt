@@ -19,7 +19,7 @@ object Providers {
                 maxZoom = 19, attribution = "© OpenStreetMap contributors", sortOrder = n()),
             ProviderEntity("mapbox_outdoors", "Mapbox Outdoors", "Monde", "XYZ",
                 "https://api.mapbox.com/styles/v1/mapbox/outdoors-v10/tiles/256/{z}/{x}/{y}@2x?access_token={KEY}",
-                apiKey = "", maxZoom = 21, sortOrder = n()),
+                apiKey = "pk.eyJ1IjoiZHVuY2FuZ3JhaGFtIiwiYSI6IlJJcWdFczQifQ.9HUpTV1es8IjaGAf_s64VQ", maxZoom = 21, sortOrder = n()),
             ProviderEntity("google_street", "Google Street", "Monde", "XYZ",
                 "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
                 subdomains = "0,1,2,3", maxZoom = 20, sortOrder = n()),
