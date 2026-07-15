@@ -230,9 +230,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     CompactSlider(value = cur.basemapControlWidthPct.toFloat(), valueRange = 20f..90f,
         onValueChange = { vm.save(cur.copy(basemapControlWidthPct = it.toInt())) })
     Text(stringResource(R.string.settings_basemap_control_opacity, cur.basemapControlOpacityPct), style = MaterialTheme.typography.bodyMedium)
-    CompactSlider(value = cur.basemapControlOpacityPct.toFloat(), valueRange = 0f..90f,
+    CompactSlider(value = cur.basemapControlOpacityPct.toFloat(), valueRange = 30f..100f,
         onValueChange = { vm.save(cur.copy(basemapControlOpacityPct = it.toInt())) })
-    TextButton(onClick = { vm.save(cur.copy(basemapControlWidthPct = 50, basemapControlOpacityPct = 20)) }) {
+    TextButton(onClick = { vm.save(cur.copy(basemapControlWidthPct = 50, basemapControlOpacityPct = 80)) }) {
         Text(stringResource(R.string.action_reset_defaults))
     }
     Section(stringResource(R.string.settings_section_scale))

@@ -132,7 +132,9 @@ data class SettingsEntity(
     val avatarSource: String = "",                  // chemin fichier local ou URL ; vide = icône par défaut
     val showBasemapControlButton: Boolean = true,   // bouton du gestionnaire de fonds de plan sur la carte
     val basemapControlWidthPct: Int = 50,           // largeur du panneau (% de la largeur d'écran)
-    val basemapControlOpacityPct: Int = 20,         // transparence du panneau (%)
+    // Opacité du panneau (%), appliquée telle quelle en alpha. A porté la transparence jusqu'à la
+    // migration 20->21, qui a inversé les valeurs en base pour coller enfin au nom de la colonne.
+    val basemapControlOpacityPct: Int = 80,
     val bubbleTitleFont: Int = 14,                  // taille police du titre de l'infobulle ("Marqueur")
     val bubbleTitleBold: Boolean = true,
     val simplifyRender: Boolean = true,             // simplifier la géométrie des traces dans le rendu de carte

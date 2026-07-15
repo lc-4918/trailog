@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -73,11 +73,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // settings.basemapControlOpacityPct portait une transparence malgré son nom (appliquée en
+        // "1 - valeur"), et devient l'opacité réelle. Sans conversion, un panneau réglé à 20 %
+        // deviendrait presque invisible au lieu de rester à 80 % d'opacité. La borne basse suit le
+        // nouveau minimum du réglage : une transparence de 90 % donnerait 10 %, hors plage.
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE settings SET basemapControlOpacityPct = " +
+                    "MAX(30, 100 - basemapControlOpacityPct)")
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

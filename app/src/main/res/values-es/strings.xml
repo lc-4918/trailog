@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Gestor de mapas base</string>
     <string name="settings_show_basemap_control_button">Mostrar el botón del gestor de mapas base</string>
     <string name="settings_basemap_control_width">Ancho del panel: %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Transparencia del panel: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Opacidad del panel: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapa base predeterminado</string>
     <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
     <string name="settings_app_folder_default">Carpeta de la app (predeterminada)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">¿Eliminar el marcador?</string>
     <string name="dialog_delete_point_text">Este marcador y sus propiedades se eliminarán.</string>
     <string name="field_composite_name">Nombre del compuesto</string>
-    <string name="field_foreground_opacity">Transparencia de la capa en primer plano: %1$d%%</string>
+    <string name="field_foreground_opacity">Opacidad de la capa de primer plano: %1$d%%</string>
     <string name="label_foreground_layer">Capa en primer plano</string>
     <string name="label_background_layer">Capa de fondo</string>
     <string name="basemap_control_title">Mapas base</string>

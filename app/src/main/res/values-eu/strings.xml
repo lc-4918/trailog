@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Oinarrizko mapen kudeatzailea</string>
     <string name="settings_show_basemap_control_button">Erakutsi oinarrizko mapen kudeatzailearen botoia</string>
     <string name="settings_basemap_control_width">Panelaren zabalera: %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Panelaren gardentasuna: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Panelaren opakutasuna: %1$d%%</string>
     <string name="settings_section_default_basemap">Oinarrizko mapa lehenetsia</string>
     <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
     <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">Markatzailea ezabatu?</string>
     <string name="dialog_delete_point_text">Markatzaile hau eta bere propietateak ezabatuko dira.</string>
     <string name="field_composite_name">Konposatuaren izena</string>
-    <string name="field_foreground_opacity">Aurreko planoko geruzaren gardentasuna: %1$d%%</string>
+    <string name="field_foreground_opacity">Aurreko planoko geruzaren opakutasuna: %1$d%%</string>
     <string name="label_foreground_layer">Aurreko planoko geruza</string>
     <string name="label_background_layer">Atzeko planoko geruza</string>
     <string name="basemap_control_title">Oinarrizko mapak</string>

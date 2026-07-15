@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Gestionnaire de fonds de plan</string>
     <string name="settings_show_basemap_control_button">Afficher le bouton du gestionnaire de fonds de plan</string>
     <string name="settings_basemap_control_width">Largeur du panneau : %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Transparence du panneau : %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Opacité du panneau : %1$d%%</string>
     <string name="settings_section_default_basemap">Fond par défaut</string>
     <string name="settings_section_mbtiles_folder">Dossier des MBTiles</string>
     <string name="settings_app_folder_default">Dossier de l\'app (défaut)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">Supprimer le point ?</string>
     <string name="dialog_delete_point_text">Ce marqueur et ses propriétés seront supprimés.</string>
     <string name="field_composite_name">Nom du composite</string>
-    <string name="field_foreground_opacity">Transparence de la couche premier plan : %1$d%%</string>
+    <string name="field_foreground_opacity">Opacité de la couche premier plan : %1$d%%</string>
     <string name="label_foreground_layer">Couche premier plan</string>
     <string name="label_background_layer">Couche arrière-plan</string>
     <string name="basemap_control_title">Fonds de plan</string>
