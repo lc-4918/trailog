@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Kartengrundlagen-Verwaltung</string>
     <string name="settings_show_basemap_control_button">Button für Kartengrundlagen-Verwaltung anzeigen</string>
     <string name="settings_basemap_control_width">Panelbreite: %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Paneltransparenz: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Deckkraft des Bereichs: %1$d%%</string>
     <string name="settings_section_default_basemap">Standardkartengrundlage</string>
     <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
     <string name="settings_app_folder_default">App-Ordner (Standard)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">Markierung löschen?</string>
     <string name="dialog_delete_point_text">Diese Markierung und ihre Eigenschaften werden gelöscht.</string>
     <string name="field_composite_name">Name der Kombination</string>
-    <string name="field_foreground_opacity">Transparenz der Vordergrundebene: %1$d%%</string>
+    <string name="field_foreground_opacity">Deckkraft der Vordergrundebene: %1$d%%</string>
     <string name="label_foreground_layer">Vordergrundebene</string>
     <string name="label_background_layer">Hintergrundebene</string>
     <string name="basemap_control_title">Kartengrundlagen</string>

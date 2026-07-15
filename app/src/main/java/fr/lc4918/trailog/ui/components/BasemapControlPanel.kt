@@ -232,7 +232,7 @@ fun BasemapControlPanel(
     // du panneau. Un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
     // textes/icônes illisibles en thème sombre.
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 1f - backgroundAlpha),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
         contentColor = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.fillMaxWidth(widthFraction).fillMaxHeight(),
     ) {

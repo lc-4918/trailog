@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Basemap manager</string>
     <string name="settings_show_basemap_control_button">Show basemap manager button</string>
     <string name="settings_basemap_control_width">Panel width: %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Panel transparency: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Panel opacity: %1$d%%</string>
     <string name="settings_section_default_basemap">Default basemap</string>
     <string name="settings_section_mbtiles_folder">MBTiles folder</string>
     <string name="settings_app_folder_default">App folder (default)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">Delete point?</string>
     <string name="dialog_delete_point_text">This marker and its properties will be deleted.</string>
     <string name="field_composite_name">Composite name</string>
-    <string name="field_foreground_opacity">Foreground layer transparency: %1$d%%</string>
+    <string name="field_foreground_opacity">Foreground layer opacity: %1$d%%</string>
     <string name="label_foreground_layer">Foreground layer</string>
     <string name="label_background_layer">Background layer</string>
     <string name="basemap_control_title">Basemaps</string>

@@ -786,7 +786,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         folders = basemapFolders, providers = providers, composites = composites,
                         currentBasemapId = settings?.defaultBasemapId ?: "",
                         widthFraction = (settings?.basemapControlWidthPct ?: 50) / 100f,
-                        backgroundAlpha = (settings?.basemapControlOpacityPct ?: 20) / 100f,
+                        backgroundAlpha = (settings?.basemapControlOpacityPct ?: 80) / 100f,
                         onSelect = { id -> vm.selectBasemap(id); basemapControlOpen = false },
                         onCreateFolder = { name, parentId -> vm.createBasemapFolder(name, parentId) },
                         onReorderDrop = { k, id, tk, tid, pos -> vm.reorderBasemapDrop(k, id, tk, tid, pos) },

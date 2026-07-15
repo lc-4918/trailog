@@ -167,7 +167,7 @@
     <string name="settings_section_basemap_control">Gestione mappe di base</string>
     <string name="settings_show_basemap_control_button">Mostra il pulsante di gestione delle mappe di base</string>
     <string name="settings_basemap_control_width">Larghezza del pannello: %1$d%%</string>
-    <string name="settings_basemap_control_opacity">Trasparenza del pannello: %1$d%%</string>
+    <string name="settings_basemap_control_opacity">Opacità del pannello: %1$d%%</string>
     <string name="settings_section_default_basemap">Mappa di base predefinita</string>
     <string name="settings_section_mbtiles_folder">Cartella MBTiles</string>
     <string name="settings_app_folder_default">Cartella dell\'app (predefinita)</string>
@@ -208,7 +208,7 @@
     <string name="dialog_delete_point_title">Eliminare l\'indicatore?</string>
     <string name="dialog_delete_point_text">Questo indicatore e le sue proprietà saranno eliminati.</string>
     <string name="field_composite_name">Nome del composito</string>
-    <string name="field_foreground_opacity">Trasparenza del livello in primo piano: %1$d%%</string>
+    <string name="field_foreground_opacity">Opacità del livello in primo piano: %1$d%%</string>
     <string name="label_foreground_layer">Livello in primo piano</string>
     <string name="label_background_layer">Livello di sfondo</string>
     <string name="basemap_control_title">Mappe di base</string>
