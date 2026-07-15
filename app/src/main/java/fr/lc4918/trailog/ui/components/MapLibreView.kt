@@ -35,6 +35,10 @@ import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
+import kotlin.math.hypot
+import kotlin.math.pow
 
 data class RenderLayer(val key: String, val uri: String, val revision: Long, val color: String)
 
@@ -78,7 +82,7 @@ class MapController {
     fun attachDensity(d: Float) { density = d }
     fun attachContext(c: Context) {
         appContext = c.applicationContext
-        touchSlopPx = android.view.ViewConfiguration.get(c).scaledTouchSlop.toFloat()
+        touchSlopPx = ViewConfiguration.get(c).scaledTouchSlop.toFloat()
     }
 
     // ---- tap rapide (voir handleFastTap) : etat du geste en cours, alimente par onMapTouch ----
@@ -95,7 +99,7 @@ class MapController {
             MotionEvent.ACTION_DOWN -> { downX = e.x; downY = e.y; multiTouch = false; fastPicked = false }
             MotionEvent.ACTION_POINTER_DOWN -> multiTouch = true
             MotionEvent.ACTION_UP -> {
-                val moved = Math.hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
+                val moved = hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
                 val heldMs = e.eventTime - e.downTime
                 if (!multiTouch && moved < touchSlopPx && heldMs < ViewConfiguration.getLongPressTimeout()) {
                     handleFastTap(PointF(e.x, e.y))
@@ -307,7 +311,7 @@ class MapController {
      *  contrairement à un viseur à cercle qui laisse un vide au milieu. */
     private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {
         val size = sizePx.coerceIn(16, 128)
-        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val bmp = createBitmap(size, size)
         val c = AndroidCanvas(bmp)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colorInt; style = Paint.Style.STROKE; strokeWidth = size * 0.07f
@@ -322,13 +326,13 @@ class MapController {
     private fun ensurePin(s: Style, context: Context?, colorHex: String, heightPx: Float): String {
         val h = heightPx.toInt().coerceIn(24, 256)
         val name = "pin_${colorHex.removePrefix("#")}_$h"
-        if (pinImages.add(name)) s.addImage(name, pinBitmap(context, android.graphics.Color.parseColor(colorHex), h))
+        if (pinImages.add(name)) s.addImage(name, pinBitmap(context, colorHex.toColorInt(), h))
         return name
     }
 
     /** Contour fixe (ic_pin_outline) + remplissage (ic_pin_fill) teinté dynamiquement à la couleur de la couche. */
     private fun pinBitmap(context: Context?, colorInt: Int, h: Int): Bitmap {
-        val bmp = Bitmap.createBitmap(h, h, Bitmap.Config.ARGB_8888)
+        val bmp = createBitmap(h, h)
         val c = AndroidCanvas(bmp)
         if (context != null) {
             ContextCompat.getDrawable(context, R.drawable.ic_pin_outline)?.apply {
@@ -389,8 +393,8 @@ class MapController {
         val mpp = metersPerPixel(lat)
         val zoom = map?.cameraPosition?.zoom
         if (mpp > 0.0 && zoom != null && accuracyMeters > 0f) {
-            val r0 = (accuracyMeters / mpp / Math.pow(2.0, zoom)).toFloat()
-            val r22 = (r0 * Math.pow(2.0, 22.0)).toFloat()
+            val r0 = (accuracyMeters / mpp / 2.0.pow(zoom)).toFloat()
+            val r22 = (r0 * 2.0.pow(22.0)).toFloat()
             (s.getLayer("user-location-accuracy") as? CircleLayer)?.setProperties(
                 PropertyFactory.circleRadius(Expression.interpolate(
                     Expression.exponential(2f), Expression.zoom(),

@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.map.offline
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -18,6 +19,9 @@ import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.log10
 import kotlin.math.tan
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
+import kotlin.math.pow
 
 /**
  * Génère les deux miniatures d'une couche MBTiles (SPEC offline_map.md section 6) :
@@ -59,6 +63,7 @@ object OfflineThumbnails {
     }
 
     // ---- Miniature 1 : localisation globale (fond permissif fixe, vue large) ----
+    @SuppressLint("DefaultLocale")
     private fun renderLocation(bbox: Bbox): Bitmap? {
         val z = LOC_ZOOM
         val n = 1 shl z
@@ -109,7 +114,7 @@ object OfflineThumbnails {
         if (srcRect.width() <= 0 || srcRect.height() <= 0) return null
         val outW = srcRect.width().coerceAtMost(MAX_OUT)
         val outH = (outW.toDouble() * srcRect.height() / srcRect.width()).toInt().coerceAtLeast(1)
-        val out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
+        val out = createBitmap(outW, outH)
         val canvas = Canvas(out)
         canvas.drawBitmap(stitched, srcRect, Rect(0, 0, outW, outH), Paint(Paint.FILTER_BITMAP_FLAG))
 
@@ -143,11 +148,11 @@ object OfflineThumbnails {
     private inline fun stitch(zoom: Int, xMin: Int, xMax: Int, yMin: Int, yMax: Int, fetch: (Int, Int) -> ByteArray?): Bitmap? {
         val cols = xMax - xMin + 1; val rows = yMax - yMin + 1
         if (cols <= 0 || rows <= 0) return null
-        val bmp = Bitmap.createBitmap(cols * TILE, rows * TILE, Bitmap.Config.ARGB_8888)
+        val bmp = createBitmap(cols * TILE, rows * TILE)
         val canvas = Canvas(bmp).apply { drawColor(Color.rgb(0xE8, 0xE8, 0xE8)) }
         val n = 1 shl zoom
         for (tx in xMin..xMax) for (ty in yMin..yMax) {
-            if (ty < 0 || ty >= n) continue
+            if (ty !in 0..<n) continue
             val bytes = fetch(tx, ty) ?: continue
             val t = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
             canvas.drawBitmap(t, ((tx - xMin) * TILE).toFloat(), ((ty - yMin) * TILE).toFloat(), null)
@@ -168,7 +173,7 @@ object OfflineThumbnails {
     private fun capWidth(src: Bitmap, maxWidth: Int): Bitmap {
         if (src.width <= maxWidth) return src
         val h = (maxWidth.toDouble() * src.height / src.width).toInt().coerceAtLeast(1)
-        return Bitmap.createScaledBitmap(src, maxWidth, h, true)
+        return src.scale(maxWidth, h)
     }
 
     /** Mètres/pixel sur l'image de sortie (après mise à l'échelle de la mosaïque). */
@@ -205,7 +210,7 @@ object OfflineThumbnails {
 
     /** Arrondi "joli" (1, 2, 5 x 10^k) le plus proche par le bas de [m]. */
     private fun niceDistance(m: Double): Double {
-        val pow = Math.pow(10.0, floor(log10(m)))
+        val pow = 10.0.pow(floor(log10(m)))
         val f = m / pow
         val n = when { f < 1.5 -> 1.0; f < 3.5 -> 2.0; f < 7.5 -> 5.0; else -> 10.0 }
         return n * pow

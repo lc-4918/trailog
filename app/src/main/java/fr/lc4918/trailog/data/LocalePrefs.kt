@@ -3,6 +3,7 @@ package fr.lc4918.trailog.data
 import android.content.Context
 import android.content.res.Configuration
 import java.util.Locale
+import androidx.core.content.edit
 
 /**
  * Langue de l'application, indépendante de la langue système (SPEC section 1.3). Stockée en SharedPreferences
@@ -40,17 +41,18 @@ object LocalePrefs {
 
     fun get(context: Context): String {
         val lang = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_LANGUAGE, null)
-        return when {
-            lang == null -> DEFAULT
-            lang == SYSTEM -> SYSTEM   // valeur historique : reste un no-op dans wrap()
-            lang in SELECTABLE -> lang
+        return when (lang) {
+            null -> DEFAULT
+            SYSTEM -> SYSTEM   // valeur historique : reste un no-op dans wrap()
+            in SELECTABLE -> lang
             else -> DEFAULT
         }
     }
 
     fun set(context: Context, language: String) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
-            .putString(KEY_LANGUAGE, language).apply()
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putString(KEY_LANGUAGE, language)
+        }
     }
 
     /** Enveloppe le contexte avec la locale choisie (no-op pour l'ancienne valeur "system"). À appeler

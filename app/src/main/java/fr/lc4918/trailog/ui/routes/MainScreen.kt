@@ -110,6 +110,9 @@ import fr.lc4918.trailog.ui.profile.SlopeLegend
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
+import kotlin.math.log10
+import kotlin.math.pow
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -327,7 +330,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // avant le selecteur de fichier ; un refus n'empeche pas l'import (les photos afficheront "introuvable").
     val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
         Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-    fun doLaunchPicker() { picker.launch(settings?.importDir?.takeIf { it.isNotBlank() }?.let { it.toUri() }) }
+    fun doLaunchPicker() { picker.launch(settings?.importDir?.takeIf { it.isNotBlank() }?.toUri()) }
     val mediaPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { doLaunchPicker() }
     fun launchPicker() {
         if (ContextCompat.checkSelfPermission(ctx, mediaPermission) == PackageManager.PERMISSION_GRANTED) doLaunchPicker()
@@ -413,7 +416,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(activeLayerId) {
         vm.activeLayer()?.let { ly ->
             profileTitle = ly.name
-            profileLineColor = runCatching { Color(android.graphics.Color.parseColor(ly.color)) }.getOrDefault(profilePrimary)
+            profileLineColor = runCatching { Color(ly.color.toColorInt()) }.getOrDefault(profilePrimary)
         }
     }
     // 1er retour Android : ferme le profil s'il est affiché, au lieu du comportement par défaut.
@@ -651,8 +654,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 val markAInWindow = toWindow(profilePointA)
                 val markBInWindow = toWindow(profilePointB)
 
-                // infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
-                // (décalées de la hauteur mesurée du panneau, superposé à la carte - cf. profileBarHeightPx).
+                // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
+                // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
                 val cIdx = cursorInWindow; val cSamples = windowSamples
                 if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
                     val imp = settings?.units == "imperial"
@@ -689,7 +692,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
-                // profil (visible dès le tap sur une trace) - superposé à la carte, qui garde toujours sa
+                // Profil (visible dès le tap sur une trace) superposé à la carte, qui garde toujours sa
                 // taille pleine : ne jamais la redimensionner ici, une AndroidView type SurfaceView flashe en
                 // noir le temps de son prochain frame quand elle est redimensionnée pendant une animation.
                 // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
@@ -801,7 +804,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
                     onDismiss = { closeOfflineFlow() },
                     onDownload = { request ->
-                        // Domaine B : lance le moteur, puis revient à la carte où la popup de progression
+                        // Domaine B : lance le moteur, puis revient à la carte ou la popup de progression
                         // (observée via vm.offlineDownload) prend le relais.
                         vm.startOfflineDownload(request)
                         closeOfflineFlow()
@@ -850,7 +853,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // création d'un dossier puis poursuite de l'import dedans
     if (newFolderDialog) {
-        val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+        val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { focus.requestFocus() }
         AlertDialog(
             onDismissRequest = { newFolderDialog = false },
@@ -1203,8 +1206,8 @@ private fun FolderNode(
 ) {
     var expanded by remember { mutableStateOf(true) }
     val context = LocalContext.current
-    val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo?.id == folder.id
-    val offset = if (isDragging) dctx.dragInfo!!.offset else 0f
+    val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo.id == folder.id
+    val offset = if (isDragging) dctx.dragInfo.offset else 0f
     val hoverZone = dctx.hoverTarget?.takeIf { it.kind == "folder" && it.id == folder.id }?.zone
 
     if (hoverZone == HoverZone.BEFORE) DropIndicatorLine()
@@ -1268,7 +1271,7 @@ private fun ImportSpinnerRow(depth: Int) {
     }
 }
 
-/** Icône globe si la couche a points ET lignes, ligne (trace) si lignes seules, sinon point. */
+/** Icône globe si la couche a des points ET des lignes, ligne (trace) si lignes seules, sinon point. */
 @Composable
 private fun LayerRow(
     layer: LayerEntity, depth: Int, vm: MainViewModel, dctx: DragCtx,
@@ -1299,8 +1302,8 @@ private fun LayerLine(
 ) {
     var showColor by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo?.id == id
-    val offset = if (isDragging) dctx.dragInfo!!.offset else 0f
+    val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo.id == id
+    val offset = if (isDragging) dctx.dragInfo.offset else 0f
     val hoverZone = dctx.hoverTarget?.takeIf { it.kind == kind && it.id == id }?.zone
 
     if (hoverZone == HoverZone.BEFORE) DropIndicatorLine()
@@ -1315,7 +1318,7 @@ private fun LayerLine(
                 if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show))
         }
         IconButton(onClick = { showColor = true }, modifier = Modifier.size(40.dp)) {
-            Icon(icon, stringResource(R.string.action_color), tint = Color(android.graphics.Color.parseColor(color)))
+            Icon(icon, stringResource(R.string.action_color), tint = Color(color.toColorInt()))
         }
         Spacer(Modifier.width(2.dp))
         Text(name, modifier = Modifier.weight(1f),
@@ -1397,7 +1400,7 @@ private fun ColorPickerDialog(current: String, onPick: (String) -> Unit, onDismi
                         row.forEach { hex ->
                             Box(
                                 Modifier.padding(6.dp).size(40.dp).clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(hex)))
+                                    .background(Color(hex.toColorInt()))
                                     .clickable { onPick(hex) },
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -1476,6 +1479,7 @@ private fun cursorInfoText(s: fr.lc4918.trailog.domain.model.Sample, csv: String
         }
     }.joinToString(" · ")
 
+@SuppressLint("DefaultLocale")
 @Composable
 private fun ScaleBar(controller: MapController, tick: Int, maxWidthPx: Float, modifier: Modifier = Modifier) {
     if (maxWidthPx <= 0f) return
@@ -1518,7 +1522,7 @@ private fun ScaleBar(controller: MapController, tick: Int, maxWidthPx: Float, mo
 
 private fun niceDistance(max: Double): Double {
     if (max <= 0) return 1.0
-    val pow = Math.pow(10.0, floor(Math.log10(max)))
+    val pow = 10.0.pow(floor(log10(max)))
     return when { max / pow >= 5 -> 5 * pow; max / pow >= 2 -> 2 * pow; else -> pow }
 }
 

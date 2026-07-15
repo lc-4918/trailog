@@ -43,7 +43,7 @@ fun CompactOutlinedTextField(
     val interactionSource = remember { MutableInteractionSource() }
     val mergedTextStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface)
     // [modifier] doit rester sur le champ lui-même (pas sur un Column englobant) : des appelants s'en servent
-    // pour `focusRequester` ou `menuAnchor`, qui doivent cibler l'élément focalisable/cliquable réel.
+    // pour `focusRequester` ou 'menuAnchor', qui doivent cibler l'élément focalisable/cliquable réel.
     val field = @Composable {
         BasicTextField(
             value = value, onValueChange = onValueChange, modifier = modifier,

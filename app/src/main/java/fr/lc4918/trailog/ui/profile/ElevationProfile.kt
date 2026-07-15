@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.profile
 
+import android.annotation.SuppressLint
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -254,4 +255,5 @@ private const val padR = 8f
 private const val padT = 6f
 private fun padL(axisFontSp: Int) = axisFontSp * 3.6f + 14f
 
+@SuppressLint("DefaultLocale")
 private fun fmtKm(km: Double): String = if (km < 10) String.format("%.1f", km) else "${km.roundToInt()}"

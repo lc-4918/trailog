@@ -14,7 +14,7 @@ import kotlin.math.sqrt
 /**
  * Calculs de tracé portés depuis la librairie JS ol-elevation-profile :
  * distance (haversine), lissage en mètres, pente par classe, D+/D-, et temps
- * en mouvement (les segments sous [stopSpeed] sont ignorés si [ignoreStops]).
+ * en mouvement (les segments sous stopSpeed sont ignorés si ignoreStops).
  */
 object TrackMath {
 

@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
 private enum class BHoverZone { BEFORE, INTO, AFTER }
 private data class BDragInfo(val kind: String, val id: String, val offset: Float)
 private data class BHoverTarget(val kind: String, val id: String, val zone: BHoverZone)
-/** Bornes mesurées d'une ligne (position root Y, hauteur réelle) - utilisées pour la détection de zone de dépose. */
+/** Bornes mesurées d'une ligne (position root Y, hauteur réelle) utilisées pour la détection de zone de dépose. */
 private data class BRowBounds(val top: Float, val height: Float)
 
 private class BDragCtx(
@@ -73,7 +73,7 @@ private fun combinedBasemapChildren(
 ): List<Any> {
     val f = folders.filter { it.parentId == parentId }
     // Le relief (DEM) reste toujours visible dans l'arbre, activé ou non : son "enabled" sert désormais de
-    // bascule tap-pour-activer/désactiver (bug relief), pas de filtre de visibilité comme les autres fonds -
+    // bascule tap-pour-activer/désactiver (bug relief), pas de filtre de visibilité comme les autres fonds
     // sinon un tap qui l'éteint le ferait disparaître, sans plus aucun moyen de le rallumer.
     val p = providers.filter { (it.enabled || it.type == "DEM") && it.folderId == parentId }
     val c = composites.filter { it.enabled && it.folderId == parentId }
@@ -229,7 +229,7 @@ fun BasemapControlPanel(
     var newFolderDialog by remember { mutableStateOf(false) }
 
     // Surface (et non Box+background) : fournit LocalContentColor adapté au thème pour le texte/les icônes
-    // du panneau - un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
+    // du panneau. Un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
     // textes/icônes illisibles en thème sombre.
     Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 1f - backgroundAlpha),
@@ -239,7 +239,7 @@ fun BasemapControlPanel(
         // Défilement désactivé pendant un drag actif : sans ça, le scroll du panneau peut reprendre la main
         // sur le geste en cours de route et casser le suivi du glisser (indicateurs de zone qui "sautent").
         // CompositionLocalProvider : désactive le plancher tactile de 48dp que Material3 impose par défaut
-        // aux IconButton (cf. Groupe N) - nécessaire à la fois pour le header 1 ligne compact (section 7.1) et pour
+        // aux IconButton (cf. Groupe N) nécessaire à la fois pour le header 1 ligne compact (section 7.1) et pour
         // que le chevron plie/déplie des dossiers fasse bien 32dp comme le Spacer d'alignement des basemaps
         // racine, sans quoi les deux ne s'alignent pas (section 7.2).
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -290,8 +290,8 @@ private fun BasemapNode(
         is BasemapFolderEntity -> {
             var expanded by remember { mutableStateOf(true) }
             val key = "folder" to item.id.toString()
-            val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo?.id == item.id.toString()
-            val offset = if (isDragging) dctx.dragInfo!!.offset else 0f
+            val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo.id == item.id.toString()
+            val offset = if (isDragging) dctx.dragInfo.offset else 0f
             val hoverZone = dctx.hoverTarget?.takeIf { it.kind == "folder" && it.id == item.id.toString() }?.zone
             // pointerInput(item.id) ne relance jamais son bloc tant que l'id ne change pas : sans
             // rememberUpdatedState, la coroutine de geste resterait figée sur le dctx de la toute première
@@ -365,10 +365,10 @@ private fun BasemapLeaf(
     onSelect: () -> Unit, icon: @Composable () -> Unit,
 ) {
     val key = kind to id
-    val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo?.id == id
-    val offset = if (isDragging) dctx.dragInfo!!.offset else 0f
+    val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo.id == id
+    val offset = if (isDragging) dctx.dragInfo.offset else 0f
     val hoverZone = dctx.hoverTarget?.takeIf { it.kind == kind && it.id == id }?.zone
-    // cf. commentaire équivalent dans BasemapNode (bug 1.1) : sans ça, le drop ne déclenche jamais rien.
+    // Cf. commentaire équivalent dans BasemapNode (bug 1.1) : sans ça, le drop ne déclenche jamais rien.
     val currentDctx by rememberUpdatedState(dctx)
 
     if (hoverZone == BHoverZone.BEFORE) DropLine()

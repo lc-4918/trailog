@@ -20,9 +20,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /** Entrée d'un fournisseur dans le fichier JSON d'import/export (SPEC section 4.2). Distincte de
  *  [ProviderEntity] : n'inclut pas `folderId`/`sortOrder` (placement propre à cette installation,

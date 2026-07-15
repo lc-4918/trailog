@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.profile
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -33,4 +34,5 @@ fun SlopeLegend(maxAbsSlope: Double, fontSp: Int, modifier: Modifier = Modifier,
     }
 }
 
+@SuppressLint("DefaultLocale")
 private fun fmt(v: Double): String = if (v % 1.0 == 0.0) "${v.toInt()}" else String.format("%.1f", v)

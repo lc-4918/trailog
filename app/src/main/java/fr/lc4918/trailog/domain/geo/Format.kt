@@ -7,7 +7,7 @@ import kotlin.math.roundToLong
 object Format {
     fun duration(sec: Double?): String {
         if (sec == null || !sec.isFinite()) return ""
-        var s = sec.roundToLong().coerceAtLeast(0)
+        val s = sec.roundToLong().coerceAtLeast(0)
         if (s < 60) return "$s sec"
         if (s < 3600) return "${(s / 60.0).roundToInt()} min"
         if (s < 86400) {

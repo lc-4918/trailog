@@ -20,6 +20,7 @@ object TileHttp {
         return try {
             if (conn.responseCode in 200..299) conn.inputStream.use { it.readBytes() } else null
         } catch (e: Exception) {
+            e.printStackTrace()
             null
         } finally {
             conn.disconnect()

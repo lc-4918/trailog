@@ -7,6 +7,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * Moteur de téléchargement des tuiles (SPEC offline_map.md section 4). Télécharge en parallèle borné, écrit
  * dans un [MbtilesWriter] via un unique thread consommateur (contrainte de thread de SQLite), et
- * remonte l'avancement par [onProgress]. Annulable via l'annulation de coroutine.
+ * remonte l'avancement par onProgress. Annulable via l'annulation de coroutine.
  */
 class OfflineTileDownloader(private val provider: ProviderEntity) {
 
@@ -47,7 +48,7 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
         val writeDispatcher = Executors.newSingleThreadExecutor { r -> Thread(r, "mbtiles-writer") }
             .asCoroutineDispatcher()
 
-        try {
+        writeDispatcher.use { writeDispatcher ->
             coroutineScope {
                 val tileChannel = Channel<Triple<Int, Int, Int>>(Channel.UNLIMITED).apply {
                     tiles.forEach { trySend(it) }; close()
@@ -96,12 +97,10 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
                         }
                     }
                 }
-                workers.forEach { it.join() }
+                workers.joinAll()
                 writeChannel.close()
                 writerJob.join()
             }
-        } finally {
-            writeDispatcher.close()
         }
 
         return if (!req.continueOnError && failed.get() > 0) Outcome.Failed(failed.get())
