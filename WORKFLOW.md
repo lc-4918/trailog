@@ -11,7 +11,7 @@ qui est poussé :
 
 - **Un push sur une branche** -> build d'un APK **debug**, disponible en artifact GitHub Actions.
 - **Un push d'un tag `vX.Y.Z`** -> build d'un APK **release signé**, publié comme
-  **GitHub Release** téléchargeable publiquement, puis publication du manifeste
+  **GitHub Release** téléchargeable publiquement, accompagné du manifeste
   `latest-release.json` qui permet à l'app de se savoir périmée.
 
 GitHub Releases fait ainsi office de **"store"** : les utilisateurs téléchargent
@@ -58,14 +58,15 @@ release officielle. L'APK debug n'est pas signé avec la clé de release.
    `KEYSTORE_PATH` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD`
    (voir la config `signingConfigs` dans `app/build.gradle.kts`).
 5. Suppression du keystore temporaire.
-6. Création d'une **GitHub Release** portant le nom du tag, avec changelog généré
-   automatiquement à partir des commits, et l'APK release joint en pièce téléchargeable.
-7. Génération de **`latest-release.json`** et commit sur `main` (voir section 6).
+6. Génération de **`latest-release.json`** dans un fichier temporaire (voir section 6).
+7. Création d'une **GitHub Release** portant le nom du tag, avec changelog généré
+   automatiquement à partir des commits, et deux pièces jointes téléchargeables : l'APK
+   release et le manifeste. La CI ne pousse **aucun commit** sur `main`.
 
 **Où trouver l'APK :** page **Releases** du dépôt (publique).
 
 **Nom de l'APK :** `trailog-vX.Y.Z.apk`, fixé par le bloc `androidComponents` de
-`app/build.gradle.kts`. L'étape 7 reconstruit ce nom pour composer l'URL de téléchargement et
+`app/build.gradle.kts`. L'étape 6 reconstruit ce nom pour composer l'URL de téléchargement et
 vérifie que le fichier existe avant de publier le manifeste : sans ce garde-fou, une
 divergence de nommage publierait une URL morte que l'app tenterait de télécharger.
 
@@ -100,7 +101,8 @@ un manifeste que l'app consulte elle-même.
 
 ### Le manifeste
 
-L'étape **Publish latest-release.json on main** écrit ce fichier à la racine de `main` :
+L'étape **Generate latest-release.json** produit ce fichier, publié comme **asset de la Release**
+aux côtés de l'APK :
 
 ```json
 {
@@ -112,16 +114,21 @@ L'étape **Publish latest-release.json on main** écrit ce fichier à la racine 
 }
 ```
 
-Il est servi tel quel par
-`https://raw.githubusercontent.com/lc-4918/trailog/main/latest-release.json`.
+L'app le lit à l'URL stable
+`https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json`, que GitHub
+redirige (302) vers l'asset de la dernière release, servi par son CDN.
 
-**Pourquoi `main` plutôt qu'une branche dédiée ou l'API GitHub :** `raw.githubusercontent.com`
-est un CDN sans quota, là où l'API GitHub plafonne à 60 requêtes par heure et par IP pour un
-appel anonyme. Le fichier reste par ailleurs versionné avec le reste du code.
+**Pourquoi un asset plutôt qu'un fichier commité ou l'API GitHub :** le CDN de téléchargement
+est sans quota, là où l'API GitHub plafonne à 60 requêtes par heure et par IP pour un appel
+anonyme — ce qui compte vraiment derrière le CGNAT des opérateurs mobiles, où de nombreux
+abonnés partagent une même IP publique. Publier le manifeste en asset donne ce CDN **sans**
+que la CI ait à pousser un commit sur `main` : pas de `pull` imposé après chaque release, pas
+de `github-actions[bot]` dans les contributeurs, et le manifeste vit avec la release qu'il
+décrit au lieu de flotter sur `main`.
 
-**Pourquoi la CI ne boucle pas :** un push effectué avec le `GITHUB_TOKEN` par défaut ne
-redéclenche aucun workflow. Le commit du manifeste sur `main` ne relance donc pas le job debug,
-qui écoute pourtant toutes les branches.
+**Attention :** `releases/latest` désigne la dernière release **non-prerelease**. Publier un
+jour des préversions les rendrait invisibles à l'app — ce qui est probablement le comportement
+voulu, mais mieux vaut le savoir.
 
 ### Le contrat de version
 
@@ -152,9 +159,13 @@ La vérification est **inerte en build debug** : celui-ci a son propre `applicat
 ### Conséquence pour une nouvelle version
 
 Une version ne peut pas s'annoncer elle-même : seules les installations portant déjà le code de
-vérification liront le manifeste. Les utilisateurs d'une version antérieure à `v0.2.0` doivent
-installer celle-ci à la main depuis la page Releases ; les mises à jour suivantes leur seront
-proposées automatiquement.
+vérification liront le manifeste, et chacune interroge l'URL figée dans son propre binaire.
+
+`v0.2.0` cherchait le manifeste sur `raw.githubusercontent.com/.../main/latest-release.json`,
+fichier supprimé de `main` en même temps que ce changement d'URL : cette version ne verra donc
+plus aucune mise à jour et doit être remplacée à la main depuis la page Releases. C'était un
+choix assumé, le parc en `0.2.0` se limitant au développeur. Les installations en `v0.2.1` et
+au-delà lisent l'asset de release et se mettront à jour normalement.
 
 ## 7. Bonnes pratiques
 
@@ -167,5 +178,5 @@ proposées automatiquement.
   toujours passer par les secrets GitHub Actions.
 - **Vérifier le manifeste après une release** : la Release peut être verte et le manifeste
   faux. Contrôler que
-  [`latest-release.json`](https://raw.githubusercontent.com/lc-4918/trailog/main/latest-release.json)
+  [`latest-release.json`](https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json)
   annonce la bonne version et que son `apkUrl` répond bien.

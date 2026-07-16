@@ -33,13 +33,17 @@ sealed interface UpdateCheck {
 }
 
 /**
- * Verification et installation des mises a jour, hors store : l'app lit le manifeste publie par la CI sur
- * main, compare a sa propre version, puis telecharge et lance l'installateur systeme.
+ * Verification et installation des mises a jour, hors store : l'app lit le manifeste publie par la CI en
+ * asset de la Release, compare a sa propre version, puis telecharge et lance l'installateur systeme.
  */
 object UpdateManager {
-    /** Servi par le CDN de GitHub : pas de quota, contrairement a l'API (60 requetes/h par IP). */
+    /**
+     * URL stable : GitHub redirige (302) vers l'asset de la derniere release non-prerelease, servi par son
+     * CDN, donc pas de quota contrairement a l'API (60 requetes/h par IP). Suivre les redirections est
+     * indispensable ici (cf. instanceFollowRedirects plus bas).
+     */
     private const val MANIFEST_URL =
-        "https://raw.githubusercontent.com/lc-4918/trailog/main/latest-release.json"
+        "https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json"
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 20_000
 

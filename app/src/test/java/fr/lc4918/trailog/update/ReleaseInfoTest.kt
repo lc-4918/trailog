@@ -12,7 +12,7 @@ import org.junit.Test
 class ReleaseInfoTest {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Copie conforme de ce que produit l'etape "Publish latest-release.json on main". */
+    /** Copie conforme de ce que produit l'etape "Generate latest-release.json". */
     private val fromCi = """
         {
           "version": "1.2.3",
