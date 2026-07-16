@@ -260,4 +260,16 @@
     <string name="update_download_title">Actualització del Trailog</string>
     <string name="update_download_desc">S\'està baixant la versió %1$s</string>
 
+    <string name="dialog_import_result_title">Importació</string>
+    <plurals name="import_invalid_files">
+        <item quantity="one">El fitxer %1$s no és vàlid</item>
+        <item quantity="other">Els fitxers %1$s no són vàlids</item>
+    </plurals>
+    <plurals name="import_empty_files">
+        <item quantity="one">El fitxer %1$s és buit</item>
+        <item quantity="other">Els fitxers %1$s són buits</item>
+    </plurals>
+
+    <string name="profile_no_elevation">Recorregut sense altimetria</string>
+
 </resources>

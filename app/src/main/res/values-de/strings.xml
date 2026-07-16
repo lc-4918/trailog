@@ -260,4 +260,16 @@
     <string name="update_download_title">Trailog-Aktualisierung</string>
     <string name="update_download_desc">Version %1$s wird heruntergeladen</string>
 
+    <string name="dialog_import_result_title">Import</string>
+    <plurals name="import_invalid_files">
+        <item quantity="one">Die Datei %1$s ist ungültig</item>
+        <item quantity="other">Die Dateien %1$s sind ungültig</item>
+    </plurals>
+    <plurals name="import_empty_files">
+        <item quantity="one">Die Datei %1$s ist leer</item>
+        <item quantity="other">Die Dateien %1$s sind leer</item>
+    </plurals>
+
+    <string name="profile_no_elevation">Strecke ohne Höhendaten</string>
+
 </resources>

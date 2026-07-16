@@ -260,4 +260,16 @@
     <string name="update_download_title">Trailog eguneraketa</string>
     <string name="update_download_desc">%1$s bertsioa deskargatzen</string>
 
+    <string name="dialog_import_result_title">Inportazioa</string>
+    <plurals name="import_invalid_files">
+        <item quantity="one">%1$s fitxategia baliogabea da</item>
+        <item quantity="other">%1$s fitxategiak baliogabeak dira</item>
+    </plurals>
+    <plurals name="import_empty_files">
+        <item quantity="one">%1$s fitxategia hutsik dago</item>
+        <item quantity="other">%1$s fitxategiak hutsik daude</item>
+    </plurals>
+
+    <string name="profile_no_elevation">Ibilbidea altimetriarik gabe</string>
+
 </resources>

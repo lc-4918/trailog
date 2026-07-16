@@ -260,4 +260,16 @@
     <string name="update_download_title">Atualização do Trailog</string>
     <string name="update_download_desc">A transferir a versão %1$s</string>
 
+    <string name="dialog_import_result_title">Importação</string>
+    <plurals name="import_invalid_files">
+        <item quantity="one">O ficheiro %1$s é inválido</item>
+        <item quantity="other">Os ficheiros %1$s são inválidos</item>
+    </plurals>
+    <plurals name="import_empty_files">
+        <item quantity="one">O ficheiro %1$s está vazio</item>
+        <item quantity="other">Os ficheiros %1$s estão vazios</item>
+    </plurals>
+
+    <string name="profile_no_elevation">Percurso sem altimetria</string>
+
 </resources>

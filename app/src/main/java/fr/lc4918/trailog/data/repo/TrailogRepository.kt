@@ -7,6 +7,7 @@ import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.imp.LayerImporter
 import fr.lc4918.trailog.data.seed.Providers
 import fr.lc4918.trailog.map.offline.MbtilesWriter
@@ -96,10 +97,15 @@ class TrailogRepository(private val ctx: Context) {
         val bounds: DoubleArray,
     )
 
-    /** Importe une couche (gpx/kml/kmz/geojson) : peut contenir des points et/ou des traces. */
+    /** Importe une couche (gpx/kml/kmz/geojson) : peut contenir des points et/ou des traces.
+     *  Lève [EmptyLayerException] si le fichier, bien que lisible, ne contient ni trace ni point ;
+     *  toute autre exception signale un fichier illisible (cf. MainViewModel.importLayer). */
     suspend fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?): DoubleArray =
         withContext(Dispatchers.IO) {
             val parsedRaw = LayerImporter.parse(bytes, fileName)
+            // Rien à importer : une couche vide n'apparaîtrait nulle part sur la carte et polluerait
+            // l'arborescence. On refuse avant d'écrire quoi que ce soit en base ou sur le disque.
+            if (parsedRaw.lines.isEmpty() && parsedRaw.points.isEmpty()) throw EmptyLayerException(fileName)
             // les champs image détectés qui pointent vers un fichier local (photo de waypoint GPX, cf. section 4.3)
             // sont copiés dans le stockage privé de l'app : le chemin d'origine peut disparaître (stockage
             // amovible/temporaire) ou nécessiter une permission qu'on ne conservera pas après l'import.
