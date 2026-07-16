@@ -12,6 +12,7 @@ import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
@@ -372,6 +373,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // dans le dossier concerné tant que l'import n'est pas terminé.
     private val _importing = MutableStateFlow<Map<Long?, Int>>(emptyMap())
     val importing: StateFlow<Map<Long?, Int>> = _importing.asStateFlow()
+    /** Fichier refusé à l'import, et pourquoi (cf. importFailures). */
+    enum class ImportError { INVALID, EMPTY }
+    data class ImportFailure(val fileName: String, val error: ImportError)
+
+    private val _importFailures = MutableStateFlow<List<ImportFailure>>(emptyList())
+    val importFailures = _importFailures.asStateFlow()
+
     private fun bumpImporting(folderId: Long?, delta: Int) {
         _importing.update { m -> (m + (folderId to ((m[folderId] ?: 0) + delta))).filterValues { it > 0 } }
     }
@@ -379,9 +387,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?) =
         viewModelScope.launch {
             bumpImporting(folderId, +1)
-            try { unionPendingFit(repo.importLayer(bytes, fileName, folderId)) }
-            finally { bumpImporting(folderId, -1) }
+            try {
+                unionPendingFit(repo.importLayer(bytes, fileName, folderId))
+            } catch (e: EmptyLayerException) {
+                _importFailures.update { it + ImportFailure(fileName, ImportError.EMPTY) }
+            } catch (e: CancellationException) {
+                throw e                     // annulation du scope : ce n'est pas un fichier fautif
+            } catch (e: Exception) {
+                // Fichier illisible : on le retient et on laisse les autres imports suivre leur cours.
+                // Sans ce catch, l'exception remontait jusqu'au scope du ViewModel et tuait l'application.
+                e.printStackTrace()
+                _importFailures.update { it + ImportFailure(fileName, ImportError.INVALID) }
+            } finally {
+                bumpImporting(folderId, -1)
+            }
         }
+
+    /** Échecs accumulés depuis le dernier [consumeImportFailures] : l'écran les présente en une fois,
+     *  une fois tous les imports du lot terminés. */
+    fun consumeImportFailures(): List<ImportFailure> =
+        _importFailures.value.also { _importFailures.value = emptyList() }
 
     private fun unionPendingFit(b: DoubleArray) {
         if (b.size < 4 || (b[0] == 0.0 && b[2] == 0.0)) return

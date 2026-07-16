@@ -27,6 +27,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -34,6 +35,8 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -69,12 +72,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.core.location.LocationManagerCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -108,11 +113,10 @@ import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import kotlin.math.floor
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
-import androidx.core.graphics.toColorInt
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -152,6 +156,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         } == true
 
     val renderLayers by vm.renderLayers.collectAsState()
+    // Fichiers refusés à l'import : présentés en une seule popup, et seulement quand plus aucun import
+    // n'est en cours. Les afficher au fil de l'eau ouvrirait une popup par fichier fautif, en plein lot.
+    val importInProgress by vm.importing.collectAsState()
+    val importFailures by vm.importFailures.collectAsState()
+    var importReport by remember { mutableStateOf<List<MainViewModel.ImportFailure>>(emptyList()) }
+    LaunchedEffect(importInProgress.isEmpty(), importFailures.isNotEmpty()) {
+        if (importInProgress.isEmpty() && importFailures.isNotEmpty()) importReport = vm.consumeImportFailures()
+    }
     val offlineDownload by vm.offlineDownload.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
     val computed by vm.computed.collectAsState()
@@ -723,7 +735,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 bold = settings?.profLegendBold == true)
                         }
                         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                            if (windowSamples != null && windowStats != null && !profileLoading) {
+                            // Trace sans altitude : le profil serait une ligne plate et muette. On le
+                            // remplace par un avertissement, plutôt que de laisser croire à un parcours plat.
+                            if (shown != null && !shown.hasZ && !profileLoading) {
+                                NoElevationBanner(Modifier.fillMaxSize())
+                            } else if (windowSamples != null && windowStats != null && !profileLoading) {
                                 // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit
                                 // de l'écran. On calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et
                                 // non le rayon plein, qui n'est atteint que tout en bas) : le label est remonté
@@ -880,6 +896,28 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             onSave = { vm.saveFeature(it); editing = false }, onCancel = { editing = false },
             onDelete = { vm.deleteFeature(selectedFeature); editing = false },
             onPickImage = { onImported -> pendingImageCallback = onImported; imagePicker.launch("image/*") },
+        )
+    }
+
+    if (importReport.isNotEmpty()) {
+        val res = LocalContext.current.resources
+        val invalid = importReport.filter { it.error == MainViewModel.ImportError.INVALID }.map { it.fileName }
+        val empty = importReport.filter { it.error == MainViewModel.ImportError.EMPTY }.map { it.fileName }
+        AlertDialog(
+            onDismissRequest = { importReport = emptyList() },
+            title = { Text(stringResource(R.string.dialog_import_result_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Un lot peut contenir les deux sortes de refus : chacune a sa phrase, accordée en nombre.
+                    if (invalid.isNotEmpty()) {
+                        Text(res.getQuantityString(R.plurals.import_invalid_files, invalid.size, invalid.joinToString(", ")))
+                    }
+                    if (empty.isNotEmpty()) {
+                        Text(res.getQuantityString(R.plurals.import_empty_files, empty.size, empty.joinToString(", ")))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { importReport = emptyList() }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 
@@ -1341,6 +1379,29 @@ private fun DropIndicatorLine() {
 
 /** Part de la hauteur d'écran que l'infobulle ne dépasse pas ; au-delà, ses propriétés défilent. */
 private const val BubbleMaxHeightRatio = 0.6f
+
+/** Teintes de l'avertissement "sans altimétrie" : figées, pour rester lisibles sur le fond blanc du
+ *  panneau de profil quel que soit le thème. */
+private val NoElevationBorder = Color(0xFFE8850C)
+private val NoElevationFill = Color(0xFFFFF3E0)
+private val NoElevationText = Color(0xFFB35309)
+
+/** Avertissement affiché à la place du tracé quand la trace n'a aucune altitude : 80 % de la largeur et
+ *  50 % de la hauteur de la zone de dessin, centré dedans. */
+@Composable
+private fun NoElevationBanner(modifier: Modifier = Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.5f)
+                .background(NoElevationFill, RoundedCornerShape(8.dp))
+                .border(1.dp, NoElevationBorder, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(stringResource(R.string.profile_no_elevation), color = NoElevationText,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp))
+        }
+    }
+}
 
 /** Au-delà, la légende ne gagne plus en lisibilité : l'image ne ferait que s'étirer (500 px de large). */
 private val LegendMaxWidth = 260.dp

@@ -19,6 +19,10 @@ import java.io.InputStream
 import java.time.Instant
 import java.util.zip.ZipInputStream
 
+/** Fichier lisible, mais sans aucune trace ni point : distinguee d'un fichier mal forme, l'utilisateur
+ *  n'ayant rien a corriger dans le premier cas. */
+class EmptyLayerException(val fileName: String) : Exception("Aucune trace ni point dans $fileName")
+
 data class ParsedLayer(
     val name: String,
     val link: String?,

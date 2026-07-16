@@ -260,4 +260,16 @@
     <string name="update_download_title">Mise à jour de Trailog</string>
     <string name="update_download_desc">Téléchargement de la version %1$s</string>
 
+    <string name="dialog_import_result_title">Import</string>
+    <plurals name="import_invalid_files">
+        <item quantity="one">Le fichier %1$s est invalide</item>
+        <item quantity="other">Les fichiers %1$s sont invalides</item>
+    </plurals>
+    <plurals name="import_empty_files">
+        <item quantity="one">Le fichier %1$s est vide</item>
+        <item quantity="other">Les fichiers %1$s sont vides</item>
+    </plurals>
+
+    <string name="profile_no_elevation">Parcours sans altimétrie</string>
+
 </resources>
