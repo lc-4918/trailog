@@ -53,11 +53,11 @@ import fr.lc4918.trailog.map.flagCodeFor
 import fr.lc4918.trailog.ui.routes.DropPosition
 import kotlinx.coroutines.launch
 
-private enum class BHoverZone { BEFORE, INTO, AFTER }
-private data class BDragInfo(val kind: String, val id: String, val offset: Float)
-private data class BHoverTarget(val kind: String, val id: String, val zone: BHoverZone)
+internal enum class BHoverZone { BEFORE, INTO, AFTER }
+internal data class BDragInfo(val kind: String, val id: String, val offset: Float)
+internal data class BHoverTarget(val kind: String, val id: String, val zone: BHoverZone)
 /** Bornes mesurées d'une ligne (position root Y, hauteur réelle) utilisées pour la détection de zone de dépose. */
-private data class BRowBounds(val top: Float, val height: Float)
+internal data class BRowBounds(val top: Float, val height: Float)
 
 private class BDragCtx(
     val rowBounds: MutableMap<Pair<String, String>, BRowBounds>,
@@ -91,7 +91,50 @@ private fun basemapNodeKey(item: Any): Pair<String, String> = when (item) {
     else -> "unknown" to item.toString()
 }
 
-private fun isDescendantBasemapFolder(candidateId: Long, ancestorId: Long, folders: List<BasemapFolderEntity>): Boolean {
+/**
+ * Cible de dépôt sous l'élément glissé, ou null si le geste ne vise rien de valide. Le centre de la ligne
+ * glissée désigne la ligne survolée ; sa position relative dans celle-ci donne la zone (quart haut/bas =
+ * réordonner avant/après, milieu d'un dossier = déposer dedans). Un dossier ne peut pas être déposé dans
+ * lui-même ni dans sa propre descendance, ce qui détacherait la branche de l'arbre.
+ * Extraite du composable pour être testable : c'est ici que se joue tout le drag & drop du panneau.
+ */
+internal fun basemapHoverTarget(
+    info: BDragInfo,
+    rowBounds: Map<Pair<String, String>, BRowBounds>,
+    folders: List<BasemapFolderEntity>,
+    providers: List<ProviderEntity>,
+    composites: List<CompositeEntity>,
+): BHoverTarget? {
+    val start = rowBounds[info.kind to info.id] ?: return null
+    val centerY = start.top + start.height / 2f + info.offset
+    val hit = rowBounds.entries.firstOrNull { (k, b) ->
+        centerY in b.top..(b.top + b.height) && !(k.first == info.kind && k.second == info.id)
+    } ?: return null
+    val (key, bounds) = hit
+    val rel = (centerY - bounds.top) / bounds.height
+    val zone = when {
+        rel < 0.25f -> BHoverZone.BEFORE
+        rel > 0.75f -> BHoverZone.AFTER
+        key.first == "folder" -> BHoverZone.INTO
+        rel < 0.5f -> BHoverZone.BEFORE
+        else -> BHoverZone.AFTER
+    }
+    if (info.kind == "folder") {
+        val prospectiveId = if (zone == BHoverZone.INTO) key.second.toLongOrNull() else when (key.first) {
+            "folder" -> folders.firstOrNull { it.id.toString() == key.second }?.parentId
+            "provider" -> providers.firstOrNull { it.id == key.second }?.folderId
+            else -> composites.firstOrNull { it.id.toString() == key.second }?.folderId
+        }
+        val selfId = info.id.toLongOrNull()
+        if (prospectiveId != null && selfId != null &&
+            (prospectiveId == selfId || isDescendantBasemapFolder(prospectiveId, selfId, folders))) {
+            return null
+        }
+    }
+    return BHoverTarget(key.first, key.second, zone)
+}
+
+internal fun isDescendantBasemapFolder(candidateId: Long, ancestorId: Long, folders: List<BasemapFolderEntity>): Boolean {
     var cur = folders.firstOrNull { it.id == candidateId }?.parentId
     while (cur != null) {
         if (cur == ancestorId) return true
@@ -156,7 +199,11 @@ private suspend fun PointerInputScope.detectTapOrLongPressDrag(
                         change.consume()
                     }
                     dist > viewConfiguration.touchSlop -> break // laisse le parent (scroll) gérer ce mouvement
-                    else -> change.consume()
+                    // Surtout ne rien consommer avant l'appui long : le `scrollable` parent annule sa
+                    // propre détection dès qu'un enfant consomme un mouvement, et ne la reprend pas de
+                    // tout le geste. Consommer ici, meme sous le seuil, tuait donc le defilement des que
+                    // le doigt se posait sur un nom de couche.
+                    else -> Unit
                 }
             }
         }
@@ -183,34 +230,8 @@ fun BasemapControlPanel(
     val scope = rememberCoroutineScope()
     val rowBounds = remember { mutableStateMapOf<Pair<String, String>, BRowBounds>() }
     var dragInfo by remember { mutableStateOf<BDragInfo?>(null) }
-    val hoverTarget: BHoverTarget? = dragInfo?.let { info ->
-        val start = rowBounds[info.kind to info.id] ?: return@let null
-        val centerY = start.top + start.height / 2f + info.offset
-        val hit = rowBounds.entries.firstOrNull { (k, b) ->
-            centerY in b.top..(b.top + b.height) && !(k.first == info.kind && k.second == info.id)
-        } ?: return@let null
-        val (key, bounds) = hit
-        val rel = (centerY - bounds.top) / bounds.height
-        val zone = when {
-            rel < 0.25f -> BHoverZone.BEFORE
-            rel > 0.75f -> BHoverZone.AFTER
-            key.first == "folder" -> BHoverZone.INTO
-            rel < 0.5f -> BHoverZone.BEFORE
-            else -> BHoverZone.AFTER
-        }
-        if (info.kind == "folder") {
-            val prospectiveId = if (zone == BHoverZone.INTO) key.second.toLongOrNull() else when (key.first) {
-                "folder" -> folders.firstOrNull { it.id.toString() == key.second }?.parentId
-                "provider" -> providers.firstOrNull { it.id == key.second }?.folderId
-                else -> composites.firstOrNull { it.id.toString() == key.second }?.folderId
-            }
-            val selfId = info.id.toLongOrNull()
-            if (prospectiveId != null && selfId != null &&
-                (prospectiveId == selfId || isDescendantBasemapFolder(prospectiveId, selfId, folders))) {
-                return@let null
-            }
-        }
-        BHoverTarget(key.first, key.second, zone)
+    val hoverTarget: BHoverTarget? = dragInfo?.let {
+        basemapHoverTarget(it, rowBounds, folders, providers, composites)
     }
     val context = LocalContext.current
     val dctx = BDragCtx(
@@ -270,7 +291,10 @@ fun BasemapControlPanel(
         AlertDialog(
             onDismissRequest = { newFolderDialog = false },
             title = { Text(stringResource(R.string.label_new_folder)) },
-            text = { CompactOutlinedTextField(name, { name = it }, singleLine = true, modifier = Modifier.focusRequester(focus)) },
+            text = {
+                CompactOutlinedTextField(name, { name = it }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus))
+            },
             confirmButton = {
                 TextButton(onClick = {
                     onCreateFolder(name.ifBlank { null } ?: return@TextButton, null); newFolderDialog = false
