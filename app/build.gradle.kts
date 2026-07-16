@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    jacoco
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
@@ -81,6 +82,20 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
+
+    defaultConfig {
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    testOptions {
+        unitTests {
+            // Robolectric charge le manifeste, les ressources et les assets reels de l'app :
+            // sans ca, aucun test ne peut lire une string, une migration Room ou un asset.
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+
+        }
+    }
 }
 
 // Noms de fichier APK explicites (au lieu de app-release.apk / app-debug.apk) : c'est le nom
@@ -131,5 +146,57 @@ dependencies {
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 
-    testImplementation("junit:junit:4.13.2")
+    // --- Tests unitaires (JVM + Robolectric) ---
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.junit)
+    testImplementation(libs.room.testing)
+
+    // --- Tests d'instrumentation et e2e (appareil/emulateur) ---
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.uiautomator)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
+}
+
+// Couverture reelle des tests unitaires (JVM + Robolectric), plutot qu'une estimation.
+//   ./gradlew :app:jacocoTestReport  ->  app/build/reports/jacoco/html/index.html
+jacoco { toolVersion = libs.versions.jacoco.get() }
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    group = "verification"
+    description = "Rapport de couverture des tests unitaires"
+    reports { html.required.set(true); xml.required.set(true) }
+    // Code genere et plomberie sans logique : les compter fausserait le chiffre vers le bas
+    // sans rien dire de la qualite des tests.
+    val filtered = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude(
+            "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+            "**/*_Impl*.*", "**/*Database_Impl*.*",          // Room genere
+            "**/ComposableSingletons*.*", "**/*ComposableKt*.*", "**/*_Factory*.*",
+            "**/databinding/**", "**/generated/**",
+        )
+    }
+    classDirectories.setFrom(filtered)
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(fileTree(layout.buildDirectory) { include("**/testDebugUnitTest.exec") })
+}
+
+// Robolectric charge les classes par son propre chargeur, sans emplacement source : sans cette option,
+// Jacoco les ignore et le rapport annonce 0 % sur du code pourtant couvert (LayerImporter, migrations...).
+// Le chiffre serait un mensonge, plus nuisible qu'une absence de mesure.
+tasks.withType<Test>().configureEach {
+    extensions.configure(JacocoTaskExtension::class) {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
 }

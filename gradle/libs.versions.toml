@@ -13,6 +13,15 @@ maplibre = "11.11.0"
 datastore = "1.1.1"
 coil = "3.1.0"
 splashscreen = "1.0.1"
+# Tests
+junit = "4.13.2"
+robolectric = "4.14.1"
+androidxTest = "1.6.1"
+androidxTestJunit = "1.2.1"
+espresso = "3.6.1"
+uiautomator = "2.3.0"
+coroutinesTest = "1.9.0"
+jacoco = "0.8.12"
 
 [libraries]
 core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
@@ -40,6 +49,20 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
+
+# --- Tests ---
+junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidxTest" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTest" }
+androidx-test-junit = { module = "androidx.test.ext:junit-ktx", version.ref = "androidxTestJunit" }
+espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
+uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
