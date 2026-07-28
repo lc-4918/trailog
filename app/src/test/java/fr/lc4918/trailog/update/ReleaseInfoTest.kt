@@ -19,7 +19,7 @@ class ReleaseInfoTest {
           "versionCode": 10203,
           "releaseDate": "2026-07-15",
           "apkUrl": "https://github.com/lc-4918/trailog/releases/download/v1.2.3/trailog-v1.2.3.apk",
-          "changelog": ""
+          "changelog": "- import : un fichier fautif n'interrompt plus rien\n- reglages : les deux sliders parlent d'opacite"
         }
     """.trimIndent()
 
@@ -29,7 +29,10 @@ class ReleaseInfoTest {
         assertEquals(10203, r.versionCode)
         assertEquals("2026-07-15", r.releaseDate)
         assertTrue(r.apkUrl.endsWith("/trailog-v1.2.3.apk"))
-        assertEquals("", r.changelog)
+        // Changelog multi-lignes : la CI liste les sujets de commits (cf. build-release.yml), les sauts
+        // de ligne arrivent echappes en \n dans le JSON et doivent etre restitues tels quels.
+        assertEquals(2, r.changelog.lines().size)
+        assertTrue(r.changelog.startsWith("- import"))
     }
 
     /** versionCode = maj*10000 + min*100 + patch : meme calcul dans build.gradle.kts et dans la CI. */

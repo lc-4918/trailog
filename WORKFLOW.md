@@ -110,9 +110,15 @@ aux côtés de l'APK :
   "versionCode": 200,
   "releaseDate": "2026-07-15",
   "apkUrl": "https://github.com/lc-4918/trailog/releases/download/v0.2.0/trailog-v0.2.0.apk",
-  "changelog": ""
+  "changelog": "- import : un fichier fautif n'interrompt plus rien, et le dit\n- reglages : les deux sliders parlent d'opacite, comme le code"
 }
 ```
+
+Le `changelog` reprend les sujets des commits (hors merges, 12 au plus) entre le tag précédent et
+celui en cours, en liste à puces, affichée telle quelle dans le dialogue in-app. Ce parcours de
+l'historique impose que le job release fasse un checkout **complet** (`fetch-depth: 0`) : un
+checkout superficiel n'aurait ni les commits ni les tags. S'il n'existe pas de tag précédent
+(premier tag du dépôt), la liste part du début de l'historique.
 
 L'app le lit à l'URL stable
 `https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json`, que GitHub
