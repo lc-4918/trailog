@@ -30,6 +30,10 @@ internal object MigrationSql {
         "UPDATE settings SET basemapControlOpacityPct = MAX(30, 100 - basemapControlOpacityPct)"
     const val ADD_BUBBLE_OPACITY =
         "ALTER TABLE settings ADD COLUMN bubbleOpacityPct INTEGER NOT NULL DEFAULT 100"
+    // Le titre de l'infobulle passe de 14 à 16 par défaut : on n'ajuste que les bases restées sur
+    // l'ancien défaut, pour ne pas écraser une taille choisie exprès.
+    const val BUMP_BUBBLE_TITLE_FONT =
+        "UPDATE settings SET bubbleTitleFont = 16 WHERE bubbleTitleFont = 14"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -44,7 +48,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 22,
+    version = 23,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -107,11 +111,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Nouveau défaut de bubbleTitleFont (14 -> 16) répercuté sur les bases restées à l'ancien défaut.
+        private val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.BUMP_BUBBLE_TITLE_FONT)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

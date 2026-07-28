@@ -135,7 +135,7 @@ data class SettingsEntity(
     // Opacité du panneau (%), appliquée telle quelle en alpha. A porté la transparence jusqu'à la
     // migration 20->21, qui a inversé les valeurs en base pour coller enfin au nom de la colonne.
     val basemapControlOpacityPct: Int = 80,
-    val bubbleTitleFont: Int = 14,                  // taille police du titre de l'infobulle ("Marqueur")
+    val bubbleTitleFont: Int = 16,                  // taille police du titre de l'infobulle ("Marqueur")
     val bubbleTitleBold: Boolean = true,
     val simplifyRender: Boolean = true,             // simplifier la géométrie des traces dans le rendu de carte
     val profileSmoothingM: Int = 5,                 // lissage de l'altitude (m) avant calcul du profil affiché

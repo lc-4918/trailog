@@ -1,6 +1,8 @@
 package fr.lc4918.trailog.ui.points
 
 import android.content.Intent
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +44,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PropValue
@@ -88,7 +93,7 @@ fun InfoBubble(
     }.filter { it != KEY_NAME && !isHiddenKey(it) && (pinnedImage == null || it != feature.pinnedImageKey) }
 
     Card(
-        modifier = modifier.width(280.dp),
+        modifier = modifier.width(BubbleWidth.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(BubbleRadius),
         colors = CardDefaults.cardColors(
@@ -97,44 +102,44 @@ fun InfoBubble(
         Column(Modifier.heightIn(max = maxHeightDp)) {
             // ---- en-tête fixe (toujours visible) : boutons + titre, superposés à l'image de garde si présente ----
             if (pinnedImage != null && pinnedImage.path.isNotBlank()) {
+                val painter = rememberAsyncImagePainter(imageModel(pinnedImage.path))
+                val fillsWidth = rememberPinnedImageFillsWidth(pinnedImage.path, painter)
                 Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = BubbleRadius, topEnd = BubbleRadius))) {
-                    AsyncImage(model = imageModel(pinnedImage.path), contentDescription = null,
-                        contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp))
-                    // crayon niché dans l'angle haut-gauche : son arrondi frôle celui de l'infobulle
-                    OverlayIconButton(Icons.Filled.Edit, R.string.action_edit, onEdit,
-                        modifier = Modifier.align(Alignment.TopStart)
-                            .padding(top = arcInset(BubbleRadius), start = arcInset(BubbleRadius)))
-                    OverlayIconButton(Icons.Filled.Close, R.string.action_close, onClose, filled = false,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(OverlayInset))
-                    // titre en bas à gauche, fond blanc opaque à 80 % sous le seul texte
-                    Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
-                        color = Color.Black, maxLines = 2,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(8.dp)
-                            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp))
-                    // agrandir : bords droit et bas contigus à ceux de l'image de garde, d'où le côté
-                    // droit sans arrondi (les angles bas de l'image de garde sont droits eux aussi)
-                    ExpandButton(onClick = { enlarged = pinnedImage.path },
-                        modifier = Modifier.align(Alignment.BottomEnd), shape = OverlayShapeStart)
-                }
-            } else {
-                // sans image : boutons en haut (crayon à gauche, X à droite), titre en dessous. Faute de
-                // fond, le bouton se réduit à son icône : elle est donc taillée comme celle des boutons
-                // superposés à l'image de garde, pour que les deux en-têtes s'équivalent. Même taille de
-                // bouton, donc même neutralisation du minimum tactile : sans elle les 48dp imposés
-                // tiendraient l'icône à 19dp du coin, hors de portée du retrait voulu.
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    Row(Modifier.fillMaxWidth().padding(start = HeaderInset, end = HeaderInset, top = HeaderInset),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onEdit, modifier = Modifier.size(OverlaySize)) {
-                            Icon(Icons.Filled.Edit, stringResource(R.string.action_edit), Modifier.size(OverlayIconSize))
+                    Image(painter = painter, contentDescription = null, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = BubbleImageMaxHeight.dp))
+                    if (fillsWidth) {
+                        // Boutons posés sur la photo : fond/halo pour les détacher de l'image.
+                        // crayon niché dans l'angle haut-gauche : son arrondi frôle celui de l'infobulle
+                        OverlayIconButton(Icons.Filled.Edit, R.string.action_edit, onEdit,
+                            modifier = Modifier.align(Alignment.TopStart)
+                                .padding(top = arcInset(BubbleRadius), start = arcInset(BubbleRadius)))
+                        OverlayIconButton(Icons.Filled.Close, R.string.action_close, onClose, filled = false,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(OverlayInset))
+                    } else {
+                        // Image trop étroite : les boutons tombent sur les bandes vides, hors de la photo.
+                        // Ils prennent alors le style d'une infobulle sans image de garde (icône seule).
+                        PlainHeaderButtons(onEdit, onClose)
+                    }
+                    // Titre en bas à gauche (fond blanc à 80 % sous le seul texte) et, juste au-dessus, le
+                    // bouton agrandir. L'écart entre le bas du bouton et le haut du fond du titre vaut celui
+                    // du bouton croix au bord haut de l'infobulle (OverlayInset). Colonne ancrée en bas.
+                    Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()) {
+                        Box(Modifier.fillMaxWidth()) {
+                            // bords droit contigus à celui de l'image, d'où le côté droit sans arrondi
+                            ExpandButton(onClick = { enlarged = pinnedImage.path },
+                                modifier = Modifier.align(Alignment.CenterEnd), shape = OverlayShapeStart)
                         }
-                        Spacer(Modifier.weight(1f))
-                        IconButton(onClick = onClose, modifier = Modifier.size(OverlaySize)) {
-                            Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(OverlayIconSize))
-                        }
+                        Spacer(Modifier.height(OverlayInset))
+                        Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
+                            color = Color.Black, maxLines = 2,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                                .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp))
                     }
                 }
+            } else {
+                // sans image : boutons en haut (crayon à gauche, X à droite), titre en dessous.
+                PlainHeaderButtons(onEdit, onClose)
                 Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
                     maxLines = 2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = TitleTopInset))
             }
@@ -177,6 +182,48 @@ fun InfoBubbleLoading(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * L'image de garde (ContentScale.Fit) remplit-elle la largeur ? Oui tant que son ratio est au moins
+ * aussi large que le cadre (largeur / hauteur max) ; plus étroite (portrait), elle laisse des bandes
+ * vides sur les côtés. Pour une image locale on lit ses dimensions tout de suite (en-tête seul, sans
+ * allouer le bitmap) afin d'éviter tout clignotement de style au retour d'édition ; pour une URL on
+ * retombe sur la taille que Coil finit par connaître (résolue de façon asynchrone).
+ */
+@Composable
+private fun rememberPinnedImageFillsWidth(path: String, painter: AsyncImagePainter): Boolean {
+    val localAspect = remember(path) {
+        if (path.startsWith("http://") || path.startsWith("https://")) null
+        else runCatching {
+            val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, o)
+            if (o.outWidth > 0 && o.outHeight > 0) o.outWidth.toFloat() / o.outHeight else null
+        }.getOrNull()
+    }
+    val aspect = localAspect ?: painter.intrinsicSize.let {
+        if (it.isSpecified && it.height > 0f) it.width / it.height else null
+    }
+    return aspect == null || aspect >= BubbleWidth / BubbleImageMaxHeight
+}
+
+@Composable
+private fun PlainHeaderButtons(onEdit: () -> Unit, onClose: () -> Unit) {
+    // Faute de fond, le bouton se réduit à son icône, taillée comme celle des boutons superposés à l'image
+    // de garde pour que les deux en-têtes s'équivalent. Même taille, donc même neutralisation du minimum
+    // tactile : sans elle les 48dp imposés tiendraient l'icône à 19dp du coin, hors du retrait voulu.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        Row(Modifier.fillMaxWidth().padding(start = HeaderInset, end = HeaderInset, top = HeaderInset),
+            verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(OverlaySize)) {
+                Icon(Icons.Filled.Edit, stringResource(R.string.action_edit), Modifier.size(OverlayIconSize))
+            }
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onClose, modifier = Modifier.size(OverlaySize)) {
+                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(OverlayIconSize))
+            }
+        }
+    }
+}
+
 @Composable
 private fun ImageProp(path: String, onEnlarge: () -> Unit) {
     if (path.isBlank()) {
@@ -201,6 +248,10 @@ internal val OverlayInset = 4.dp
 /** Rayons des conteneurs qui portent les boutons : l'infobulle et les images. [arcInset] en dépend. */
 private val BubbleRadius = 16.dp
 internal val ImageRadius = 12.dp
+/** Largeur de l'infobulle et hauteur max de l'image de garde (en dp) ; leur ratio dit si l'image de
+ *  garde remplit la largeur ou laisse des bandes vides sur les côtés. */
+private const val BubbleWidth = 280f
+private const val BubbleImageMaxHeight = 220f
 
 /** Halo du bouton sans fond : épaisseur du contour blanc tracé derrière l'icône, et son opacité
  *  (30 % de transparence). */
