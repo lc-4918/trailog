@@ -40,7 +40,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # fetch-depth: 0 : le changelog (cf. Generate latest-release.json) parcourt l'historique entre le
+      # tag precedent et celui-ci ; un checkout superficiel n'aurait ni les commits ni les tags.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -88,9 +92,17 @@ jobs:
           # Le nom du fichier publie doit exister, sinon l'app telechargerait une URL morte.
           test -f "app/build/outputs/apk/release/trailog-${TAG}.apk"
 
+          # Changelog affiche dans le dialogue in-app (cf. update/UpdateDialog) : sujets des commits depuis
+          # le tag precedent, hors merges, en liste. Plafonne a 12 lignes pour tenir dans le dialogue ; si
+          # c'est le tout premier tag, il n'y a pas de precedent et on liste depuis le debut de l'historique.
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          RANGE="${TAG}"
+          [ -n "$PREV_TAG" ] && RANGE="${PREV_TAG}..${TAG}"
+          CHANGELOG=$(git log --no-merges -n 12 --pretty=format:'- %s' "$RANGE")
+
           jq -n --arg v "$VERSION" --argjson c "$VERSION_CODE" \
-                --arg d "$(date -u +%Y-%m-%d)" --arg u "$APK_URL" \
-                '{version:$v, versionCode:$c, releaseDate:$d, apkUrl:$u, changelog:""}' \
+                --arg d "$(date -u +%Y-%m-%d)" --arg u "$APK_URL" --arg cl "$CHANGELOG" \
+                '{version:$v, versionCode:$c, releaseDate:$d, apkUrl:$u, changelog:$cl}' \
             > "$RUNNER_TEMP/latest-release.json"
           cat "$RUNNER_TEMP/latest-release.json"
 
