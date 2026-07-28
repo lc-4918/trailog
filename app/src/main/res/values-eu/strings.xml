@@ -198,6 +198,7 @@
     <string name="unit_meter">m</string>
     <string name="value_ele_meters">%1$s m</string>
     <string name="field_name_hint">Eremuaren izena</string>
+    <string name="field_name_required">Eman izen bat eremu honi gordetzeko.</string>
     <string name="action_add_field">Gehitu eremu bat</string>
     <string name="action_remove_field">Kendu eremua</string>
     <string name="field_type_text">Testua</string>

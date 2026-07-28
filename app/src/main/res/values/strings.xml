@@ -198,6 +198,7 @@
     <string name="unit_meter">m</string>
     <string name="value_ele_meters">%1$s m</string>
     <string name="field_name_hint">Nom du champ</string>
+    <string name="field_name_required">Donnez un nom à ce champ pour l\'enregistrer.</string>
     <string name="action_add_field">Ajouter un champ</string>
     <string name="action_remove_field">Retirer le champ</string>
     <string name="field_type_text">Texte</string>

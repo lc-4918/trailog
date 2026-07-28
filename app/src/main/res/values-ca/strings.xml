@@ -198,6 +198,7 @@
     <string name="unit_meter">m</string>
     <string name="value_ele_meters">%1$s m</string>
     <string name="field_name_hint">Nom del camp</string>
+    <string name="field_name_required">Dóna un nom a aquest camp per desar-lo.</string>
     <string name="action_add_field">Afegeix un camp</string>
     <string name="action_remove_field">Elimina el camp</string>
     <string name="field_type_text">Text</string>
