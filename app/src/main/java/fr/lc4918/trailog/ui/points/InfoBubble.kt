@@ -72,6 +72,8 @@ fun InfoBubble(
     titleBold: Boolean = true,
     // Hauteur max de l'infobulle : elle défile en interne au-delà, pour toujours tenir entièrement à l'écran.
     maxHeightDp: Dp = 400.dp,
+    // Opacité du fond de l'infobulle (0f..1f) : seul le fond devient translucide, le contenu reste opaque.
+    backgroundAlpha: Float = 1f,
     onEdit: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -89,6 +91,8 @@ fun InfoBubble(
         modifier = modifier.width(280.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(BubbleRadius),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)),
     ) {
         Column(Modifier.heightIn(max = maxHeightDp)) {
             // ---- en-tête fixe (toujours visible) : boutons + titre, superposés à l'image de garde si présente ----

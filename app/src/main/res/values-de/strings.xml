@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Button für Kartengrundlagen-Verwaltung anzeigen</string>
     <string name="settings_basemap_control_width">Panelbreite: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Deckkraft des Bereichs: %1$d%%</string>
+    <string name="settings_bubble_opacity">Deckkraft der Infoblase: %1$d%%</string>
     <string name="settings_section_default_basemap">Standardkartengrundlage</string>
     <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
     <string name="settings_app_folder_default">App-Ordner (Standard)</string>

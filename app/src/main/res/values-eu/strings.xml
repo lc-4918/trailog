@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Erakutsi oinarrizko mapen kudeatzailearen botoia</string>
     <string name="settings_basemap_control_width">Panelaren zabalera: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Panelaren opakutasuna: %1$d%%</string>
+    <string name="settings_bubble_opacity">Informazio-burbuilaren opakutasuna: %1$d%%</string>
     <string name="settings_section_default_basemap">Oinarrizko mapa lehenetsia</string>
     <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
     <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>

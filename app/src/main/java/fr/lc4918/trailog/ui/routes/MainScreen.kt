@@ -596,6 +596,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
                                     titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
                                     maxHeightDp = maxBubbleHeightDp,
+                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
                                     onEdit = { editing = true }, onClose = { vm.closeMarker() })
                             } else {
                                 InfoBubbleLoading()

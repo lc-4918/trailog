@@ -24,7 +24,7 @@ class MigrationInstrumentedTest {
         val cols = s.query("PRAGMA table_info(settings)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
-        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct").forEach {
+        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "bubbleOpacityPct").forEach {
             assertTrue("colonne $it absente", it in cols)
         }
     }

@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Mostra il pulsante di gestione delle mappe di base</string>
     <string name="settings_basemap_control_width">Larghezza del pannello: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacità del pannello: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacità del fumetto: %1$d%%</string>
     <string name="settings_section_default_basemap">Mappa di base predefinita</string>
     <string name="settings_section_mbtiles_folder">Cartella MBTiles</string>
     <string name="settings_app_folder_default">Cartella dell\'app (predefinita)</string>

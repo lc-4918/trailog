@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Mostra el botó del gestor de mapes base</string>
     <string name="settings_basemap_control_width">Amplada del panell: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacitat del plafó: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacitat de la bombolla: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapa base predeterminat</string>
     <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
     <string name="settings_app_folder_default">Carpeta de l\'app (per defecte)</string>

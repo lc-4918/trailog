@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Mostrar o botão do gestor de mapas base</string>
     <string name="settings_basemap_control_width">Largura do painel: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacidade do painel: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacidade do balão: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapa base predefinido</string>
     <string name="settings_section_mbtiles_folder">Pasta de MBTiles</string>
     <string name="settings_app_folder_default">Pasta da app (predefinida)</string>

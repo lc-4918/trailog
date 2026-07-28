@@ -168,6 +168,7 @@
     <string name="settings_show_basemap_control_button">Afficher le bouton du gestionnaire de fonds de plan</string>
     <string name="settings_basemap_control_width">Largeur du panneau : %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacité du panneau : %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacité de l\'infobulle : %1$d%%</string>
     <string name="settings_section_default_basemap">Fond par défaut</string>
     <string name="settings_section_mbtiles_folder">Dossier des MBTiles</string>
     <string name="settings_app_folder_default">Dossier de l\'app (défaut)</string>

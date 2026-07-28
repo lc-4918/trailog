@@ -244,6 +244,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     FontStepper(stringResource(R.string.font_title), cur.bubbleTitleFont, bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
     Text(stringResource(R.string.settings_bubble_position), style = MaterialTheme.typography.bodyMedium)
     BubblePositionPicker(BubblePosition.of(cur.bubblePosition)) { vm.save(cur.copy(bubblePosition = it.key)) }
+    Text(stringResource(R.string.settings_bubble_opacity, cur.bubbleOpacityPct), style = MaterialTheme.typography.bodyMedium)
+    CompactSlider(value = cur.bubbleOpacityPct.toFloat(), valueRange = 30f..100f,
+        onValueChange = { vm.save(cur.copy(bubbleOpacityPct = it.toInt())) })
 }
 
 /** Libellé traduit d'un placement d'infobulle. */
