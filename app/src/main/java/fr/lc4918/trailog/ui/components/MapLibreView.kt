@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.components
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas as AndroidCanvas
+import android.graphics.BlurMaskFilter
 import android.graphics.Paint
 import android.graphics.PointF
 import android.graphics.RectF
@@ -193,6 +194,11 @@ class MapController {
     private fun src(key: String) = "src-$key"
     private fun lineLayerId(key: String) = "$key-ln"
     private fun pointLayerId(key: String) = "$key-pt"
+    /** Identifiants des calques/source du marqueur sélectionné : ombre portée, pin au sommet, source commune
+     *  (cf. [setSelectedMarker]). */
+    private val SEL_SHADOW = "sel-marker-shadow"
+    private val SEL_TOP = "sel-marker-top"
+    private val SEL_SRC = "sel-marker-src"
     private fun addLayerSafe(layer: org.maplibre.android.style.layers.Layer) {
         val s = style ?: return
         if (s.getLayer("cursor-dot") != null) s.addLayerBelow(layer, "cursor-dot") else s.addLayer(layer)
@@ -253,6 +259,92 @@ class MapController {
     }
 
     fun clearLayers() = setLayers(emptyList(), 96f)
+
+    private val shadowImages = mutableSetOf<String>()
+
+    /**
+     * Marqueur sélectionné : son ombre portée (silhouette grise floutée du pin, décalée en bas à droite,
+     * posée sous les pins de sa trace [belowKey]) et une copie de son pin au sommet de la pile, pour qu'il
+     * passe DEVANT les marqueurs qui le chevauchent. Les deux partagent une source. Calques carte (et non
+     * surcouche Compose) : ils suivent seuls la carte au pan/zoom. [lon]/[lat] nuls retirent tout.
+     */
+    fun setSelectedMarker(lon: Double?, lat: Double?, belowKey: String?, colorHex: String?, heightPx: Float) {
+        val s = style ?: return
+        if (lon == null || lat == null) {
+            s.getLayer(SEL_TOP)?.let { s.removeLayer(it) }
+            s.getLayer(SEL_SHADOW)?.let { s.removeLayer(it) }
+            s.getSource(SEL_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val h = heightPx.toInt().coerceIn(24, 256)
+        val shadowImg = ensureShadowImage(s, appContext, h)
+        val pinImg = ensurePin(s, appContext, colorHex ?: "#1F6FB2", heightPx)
+        val geojson = "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}"
+        val existingSrc = s.getSourceAs<GeoJsonSource>(SEL_SRC)
+        if (existingSrc == null) s.addSource(GeoJsonSource(SEL_SRC, geojson)) else existingSrc.setGeoJson(geojson)
+        // Ombre, sous les pins de la trace du marqueur.
+        if (s.getLayer(SEL_SHADOW) == null) {
+            val shadow = SymbolLayer(SEL_SHADOW, SEL_SRC).withProperties(
+                PropertyFactory.iconImage(shadowImg), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                // léger décalage bas-droite, pour un effet d'ombre portée (le marqueur est ancré en bas)
+                PropertyFactory.iconOffset(arrayOf(3f, 4f)),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter)
+            val belowPts = belowKey?.let { pointLayerId(it) }
+            if (belowPts != null && s.getLayer(belowPts) != null) s.addLayerBelow(shadow, belowPts) else s.addLayer(shadow)
+        } else {
+            (s.getLayer(SEL_SHADOW) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(shadowImg))
+        }
+        // Copie du pin au-dessus des autres marqueurs, mais SOUS les overlays de tête (point GPS, point
+        // courant du profil) : le marqueur cliqué passe devant ceux qui le chevauchent sans masquer le
+        // repère GPS. On l'insère sous le plus bas de ces overlays présents (style.layers est ordonné du bas
+        // vers le haut, d'où le premier match) ; à défaut, au sommet, rien à passer dessous.
+        if (s.getLayer(SEL_TOP) == null) {
+            val topPin = SymbolLayer(SEL_TOP, SEL_SRC).withProperties(
+                PropertyFactory.iconImage(pinImg), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter)
+            val headOverlays = setOf("user-location-accuracy", "user-location-dot", "cursor-dot")
+            val lowestOverlay = s.layers.firstOrNull { it.id in headOverlays }?.id
+            if (lowestOverlay != null) s.addLayerBelow(topPin, lowestOverlay) else s.addLayer(topPin)
+        } else {
+            (s.getLayer(SEL_TOP) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(pinImg))
+        }
+    }
+
+    private fun ensureShadowImage(s: Style, context: Context?, h: Int): String {
+        val name = "pin_shadow_$h"
+        if (shadowImages.add(name)) s.addImage(name, pinShadowBitmap(context, h))
+        return name
+    }
+
+    /** Silhouette du pin (contour + remplissage) en gris translucide, floutée : l'ombre épouse ainsi la
+     *  forme réelle du marqueur au lieu d'un cercle. */
+    private fun pinShadowBitmap(context: Context?, h: Int): Bitmap {
+        val pin = createBitmap(h, h)
+        val pc = AndroidCanvas(pin)
+        context?.let { ctx ->
+            ContextCompat.getDrawable(ctx, R.drawable.ic_pin_outline)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(android.graphics.Color.BLACK); draw(pc)
+            }
+            ContextCompat.getDrawable(ctx, R.drawable.ic_pin_fill)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(android.graphics.Color.BLACK); draw(pc)
+            }
+        }
+        val blur = (h * 0.05f).coerceAtLeast(1f)
+        val offsetXY = IntArray(2)
+        val alpha = pin.extractAlpha(
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL) },
+            offsetXY)
+        val out = createBitmap(h, h)
+        // gris ~45 % d'opacité : ombre légère, pas un aplat opaque.
+        AndroidCanvas(out).drawBitmap(alpha, offsetXY[0].toFloat(), offsetXY[1].toFloat(),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x73555555.toInt() })
+        pin.recycle(); alpha.recycle()
+        return out
+    }
 
     /** Coins posés pendant le tracé de la bbox hors-ligne : rendus en croix "viseur" (pas les épingles
      *  habituelles) + contour du rectangle une fois 2 coins posés. Source/couches dédiées, indépendantes
@@ -364,7 +456,12 @@ class MapController {
         if (s.getSourceAs<GeoJsonSource>("cursor") == null) {
             s.addSource(GeoJsonSource("cursor", emptyFc()))
             s.addLayer(CircleLayer("cursor-dot", "cursor").withProperties(
-                PropertyFactory.circleRadius(4f), PropertyFactory.circleColor("#ffffff"),
+                // Rayon constant (4) jusqu'au zoom 16, puis croissant : l'interpolation se fige sur la
+                // première butée en deçà de 16, donc l'agrandissement ne commence qu'à partir de ce niveau.
+                PropertyFactory.circleRadius(Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(16f, 4f), Expression.stop(22f, 11f))),
+                PropertyFactory.circleColor("#ffffff"),
                 PropertyFactory.circleStrokeColor("#1F6FB2"), PropertyFactory.circleStrokeWidth(2f)))
         }
         s.getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(

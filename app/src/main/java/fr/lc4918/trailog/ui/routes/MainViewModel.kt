@@ -99,6 +99,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _markerLayerData = MutableStateFlow<PointLayerData?>(null)
     val markerLayerData = _markerLayerData.asStateFlow()
     private val _markerLayerId = MutableStateFlow<Long?>(null)
+    /** Couche du marqueur sélectionné, pour poser l'ombre portée juste sous les pins de cette trace. */
+    val markerLayerId = _markerLayerId.asStateFlow()
     private val _selectedMarkerId = MutableStateFlow<String?>(null)
     val selectedMarkerId = _selectedMarkerId.asStateFlow()
     // Position du marqueur tapé, connue dès le tap (géométrie interrogée sur la carte) : l'infobulle peut

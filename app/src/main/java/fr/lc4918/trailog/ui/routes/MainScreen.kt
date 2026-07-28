@@ -420,6 +420,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // conserve le dernier profil pour l'animation de disparition
     var lastComputed by remember { mutableStateOf<ComputedTrack?>(null) }
     LaunchedEffect(computed) { if (computed != null) lastComputed = computed }
+    // Marqueur sélectionné (calques carte) : ombre portée sous les pins de sa trace, et copie du pin au
+    // sommet pour qu'il passe devant ceux qui le chevauchent. Position connue dès le tap ; retiré à la
+    // désélection. Suit seul la carte.
+    val markerLayerId by vm.markerLayerId.collectAsState()
+    LaunchedEffect(selectedMarkerPos, markerLayerId, markerPx, renderLayers) {
+        val pos = selectedMarkerPos
+        val key = markerLayerId?.let { "ly$it" }
+        val color = renderLayers.firstOrNull { it.key == key }?.color
+        controller.setSelectedMarker(pos?.first, pos?.second, key, color, markerPx)
+    }
     // titre + couleur de la trace active : mis à jour dès le tap (avant le calcul du profil), et conservés
     // pendant l'animation de fermeture (activeLayerId repassé à null).
     var profileTitle by remember { mutableStateOf("") }
