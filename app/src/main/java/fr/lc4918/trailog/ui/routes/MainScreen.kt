@@ -1132,28 +1132,23 @@ private fun LegendContent(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(12.dp))
-                    // "Nouveau dossier" en icône seule (sans contour, comme les IconButton du header)
-                    // pour laisser assez de place à "Importer" et "Carte hors-ligne" sans déborder.
-                    // 3 boutons : SpaceBetween (répartis sur la largeur). Sans "Carte hors-ligne" (2 boutons)
-                    // : alignés à gauche avec un espacement, plutôt que collés aux deux bords.
+                    // Trois actions du header en icône seule, même style (IconButton sans contour, 36 dp) :
+                    // "Nouveau dossier", "Importer" et "Carte hors-ligne", groupées à gauche avec un
+                    // espacement régulier ; le libellé passe en description d'accessibilité de l'icône.
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (showOfflineButton) Arrangement.SpaceBetween else Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = { openNewFolder(null) }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder))
                         }
-                        OutlinedButton(onClick = onImport, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                            Icon(Icons.Filled.FileUpload, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.action_import), maxLines = 1)
+                        IconButton(onClick = onImport, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.FileUpload, stringResource(R.string.action_import))
                         }
                         if (showOfflineButton) {
-                            OutlinedButton(onClick = onDownloadOffline, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)) {
-                                Icon(Icons.Filled.Download, null, Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(stringResource(R.string.action_offline_download), maxLines = 1)
+                            IconButton(onClick = onDownloadOffline, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Filled.Download, stringResource(R.string.action_offline_download))
                             }
                         }
                     }
