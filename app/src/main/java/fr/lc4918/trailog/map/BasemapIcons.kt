@@ -14,6 +14,14 @@ private val NATIONAL_FLAG_CODES = mapOf(
     "be" to "be",
     "se" to "se",
     "hr" to "hr",
+    "ch" to "ch",
+    "de" to "de",
+    "fi" to "fi",
+    "si" to "si",
+    "cz" to "cz",
+    "gb" to "gb",
+    "pl" to "pl",
+    "pt" to "pt",
 )
 
 /** Code pays du drapeau à afficher pour ce fond de plan, ou null si aucun (icône globe générique). */

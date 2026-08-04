@@ -53,6 +53,7 @@ interface ProviderDao {
 interface CompositeDao {
     @Query("SELECT * FROM composites ORDER BY sortOrder, name") fun all(): Flow<List<CompositeEntity>>
     @Upsert suspend fun upsert(c: CompositeEntity)
+    @Upsert suspend fun upsertAll(list: List<CompositeEntity>)
     @Delete suspend fun delete(c: CompositeEntity)
     @Query("UPDATE composites SET folderId=:folderId WHERE id=:id") suspend fun move(id: Long, folderId: Long?)
     @Query("UPDATE composites SET sortOrder=:o WHERE id=:id") suspend fun setSort(id: Long, o: Int)

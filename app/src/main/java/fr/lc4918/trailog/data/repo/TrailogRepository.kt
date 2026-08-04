@@ -9,6 +9,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.imp.LayerImporter
+import fr.lc4918.trailog.data.seed.Composites
 import fr.lc4918.trailog.data.seed.Providers
 import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
@@ -74,7 +75,13 @@ class TrailogRepository(private val ctx: Context) {
     private suspend fun profileSmoothing(): Double = (db.settings().get()?.profileSmoothingM ?: 5).toDouble()
 
     suspend fun ensureSeed() = withContext(Dispatchers.IO) {
-        if (db.providers().count() == 0) db.providers().upsertAll(Providers.defaults())
+        // Les composites suivent le semis des fournisseurs, et ne sont pas testés sur leur propre table :
+        // sinon, supprimer le composite semé le ferait revenir au lancement suivant. Ils référencent de
+        // toute façon des fournisseurs par id, ils n'ont de sens qu'une fois ceux-ci en base.
+        if (db.providers().count() == 0) {
+            db.providers().upsertAll(Providers.defaults())
+            db.composites().upsertAll(Composites.defaults())
+        }
         if (db.settings().get() == null) {
             db.settings().upsert(SettingsEntity(customTitle = ctx.getString(R.string.drawer_default_title)))
         }

@@ -94,4 +94,13 @@ class ProvidersTest {
     @Test fun `seul af3v declare une legende pour l'instant`() {
         assertEquals(listOf("af3v"), all.filter { it.legendAsset != null }.map { it.id })
     }
+
+    /** Le Basemap Control ne liste que les fonds actifs : la liste ci-dessous est ce que voit un nouvel
+     *  utilisateur. Un "enabled = false" oublie sur un fond ajoute la rallongerait sans qu'on le remarque. */
+    @Test fun `seuls six fonds sont actifs d entree`() {
+        assertEquals(
+            listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief", "ign_fr"),
+            all.filter { it.enabled }.map { it.id },
+        )
+    }
 }
