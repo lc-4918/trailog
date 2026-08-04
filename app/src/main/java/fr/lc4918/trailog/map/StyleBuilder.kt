@@ -40,6 +40,7 @@ object StyleBuilder {
         val layers = JSONArray()
         val styleRoot = JSONObject()
 
+        layers.put(backgroundLayer())
         addLayer(sources, layers, styleRoot, base, "base", mbtilesDir, 1f, isBase = true)
         overlays.forEachIndexed { i, ov ->
             addLayer(sources, layers, styleRoot, ov, "ov_$i", mbtilesDir, overlayOpacities[ov.id] ?: 1f, isBase = false)
@@ -56,6 +57,19 @@ object StyleBuilder {
         styleRoot.put("version", 8).put("sources", sources).put("layers", layers)
         return Result(styleRoot.toString(), null)
     }
+
+    /**
+     * Sans couche de fond, MapLibre laisse son canevas nu, donc NOIR, partout où une tuile manque : hors
+     * zone téléchargée, au-delà des niveaux de zoom couverts, ou serveur muet. Les boutons de la carte,
+     * dessinés en noir, y devenaient alors introuvables. Ce gris clair est posé sous tout le reste : un
+     * fond vectoriel de base repose sa propre couche "background" par-dessus (cf. addLayer, isBase), il ne
+     * se voit donc que là où il n'y a effectivement rien à afficher.
+     */
+    private fun backgroundLayer() = JSONObject()
+        .put("id", "no-tile-background").put("type", "background")
+        .put("paint", JSONObject().put("background-color", NO_TILE_COLOR))
+
+    private const val NO_TILE_COLOR = "#E8E8E8"
 
     /** Ajoute un fond (raster -> source+couche unique ; vectoriel -> style distant fusionné) au style en cours. */
     private suspend fun addLayer(

@@ -30,8 +30,18 @@ class StyleBuilderTest {
         assertNull("un raster n'a pas d'URL de style", r.styleUrl)
         val root = style(r.styleJson)
         assertEquals(8, root.getInt("version"))
-        assertEquals(listOf("base"), layerIds(root))
+        assertEquals(listOf("no-tile-background", "base"), layerIds(root))
         assertTrue(root.getJSONObject("sources").has("base"))
+    }
+
+    /** Sans cette couche, les zones sans tuile restent au canevas nu de MapLibre, noir, sur lequel les
+     *  boutons de la carte (noirs eux aussi) disparaissent. Elle doit passer sous toutes les autres. */
+    @Test fun `une couche de fond claire passe sous toutes les autres`() = runTest {
+        val r = StyleBuilder.build(p("osm", "XYZ", "https://t/{z}/{x}/{y}.png"),
+            listOf(p("a", "XYZ", "https://a/{z}/{x}/{y}.png", opaque = false)), null, dir)
+        val first = style(r.styleJson).getJSONArray("layers").getJSONObject(0)
+        assertEquals("background", first.getString("type"))
+        assertEquals("#E8E8E8", first.getJSONObject("paint").getString("background-color"))
     }
 
     /** Un style vectoriel seul se delegue a MapLibre par URL : rien a construire. */
@@ -60,14 +70,14 @@ class StyleBuilderTest {
             listOf(p("a", "XYZ", "https://a/{z}/{x}/{y}.png", opaque = false),
                    p("b", "XYZ", "https://b/{z}/{x}/{y}.png", opaque = false)),
             null, dir)
-        assertEquals(listOf("base", "ov_0", "ov_1"), layerIds(style(r.styleJson)))
+        assertEquals(listOf("no-tile-background", "base", "ov_0", "ov_1"), layerIds(style(r.styleJson)))
     }
 
     @Test fun `l'opacite d'une surcouche se retrouve dans le style`() = runTest {
         val r = StyleBuilder.build(p("osm", "XYZ", "https://t/{z}/{x}/{y}.png"),
             listOf(p("a", "XYZ", "https://a/{z}/{x}/{y}.png", opaque = false)), null, dir,
             overlayOpacities = mapOf("a" to 0.5f))
-        val ov = style(r.styleJson).getJSONArray("layers").getJSONObject(1)
+        val ov = style(r.styleJson).getJSONArray("layers").getJSONObject(2)
         assertEquals(0.5, ov.getJSONObject("paint").getDouble("raster-opacity"), 1e-6)
     }
 
@@ -76,7 +86,7 @@ class StyleBuilderTest {
         val r = StyleBuilder.build(p("osm", "XYZ", "https://t/{z}/{x}/{y}.png"),
             listOf(p("a", "XYZ", "https://a/{z}/{x}/{y}.png", opaque = false)), null, dir,
             overlayOpacities = mapOf("a" to 1f))
-        val ov = style(r.styleJson).getJSONArray("layers").getJSONObject(1)
+        val ov = style(r.styleJson).getJSONArray("layers").getJSONObject(2)
         assertTrue(!ov.has("paint") || !ov.getJSONObject("paint").has("raster-opacity"))
     }
 
