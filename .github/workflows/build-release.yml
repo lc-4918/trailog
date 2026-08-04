@@ -1,5 +1,11 @@
 name: Build & Release
 
+# Actions epinglees au dernier majeur tournant sur Node.js 24 : Node.js 20 est deprecie, les runners
+# forcaient deja Node 24 en avertissant. Ces majeurs exigent un runner >= 2.327.1, ce que ubuntu-latest
+# depasse largement. Les ruptures annoncees ne concernent pas ce workflow : le blocage des PR de fork
+# (checkout v7) suppose pull_request_target ou workflow_run, et le televersement direct
+# (upload-artifact v7) est optionnel, sur un parametre "archive" qu'on ne pose pas.
+
 on:
   push:
     branches:
@@ -13,9 +19,9 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,7 +34,7 @@ jobs:
         run: ./gradlew :app:assembleDebug
 
       - name: Upload debug APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trailog-debug-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
@@ -42,11 +48,11 @@ jobs:
     steps:
       # fetch-depth: 0 : le changelog (cf. Generate latest-release.json) parcourt l'historique entre le
       # tag precedent et celui-ci ; un checkout superficiel n'aurait ni les commits ni les tags.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -107,7 +113,7 @@ jobs:
           cat "$RUNNER_TEMP/latest-release.json"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
