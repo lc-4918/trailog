@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.domain.model
 
+import fr.lc4918.trailog.data.db.SettingsEntity
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -11,6 +12,14 @@ class BubblePositionTest {
         assertEquals("auto", BubblePosition.AUTO.key)
         assertEquals("bottom_right", BubblePosition.BOTTOM_RIGHT.key)
         assertEquals(10, BubblePosition.entries.size)     // AUTO + grille 3x3
+    }
+
+    /** Defaut d'une installation neuve : bas-gauche, et non le AUTO historique. La valeur transite par
+     *  BubblePosition.of, qui retombe silencieusement sur AUTO : une cle mal ecrite dans SettingsEntity
+     *  ne se verrait qu'a l'usage, sur une installation neuve. */
+    @Test fun `le defaut des reglages est bas-gauche`() {
+        assertEquals("bottom_left", SettingsEntity().bubblePosition)
+        assertEquals(BubblePosition.BOTTOM_LEFT, BubblePosition.of(SettingsEntity().bubblePosition))
     }
 
     @Test fun `of retrouve chaque position par sa cle`() {

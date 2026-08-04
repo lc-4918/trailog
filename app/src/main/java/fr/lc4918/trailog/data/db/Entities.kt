@@ -146,7 +146,9 @@ data class SettingsEntity(
     // Placement de l'infobulle par rapport au marqueur tapé (cf. BubblePosition) : "auto" = sous le marqueur,
     // basculée au-dessus si ça ne tient pas, bornée à l'écran, sans jamais bouger la carte. Les 9 autres
     // valeurs imposent un placement fixe autour du point et peuvent recentrer la carte pour tenir à l'écran.
-    val bubblePosition: String = "auto",
+    // Défaut "bottom_left" et non "auto" : l'infobulle se pose alors en bas à gauche du marqueur, qui reste
+    // ainsi dégagé vers le haut et la droite, là où se lit la suite de la trace.
+    val bubblePosition: String = "bottom_left",
     // Opacité du fond de l'infobulle (30..100 %), le contenu (texte, images) restant opaque. 100 = fond plein.
     val bubbleOpacityPct: Int = 100,
     // Vérification des mises à jour : "auto" au démarrage, ou "manual" (bouton dans les réglages).
