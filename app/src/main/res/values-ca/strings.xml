@@ -148,6 +148,13 @@
     <string name="chip_slope">Pendent</string>
     <string name="chip_time">Temps</string>
 
+    <string name="info_name_distance">Distància</string>
+    <string name="info_name_ascent">Desnivell positiu</string>
+    <string name="info_name_descent">Desnivell negatiu</string>
+    <string name="info_name_duration">Durada</string>
+    <string name="info_name_alt_min">Altitud mínima</string>
+    <string name="info_name_alt_max">Altitud màxima</string>
+
     <!-- Configuració: Bombolles -->
     <string name="settings_section_bubbles">Bombolles informatives</string>
     <string name="settings_font_size">Mida de lletra</string>

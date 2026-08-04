@@ -148,6 +148,15 @@
     <string name="chip_slope">Pente</string>
     <string name="chip_time">Temps</string>
 
+    <!-- Libellés longs des infos de la trace : affichés dans l'infobulle d'appui long sur la ligne
+         de titre du profil, où la place n'est plus comptée (les chips ci-dessus sont abrégés). -->
+    <string name="info_name_distance">Distance</string>
+    <string name="info_name_ascent">Dénivelé positif</string>
+    <string name="info_name_descent">Dénivelé négatif</string>
+    <string name="info_name_duration">Durée</string>
+    <string name="info_name_alt_min">Altitude minimale</string>
+    <string name="info_name_alt_max">Altitude maximale</string>
+
     <!-- Réglages : Bulles -->
     <string name="settings_section_bubbles">Infobulles</string>
     <string name="settings_font_size">Taille de police</string>

@@ -148,6 +148,13 @@
     <string name="chip_slope">Pendiente</string>
     <string name="chip_time">Tiempo</string>
 
+    <string name="info_name_distance">Distancia</string>
+    <string name="info_name_ascent">Desnivel positivo</string>
+    <string name="info_name_descent">Desnivel negativo</string>
+    <string name="info_name_duration">Duración</string>
+    <string name="info_name_alt_min">Altitud mínima</string>
+    <string name="info_name_alt_max">Altitud máxima</string>
+
     <!-- Ajustes: Burbujas -->
     <string name="settings_section_bubbles">Burbujas informativas</string>
     <string name="settings_font_size">Tamaño de fuente</string>

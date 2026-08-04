@@ -148,6 +148,13 @@
     <string name="chip_slope">Inclinação</string>
     <string name="chip_time">Tempo</string>
 
+    <string name="info_name_distance">Distância</string>
+    <string name="info_name_ascent">Desnível positivo</string>
+    <string name="info_name_descent">Desnível negativo</string>
+    <string name="info_name_duration">Duração</string>
+    <string name="info_name_alt_min">Altitude mínima</string>
+    <string name="info_name_alt_max">Altitude máxima</string>
+
     <!-- Definições: Balões -->
     <string name="settings_section_bubbles">Balões informativos</string>
     <string name="settings_font_size">Tamanho da letra</string>

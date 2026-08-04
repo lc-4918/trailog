@@ -34,6 +34,10 @@ object TileMath {
         return floor((1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n).toInt().coerceIn(0, n - 1)
     }
 
+    /** Tuile (x, y) contenant un point, à un niveau de zoom donné. */
+    fun tileAt(lon: Double, lat: Double, zoom: Int): Pair<Int, Int> =
+        lonToTileX(lon, zoom) to latToTileY(lat, zoom)
+
     /** Nombre de tuiles couvrant [bbox] à un niveau de zoom donné. */
     fun tileCount(bbox: Bbox, zoom: Int): Long {
         val xMin = lonToTileX(bbox.west, zoom)

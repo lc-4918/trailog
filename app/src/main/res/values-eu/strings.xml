@@ -148,6 +148,13 @@
     <string name="chip_slope">Malda</string>
     <string name="chip_time">Denbora</string>
 
+    <string name="info_name_distance">Distantzia</string>
+    <string name="info_name_ascent">Desnibel positiboa</string>
+    <string name="info_name_descent">Desnibel negatiboa</string>
+    <string name="info_name_duration">Iraupena</string>
+    <string name="info_name_alt_min">Gutxieneko altitudea</string>
+    <string name="info_name_alt_max">Gehieneko altitudea</string>
+
     <!-- Ezarpenak: Burbuilak -->
     <string name="settings_section_bubbles">Informazio-burbuilak</string>
     <string name="settings_font_size">Letra-tamaina</string>

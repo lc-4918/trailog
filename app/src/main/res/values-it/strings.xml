@@ -148,6 +148,13 @@
     <string name="chip_slope">Pendenza</string>
     <string name="chip_time">Tempo</string>
 
+    <string name="info_name_distance">Distanza</string>
+    <string name="info_name_ascent">Dislivello positivo</string>
+    <string name="info_name_descent">Dislivello negativo</string>
+    <string name="info_name_duration">Durata</string>
+    <string name="info_name_alt_min">Altitudine minima</string>
+    <string name="info_name_alt_max">Altitudine massima</string>
+
     <!-- Impostazioni: Fumetti -->
     <string name="settings_section_bubbles">Fumetti informativi</string>
     <string name="settings_font_size">Dimensione carattere</string>

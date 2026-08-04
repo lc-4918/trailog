@@ -92,6 +92,8 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.map.CoverageBounds
+import fr.lc4918.trailog.map.CoverageProbe
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.legendAssetModel
 import fr.lc4918.trailog.map.offline.Bbox
@@ -116,6 +118,7 @@ import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
@@ -397,6 +400,24 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             else controller.moveTo(46.6, 2.4, 4.8)   // centre France
             positioned = true
         }
+    }
+
+    // Activer un fond national alors que la carte regarde un autre pays ne montre rien : le service ne
+    // sert pas cette zone, il ne reste que le gris de no-tile-background ou le blanc que renvoient les
+    // WMS hors de chez eux. On recadre alors sur l'emprise du fond. Les 2 s laissent aux tuiles le temps
+    // d'arriver sur une connexion lente : recadrer une carte qui allait s'afficher serait pire que ne
+    // rien faire. Relancé sur styleTick, pas seulement sur l'identifiant : le style met un instant à
+    // s'appliquer, et sonder avant que la caméra ne soit posée donnerait une emprise sans rapport.
+    LaunchedEffect(settings?.defaultBasemapId, styleTick) {
+        if (styleTick == 0 || !positioned) return@LaunchedEffect
+        val id = settings?.defaultBasemapId ?: return@LaunchedEffect
+        val provider = providers.firstOrNull { it.id == id } ?: return@LaunchedEffect
+        val bounds = CoverageBounds.of(provider) ?: return@LaunchedEffect
+        delay(2_000)
+        val viewport = controller.visibleBounds() ?: return@LaunchedEffect
+        val zoom = controller.cameraState()?.third?.toInt() ?: return@LaunchedEffect
+        if (CoverageProbe.probe(provider, viewport, zoom) != CoverageProbe.Coverage.EMPTY) return@LaunchedEffect
+        controller.fitTo(bounds.west, bounds.south, bounds.east, bounds.north)
     }
 
     // infobulle
@@ -729,15 +750,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .padding(horizontal = 8.dp).navigationBarsPadding()
                             .onGloballyPositioned { profileBarHeightPx = it.size.height },
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProfileTitleRow {
                             Text(profileTitle, fontSize = (settings?.profTitleFont ?: 13).sp,
                                 fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1, modifier = Modifier.padding(end = 8.dp))
+                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             if (windowStats != null) {
-                                Text(titleInfoText(windowStats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
-                                    fontSize = (settings?.profBarFont ?: 11).sp,
-                                    fontWeight = if (settings?.profBarBold == true) FontWeight.Bold else null,
-                                    modifier = Modifier.weight(1f))
+                                TitleInfosRow(
+                                    titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
+                                    fontSize = settings?.profBarFont ?: 11,
+                                    bold = settings?.profBarBold == true)
                             }
                         }
                         if (windowStats != null && settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
@@ -1409,6 +1430,37 @@ private fun NoElevationBanner(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Bandeau titre du profil : le titre puis les infos de la trace sur UNE seule ligne tant qu'elles y
+ * tiennent toutes les deux ; sinon le titre garde la ligne entière et les infos passent juste en dessous,
+ * calées à droite. Layout maison plutôt qu'un Row : le basculement dépend de la largeur réellement mesurée
+ * des deux textes, qui varie avec le titre, la taille de police et le nombre d'infos choisies en réglages.
+ * [content] émet le titre puis, éventuellement, les infos.
+ */
+@Composable
+private fun ProfileTitleRow(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable () -> Unit) {
+    Layout(content, modifier) { measurables, constraints ->
+        val inner = constraints.copy(minWidth = 0)
+        val title = measurables[0].measure(inner)
+        val infos = measurables.getOrNull(1)?.measure(inner)
+        val gapPx = gap.roundToPx()
+        when {
+            infos == null -> layout(constraints.maxWidth, title.height) { title.place(0, 0) }
+            title.width + gapPx + infos.width <= constraints.maxWidth -> {
+                val h = maxOf(title.height, infos.height)
+                layout(constraints.maxWidth, h) {
+                    title.place(0, (h - title.height) / 2)
+                    infos.place(title.width + gapPx, (h - infos.height) / 2)
+                }
+            }
+            else -> layout(constraints.maxWidth, title.height + infos.height) {
+                title.place(0, 0)
+                infos.place(constraints.maxWidth - infos.width, title.height)
+            }
+        }
+    }
+}
+
 /** Au-delà, la légende ne gagne plus en lisibilité : l'image ne ferait que s'étirer (500 px de large). */
 private val LegendMaxWidth = 260.dp
 
@@ -1522,18 +1574,65 @@ private fun RowMenu(onRename: () -> Unit, onMove: () -> Unit, onNewSub: (() -> U
 
 /* ----------------------- Infos profil configurables ----------------------- */
 
-private fun titleInfoText(stats: fr.lc4918.trailog.domain.model.TrackStats, csv: String, imp: Boolean): String =
-    csv.split(",").mapNotNull { k ->
-        when (k.trim()) {
-            "dist" -> Format.distance(stats.distance, imp)
-            "asc" -> "D+ ${Format.elevation(stats.ascent, imp)}"
-            "desc" -> "D- ${Format.elevation(stats.descent, imp)}"
-            "dur" -> stats.duration?.let { Format.duration(it) }
-            "min" -> "min ${Format.elevation(stats.min, imp)}"
-            "max" -> "max ${Format.elevation(stats.max, imp)}"
+/** Une info de la ligne de titre : [display] est la forme compacte affichée (abrégée, ex. "D+ 1254 m"),
+ *  [name] et [value] la forme complète dictée à l'appui long (ex. "Dénivelé positif" + "1254 m"). */
+private class TitleInfo(val key: String, val display: String, val name: String, val value: String)
+
+@Composable
+private fun titleInfos(stats: fr.lc4918.trailog.domain.model.TrackStats, csv: String, imp: Boolean): List<TitleInfo> {
+    val nDist = stringResource(R.string.info_name_distance)
+    val nAsc = stringResource(R.string.info_name_ascent)
+    val nDesc = stringResource(R.string.info_name_descent)
+    val nDur = stringResource(R.string.info_name_duration)
+    val nMin = stringResource(R.string.info_name_alt_min)
+    val nMax = stringResource(R.string.info_name_alt_max)
+    return csv.split(",").mapNotNull { raw ->
+        val k = raw.trim()
+        when (k) {
+            "dist" -> Format.distance(stats.distance, imp).let { TitleInfo(k, it, nDist, it) }
+            "asc" -> Format.elevation(stats.ascent, imp).let { TitleInfo(k, "D+ $it", nAsc, it) }
+            "desc" -> Format.elevation(stats.descent, imp).let { TitleInfo(k, "D- $it", nDesc, it) }
+            "dur" -> stats.duration?.let { Format.duration(it) }?.let { TitleInfo(k, it, nDur, it) }
+            "min" -> Format.elevation(stats.min, imp).let { TitleInfo(k, "min $it", nMin, it) }
+            "max" -> Format.elevation(stats.max, imp).let { TitleInfo(k, "max $it", nMax, it) }
             else -> null
         }
-    }.joinToString(" · ")
+    }
+}
+
+/**
+ * Infos de la trace du bandeau titre, une par une plutôt qu'en une seule chaîne : chacune est sa propre
+ * cible d'appui long, qui montre au-dessus du doigt son libellé long et sa valeur ("D+ 1254 m" ->
+ * "Dénivelé positif 1254 m"). L'affichage reste abrégé, faute de place sur cette ligne.
+ * FlowRow et non Row : quand toutes les infos ne tiennent pas sur la largeur, elles passent à la ligne
+ * (comme le faisait le retour à la ligne du texte unique), en coupant entre deux infos et non au milieu.
+ * Le séparateur est collé à l'info qui le précède (même Row) pour ne jamais ouvrir une ligne.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun TitleInfosRow(items: List<TitleInfo>, fontSize: Int, bold: Boolean, modifier: Modifier = Modifier) {
+    val weight = if (bold) FontWeight.Bold else null
+    FlowRow(modifier, horizontalArrangement = Arrangement.End) {
+        items.forEachIndexed { i, info ->
+            key(info.key) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = {
+                            PlainTooltip(caretSize = TooltipDefaults.caretSize) {
+                                Text("${info.name} ${info.value}")
+                            }
+                        },
+                        state = rememberTooltipState(),
+                    ) {
+                        Text(info.display, fontSize = fontSize.sp, fontWeight = weight)
+                    }
+                    if (i < items.lastIndex) Text(" · ", fontSize = fontSize.sp, fontWeight = weight)
+                }
+            }
+        }
+    }
+}
 
 private fun cursorInfoText(s: fr.lc4918.trailog.domain.model.Sample, csv: String, imp: Boolean): String =
     csv.split(",").mapNotNull { k ->

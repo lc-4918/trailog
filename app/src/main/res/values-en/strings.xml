@@ -148,6 +148,13 @@
     <string name="chip_slope">Slope</string>
     <string name="chip_time">Time</string>
 
+    <string name="info_name_distance">Distance</string>
+    <string name="info_name_ascent">Total ascent</string>
+    <string name="info_name_descent">Total descent</string>
+    <string name="info_name_duration">Duration</string>
+    <string name="info_name_alt_min">Minimum altitude</string>
+    <string name="info_name_alt_max">Maximum altitude</string>
+
     <!-- Settings: Bubbles -->
     <string name="settings_section_bubbles">Info bubbles</string>
     <string name="settings_font_size">Font size</string>

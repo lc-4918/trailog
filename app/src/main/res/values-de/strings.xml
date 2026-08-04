@@ -148,6 +148,13 @@
     <string name="chip_slope">Steigung</string>
     <string name="chip_time">Zeit</string>
 
+    <string name="info_name_distance">Distanz</string>
+    <string name="info_name_ascent">Gesamtanstieg</string>
+    <string name="info_name_descent">Gesamtabstieg</string>
+    <string name="info_name_duration">Dauer</string>
+    <string name="info_name_alt_min">Minimale Höhe</string>
+    <string name="info_name_alt_max">Maximale Höhe</string>
+
     <!-- Einstellungen: Infoblasen -->
     <string name="settings_section_bubbles">Infoblasen</string>
     <string name="settings_font_size">Schriftgröße</string>

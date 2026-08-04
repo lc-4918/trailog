@@ -22,6 +22,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.map.offline.Bbox
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -450,6 +451,14 @@ class MapController {
         return Triple(t.latitude, t.longitude, cp.zoom)
     }
     fun metersPerPixel(lat: Double): Double = map?.projection?.getMetersPerPixelAtLatitude(lat) ?: 0.0
+
+    /** Emprise géographique actuellement à l'écran, ou null si la carte n'est pas encore prête.
+     *  Lue sur la région visible et non calculée depuis le centre : elle tient compte de la rotation
+     *  et de l'inclinaison de la caméra. */
+    fun visibleBounds(): Bbox? {
+        val b = map?.projection?.visibleRegion?.latLngBounds ?: return null
+        return Bbox.of(b.longitudeWest, b.latitudeSouth, b.longitudeEast, b.latitudeNorth)
+    }
 
     fun setCursor(lon: Double, lat: Double) {
         val s = style ?: return
