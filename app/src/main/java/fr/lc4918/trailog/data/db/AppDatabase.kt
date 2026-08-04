@@ -34,6 +34,10 @@ internal object MigrationSql {
     // l'ancien défaut, pour ne pas écraser une taille choisie exprès.
     const val BUMP_BUBBLE_TITLE_FONT =
         "UPDATE settings SET bubbleTitleFont = 16 WHERE bubbleTitleFont = 14"
+    // Defaut 0 volontairement : une base deja en place n'a jamais vu le jeu de demonstration, elle doit
+    // donc le recevoir au premier lancement suivant la mise a jour, exactement comme une installation neuve.
+    const val ADD_DEMO_SEEDED =
+        "ALTER TABLE settings ADD COLUMN demoSeeded INTEGER NOT NULL DEFAULT 0"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -48,7 +52,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 23,
+    version = 24,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -118,11 +122,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Ajout de settings.demoSeeded : migration explicite, même raison que la 16->17. Le jeu de
+        // démonstration lui-même n'est pas inséré ici mais au semis (cf. DemoData) : il passe par le même
+        // import qu'un fichier choisi par l'utilisateur, ce qu'un INSERT SQL ne saurait pas reproduire.
+        private val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_DEMO_SEEDED)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

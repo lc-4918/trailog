@@ -4,12 +4,14 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.AppDatabase
+import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.imp.LayerImporter
 import fr.lc4918.trailog.data.seed.Composites
+import fr.lc4918.trailog.data.seed.DemoData
 import fr.lc4918.trailog.data.seed.Providers
 import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
@@ -84,6 +86,51 @@ class TrailogRepository(private val ctx: Context) {
         }
         if (db.settings().get() == null) {
             db.settings().upsert(SettingsEntity(customTitle = ctx.getString(R.string.drawer_default_title)))
+        }
+        seedDemoIfNeeded()
+    }
+
+    /**
+     * Pose le jeu de démonstration au tout premier lancement, installation neuve comme mise à jour d'une
+     * base existante (la migration 23->24 y ajoute le drapeau à faux).
+     *
+     * Le drapeau est levé quoi qu'il arrive, y compris si l'import échoue ou si les assets sont absents :
+     * un jeu d'exemple qui n'a pas pu s'installer ne vaut pas d'être retenté à chaque lancement, et une
+     * exception ici empêcherait l'app de démarrer. Levé AVANT l'import, pour qu'un plantage en cours de
+     * route ne laisse pas non plus la porte ouverte à un second essai qui produirait un doublon.
+     */
+    private suspend fun seedDemoIfNeeded() {
+        val s = db.settings().get() ?: return
+        if (s.demoSeeded) return
+        db.settings().upsert(s.copy(demoSeeded = true))
+        runCatching { importDemoLayer() }.onFailure { it.printStackTrace() }
+    }
+
+    /** Extrait le GPX de démonstration et ses photos des assets, puis l'importe dans un dossier dédié.
+     *  Ne fait rien s'il n'y a pas d'assets de démonstration (build sans jeu d'exemple). */
+    private suspend fun importDemoLayer() {
+        val assets = ctx.assets
+        val files = runCatching { assets.list(DemoData.ASSET_DIR)?.toList() }.getOrNull().orEmpty()
+        val gpxName = files.firstOrNull { it.endsWith(".gpx", ignoreCase = true) } ?: return
+
+        val gpxRaw = assets.open("${DemoData.ASSET_DIR}/$gpxName").use { it.readBytes().decodeToString() }
+        // Les photos ne peuvent pas être importées depuis les assets : l'import lit des fichiers. On les
+        // dépose donc en cache le temps de l'import, qui les recopiera dans le stockage privé définitif.
+        val staging = File(ctx.cacheDir, "demo_staging").apply { deleteRecursively(); mkdirs() }
+        try {
+            DemoData.photoNames(gpxRaw).forEach { name ->
+                if (name !in files) return@forEach   // photo citée mais absente des assets : waypoint sans image
+                runCatching {
+                    assets.open("${DemoData.ASSET_DIR}/$name").use { input ->
+                        File(staging, name).outputStream().use { input.copyTo(it) }
+                    }
+                }
+            }
+            val gpx = DemoData.rewritePhotoPaths(gpxRaw, staging)
+            val folderId = db.folders().insert(FolderEntity(name = ctx.getString(R.string.demo_folder_name)))
+            importLayer(gpx.toByteArray(), gpxName, folderId)
+        } finally {
+            staging.deleteRecursively()
         }
     }
 

@@ -90,6 +90,8 @@
 
     <!-- Menú lateral -->
     <string name="drawer_default_title">Itineraris</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Configuració: pestanyes -->
     <string name="settings_title">Configuració</string>

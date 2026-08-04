@@ -172,6 +172,18 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 23 -> 24 : drapeau du jeu de demonstration ----------
+
+    /** A faux, et non a vrai : une base deja en place n'a jamais vu le jeu de demonstration, elle doit
+     *  le recevoir au premier lancement suivant la mise a jour, comme une installation neuve. Un defaut
+     *  a 1 l'en priverait definitivement, sans que rien ne le signale. */
+    @Test fun `23 vers 24 ajoute le drapeau de demo a faux`() {
+        val db = freshDb("m2324"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_DEMO_SEEDED)
+        assertEquals(0, scalar(db, "SELECT demoSeeded FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -181,7 +193,7 @@ class MigrationsTest {
         val cols = s.query("PRAGMA table_info(settings)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
-        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration")
+        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

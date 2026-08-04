@@ -90,6 +90,8 @@
 
     <!-- Side menu -->
     <string name="drawer_default_title">Routes</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Settings: tabs -->
     <string name="settings_title">Settings</string>

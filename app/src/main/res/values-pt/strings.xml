@@ -90,6 +90,8 @@
 
     <!-- Menu lateral -->
     <string name="drawer_default_title">Itinerários</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Definições: separadores -->
     <string name="settings_title">Definições</string>

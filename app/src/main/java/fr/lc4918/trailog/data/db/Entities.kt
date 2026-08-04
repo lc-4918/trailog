@@ -155,4 +155,9 @@ data class SettingsEntity(
     // Sans effet en build debug, qui a son propre applicationId et ne peut pas se remplacer par une
     // release signée d'une autre clé (cf. UpdateManager.isSupported).
     val updateCheckMode: String = "auto",
+    // Le dossier de demonstration a-t-il deja ete seme ? Un drapeau, et non un test sur la presence du
+    // dossier : celui qui le supprime ne doit pas le voir revenir a la mise a jour suivante. Passe a vrai
+    // apres le semis, qu'il ait reussi ou non (cf. DemoData.seed) - un jeu d'exemple qui n'a pas pu
+    // s'installer ne vaut pas de reessayer a chaque lancement.
+    val demoSeeded: Boolean = false,
 )

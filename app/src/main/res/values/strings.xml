@@ -90,6 +90,8 @@
 
     <!-- Menu latéral -->
     <string name="drawer_default_title">Itinéraires</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Réglages : onglets -->
     <string name="settings_title">Réglages</string>

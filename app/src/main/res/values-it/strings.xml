@@ -90,6 +90,8 @@
 
     <!-- Menu laterale -->
     <string name="drawer_default_title">Itinerari</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Impostazioni: schede -->
     <string name="settings_title">Impostazioni</string>

@@ -90,6 +90,8 @@
 
     <!-- Menú lateral -->
     <string name="drawer_default_title">Rutas</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Ajustes: pestañas -->
     <string name="settings_title">Ajustes</string>

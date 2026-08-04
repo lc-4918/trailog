@@ -90,6 +90,8 @@
 
     <!-- Alboko menua -->
     <string name="drawer_default_title">Ibilbideak</string>
+    <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
+    <string name="demo_folder_name">Demo</string>
 
     <!-- Ezarpenak: fitxak -->
     <string name="settings_title">Ezarpenak</string>
