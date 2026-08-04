@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -510,7 +511,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 }
 
 /**
- * Reglage "Mises a jour" : mode Auto/Manuel, et en Manuel seulement le bouton de verification immediate.
+ * Reglage "Mises a jour" : mode Auto/Manuel, et en Manuel seulement le bouton de verification immediate,
+ * pose sur la meme ligne que les puces de mode (d'ou sa hauteur et son libelle calques dessus, sans quoi
+ * la ligne deborderait en largeur sur un ecran etroit).
  * En build debug, la verification est inoperante (cf. UpdateManager.isSupported) : on le dit plutot que de
  * laisser un bouton qui ne repondrait jamais rien.
  */
@@ -523,39 +526,42 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     val upToDate = stringResource(R.string.update_none_available)
     val failed = stringResource(R.string.update_check_failed)
 
-    SegRow(
-        listOf("auto" to stringResource(R.string.update_mode_auto), "manual" to stringResource(R.string.update_mode_manual)),
-        cur.updateCheckMode,
-    ) { vm.save(cur.copy(updateCheckMode = it)) }
-
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SegRow(
+            listOf("auto" to stringResource(R.string.update_mode_auto), "manual" to stringResource(R.string.update_mode_manual)),
+            cur.updateCheckMode,
+        ) { vm.save(cur.copy(updateCheckMode = it)) }
+        if (UpdateManager.isSupported && cur.updateCheckMode == "manual") {
+            OutlinedButton(
+                onClick = {
+                    if (checking) return@OutlinedButton
+                    checking = true; message = null
+                    scope.launch {
+                        when (val r = UpdateManager.check()) {
+                            is UpdateCheck.Available -> found = r.release
+                            UpdateCheck.UpToDate -> message = upToDate
+                            UpdateCheck.Failed -> message = failed
+                        }
+                        checking = false
+                    }
+                },
+                enabled = !checking,
+                modifier = Modifier.height(CompactChipHeight),
+                contentPadding = PaddingValues(horizontal = 10.dp),
+            ) { Text(stringResource(R.string.update_action_check), style = MaterialTheme.typography.labelSmall) }
+            if (checking) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            }
+        }
+    }
     if (!UpdateManager.isSupported) {
         Text(stringResource(R.string.update_unsupported_debug),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
-    if (cur.updateCheckMode == "manual") {
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = {
-                if (checking) return@OutlinedButton
-                checking = true; message = null
-                scope.launch {
-                    when (val r = UpdateManager.check()) {
-                        is UpdateCheck.Available -> found = r.release
-                        UpdateCheck.UpToDate -> message = upToDate
-                        UpdateCheck.Failed -> message = failed
-                    }
-                    checking = false
-                }
-            }, enabled = !checking) { Text(stringResource(R.string.update_action_check)) }
-            if (checking) {
-                Spacer(Modifier.width(12.dp))
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            }
-        }
-        message?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+    message?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     UpdateFlow(release = found, onDone = { found = null })
 }
