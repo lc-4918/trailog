@@ -171,41 +171,49 @@ private suspend fun PointerInputScope.detectTapOrLongPressDrag(
 ) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
-        val downTime = System.currentTimeMillis()
-        var dragging = false
+
+        // Le délai d'appui long court EN PARALLÈLE de l'attente d'évènements, et non par comparaison
+        // d'horloge à l'intérieur de la boucle : `awaitPointerEvent` ne rend la main qu'à l'arrivée d'un
+        // évènement, or un doigt parfaitement immobile n'en produit aucun. Le délai n'était donc constaté
+        // qu'au premier mouvement, et l'appui long n'était pris en compte qu'à ce moment-là - le retour
+        // haptique arrivait quand on commençait à déplacer, au lieu de dire qu'on POUVAIT déplacer.
+        // Renvoie non-null si le geste est fini ou abandonné avant l'appui long ; null si le délai expire,
+        // doigt toujours posé, ce qui est justement le cas où le drag devient disponible.
+        val fini = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull true
+                if (!change.pressed) {
+                    onTap()
+                    change.consume()
+                    return@withTimeoutOrNull true
+                }
+                val dx = change.position.x - down.position.x
+                val dy = change.position.y - down.position.y
+                // Surtout ne rien consommer avant l'appui long : le `scrollable` parent annule sa propre
+                // détection dès qu'un enfant consomme un mouvement, et ne la reprend pas de tout le geste.
+                // Consommer ici, meme sous le seuil, tuait donc le defilement des que le doigt se posait
+                // sur un nom de couche.
+                if (kotlin.math.sqrt(dx * dx + dy * dy) > viewConfiguration.touchSlop) {
+                    return@withTimeoutOrNull true   // laisse le parent (scroll) gérer ce mouvement
+                }
+            }
+        }
+        if (fini != null) return@awaitEachGesture
+
+        onDragStart()
         var totalDy = 0f
         while (true) {
             val event = awaitPointerEvent()
             val change = event.changes.firstOrNull { it.id == down.id } ?: break
             if (!change.pressed) {
-                if (dragging) onDragEnd()
-                else if (System.currentTimeMillis() - downTime < viewConfiguration.longPressTimeoutMillis) onTap()
+                onDragEnd()
                 change.consume()
                 break
             }
-            if (dragging) {
-                totalDy += change.positionChange().y
-                onDrag(totalDy)
-                change.consume()
-            } else {
-                val elapsed = System.currentTimeMillis() - downTime
-                val dx = change.position.x - down.position.x
-                val dy = change.position.y - down.position.y
-                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                when {
-                    elapsed >= viewConfiguration.longPressTimeoutMillis -> {
-                        dragging = true
-                        onDragStart()
-                        change.consume()
-                    }
-                    dist > viewConfiguration.touchSlop -> break // laisse le parent (scroll) gérer ce mouvement
-                    // Surtout ne rien consommer avant l'appui long : le `scrollable` parent annule sa
-                    // propre détection dès qu'un enfant consomme un mouvement, et ne la reprend pas de
-                    // tout le geste. Consommer ici, meme sous le seuil, tuait donc le defilement des que
-                    // le doigt se posait sur un nom de couche.
-                    else -> Unit
-                }
-            }
+            totalDy += change.positionChange().y
+            onDrag(totalDy)
+            change.consume()
         }
     }
 }
