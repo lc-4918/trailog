@@ -110,7 +110,7 @@ data class SettingsEntity(
     val profBarFont: Int = 11,             // infos barre de titre
     val profLegendFont: Int = 9,           // légende des pentes
     val profCursorFont: Int = 11,          // infos du point courant
-    val titleInfos: String = "dist,asc,desc,dur",   // infos de la ligne de titre du profil
+    val titleInfos: String = "dist,asc,desc",       // infos de la ligne de titre du profil
     val cursorInfos: String = "dist,ele,slope",     // infos du point courant
     val statusBarTransparent: Boolean = false,      // barre de statut transparente (carte dessous)
     val markerSize: Int = 36,                       // taille des marqueurs sur la carte (dp)

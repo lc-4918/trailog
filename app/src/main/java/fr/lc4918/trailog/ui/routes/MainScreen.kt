@@ -761,7 +761,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             if (windowStats != null) {
                                 TitleInfosRow(
-                                    titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc,dur", imp),
+                                    titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp),
                                     fontSize = settings?.profBarFont ?: 11,
                                     bold = settings?.profBarBold == true)
                             }
