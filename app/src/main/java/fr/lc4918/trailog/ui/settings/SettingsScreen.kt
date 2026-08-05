@@ -588,9 +588,14 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SegRow(listOf("burger" to stringResource(R.string.side_menu_burger), "swipe" to stringResource(R.string.side_menu_swipe), "both" to stringResource(R.string.side_menu_both)), cur.sideMenuMode) { vm.save(cur.copy(sideMenuMode = it)) }
     Section(stringResource(R.string.settings_section_status_bar))
     SwitchRow(stringResource(R.string.settings_status_bar_transparent), cur.statusBarTransparent) { vm.save(cur.copy(statusBarTransparent = it)) }
-    Section(stringResource(R.string.settings_section_tap_tolerance, cur.tapToleranceDp))
+    // Deux tolérances : les marqueurs sont interrogés avant les traces et l'emportent, une valeur large sur
+    // eux rend une trace qui passe à côté difficile à atteindre.
+    Section(stringResource(R.string.settings_section_tap_tolerance_points, cur.tapToleranceDp))
     CompactSlider(value = cur.tapToleranceDp.toFloat(), valueRange = 4f..40f, steps = 35,
         onValueChange = { vm.save(cur.copy(tapToleranceDp = it.toInt())) })
+    Section(stringResource(R.string.settings_section_tap_tolerance_lines, cur.lineTapToleranceDp))
+    CompactSlider(value = cur.lineTapToleranceDp.toFloat(), valueRange = 4f..40f, steps = 35,
+        onValueChange = { vm.save(cur.copy(lineTapToleranceDp = it.toInt())) })
     Section(stringResource(R.string.settings_section_performance))
     SwitchRow(stringResource(R.string.settings_simplify_render), cur.simplifyRender) { vm.save(cur.copy(simplifyRender = it)) }
     Text(stringResource(R.string.settings_simplify_render_hint),

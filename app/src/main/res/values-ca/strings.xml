@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Lliscar</string>
     <string name="side_menu_both">Tots dos</string>
-    <string name="settings_section_tap_tolerance">Tolerància de toc: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Tolerància de toc, waypoints: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Tolerància de toc, traces: %1$d dp</string>
     <string name="settings_section_status_bar">Barra d\'estat</string>
     <string name="settings_status_bar_transparent">Transparent (el mapa es veu a sota)</string>
     <string name="settings_section_performance">Rendiment</string>

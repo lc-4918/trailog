@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Wischen</string>
     <string name="side_menu_both">Beides</string>
-    <string name="settings_section_tap_tolerance">Antipptoleranz: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Antipptoleranz, Wegpunkte: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Antipptoleranz, Tracks: %1$d dp</string>
     <string name="settings_section_status_bar">Statusleiste</string>
     <string name="settings_status_bar_transparent">Transparent (Karte scheint durch)</string>
     <string name="settings_section_performance">Leistung</string>

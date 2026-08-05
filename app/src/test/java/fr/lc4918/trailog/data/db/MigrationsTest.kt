@@ -184,6 +184,36 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 24 -> 25 : tolerance de tap propre aux traces ----------
+
+    private fun migrate2425(db: SQLiteDatabase, tapAvant: Int) {
+        db.execSQL("ALTER TABLE settings ADD COLUMN tapToleranceDp INTEGER NOT NULL DEFAULT 16")
+        db.execSQL("UPDATE settings SET tapToleranceDp = $tapAvant")
+        db.execSQL(MigrationSql.ADD_LINE_TAP_TOLERANCE)
+        db.execSQL(MigrationSql.LINE_TAP_TOLERANCE_FROM_TAP_TOLERANCE)
+        db.execSQL(MigrationSql.TIGHTEN_TAP_TOLERANCE)
+    }
+
+    /** Base restee au defaut : les traces gardent 16, les marqueurs se resserrent a 10. Recopier apres le
+     *  resserrement donnerait 10 aux deux, ce que cet ordre de verification verrouille. */
+    @Test fun `24 vers 25 resserre les marqueurs et laisse les traces a 16`() {
+        val db = freshDb("m2425"); settingsV16(db)
+        migrate2425(db, 16)
+        assertEquals(16, scalar(db, "SELECT lineTapToleranceDp FROM settings") { it.getInt(0) })
+        assertEquals(10, scalar(db, "SELECT tapToleranceDp FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    /** Tolerance choisie expres : recopiee telle quelle sur les traces, et laissee intacte sur les
+     *  marqueurs. Le nouveau defaut ne doit pas ecraser un reglage de l'utilisateur. */
+    @Test fun `24 vers 25 preserve une tolerance reglee a la main`() {
+        val db = freshDb("m2425b"); settingsV16(db)
+        migrate2425(db, 28)
+        assertEquals(28, scalar(db, "SELECT lineTapToleranceDp FROM settings") { it.getInt(0) })
+        assertEquals(28, scalar(db, "SELECT tapToleranceDp FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -193,7 +223,8 @@ class MigrationsTest {
         val cols = s.query("PRAGMA table_info(settings)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
-        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded")
+        listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
+            "lineTapToleranceDp")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

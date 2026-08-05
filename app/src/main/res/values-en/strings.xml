@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Swipe</string>
     <string name="side_menu_both">Both</string>
-    <string name="settings_section_tap_tolerance">Tap tolerance: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Tap tolerance, waypoints: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Tap tolerance, tracks: %1$d dp</string>
     <string name="settings_section_status_bar">Status bar</string>
     <string name="settings_status_bar_transparent">Transparent (map shows through)</string>
     <string name="settings_section_performance">Performance</string>

@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Hamburguesa</string>
     <string name="side_menu_swipe">Deslizar</string>
     <string name="side_menu_both">Ambos</string>
-    <string name="settings_section_tap_tolerance">Tolerancia de toque: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Tolerancia de toque, waypoints: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Tolerancia de toque, tracks: %1$d dp</string>
     <string name="settings_section_status_bar">Barra de estado</string>
     <string name="settings_status_bar_transparent">Transparente (el mapa se ve debajo)</string>
     <string name="settings_section_performance">Rendimiento</string>

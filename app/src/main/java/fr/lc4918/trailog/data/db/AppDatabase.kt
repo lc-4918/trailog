@@ -38,6 +38,17 @@ internal object MigrationSql {
     // donc le recevoir au premier lancement suivant la mise a jour, exactement comme une installation neuve.
     const val ADD_DEMO_SEEDED =
         "ALTER TABLE settings ADD COLUMN demoSeeded INTEGER NOT NULL DEFAULT 0"
+    const val ADD_LINE_TAP_TOLERANCE =
+        "ALTER TABLE settings ADD COLUMN lineTapToleranceDp INTEGER NOT NULL DEFAULT 16"
+    // La tolerance des traces reprend celle deja reglee, jusqu'ici commune aux deux : les traces gardent
+    // exactement la portee de tap qu'elles avaient, seuls les marqueurs se resserrent (ci-dessous).
+    const val LINE_TAP_TOLERANCE_FROM_TAP_TOLERANCE =
+        "UPDATE settings SET lineTapToleranceDp = tapToleranceDp"
+    // Nouveau defaut des marqueurs (16 -> 10) : interroges en premier, ils l'emportent sur les traces, et une
+    // tolerance large rendait une trace passant a cote inatteignable. N'ajuste que les bases restees a
+    // l'ancien defaut, pour ne pas ecraser une valeur choisie expres. A jouer APRES la recopie ci-dessus.
+    const val TIGHTEN_TAP_TOLERANCE =
+        "UPDATE settings SET tapToleranceDp = 10 WHERE tapToleranceDp = 16"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -52,7 +63,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 24,
+    version = 25,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -131,11 +142,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Ajout de settings.lineTapToleranceDp : migration explicite, même raison que la 16->17. La valeur
+        // déjà réglée est recopiée sur les traces (sans quoi une tolérance choisie exprès serait ramenée au
+        // défaut), puis les marqueurs passent au nouveau défaut plus serré. L'ordre compte : recopier après
+        // le resserrement donnerait 10 aux traces.
+        private val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_LINE_TAP_TOLERANCE)
+                db.execSQL(MigrationSql.LINE_TAP_TOLERANCE_FROM_TAP_TOLERANCE)
+                db.execSQL(MigrationSql.TIGHTEN_TAP_TOLERANCE)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

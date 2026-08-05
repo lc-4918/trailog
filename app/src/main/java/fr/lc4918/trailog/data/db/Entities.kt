@@ -95,7 +95,8 @@ data class SettingsEntity(
     @PrimaryKey val id: Int = 0,
     val units: String = "meters",          // meters | imperial
     val sideMenuMode: String = "both",     // burger | swipe | both
-    val tapToleranceDp: Int = 16,
+    val tapToleranceDp: Int = 10,      // marqueurs
+    val lineTapToleranceDp: Int = 16,  // traces
     val terrain3d: Boolean = false,
     val ambientCacheMb: Int = 200,
     val defaultBasemapId: String = "osm",

@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**159 tests, 20 fichiers**, tous verts.
+**210 tests, 25 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -132,7 +132,7 @@ disque, et que l'amorcage ne ressuscite pas un fond que l'utilisateur a supprime
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `MigrationsTest` | 11 | les 5 migrations, rejouees sur un vrai SQLite |
+| `MigrationsTest` | 14 | les 9 migrations, rejouees sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 detruit les couches importees de l'utilisateur, en silence, au premier lancement.

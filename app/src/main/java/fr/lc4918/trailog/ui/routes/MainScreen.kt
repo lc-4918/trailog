@@ -193,7 +193,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val ctx = LocalContext.current
 
     val mode = settings?.sideMenuMode ?: "both"
-    controller.tapToleranceDp = settings?.tapToleranceDp ?: 16
+    controller.tapToleranceDp = settings?.tapToleranceDp ?: 10
+    controller.lineTapToleranceDp = settings?.lineTapToleranceDp ?: 16
     controller.rotateGesturesEnabled = settings?.rotateGesturesEnabled ?: false
     val style by vm.mapStyle.collectAsState()
     var styleTick by remember { mutableIntStateOf(0) }

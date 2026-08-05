@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Swipe</string>
     <string name="side_menu_both">Les deux</string>
-    <string name="settings_section_tap_tolerance">Tolérance de tap : %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Tolérance de tap, waypoints : %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Tolérance de tap, traces : %1$d dp</string>
     <string name="settings_section_status_bar">Barre de statut</string>
     <string name="settings_status_bar_transparent">Transparente (la carte passe dessous)</string>
     <string name="settings_section_performance">Performance</string>

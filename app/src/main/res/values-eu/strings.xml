@@ -115,7 +115,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Irristatu</string>
     <string name="side_menu_both">Biak</string>
-    <string name="settings_section_tap_tolerance">Ukitze-tolerantzia: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_points">Ukitze-tolerantzia, waypointak: %1$d dp</string>
+    <string name="settings_section_tap_tolerance_lines">Ukitze-tolerantzia, arrastoak: %1$d dp</string>
     <string name="settings_section_status_bar">Egoera-barra</string>
     <string name="settings_status_bar_transparent">Gardena (mapa azpitik ikusten da)</string>
     <string name="settings_section_performance">Errendimendua</string>

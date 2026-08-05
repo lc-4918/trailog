@@ -59,7 +59,11 @@ class MapController {
     var onCameraMove: (() -> Unit)? = null
     var onUserMoveBegin: (() -> Unit)? = null
     var onStyleApplied: (() -> Unit)? = null
-    var tapToleranceDp: Int = 16
+    // Tolerance de tap, en dp, autour du doigt. Distincte pour les marqueurs et pour les traces : les
+    // marqueurs sont interroges en premier et l'emportent, une tolerance large sur eux rend une trace qui
+    // passe a cote difficile a atteindre.
+    var tapToleranceDp: Int = 10
+    var lineTapToleranceDp: Int = 16
     private var density: Float = 2f
     private var appContext: Context? = null
 
@@ -532,8 +536,10 @@ class MapController {
             val hit = feats.firstOrNull()?.let { pickOf(k, it) }
             if (hit != null) { hit(); return }
         }
+        val lineTol = lineTapToleranceDp * density
+        val lineRect = RectF(screen.x - lineTol, screen.y - lineTol, screen.x + lineTol, screen.y + lineTol)
         for (k in layerKeys) {
-            val hit = m.queryRenderedFeatures(rect, lineLayerId(k)).isNotEmpty()
+            val hit = m.queryRenderedFeatures(lineRect, lineLayerId(k)).isNotEmpty()
             if (hit) {
                 onPickLine?.invoke(k, latLng.longitude, latLng.latitude); return
             }
