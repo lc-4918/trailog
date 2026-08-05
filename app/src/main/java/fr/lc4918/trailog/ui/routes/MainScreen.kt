@@ -428,12 +428,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             if (positioned) controller.cameraState()?.let { (la, lo, z) -> vm.saveCameraState(la, lo, z) }
         }
     }
-    var bubbleOffset by remember { mutableStateOf<IntOffset?>(null) }
     // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
     // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
-    LaunchedEffect(selectedMarkerPos, idleTick, renderLayers) {
-        val pos = selectedMarkerPos
-        bubbleOffset = pos?.let { (lon, lat) ->
+    // Projetée pendant la composition et non dans un effet : un effet ne s'exécute qu'après la composition,
+    // si bien qu'en passant d'un marqueur à l'autre (infobulle déjà ouverte) une première passe se serait
+    // faite avec la position de l'ancien marqueur -> recentrage de carte calculé sur un placement faux.
+    val bubbleOffset = remember(selectedMarkerPos, idleTick, renderLayers) {
+        selectedMarkerPos?.let { (lon, lat) ->
             controller.screenOf(lon, lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
         }
     }
@@ -609,7 +610,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     }
                     val bubblePos = BubblePosition.of(settings?.bubblePosition)
                     // Dernier placement calculé au layout : sert au recentrage de carte (hors AUTO).
+                    // Publié seulement une fois les propriétés arrivées : mesurée à la taille du spinner, la
+                    // bulle tient presque toujours à l'écran et le recentrage (à usage unique) aurait été
+                    // consommé pour rien, laissant la vraie bulle simplement bornée dans l'écran.
                     var placement by remember(selectedMarkerId) { mutableStateOf<BubblePlacement?>(null) }
+                    val contentReady = selectedFeature != null
                     Layout(
                         content = {
                             if (selectedFeature != null) {
@@ -631,7 +636,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             viewW = cs.maxWidth, viewH = cs.maxHeight,
                             topInset = topInset, margin = margin, gap = gap, markerHeight = markerPxI,
                         )
-                        if (placement != pl) placement = pl
+                        if (contentReady && placement != pl) placement = pl
                         layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
                     }
                     // Recentrage de la carte quand le placement demandé ne tient pas (jamais en AUTO).
