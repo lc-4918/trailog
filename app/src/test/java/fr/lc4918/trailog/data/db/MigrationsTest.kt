@@ -214,6 +214,19 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 25 -> 26 : geocodage ----------
+
+    /** A faux, et non a vrai : le geocodage est la seule fonction qui interroge un service tiers en cours
+     *  d'usage. L'allumer d'office sur une base deja en place l'imposerait a qui ne l'a pas demande. */
+    @Test fun `25 vers 26 ajoute le geocodage desactive et sans url`() {
+        val db = freshDb("m2526"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_GEOCODING_ENABLED)
+        db.execSQL(MigrationSql.ADD_GEOCODING_URL)
+        assertEquals(0, scalar(db, "SELECT geocodingEnabled FROM settings") { it.getInt(0) })
+        assertEquals("", scalar(db, "SELECT geocodingUrl FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -224,7 +237,7 @@ class MigrationsTest {
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
-            "lineTapToleranceDp")
+            "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

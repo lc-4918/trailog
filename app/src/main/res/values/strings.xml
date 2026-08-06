@@ -78,12 +78,20 @@
     <string name="label_new_folder">Nouveau dossier</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Position GPS</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Rechercher un lieu</string>
+    <string name="geocode_search_placeholder">Rechercher un lieu ou une adresse</string>
+    <string name="geocode_distance_from_position">Distance depuis la position</string>
+    <string name="geocode_distance_from_point">Distance depuis un point</string>
+    <string name="geocode_pick_point_prompt">Choisir un point n\'importe où sur la carte</string>
 
     <!-- Dialogues -->
     <string name="dialog_composite_title">Nouveau fond de plan composite</string>
     <string name="dialog_import_into_title">Importer dans...</string>
     <string name="dialog_gps_disabled_title">Capteur GPS inactif</string>
     <string name="dialog_gps_disabled_text">Le capteur de localisation est désactivé. Voulez-vous l\'activer ?</string>
+    <string name="dialog_location_off_title">Localisation non active</string>
+    <string name="dialog_location_off_text">La localisation GPS n\'est pas active. Voulez-vous l\'activer ?</string>
     <string name="dialog_move_to_title">Déplacer vers...</string>
     <string name="dialog_color_title">Couleur d\'affichage</string>
     <string name="dialog_edit_bubble_title">Éditer l\'infobulle</string>
@@ -172,6 +180,10 @@
     <string name="settings_allow_rotation">Autoriser la rotation de la carte (geste à 2 doigts)</string>
     <string name="settings_section_gps_position">Position GPS</string>
     <string name="settings_show_gps_button">Afficher le bouton de localisation GPS</string>
+    <string name="settings_section_geocoding">Géocodage</string>
+    <string name="settings_enable_geocoding">Activer la recherche de lieu et d\'adresse</string>
+    <string name="settings_geocoding_url">URL du service de géocodage</string>
+    <string name="settings_geocoding_url_hint">Vide = instance publique Photon. Une instance auto-hébergée (Photon, Addok) se renseigne ici.</string>
     <string name="settings_section_markers">Marqueurs (carte)</string>
     <string name="settings_marker_size">Taille des marqueurs (dp)</string>
     <string name="settings_section_import_folder">Dossier de départ des imports</string>

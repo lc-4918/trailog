@@ -49,6 +49,15 @@ internal object MigrationSql {
     // l'ancien defaut, pour ne pas ecraser une valeur choisie expres. A jouer APRES la recopie ci-dessus.
     const val TIGHTEN_TAP_TOLERANCE =
         "UPDATE settings SET tapToleranceDp = 10 WHERE tapToleranceDp = 16"
+    // Geocodage : desactive par defaut, y compris sur une base deja en place. C'est la seule fonction qui
+    // interroge un service tiers en cours d'usage ; l'activer d'office chez qui ne l'a pas demandee irait
+    // contre le parti pris hors-ligne de l'application.
+    const val ADD_GEOCODING_ENABLED =
+        "ALTER TABLE settings ADD COLUMN geocodingEnabled INTEGER NOT NULL DEFAULT 0"
+    // Vide = instance publique par defaut, resolue a l'usage (cf. Photon.DEFAULT_URL) : figer l'URL en base
+    // la laisserait perimee ici le jour ou le defaut du code change.
+    const val ADD_GEOCODING_URL =
+        "ALTER TABLE settings ADD COLUMN geocodingUrl TEXT NOT NULL DEFAULT ''"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -63,7 +72,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 25,
+    version = 26,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -154,11 +163,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Ajout de settings.geocodingEnabled / geocodingUrl : migration explicite, même raison que la 16->17.
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_GEOCODING_ENABLED)
+                db.execSQL(MigrationSql.ADD_GEOCODING_URL)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

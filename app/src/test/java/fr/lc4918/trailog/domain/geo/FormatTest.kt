@@ -54,4 +54,28 @@ class FormatTest {
         assertEquals("1250 m", Format.elevation(1250.4))
         assertEquals("328 ft", Format.elevation(100.0, imperial = true))
     }
+
+    /** Distance isolee (mesure du geocodage) : sous le kilometre, des metres entiers. "0,18 km" y serait
+     *  juste mais illisible, la ou "180 m" se lit d'un coup d'oeil. */
+    @Test fun `distance isolee sous le kilometre en metres`() {
+        assertEquals("180 m", Format.shortDistance(180.4))
+        assertEquals("0 m", Format.shortDistance(0.0))
+        assertEquals("999 m", Format.shortDistance(999.4))
+    }
+
+    @Test fun `distance isolee au-dela du kilometre en km`() {
+        assertEquals("1,0 km", Format.shortDistance(1000.0).replace('.', ','))
+        assertEquals("12,3 km", Format.shortDistance(12345.0).replace('.', ','))
+    }
+
+    @Test fun `distance isolee en pieds puis en miles`() {
+        assertEquals("328 ft", Format.shortDistance(100.0, imperial = true))
+        assertEquals("2,0 mi", Format.shortDistance(2 * 1609.344, imperial = true).replace('.', ','))
+    }
+
+    /** Une distance non finie ne doit rien afficher plutot que "NaN m" a cote du bouton de mesure. */
+    @Test fun `distance isolee non finie ou negative ne s'affiche pas`() {
+        assertEquals("", Format.shortDistance(Double.NaN))
+        assertEquals("", Format.shortDistance(-1.0))
+    }
 }

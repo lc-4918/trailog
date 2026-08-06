@@ -78,12 +78,20 @@
     <string name="label_new_folder">Nova carpeta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posició GPS</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Cerca un lloc</string>
+    <string name="geocode_search_placeholder">Cerca un lloc o una adreça</string>
+    <string name="geocode_distance_from_position">Distància des de la posició</string>
+    <string name="geocode_distance_from_point">Distància des d\'un punt</string>
+    <string name="geocode_pick_point_prompt">Tria un punt en qualsevol lloc del mapa</string>
 
     <!-- Diàlegs -->
     <string name="dialog_composite_title">Nou mapa base compost</string>
     <string name="dialog_import_into_title">Importa a...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inactiu</string>
     <string name="dialog_gps_disabled_text">La localització està desactivada. Vols activar-la?</string>
+    <string name="dialog_location_off_title">Localització no activa</string>
+    <string name="dialog_location_off_text">La localització GPS no està activa. Vols activar-la?</string>
     <string name="dialog_move_to_title">Mou a...</string>
     <string name="dialog_color_title">Color de visualització</string>
     <string name="dialog_edit_bubble_title">Edita la bombolla informativa</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Permet la rotació del mapa (gest de 2 dits)</string>
     <string name="settings_section_gps_position">Posició GPS</string>
     <string name="settings_show_gps_button">Mostra el botó de localització GPS</string>
+    <string name="settings_section_geocoding">Geocodificació</string>
+    <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
+    <string name="settings_geocoding_url">URL del servei de geocodificació</string>
+    <string name="settings_geocoding_url_hint">Buit = instància pública de Photon. Una instància autoallotjada (Photon, Addok) s\'indica aquí.</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>
     <string name="settings_marker_size">Mida dels marcadors (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>

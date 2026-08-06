@@ -78,12 +78,20 @@
     <string name="label_new_folder">Nueva carpeta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posición GPS</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Buscar un lugar</string>
+    <string name="geocode_search_placeholder">Buscar un lugar o una dirección</string>
+    <string name="geocode_distance_from_position">Distancia desde la posición</string>
+    <string name="geocode_distance_from_point">Distancia desde un punto</string>
+    <string name="geocode_pick_point_prompt">Elige un punto en cualquier lugar del mapa</string>
 
     <!-- Diálogos -->
     <string name="dialog_composite_title">Nuevo mapa base compuesto</string>
     <string name="dialog_import_into_title">Importar en...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inactivo</string>
     <string name="dialog_gps_disabled_text">La localización está desactivada. ¿Quieres activarla?</string>
+    <string name="dialog_location_off_title">Localización no activa</string>
+    <string name="dialog_location_off_text">La localización GPS no está activa. ¿Quieres activarla?</string>
     <string name="dialog_move_to_title">Mover a...</string>
     <string name="dialog_color_title">Color de visualización</string>
     <string name="dialog_edit_bubble_title">Editar la burbuja informativa</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Permitir la rotación del mapa (gesto de 2 dedos)</string>
     <string name="settings_section_gps_position">Posición GPS</string>
     <string name="settings_show_gps_button">Mostrar el botón de localización GPS</string>
+    <string name="settings_section_geocoding">Geocodificación</string>
+    <string name="settings_enable_geocoding">Activar la búsqueda de lugares y direcciones</string>
+    <string name="settings_geocoding_url">URL del servicio de geocodificación</string>
+    <string name="settings_geocoding_url_hint">Vacío = instancia pública de Photon. Una instancia autoalojada (Photon, Addok) se indica aquí.</string>
     <string name="settings_section_markers">Marcadores (mapa)</string>
     <string name="settings_marker_size">Tamaño de los marcadores (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial de importaciones</string>

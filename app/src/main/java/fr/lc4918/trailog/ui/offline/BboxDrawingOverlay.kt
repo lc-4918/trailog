@@ -30,11 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.components.MapBarBackground
 
 private val ColorCancelPoint = Color(0xFFF9A825)  // jaune
 private val ColorCancelAll = Color(0xFFD32F2F)    // rouge
 private val ColorValidate = Color(0xFF2E7D32)     // vert
-private val BarBackground = Color(0xFF1B1B1B).copy(alpha = 0.9f)   // gris très foncé, 10% transparent
 
 /** Barre du bas pendant la saisie de la bounding box (SPEC offline_map.md section 2, ajustée) : compteur de
  *  points en haut, une seule ligne des 3 boutons en-dessous (barre plus basse). */
@@ -48,7 +48,7 @@ fun BboxDrawingOverlay(
 ) {
     Column(
         modifier.fillMaxWidth().padding(8.dp)
-            .background(BarBackground, RoundedCornerShape(8.dp))
+            .background(MapBarBackground, RoundedCornerShape(8.dp))
             .padding(10.dp),
     ) {
         Text(

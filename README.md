@@ -53,6 +53,8 @@ sans dépendre d'un service en ligne.
   liens, photos), y compris les photos des waypoints GPX de votre téléphone.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
+- **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
+  sur la carte, et vous pouvez mesurer sa distance depuis votre position ou depuis un point choisi.
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.
@@ -117,6 +119,11 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   utilisable sans connexion.
 - **Légende d'un fond** : certains fonds, comme les voies cyclables AF3V, affichent un bouton
   d'information sur la carte qui déplie leur légende.
+- **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
+  recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
+  propose deux mesures : la distance depuis votre position GPS, et la distance depuis un point que
+  vous désignez n'importe où sur la carte. Le service interrogé est **Photon**, sans compte ni clé ;
+  vous pouvez lui substituer votre propre instance en renseignant son URL dans les réglages.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
 - **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
   (jusqu'à trois niveaux), régler le lissage et l'échelle verticale (par exemple 1 cm = 100 m,
@@ -132,6 +139,10 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   avez configurés, et à la vérification des mises à jour auprès de GitHub. Cette dernière ne
   transmet rien sur vous : elle lit un fichier public indiquant la dernière version publiée.
   Vous pouvez la passer en manuel dans les réglages.
+- La **recherche d'un lieu** est la seule fonction qui interroge un service tiers pendant que vous
+  vous en servez : chaque recherche envoie le texte tapé, et le centre de la carte pour classer les
+  résultats. Elle est **désactivée par défaut**, et le service visé est configurable — vous pouvez
+  héberger le vôtre.
 
 ## Contribution & Développement
 

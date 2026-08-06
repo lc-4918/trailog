@@ -161,4 +161,10 @@ data class SettingsEntity(
     // apres le semis, qu'il ait reussi ou non (cf. DemoData.seed) - un jeu d'exemple qui n'a pas pu
     // s'installer ne vaut pas de reessayer a chaque lancement.
     val demoSeeded: Boolean = false,
+    // Recherche de lieu/adresse (bouton loupe sur la carte). Desactivee par defaut : c'est la seule
+    // fonction qui interroge un service tiers en cours d'usage, elle n'a donc pas a s'imposer.
+    val geocodingEnabled: Boolean = false,
+    // Service d'autocompletion interroge (API Photon). Vide = instance publique (Photon.DEFAULT_URL) ;
+    // renseignable pour viser sa propre instance, l'interet d'avoir choisi un geocodeur auto-hebergeable.
+    val geocodingUrl: String = "",
 )

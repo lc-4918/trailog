@@ -24,6 +24,20 @@ object Format {
         if (imperial) "${"%.2f".format(meters / 1609.344)} mi"
         else "${"%.2f".format(meters / 1000.0)} km"
 
+    /** Distance isolée, à l'unité adaptée : sous le kilomètre (le mile en impérial) on donne des mètres
+     *  (des pieds) entiers, au-delà des kilomètres (des miles) à une décimale. Contrairement à [distance],
+     *  qui sert à comparer des totaux de traces et garde donc une unité fixe, celle-ci s'affiche seule
+     *  et n'a personne avec qui s'aligner : "180 m" y est plus lisible que "0,18 km". */
+    fun shortDistance(meters: Double, imperial: Boolean = false): String {
+        if (!meters.isFinite() || meters < 0) return ""
+        return if (imperial) {
+            if (meters < 1609.344) "${(meters * 3.28084).roundToInt()} ft"
+            else "${"%.1f".format(meters / 1609.344)} mi"
+        } else {
+            if (meters < 1000.0) "${meters.roundToInt()} m" else "${"%.1f".format(meters / 1000.0)} km"
+        }
+    }
+
     fun elevation(m: Double, imperial: Boolean = false): String =
         if (imperial) "${(m * 3.28084).roundToInt()} ft" else "${m.roundToInt()} m"
 }

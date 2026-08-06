@@ -515,6 +515,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         db.settings().upsert(s.copy(defaultBasemapId = id))
     }
 
+    /** Fait apparaître le bouton de localisation sur la carte (accepter d'activer la position depuis la
+     *  mesure de distance du géocodage) : la position ne doit pas s'allumer sans que rien ne le montre. */
+    fun setShowGpsButton(show: Boolean) = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        if (s.showGpsButton != show) db.settings().upsert(s.copy(showGpsButton = show))
+    }
+
     /** Active/désactive le relief (tap sur son entrée dans le gestionnaire de couches) : contrairement aux
      *  autres fonds, le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes illisibles
      *  telles quelles) - tapoter dessus bascule simplement son affichage en overlay sur le fond courant. */

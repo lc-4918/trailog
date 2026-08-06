@@ -40,7 +40,8 @@ Le dessin a la main et le suivi GPS temps reel etaient explicitement hors perime
 
 **Hors ligne d'abord.** L'usage cible est le terrain, sans reseau. Tout ce qui peut etre precalcule
 l'est, tout ce qui peut etre stocke localement l'est. Une fonctionnalite qui exige le reseau doit
-degrader proprement, pas echouer.
+degrader proprement, pas echouer - et si elle ne peut pas s'en passer du tout, comme la recherche
+d'adresse, elle reste optionnelle et eteinte par defaut.
 
 **Aucun store.** La distribution passe par GitHub Releases. Il n'y a donc personne pour prevenir
 l'utilisateur qu'une version existe : l'app doit s'en charger elle-meme. Cela justifie la permission
@@ -136,6 +137,20 @@ jamais selectionnable comme fond visuel : son `enabled` sert de bascule d'affich
 
 Consequence dans le code : il reste toujours visible dans le gestionnaire, meme desactive. Le filtrer
 comme les autres fonds le ferait disparaitre au premier tap qui l'eteint, sans moyen de le rallumer.
+
+### Le geocodage est optionnel, et son service interchangeable
+
+Chercher une adresse exige un service en ligne : rien n'est geocodable hors ligne a cette echelle. La
+fonction est donc **desactivee par defaut** et s'active dans *Reglages / Carte*.
+
+Le service retenu est **Photon**, et non Google. Google impose une cle facturee, et ses conditions
+reservent l'affichage des resultats a une carte Google, alors que l'application rend les siennes avec
+MapLibre. Nominatim, l'autre geocodeur OSM connu, **interdit** l'autocompletion au clavier dans sa
+politique d'usage. Photon est le seul a la fois prevu pour la frappe et **auto-hebergeable**.
+
+C'est pour cela que son URL est un reglage et non une constante : le jour ou une instance personnelle
+tourne, il suffit de la designer. Le defaut vide, et non l'URL publique ecrite en base, evite qu'un
+changement de defaut dans le code laisse les installations existantes sur l'ancienne adresse.
 
 ### Mises a jour : manifeste en asset de Release
 

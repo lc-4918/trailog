@@ -78,12 +78,20 @@
     <string name="label_new_folder">Karpeta berria</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS kokapena</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Bilatu leku bat</string>
+    <string name="geocode_search_placeholder">Bilatu leku bat edo helbide bat</string>
+    <string name="geocode_distance_from_position">Distantzia kokapenetik</string>
+    <string name="geocode_distance_from_point">Distantzia puntu batetik</string>
+    <string name="geocode_pick_point_prompt">Aukeratu mapako edozein puntu</string>
 
     <!-- Elkarrizketa-koadroak -->
     <string name="dialog_composite_title">Oinarrizko mapa konposatu berria</string>
     <string name="dialog_import_into_title">Inportatu hemen...</string>
     <string name="dialog_gps_disabled_title">GPS sentsorea inaktibo</string>
     <string name="dialog_gps_disabled_text">Kokapen-detekzioa desgaituta dago. Gaitu nahi duzu?</string>
+    <string name="dialog_location_off_title">Kokapena ez dago aktibo</string>
+    <string name="dialog_location_off_text">GPS kokapena ez dago aktibo. Gaitu nahi duzu?</string>
     <string name="dialog_move_to_title">Mugitu hona...</string>
     <string name="dialog_color_title">Bistaratze-kolorea</string>
     <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Baimendu maparen errotazioa (2 hatzeko keinua)</string>
     <string name="settings_section_gps_position">GPS kokapena</string>
     <string name="settings_show_gps_button">Erakutsi GPS kokapen-botoia</string>
+    <string name="settings_section_geocoding">Geokodetzea</string>
+    <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
+    <string name="settings_geocoding_url">Geokodetze-zerbitzuaren URLa</string>
+    <string name="settings_geocoding_url_hint">Hutsik = Photon instantzia publikoa. Norberak ostatatutako instantzia bat (Photon, Addok) hemen jartzen da.</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>
     <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
     <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>

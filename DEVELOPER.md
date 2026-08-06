@@ -40,6 +40,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  ├─ seed/Providers.kt         Fonds de carte par défaut
 │  ├─ imp/                      LayerImporter (GPX/GeoJSON/KML), PropertyDetector
 │  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
+├─ geocode/                     Photon (recherche de lieu / adresse, service configurable)
 ├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre)
 │  └─ offline/                  TileMath, TileUrl, TileHttp, OfflineTileDownloader, OfflineThumbnails
 ├─ update/                      UpdateManager (manifeste + installateur), UpdateDialog
@@ -48,6 +49,7 @@ app/src/main/java/fr/lc4918/trailog/
    ├─ profile/                   ElevationProfile (Canvas), SlopeLegend, SlopeRamp
    ├─ routes/                    MainScreen, MainViewModel
    ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement
+   ├─ geocode/                   barre de recherche, infobulle du lieu, etat de la recherche
    ├─ offline/                   Saisie de la zone et configuration du téléchargement
    ├─ settings/                  SettingsScreen, SettingsViewModel
    ├─ theme/                     Theme.kt
@@ -78,6 +80,7 @@ Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
 | `domain/geo/TrackMathTest` | calculs géométriques (distance, D+/D-, pente) |
 | `ui/points/BubblePlacementTest` | placement de l'infobulle autour du marqueur, bornes d'écran |
 | `update/ReleaseInfoTest` | forme du manifeste écrit par la CI et calcul du `versionCode` |
+| `geocode/PhotonTest` | construction de la requête et lecture de la réponse du géocodeur |
 
 `ReleaseInfoTest` mérite une note : il garde un contrat entre deux fichiers qui ne se compilent
 pas ensemble, le `jq` du workflow et le parseur Kotlin. Une divergence n'y produirait aucune

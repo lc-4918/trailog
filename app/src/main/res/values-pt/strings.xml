@@ -78,12 +78,20 @@
     <string name="label_new_folder">Nova pasta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posição GPS</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Procurar um local</string>
+    <string name="geocode_search_placeholder">Procurar um local ou endereço</string>
+    <string name="geocode_distance_from_position">Distância desde a posição</string>
+    <string name="geocode_distance_from_point">Distância desde um ponto</string>
+    <string name="geocode_pick_point_prompt">Escolha um ponto em qualquer lugar do mapa</string>
 
     <!-- Diálogos -->
     <string name="dialog_composite_title">Novo mapa base composto</string>
     <string name="dialog_import_into_title">Importar para...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inativo</string>
     <string name="dialog_gps_disabled_text">A localização está desativada. Pretende ativá-la?</string>
+    <string name="dialog_location_off_title">Localização não ativa</string>
+    <string name="dialog_location_off_text">A localização GPS não está ativa. Pretende ativá-la?</string>
     <string name="dialog_move_to_title">Mover para...</string>
     <string name="dialog_color_title">Cor de visualização</string>
     <string name="dialog_edit_bubble_title">Editar o balão informativo</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Permitir a rotação do mapa (gesto de 2 dedos)</string>
     <string name="settings_section_gps_position">Posição GPS</string>
     <string name="settings_show_gps_button">Mostrar o botão de localização GPS</string>
+    <string name="settings_section_geocoding">Geocodificação</string>
+    <string name="settings_enable_geocoding">Ativar a procura de locais e endereços</string>
+    <string name="settings_geocoding_url">URL do serviço de geocodificação</string>
+    <string name="settings_geocoding_url_hint">Vazio = instância pública Photon. Uma instância auto-hospedada (Photon, Addok) indica-se aqui.</string>
     <string name="settings_section_markers">Marcadores (mapa)</string>
     <string name="settings_marker_size">Tamanho dos marcadores (dp)</string>
     <string name="settings_section_import_folder">Pasta inicial das importações</string>

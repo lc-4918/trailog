@@ -78,12 +78,20 @@
     <string name="label_new_folder">Neuer Ordner</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS-Position</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Ort suchen</string>
+    <string name="geocode_search_placeholder">Ort oder Adresse suchen</string>
+    <string name="geocode_distance_from_position">Entfernung vom Standort</string>
+    <string name="geocode_distance_from_point">Entfernung von einem Punkt</string>
+    <string name="geocode_pick_point_prompt">Einen beliebigen Punkt auf der Karte wählen</string>
 
     <!-- Dialoge -->
     <string name="dialog_composite_title">Neue kombinierte Kartengrundlage</string>
     <string name="dialog_import_into_title">Importieren nach...</string>
     <string name="dialog_gps_disabled_title">GPS-Sensor inaktiv</string>
     <string name="dialog_gps_disabled_text">Die Standorterkennung ist deaktiviert. Möchten Sie sie aktivieren?</string>
+    <string name="dialog_location_off_title">Standort nicht aktiv</string>
+    <string name="dialog_location_off_text">Die GPS-Ortung ist nicht aktiv. Möchten Sie sie aktivieren?</string>
     <string name="dialog_move_to_title">Verschieben nach...</string>
     <string name="dialog_color_title">Anzeigefarbe</string>
     <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Kartendrehung erlauben (2-Finger-Geste)</string>
     <string name="settings_section_gps_position">GPS-Position</string>
     <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
+    <string name="settings_section_geocoding">Geokodierung</string>
+    <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
+    <string name="settings_geocoding_url">URL des Geokodierungsdienstes</string>
+    <string name="settings_geocoding_url_hint">Leer = öffentliche Photon-Instanz. Eine selbst gehostete Instanz (Photon, Addok) hier eintragen.</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>

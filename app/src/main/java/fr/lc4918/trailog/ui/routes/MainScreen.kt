@@ -92,6 +92,7 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.map.CoverageBounds
 import fr.lc4918.trailog.map.CoverageProbe
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
@@ -103,6 +104,10 @@ import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
+import fr.lc4918.trailog.ui.components.MapPromptBar
+import fr.lc4918.trailog.ui.geocode.GeocodeBubble
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
@@ -147,6 +152,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
     // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
     var offlineBarHeightPx by remember { mutableIntStateOf(0) }
+    // Hauteur mesurée de la barre de consigne du géocodage, même usage que ci-dessus.
+    var promptBarHeightPx by remember { mutableIntStateOf(0) }
     // Hauteur mesurée du panneau de profil (superposé à la carte, qui garde toujours sa taille pleine),
     // pour décaler les infos du curseur juste au-dessus.
     var profileBarHeightPx by remember { mutableIntStateOf(0) }
@@ -284,6 +291,50 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
     DisposableEffect(Unit) { onDispose { locationManager.removeUpdates(locationListener) } }
 
+    // ---------- recherche de lieu / adresse (géocodage) ----------
+    val geo = remember { GeocodeSearchState() }
+    // Popup "la localisation n'est pas active" : propre à la mesure de distance, distincte de celle du
+    // capteur éteint (showLocationDisabledDialog), qui reste le second temps du même parcours.
+    var showLocationOffDialog by remember { mutableStateOf(false) }
+
+    // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
+    // le service public le refuserait, et les réponses arriveraient dans le désordre.
+    LaunchedEffect(geo.query, settings?.geocodingUrl) {
+        val q = geo.query.trim()
+        if (q.length < 3) { geo.results = emptyList(); geo.searching = false; return@LaunchedEffect }
+        geo.searching = true
+        delay(350)
+        val center = controller.cameraState()
+        geo.results = Photon.search(
+            base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL,
+            query = q, lang = ctx.resources.configuration.locales[0].language,
+            lat = center?.first, lon = center?.second, limit = GeocodeResultLimit,
+        )
+        geo.searching = false
+    }
+    // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
+    // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
+    LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
+
+    val imperialUnits = settings?.units == "imperial"
+    // Distance depuis la position : recalculée à chaque position reçue tant que la mesure est demandée.
+    val geoDistanceFromPosition = remember(geo.place, geo.distanceFromPositionRequested, lastUserLocation, imperialUnits) {
+        val p = geo.place ?: return@remember null
+        if (!geo.distanceFromPositionRequested) return@remember null
+        val (la, lo) = lastUserLocation ?: return@remember null
+        Format.shortDistance(TrackMath.haversine(p.lon, p.lat, lo, la), imperialUnits)
+    }
+    val geoDistanceFromPoint = remember(geo.place, geo.refPoint, imperialUnits) {
+        val p = geo.place ?: return@remember null
+        val (lo, la) = geo.refPoint ?: return@remember null
+        Format.shortDistance(TrackMath.haversine(p.lon, p.lat, lo, la), imperialUnits)
+    }
+
+    /** "Distance depuis la position" : mesure immédiate si le GPS tourne déjà, sinon on propose de l'activer. */
+    fun onDistanceFromPositionTap() {
+        if (gpsActive) geo.requestDistanceFromPosition() else showLocationOffDialog = true
+    }
+
     // barre de statut : icônes noires en mode transparent, sinon inverse du thème
     val dark = when (settings?.theme) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
     val transparentBar = settings?.statusBarTransparent ?: false
@@ -303,13 +354,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         controller.onCameraMove = { bearingTick++ }
         controller.onUserMoveBegin = { if (gpsActive) gpsButtonDimmed = true }
     }
-    // Pendant le tracé de la bounding box hors-ligne, tout tap pose un coin (mode exclusif : on
-    // n'utilise pas la sélection point/ligne habituelle, même si le tap tombe sur une trace existante).
-    LaunchedEffect(controller, offlineDrawingActive) {
+    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix du point de référence d'une
+    // mesure de distance) : tout tap leur revient, y compris sur une trace ou un marqueur, qui n'ouvrent
+    // alors ni profil ni infobulle. Hors de ces modes, la sélection habituelle reprend.
+    LaunchedEffect(controller, offlineDrawingActive, geo.pickingPoint) {
         if (offlineDrawingActive) {
             controller.onRawTap = { lon, lat ->
                 if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
             }
+        } else if (geo.pickingPoint) {
+            controller.onRawTap = { lon, lat -> geo.setRefPoint(lon, lat) }
         } else {
             controller.onRawTap = null
             controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
@@ -366,6 +420,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Coins/rectangle du tracé bbox hors-ligne (SPEC section 2) : source/couches dédiées (croix "viseur"),
     // indépendantes du système de couches importées ci-dessus.
     LaunchedEffect(offlineBboxPoints, styleTick) { if (controller.style != null) controller.setBboxDraw(offlineBboxPoints) }
+    // Marqueurs noirs du géocodage : le lieu trouvé, et le point de référence d'une mesure de distance.
+    // Calques carte (comme le marqueur sélectionné) : ils suivent seuls le pan et le zoom.
+    LaunchedEffect(geo.place, styleTick, markerPx) {
+        controller.setGeocodeMarker(false, geo.place?.lon, geo.place?.lat, markerPx)
+    }
+    LaunchedEffect(geo.refPoint, styleTick, markerPx) {
+        controller.setGeocodeMarker(true, geo.refPoint?.first, geo.refPoint?.second, markerPx)
+    }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
@@ -473,6 +535,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // ces deux états ne sont jamais actifs simultanément, mais l'ordre reflète "config au-dessus du tracé").
     BackHandler(enabled = offlineDrawingActive) { cancelOfflineDrawing() }
     BackHandler(enabled = offlineConfigBbox != null) { closeOfflineFlow() }
+    // Géocodage, du plus général au plus prioritaire (déclaré après = intercepté en premier) : le retour
+    // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
+    BackHandler(enabled = geo.place != null) { geo.clear() }
+    BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
+    BackHandler(enabled = geo.pickingPoint) { geo.cancelPickingPoint() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
     BackHandler(enabled = offlineDownload?.minimized == false) {
         val dl = offlineDownload
@@ -518,41 +585,61 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
-                Row(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (mode != "swipe") {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
-                        }
-                    }
-                    if (settings?.showGpsButton == true) {
-                        IconButton(
-                            onClick = { onGpsButtonTap() },
-                            modifier = Modifier
-                                .alpha(if (gpsButtonDimmed) 0.6f else 1f)
-                                .background(
-                                    if (gpsActive) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                    RoundedCornerShape(8.dp)),
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
-                                    tint = if (gpsActive) Color.White else LocalContentColor.current)
-                                Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
-                                    color = if (gpsActive) Color.White else LocalContentColor.current)
+                // Colonne des boutons du coin haut-gauche : la barre habituelle, puis le bouton de recherche
+                // de lieu juste dessous, à l'écart vertical qui sépare déjà le burger du bouton GPS.
+                Column(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (mode != "swipe") {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
                             }
                         }
-                        // recentre la carte sur la position GPS courante ; même style que le bouton menu
-                        // (couleur, taille, transparence par défaut d'un IconButton)
-                        if (gpsActive) {
-                            IconButton(onClick = { recenterOnGps() }) {
-                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
+                        if (settings?.showGpsButton == true) {
+                            IconButton(
+                                onClick = { onGpsButtonTap() },
+                                modifier = Modifier
+                                    .alpha(if (gpsButtonDimmed) 0.6f else 1f)
+                                    .background(
+                                        if (gpsActive) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        RoundedCornerShape(8.dp)),
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
+                                        tint = if (gpsActive) Color.White else LocalContentColor.current)
+                                    Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
+                                        color = if (gpsActive) Color.White else LocalContentColor.current)
+                                }
+                            }
+                            // recentre la carte sur la position GPS courante ; même style que le bouton menu
+                            // (couleur, taille, transparence par défaut d'un IconButton)
+                            if (gpsActive) {
+                                IconButton(onClick = { recenterOnGps() }) {
+                                    Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
+                                }
                             }
                         }
+                        // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
+                        // GPS, dans la même barre (donc même espacement latéral de 4.dp).
+                        offlineDownload?.takeIf { it.minimized }?.let { dl ->
+                            OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
+                        }
                     }
-                    // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
-                    // GPS, dans la même barre (donc même espacement latéral de 4.dp).
-                    offlineDownload?.takeIf { it.minimized }?.let { dl ->
-                        OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
+                    if (settings?.geocodingEnabled == true) {
+                        IconButton(onClick = { if (geo.searchOpen) geo.closeSearch() else geo.openSearch() }) {
+                            Icon(Icons.Filled.LocationSearching, stringResource(R.string.content_desc_geocode_search))
+                        }
+                    }
+                    if (geo.searchOpen) {
+                        GeocodeSearchBar(
+                            query = geo.query, results = geo.results, searching = geo.searching,
+                            onQueryChange = { geo.query = it },
+                            onPick = { place ->
+                                geo.select(place)
+                                controller.centerOn(place.lat, place.lon)
+                            },
+                            onClose = { geo.closeSearch() },
+                        )
                     }
                 }
                 // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
@@ -651,6 +738,52 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         pannedFor = selectedMarkerId
                     }
                 }
+                // Infobulle du lieu trouvé : même placement que celle d'un marqueur (réglage Carte /
+                // Infobulles), calculé une fois la bulle mesurée. Elle ne recentre jamais la carte : la
+                // sélection vient de le faire, sur le lieu lui-même.
+                val gPlace = geo.place
+                if (gPlace != null && geo.bubbleVisible) {
+                    val gOff = remember(gPlace, idleTick) {
+                        controller.screenOf(gPlace.lon, gPlace.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+                    }
+                    if (gOff != null) {
+                        val topInset = WindowInsets.statusBars.getTop(density)
+                        val margin = with(density) { 8.dp.roundToPx() }
+                        val gap = with(density) { 10.dp.roundToPx() }
+                        Layout(
+                            content = {
+                                GeocodeBubble(
+                                    address = gPlace.label,
+                                    distanceFromPosition = geoDistanceFromPosition,
+                                    distanceFromPoint = geoDistanceFromPoint,
+                                    onDistanceFromPosition = { onDistanceFromPositionTap() },
+                                    onDistanceFromPoint = { geo.startPickingPoint() },
+                                    onClose = { geo.clear() },
+                                    fontSp = settings?.bubbleFont ?: 14,
+                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                                )
+                            },
+                        ) { measurables, cs ->
+                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
+                            val pl = computeBubblePlacement(
+                                pos = BubblePosition.of(settings?.bubblePosition),
+                                markerX = gOff.x, markerY = gOff.y,
+                                bubbleW = p.width, bubbleH = p.height,
+                                viewW = cs.maxWidth, viewH = cs.maxHeight,
+                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
+                            )
+                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                        }
+                    }
+                }
+                // Consigne du choix d'un point de référence : même barre que la saisie de la bbox hors-ligne.
+                if (geo.pickingPoint) {
+                    MapPromptBar(
+                        stringResource(R.string.geocode_pick_point_prompt),
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                            .onGloballyPositioned { promptBarHeightPx = it.size.height },
+                    )
+                }
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
@@ -672,6 +805,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 if (activeLayerId == null && settings?.showScale != false) {
                     val scaleBarModifier = if (offlineDrawingActive) {
                         val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
+                        Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
+                    } else if (geo.pickingPoint) {
+                        val barHeightDp = with(density) { promptBarHeightPx.toDp() }
                         Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
                     } else {
                         Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
@@ -956,6 +1092,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             },
             confirmButton = { TextButton(onClick = { importReport = emptyList() }) { Text(stringResource(R.string.action_ok)) } },
+        )
+    }
+
+    // "Distance depuis la position" demandée sans localisation active : on propose de l'activer. Répondre
+    // oui fait aussi apparaître le bouton GPS sur la carte, sans quoi la position s'allumerait sans que
+    // rien ne le montre ni ne permette de l'éteindre. La suite du parcours (permission, capteur éteint)
+    // est celle du bouton lui-même, et la distance s'affiche dès la première position reçue.
+    if (showLocationOffDialog) {
+        AlertDialog(
+            onDismissRequest = { showLocationOffDialog = false },
+            title = { Text(stringResource(R.string.dialog_location_off_title)) },
+            text = { Text(stringResource(R.string.dialog_location_off_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLocationOffDialog = false
+                    vm.setShowGpsButton(true)
+                    geo.requestDistanceFromPosition()
+                    onGpsButtonTap()
+                }) { Text(stringResource(R.string.action_yes)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLocationOffDialog = false }) { Text(stringResource(R.string.action_no)) }
+            },
         )
     }
 
@@ -1412,6 +1571,10 @@ private fun DropIndicatorLine() {
 
 /** Part de la hauteur d'écran que l'infobulle ne dépasse pas ; au-delà, ses propriétés défilent. */
 private const val BubbleMaxHeightRatio = 0.6f
+
+/** Propositions demandées au géocodeur. Plus que les 4 visibles : le défilement de la liste n'a de sens
+ *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
+private const val GeocodeResultLimit = 10
 
 /** Teintes de l'avertissement "sans altimétrie" : figées, pour rester lisibles sur le fond blanc du
  *  panneau de profil quel que soit le thème. */

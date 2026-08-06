@@ -78,12 +78,20 @@
     <string name="label_new_folder">Nuova cartella</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">Posizione GPS</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Cerca un luogo</string>
+    <string name="geocode_search_placeholder">Cerca un luogo o un indirizzo</string>
+    <string name="geocode_distance_from_position">Distanza dalla posizione</string>
+    <string name="geocode_distance_from_point">Distanza da un punto</string>
+    <string name="geocode_pick_point_prompt">Scegli un punto qualsiasi sulla mappa</string>
 
     <!-- Finestre di dialogo -->
     <string name="dialog_composite_title">Nuova mappa di base composita</string>
     <string name="dialog_import_into_title">Importa in...</string>
     <string name="dialog_gps_disabled_title">Sensore GPS inattivo</string>
     <string name="dialog_gps_disabled_text">Il rilevamento della posizione è disattivato. Vuoi attivarlo?</string>
+    <string name="dialog_location_off_title">Posizione non attiva</string>
+    <string name="dialog_location_off_text">La localizzazione GPS non è attiva. Vuoi attivarla?</string>
     <string name="dialog_move_to_title">Sposta in...</string>
     <string name="dialog_color_title">Colore di visualizzazione</string>
     <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Consenti la rotazione della mappa (gesto a 2 dita)</string>
     <string name="settings_section_gps_position">Posizione GPS</string>
     <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
+    <string name="settings_section_geocoding">Geocodifica</string>
+    <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
+    <string name="settings_geocoding_url">URL del servizio di geocodifica</string>
+    <string name="settings_geocoding_url_hint">Vuoto = istanza pubblica Photon. Un\'istanza self-hosted (Photon, Addok) si indica qui.</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>

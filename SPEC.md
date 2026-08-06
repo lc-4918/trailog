@@ -162,6 +162,16 @@ lecture MBTiles déjà en place.
 - Le registre de la section 4 n'est plus exhaustif : les fonds vivent dans
   `data/seed/Providers.kt` et en base, où l'utilisateur peut les modifier.
 
+### Recherche de lieu / adresse (géocodage)
+Non prévu en v1, et à contre-courant du "hors ligne d'abord" : la fonction exige le réseau. Elle est
+donc **désactivée par défaut** et s'active dans *Réglages / Carte*. Le service interrogé est
+**Photon**, choisi parmi les géocodeurs OSM pour deux raisons : il est conçu pour l'autocomplétion au
+clavier (Nominatim l'interdit dans sa politique d'usage) et il est **auto-hébergeable**. Son URL est
+un réglage, de sorte qu'une instance personnelle ne demande pas une nouvelle version de l'app.
+
+Le lieu choisi se marque d'une épingle noire ; son infobulle offre deux mesures de distance, depuis la
+position GPS (qu'elle propose d'activer si besoin) ou depuis un point désigné sur la carte.
+
 ### Mises à jour automatiques
 Non prévu en v1 : l'app lit un manifeste publié par sa propre CI, compare les versions, puis
 télécharge et lance l'installation. Réglable en Auto ou Manuel. Détail dans

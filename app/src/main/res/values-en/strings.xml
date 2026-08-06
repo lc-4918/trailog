@@ -78,12 +78,20 @@
     <string name="label_new_folder">New folder</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS position</string>
+    <!-- Recherche de lieu / adresse (geocodage) -->
+    <string name="content_desc_geocode_search">Search for a place</string>
+    <string name="geocode_search_placeholder">Search for a place or address</string>
+    <string name="geocode_distance_from_position">Distance from location</string>
+    <string name="geocode_distance_from_point">Distance from a point</string>
+    <string name="geocode_pick_point_prompt">Pick any point on the map</string>
 
     <!-- Dialogs -->
     <string name="dialog_composite_title">New composite basemap</string>
     <string name="dialog_import_into_title">Import into...</string>
     <string name="dialog_gps_disabled_title">GPS sensor inactive</string>
     <string name="dialog_gps_disabled_text">Location sensing is disabled. Do you want to enable it?</string>
+    <string name="dialog_location_off_title">Location not active</string>
+    <string name="dialog_location_off_text">GPS location is not active. Do you want to enable it?</string>
     <string name="dialog_move_to_title">Move to...</string>
     <string name="dialog_color_title">Display color</string>
     <string name="dialog_edit_bubble_title">Edit info bubble</string>
@@ -170,6 +178,10 @@
     <string name="settings_allow_rotation">Allow map rotation (2-finger gesture)</string>
     <string name="settings_section_gps_position">GPS position</string>
     <string name="settings_show_gps_button">Show GPS location button</string>
+    <string name="settings_section_geocoding">Geocoding</string>
+    <string name="settings_enable_geocoding">Enable place and address search</string>
+    <string name="settings_geocoding_url">Geocoding service URL</string>
+    <string name="settings_geocoding_url_hint">Empty = public Photon instance. A self-hosted instance (Photon, Addok) goes here.</string>
     <string name="settings_section_markers">Markers (map)</string>
     <string name="settings_marker_size">Marker size (dp)</string>
     <string name="settings_section_import_folder">Default import folder</string>

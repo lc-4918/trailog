@@ -404,6 +404,44 @@ class MapController {
         return """{"type":"FeatureCollection","features":[$features]}"""
     }
 
+    /** Identifiants des marqueurs noirs du géocodage : le lieu trouvé, et le point de référence choisi à la
+     *  main pour une mesure de distance. Deux couches distinctes, les deux pouvant coexister. */
+    private val GEO_PLACE = "geocode-place"
+    private val GEO_REF = "geocode-ref"
+
+    /**
+     * Épingle noire du géocodage : le lieu trouvé ([GEO_PLACE]) ou le point de référence d'une mesure de
+     * distance ([GEO_REF]). Même épingle que les marqueurs de couches, teintée en noir. [lon]/[lat] nuls
+     * la retirent.
+     *
+     * Posée au sommet du style, sans le soin apporté à [setSelectedMarker] pour se glisser sous les repères
+     * de tête : ces deux marqueurs sont, le temps de la recherche, ce que l'utilisateur regarde.
+     */
+    fun setGeocodeMarker(reference: Boolean, lon: Double?, lat: Double?, heightPx: Float) {
+        val s = style ?: return
+        val id = if (reference) GEO_REF else GEO_PLACE
+        val srcId = "$id-src"
+        if (lon == null || lat == null) {
+            s.getLayer(id)?.let { s.removeLayer(it) }
+            s.getSource(srcId)?.let { s.removeSource(it) }
+            return
+        }
+        val img = ensurePin(s, appContext, "#000000", heightPx)
+        val geojson = "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}"
+        val existing = s.getSourceAs<GeoJsonSource>(srcId)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(srcId, geojson))
+            s.addLayer(SymbolLayer(id, srcId).withProperties(
+                PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter))
+        } else {
+            existing.setGeoJson(geojson)
+            (s.getLayer(id) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+        }
+    }
+
     /** Croix "+" simple : les deux traits se croisent exactement au centre (le point exact posé),
      *  contrairement à un viseur à cercle qui laisse un vide au milieu. */
     private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {

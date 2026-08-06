@@ -115,6 +115,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
+import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.map.compositeBasemapId
 import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.map.flagCodeFor
@@ -221,6 +222,17 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
     Section(stringResource(R.string.settings_section_gps_position))
     SwitchRow(stringResource(R.string.settings_show_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
+    Section(stringResource(R.string.settings_section_geocoding))
+    SwitchRow(stringResource(R.string.settings_enable_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
+    if (cur.geocodingEnabled) {
+        CompactOutlinedTextField(
+            value = cur.geocodingUrl, onValueChange = { vm.save(cur.copy(geocodingUrl = it.trim())) },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.settings_geocoding_url)) },
+            placeholder = { Text(Photon.DEFAULT_URL) },
+            supportingText = { Text(stringResource(R.string.settings_geocoding_url_hint)) },
+        )
+    }
     Section(stringResource(R.string.settings_section_rotation))
     SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
     Section(stringResource(R.string.settings_section_basemap_control))
