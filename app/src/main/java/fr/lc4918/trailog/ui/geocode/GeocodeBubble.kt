@@ -57,8 +57,11 @@ fun GeocodeBubble(
         modifier = modifier.width(BubbleWidth),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(16.dp),
+        // Couleur de contenu imposée : sous 100 % d'opacité, le fond n'est plus l'une des couleurs du thème
+        // et contentColorFor n'y reconnaît rien, laissant le texte hériter du LocalContentColor ambiant.
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
+            contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
         Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

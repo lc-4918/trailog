@@ -72,12 +72,21 @@ fun GeocodeSearchBar(
         Surface(
             shape = RoundedCornerShape(8.dp),
             color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
+            // Couleur de contenu imposée : un fond translucide n'est plus l'une des couleurs du thème, et
+            // contentColorFor n'y reconnaît donc rien. Sans elle, le texte hérite du LocalContentColor
+            // ambiant - noir sur noir en thème sombre.
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 4.dp,
         ) {
             CompactOutlinedTextField(
                 value = query, onValueChange = onQueryChange, singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                placeholder = { Text(stringResource(R.string.geocode_search_placeholder)) },
+                // Une seule ligne quoi qu'il arrive : le libellé est court, mais une police système agrandie
+                // ou une traduction plus longue le ferait sinon passer à la ligne et grandir le champ.
+                placeholder = {
+                    Text(stringResource(R.string.geocode_search_placeholder),
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
                 leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(20.dp)) },
                 trailingIcon = {
                     // Le spinner remplace la croix pendant l'interrogation : même emplacement, pas de
@@ -99,6 +108,7 @@ fun GeocodeSearchBar(
                 modifier = Modifier.padding(top = 4.dp),
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
+                contentColor = MaterialTheme.colorScheme.onSurface,   // cf. le champ ci-dessus
                 shadowElevation = 4.dp,
             ) {
                 Column(Modifier.heightIn(max = SuggestionHeight * VisibleSuggestions).verticalScroll(rememberScrollState())) {
@@ -107,7 +117,6 @@ fun GeocodeSearchBar(
                         Box(
                             Modifier.fillMaxWidth().height(SuggestionHeight)
                                 .clickable { onPick(place) }
-                                .background(androidx.compose.ui.graphics.Color.Transparent)
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.CenterStart,
                         ) {

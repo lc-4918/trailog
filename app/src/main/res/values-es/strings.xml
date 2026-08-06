@@ -80,7 +80,7 @@
     <string name="content_desc_gps_position">Posición GPS</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Buscar un lugar</string>
-    <string name="geocode_search_placeholder">Buscar un lugar o una dirección</string>
+    <string name="geocode_search_placeholder">Buscar un lugar</string>
     <string name="geocode_distance_from_position">Distancia desde la posición</string>
     <string name="geocode_distance_from_point">Distancia desde un punto</string>
     <string name="geocode_pick_point_prompt">Elige un punto en cualquier lugar del mapa</string>

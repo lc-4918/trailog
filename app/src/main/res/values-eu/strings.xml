@@ -80,7 +80,7 @@
     <string name="content_desc_gps_position">GPS kokapena</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Bilatu leku bat</string>
-    <string name="geocode_search_placeholder">Bilatu leku bat edo helbide bat</string>
+    <string name="geocode_search_placeholder">Bilatu leku bat</string>
     <string name="geocode_distance_from_position">Distantzia kokapenetik</string>
     <string name="geocode_distance_from_point">Distantzia puntu batetik</string>
     <string name="geocode_pick_point_prompt">Aukeratu mapako edozein puntu</string>
