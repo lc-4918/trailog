@@ -12,7 +12,12 @@ sealed interface MeasureState {
     data object Loading : MeasureState
     /** Aucun itinéraire : points non reliés dans cette discipline, service muet, ou réseau absent. */
     data object Failed : MeasureState
-    data class Done(val meters: Double, val seconds: Double) : MeasureState
+    /** [shape] : le trace, en (lon, lat), tel que rendu par le moteur ; vide s'il n'en a pas fourni. */
+    data class Done(
+        val meters: Double,
+        val seconds: Double,
+        val shape: List<Pair<Double, Double>> = emptyList(),
+    ) : MeasureState
 }
 
 /**
@@ -57,6 +62,13 @@ class GeocodeSearchState {
      */
     var positionOrigin by mutableStateOf<Pair<Double, Double>?>(null)
         private set
+
+    /** Traces des itineraires mesures, a poser sur la carte. Vide tant qu'aucune mesure n'a abouti. */
+    val routeShapes: List<List<Pair<Double, Double>>>
+        get() = listOfNotNull(positionMeasure, pointMeasure)
+            .filterIsInstance<MeasureState.Done>()
+            .map { it.shape }
+            .filter { it.size >= 2 }
 
     /** L'infobulle s'efface le temps de choisir un point sur la carte, qu'elle recouvrirait. */
     val bubbleVisible: Boolean get() = place != null && !pickingPoint

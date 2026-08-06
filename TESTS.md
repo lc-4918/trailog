@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**253 tests, 29 fichiers**, tous verts.
+**261 tests, 30 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -219,7 +219,8 @@ d'itineraire a chaque point GPS, soit une toutes les deux secondes.
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
 | `PhotonTest` | 13 | construction de la requete et lecture de la reponse du geocodeur |
-| `ValhallaTest` | 12 | construction de la requete et lecture de la reponse du moteur d'itineraire |
+| `ValhallaTest` | 15 | construction de la requete et lecture de la reponse du moteur d'itineraire |
+| `PolylineTest` | 5 | decodage des polylignes encodees, dont la precision propre a Valhalla |
 
 Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
@@ -238,6 +239,12 @@ coordonnees passent par `toString()` et non `format()`, faute de quoi une locale
 incomplet (longueur sans duree, ou l'inverse) doit valoir "aucun itineraire" plutot qu'une distance de
 zero. Il verrouille aussi la correspondance des cinq disciplines avec les modeles de cout, seul endroit
 du code qui parle le vocabulaire du moteur.
+
+`PolylineTest` garde la geometrie affichee sur la carte. Sa faute possible est entierement muette :
+Valhalla encode au **millionieme** de degre la ou l'algorithme d'origine travaille au cent-millieme, et
+decoder au mauvais facteur ne leve rien - le trace s'affiche, dix fois trop loin de l'equateur. Le test
+decode l'exemple canonique de la documentation Google en precision 5, puis verifie que le defaut du code
+vaut bien dix fois cela.
 
 ### `net` - portee des services
 

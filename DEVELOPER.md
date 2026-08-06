@@ -42,7 +42,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
 ├─ net/                         ServiceUrl (reseau local ou service externe)
-├─ routing/                     Valhalla (itineraire et duree, 5 disciplines)
+├─ routing/                     Valhalla (itineraire, duree, trace ; 5 disciplines), Polyline
 ├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre)
 │  └─ offline/                  TileMath, TileUrl, TileHttp, OfflineTileDownloader, OfflineThumbnails
 ├─ update/                      UpdateManager (manifeste + installateur), UpdateDialog
@@ -84,6 +84,7 @@ Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
 | `update/ReleaseInfoTest` | forme du manifeste écrit par la CI et calcul du `versionCode` |
 | `geocode/PhotonTest` | construction de la requête et lecture de la réponse du géocodeur |
 | `routing/ValhallaTest` | requête et réponse du moteur d'itinéraire, correspondance des disciplines |
+| `routing/PolylineTest` | décodage des polylignes, dont la précision propre à Valhalla |
 
 `ReleaseInfoTest` mérite une note : il garde un contrat entre deux fichiers qui ne se compilent
 pas ensemble, le `jq` du workflow et le parseur Kotlin. Une divergence n'y produirait aucune

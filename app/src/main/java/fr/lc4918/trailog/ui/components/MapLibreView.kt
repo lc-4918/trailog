@@ -408,6 +408,9 @@ class MapController {
      *  main pour une mesure de distance. Deux couches distinctes, les deux pouvant coexister. */
     private val GEO_PLACE = "geocode-place"
     private val GEO_REF = "geocode-ref"
+    /** Calque et source des tracés d'itinéraire mesurés (cf. [setRouteLines]). */
+    private val ROUTE_LINE = "geocode-route"
+    private val ROUTE_SRC = "geocode-route-src"
 
     /**
      * Épingle noire du géocodage : le lieu trouvé ([GEO_PLACE]) ou le point de référence d'une mesure de
@@ -439,6 +442,41 @@ class MapController {
         } else {
             existing.setGeoJson(geojson)
             (s.getLayer(id) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+        }
+    }
+
+    /**
+     * Tracés noirs des itinéraires mesurés depuis l'infobulle d'un lieu (zéro, un ou deux : depuis la
+     * position, depuis un point choisi). Une seule source pour les deux : ils ont même style et changent
+     * ensemble, deux couches n'apporteraient qu'un ordre d'empilement à tenir.
+     *
+     * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
+     * doit pas passer devant le marqueur qui le termine.
+     */
+    fun setRouteLines(shapes: List<List<Pair<Double, Double>>>) {
+        val s = style ?: return
+        val drawable = shapes.filter { it.size >= 2 }
+        if (drawable.isEmpty()) {
+            s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
+            s.getSource(ROUTE_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val features = drawable.joinToString(",") { line ->
+            val coords = line.joinToString(",") { (lon, lat) -> "[$lon,$lat]" }
+            """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},"properties":{}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(ROUTE_SRC)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(ROUTE_SRC, geojson))
+            val layer = LineLayer(ROUTE_LINE, ROUTE_SRC).withProperties(
+                PropertyFactory.lineColor("#000000"), PropertyFactory.lineWidth(4f),
+                PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+                .withFilter(lineGeometryFilter)
+            val belowPin = listOf(GEO_PLACE, GEO_REF).firstOrNull { s.getLayer(it) != null }
+            if (belowPin != null) s.addLayerBelow(layer, belowPin) else addLayerSafe(layer)
+        } else {
+            existing.setGeoJson(geojson)
         }
     }
 

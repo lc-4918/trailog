@@ -330,7 +330,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     /** Un itinéraire depuis (lat, lon) jusqu'au lieu trouvé, traduit en état affichable. */
     suspend fun measureTo(fromLat: Double, fromLon: Double, place: fr.lc4918.trailog.geocode.GeocodePlace): MeasureState {
         val r = Valhalla.route(routingUrl, fromLat, fromLon, place.lat, place.lon, routingProfile)
-        return if (r == null) MeasureState.Failed else MeasureState.Done(r.meters, r.seconds)
+        return if (r == null) MeasureState.Failed else MeasureState.Done(r.meters, r.seconds, r.shape)
     }
 
     // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
@@ -472,6 +472,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(geo.refPoint, styleTick, markerPx) {
         controller.setGeocodeMarker(true, geo.refPoint?.first, geo.refPoint?.second, markerPx)
     }
+    // Traces noirs des itineraires mesures. Poses apres les epingles (memes cles de relance) pour qu'ils
+    // trouvent leurs calques et se glissent dessous.
+    LaunchedEffect(geo.routeShapes, styleTick) { controller.setRouteLines(geo.routeShapes) }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)

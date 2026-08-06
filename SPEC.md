@@ -180,7 +180,8 @@ Ces mesures donnent la **distance et la durée d'un itinéraire** suivant la voi
 (sans usage ici), pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied.
 Le moteur est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule instance via
 `bicycle_type` — OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé. Son URL est
-un réglage, comme celle du géocodeur.
+un réglage, comme celle du géocodeur. L'itinéraire calculé est tracé en noir sur la carte, sous les
+épingles : sa géométrie arrive dans la même réponse que le total, encodée en polyligne.
 
 ### Mises à jour automatiques
 Non prévu en v1 : l'app lit un manifeste publié par sa propre CI, compare les versions, puis

@@ -94,6 +94,28 @@ class ValhallaTest {
         assertNull(Valhalla.parse(""))
     }
 
+    /** Le trace vient des segments, decode en (lon, lat) : c'est lui qu'on pose en noir sur la carte. */
+    @Test fun `le trace des segments est decode`() {
+        val r = Valhalla.parse(
+            """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[{"shape":"_p~iF~ps|U_ulLnnqC"}]}}""")
+        assertEquals(2, r!!.shape.size)
+        assertEquals(Polyline.decode("_p~iF~ps|U_ulLnnqC"), r.shape)
+    }
+
+    /** Un itineraire a plusieurs segments : leurs traces se suivent en un seul, pas un par segment. */
+    @Test fun `les traces de plusieurs segments se suivent`() {
+        val r = Valhalla.parse(
+            """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[{"shape":"_p~iF~ps|U"},{"shape":"_p~iF~ps|U"}]}}""")
+        assertEquals(2, r!!.shape.size)
+    }
+
+    /** La mesure ne depend pas de la geometrie : une reponse sans trace reste exploitable. */
+    @Test fun `une reponse sans trace garde sa mesure`() {
+        val r = Valhalla.parse("""{"trip":{"summary":{"time":60.0,"length":1.0}}}""")
+        assertEquals(1000.0, r!!.meters, 1e-6)
+        assertTrue(r.shape.isEmpty())
+    }
+
     /** Valhalla enrichit ses reponses au fil de ses versions : les champs en trop sont ignores. */
     @Test fun `les champs inconnus n'empechent pas la lecture`() {
         val r = Valhalla.parse(

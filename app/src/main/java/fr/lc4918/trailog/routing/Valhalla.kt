@@ -8,8 +8,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 
-/** Longueur et durée d'un itinéraire, en mètres et en secondes. */
-data class RouteResult(val meters: Double, val seconds: Double)
+/** Longueur et durée d'un itinéraire, en mètres et en secondes, et son tracé en (lon, lat). */
+data class RouteResult(
+    val meters: Double,
+    val seconds: Double,
+    val shape: List<Pair<Double, Double>> = emptyList(),
+)
 
 /**
  * Client du moteur d'itinéraire **Valhalla**.
@@ -59,12 +63,21 @@ object Valhalla {
         return base.trimEnd('&', '?') + sep + "json=" + URLEncoder.encode(body, "UTF-8")
     }
 
-    /** Lit le total de la réponse. Null si elle n'en porte pas : réponse d'erreur, ou corps inattendu. */
+    /**
+     * Lit le total et le tracé. Null si la réponse ne porte pas de total : réponse d'erreur, ou corps
+     * inattendu.
+     *
+     * Le tracé vient des segments, chacun encodé en polyligne (cf. [Polyline]) ; il est facultatif, et une
+     * réponse qui n'en porterait pas donne quand même sa mesure. `directions_type=none` ne supprime que le
+     * guidage rédigé, pas la géométrie.
+     */
     fun parse(body: String): RouteResult? = runCatching {
-        val s = json.decodeFromString<Response>(body).trip?.summary
-        val km = s?.length
-        val sec = s?.time
-        if (km == null || sec == null) null else RouteResult(km * 1000.0, sec)
+        val trip = json.decodeFromString<Response>(body).trip
+        val km = trip?.summary?.length
+        val sec = trip?.summary?.time
+        if (km == null || sec == null) return@runCatching null
+        val shape = trip.legs.flatMap { leg -> leg.shape?.let { Polyline.decode(it) } ?: emptyList() }
+        RouteResult(km * 1000.0, sec, shape)
     }.getOrNull()
 
     /**
@@ -80,6 +93,10 @@ object Valhalla {
     }
 
     @Serializable internal data class Response(val trip: Trip? = null)
-    @Serializable internal data class Trip(val summary: Summary? = null)
+    @Serializable internal data class Trip(
+        val summary: Summary? = null,
+        val legs: List<Leg> = emptyList(),
+    )
+    @Serializable internal data class Leg(val shape: String? = null)
     @Serializable internal data class Summary(val length: Double? = null, val time: Double? = null)
 }

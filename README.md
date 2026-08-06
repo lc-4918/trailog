@@ -128,6 +128,7 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
 - **Distance et durée jusqu'au lieu** : ce ne sont pas des distances à vol d'oiseau mais celles de
   l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Carte / Géocodage* :
   vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle. Les services
+  L'itinéraire lui-même se dessine en noir sur la carte. Les services
   interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
   leur substituer vos propres instances en renseignant leurs URL dans les réglages.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
