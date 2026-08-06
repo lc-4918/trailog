@@ -122,7 +122,8 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
 - **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
   recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
   propose deux mesures : la distance depuis votre position GPS, et la distance depuis un point que
-  vous désignez n'importe où sur la carte. Le service interrogé est **Photon**, sans compte ni clé ;
+  vous désignez n'importe où sur la carte. Les propositions sont classées par importance du lieu, une
+  ville passant donc avant un hameau du même nom. Le service interrogé est **Photon**, sans compte ni clé ;
   vous pouvez lui substituer votre propre instance en renseignant son URL dans les réglages.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
 - **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
@@ -140,9 +141,9 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   transmet rien sur vous : elle lit un fichier public indiquant la dernière version publiée.
   Vous pouvez la passer en manuel dans les réglages.
 - La **recherche d'un lieu** est la seule fonction qui interroge un service tiers pendant que vous
-  vous en servez : chaque recherche envoie le texte tapé, et le centre de la carte pour classer les
-  résultats. Elle est **désactivée par défaut**, et le service visé est configurable — vous pouvez
-  héberger le vôtre.
+  vous en servez : chaque recherche envoie le texte tapé, et rien d'autre — ni votre position, ni
+  l'endroit que vous regardez. Elle est **désactivée par défaut**, et le service visé est
+  configurable : vous pouvez héberger le vôtre.
 
 ## Contribution & Développement
 

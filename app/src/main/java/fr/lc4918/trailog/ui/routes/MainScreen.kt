@@ -304,11 +304,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (q.length < 3) { geo.results = emptyList(); geo.searching = false; return@LaunchedEffect }
         geo.searching = true
         delay(350)
-        val center = controller.cameraState()
         geo.results = Photon.search(
             base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL,
             query = q, lang = ctx.resources.configuration.locales[0].language,
-            lat = center?.first, lon = center?.second, limit = GeocodeResultLimit,
+            limit = GeocodeResultLimit,
         )
         geo.searching = false
     }
@@ -636,7 +635,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             onQueryChange = { geo.query = it },
                             onPick = { place ->
                                 geo.select(place)
-                                controller.centerOn(place.lat, place.lon)
+                                controller.centerOnAtLeast(place.lat, place.lon, GeocodeMinZoom)
                             },
                             onClose = { geo.closeSearch() },
                         )
@@ -1575,6 +1574,10 @@ private const val BubbleMaxHeightRatio = 0.6f
 /** Propositions demandées au géocodeur. Plus que les 4 visibles : le défilement de la liste n'a de sens
  *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
 private const val GeocodeResultLimit = 10
+
+/** Zoom minimal garanti sur le lieu trouvé, un zoom plus serré étant conservé. À 12, la ville et ses
+ *  abords tiennent à l'écran : de quoi situer l'épingle, sans plonger sur une adresse à la parcelle. */
+private const val GeocodeMinZoom = 12.0
 
 /** Teintes de l'avertissement "sans altimétrie" : figées, pour rester lisibles sur le fond blanc du
  *  panneau de profil quel que soit le thème. */

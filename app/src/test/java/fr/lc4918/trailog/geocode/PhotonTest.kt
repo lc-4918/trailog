@@ -14,39 +14,45 @@ class PhotonTest {
     // ---------- URL ----------
 
     @Test fun `la requete porte le texte encode, la limite et la langue`() {
-        val u = Photon.url(Photon.DEFAULT_URL, "rue de l'église", "fr", null, null, 10)
+        val u = Photon.url(Photon.DEFAULT_URL, "rue de l'église", "fr", 10)
         assertTrue(u.startsWith(Photon.DEFAULT_URL + "?"))
         assertTrue("texte non encode : $u", "q=rue+de+l%27%C3%A9glise" in u)
         assertTrue("limit=10" in u)
         assertTrue("lang=fr" in u)
     }
 
-    /** Le centre de la carte ne filtre rien, il rapproche les resultats proches : absent, la requete reste
-     *  valide et ne doit pas porter de parametres vides, que le service refuserait. */
-    @Test fun `sans centre de carte la requete ne porte ni lat ni lon`() {
-        val u = Photon.url(Photon.DEFAULT_URL, "gap", "fr", null, null, 4)
-        assertTrue("lat=" !in u && "lon=" !in u)
-    }
-
-    @Test fun `avec centre de carte la requete porte lat et lon`() {
-        val u = Photon.url(Photon.DEFAULT_URL, "gap", "fr", 44.56, 6.08, 4)
-        assertTrue("lat=44.56" in u)
-        assertTrue("lon=6.08" in u)
+    /**
+     * La requete ne doit **jamais** porter de biais geographique. Photon accepte `lat`/`lon` et reordonne
+     * alors les resultats par proximite : chercher "Beziers" depuis l'Herault ferait remonter un hameau
+     * voisin du meme nom devant la ville. Sans eux, le classement reste celui de l'importance OSM.
+     */
+    @Test fun `la requete ne porte aucun biais de proximite`() {
+        val u = Photon.url(Photon.DEFAULT_URL, "beziers", "fr", 4)
+        assertTrue("biais de proximite dans $u", "lat=" !in u && "lon=" !in u)
     }
 
     /** Une instance auto-hebergee peut exposer une URL portant deja une chaine de requete (chemin derriere
      *  un reverse proxy, cle de service). Coller "?q=" derriere donnerait une URL invalide. */
     @Test fun `une url de base deja parametree recoit un et commercial`() {
-        val u = Photon.url("https://geo.exemple.fr/api?token=abc", "gap", "fr", null, null, 4)
+        val u = Photon.url("https://geo.exemple.fr/api?token=abc", "gap", "fr", 4)
         assertTrue("https://geo.exemple.fr/api?token=abc&q=gap" in u)
     }
 
     /** Photon rejette (400) une langue qu'il ne sert pas, au lieu de l'ignorer : une locale non prevue
      *  rendrait donc la recherche entierement muette. */
     @Test fun `une langue non servie retombe sur l'anglais`() {
-        assertTrue("lang=en" in Photon.url(Photon.DEFAULT_URL, "gap", "eu", null, null, 4))
-        assertTrue("lang=en" in Photon.url(Photon.DEFAULT_URL, "gap", "pt", null, null, 4))
-        assertTrue("lang=de" in Photon.url(Photon.DEFAULT_URL, "gap", "de", null, null, 4))
+        assertTrue("lang=en" in Photon.url(Photon.DEFAULT_URL, "gap", "eu", 4))
+        assertTrue("lang=en" in Photon.url(Photon.DEFAULT_URL, "gap", "pt", 4))
+        assertTrue("lang=de" in Photon.url(Photon.DEFAULT_URL, "gap", "de", 4))
+    }
+
+    /** Photon rend ses resultats deja classes : les reordonner ici defairait ce classement. */
+    @Test fun `l'ordre du service est conserve`() {
+        val r = Photon.parse(fc(
+            feature(""""name":"Béziers","postcode":"34500","city":"Béziers","country":"France""""),
+            feature(""""name":"Béziers","county":"Aude","country":"France""""),
+        ))
+        assertEquals(listOf("34500 Béziers, France", "Béziers, Aude, France"), r.map { it.label })
     }
 
     // ---------- Reponse ----------

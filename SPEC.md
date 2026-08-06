@@ -169,7 +169,11 @@ donc **désactivée par défaut** et s'active dans *Réglages / Carte*. Le servi
 clavier (Nominatim l'interdit dans sa politique d'usage) et il est **auto-hébergeable**. Son URL est
 un réglage, de sorte qu'une instance personnelle ne demande pas une nouvelle version de l'app.
 
-Le lieu choisi se marque d'une épingle noire ; son infobulle offre deux mesures de distance, depuis la
+Les propositions sont classées par importance du lieu, sans biais de proximité : Photon accepte un
+centre de recherche, mais il ferait remonter un hameau voisin devant la ville du même nom.
+
+Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12) pour qu'il reste
+situable depuis une vue à l'échelle d'un pays ; son infobulle offre deux mesures de distance, depuis la
 position GPS (qu'elle propose d'activer si besoin) ou depuis un point désigné sur la carte.
 
 ### Mises à jour automatiques

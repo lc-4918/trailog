@@ -487,6 +487,15 @@ class MapController {
     fun centerOn(lat: Double, lon: Double) {
         map?.easeCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)))
     }
+
+    /** Recentre sur un point en garantissant [minZoom] : un zoom déjà plus serré est conservé. Sert au lieu
+     *  trouvé par la recherche, qui, depuis une vue à l'échelle d'un pays, se poserait sinon sur une carte
+     *  où rien ne permet de le situer. */
+    fun centerOnAtLeast(lat: Double, lon: Double, minZoom: Double) {
+        val z = map?.cameraPosition?.zoom ?: return
+        if (z >= minZoom) centerOn(lat, lon)
+        else map?.easeCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), minZoom))
+    }
     fun cameraState(): Triple<Double, Double, Double>? {
         val cp = map?.cameraPosition ?: return null
         val t = cp.target ?: return null

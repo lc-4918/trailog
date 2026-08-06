@@ -34,15 +34,19 @@ object Photon {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** URL de requête. [lat]/[lon] (centre de la carte) ne filtrent rien : ils rapprochent simplement les
-     *  résultats proches en tête de liste, ce qui suffit à rendre les 4 propositions visibles pertinentes. */
-    fun url(base: String, query: String, lang: String, lat: Double?, lon: Double?, limit: Int): String {
+    /**
+     * URL de requête.
+     *
+     * Volontairement sans les paramètres `lat`/`lon` que Photon accepte : ils réordonnent les résultats par
+     * proximité, ce qui fait remonter un hameau voisin devant la ville que l'on cherchait. Sans eux, le
+     * classement reste celui de l'importance OSM, qui met la ville en tête.
+     */
+    fun url(base: String, query: String, lang: String, limit: Int): String {
         val sep = if ('?' in base) '&' else '?'
         val l = if (lang in SUPPORTED_LANGS) lang else "en"
         val sb = StringBuilder(base.trimEnd('&', '?'))
         sb.append(sep).append("q=").append(URLEncoder.encode(query, "UTF-8"))
         sb.append("&limit=").append(limit).append("&lang=").append(l)
-        if (lat != null && lon != null) sb.append("&lat=").append(lat).append("&lon=").append(lon)
         return sb.toString()
     }
 
@@ -90,9 +94,9 @@ object Photon {
      * Réutilise le client HTTP des tuiles (mêmes en-têtes, mêmes garde-fous) plutôt que d'en ouvrir un second.
      */
     suspend fun search(
-        base: String, query: String, lang: String, lat: Double?, lon: Double?, limit: Int,
+        base: String, query: String, lang: String, limit: Int,
     ): List<GeocodePlace> = withContext(Dispatchers.IO) {
-        val resp = TileHttp.fetch(url(base, query, lang, lat, lon, limit), TIMEOUT_MS, TIMEOUT_MS)
+        val resp = TileHttp.fetch(url(base, query, lang, limit), TIMEOUT_MS, TIMEOUT_MS)
         val body = resp.body ?: return@withContext emptyList()
         parse(body.toString(Charsets.UTF_8))
     }

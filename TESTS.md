@@ -216,7 +216,7 @@ mesure oubliee au changement de lieu affiche une distance calculee vers un autre
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `PhotonTest` | 12 | construction de la requete et lecture de la reponse du geocodeur |
+| `PhotonTest` | 13 | construction de la requete et lecture de la reponse du geocodeur |
 
 Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
@@ -224,6 +224,10 @@ Le test verifie l'encodage du texte cherche, qu'une URL de base deja parametree 
 proxy) recoit bien un `&` et non un `?`, qu'une langue que Photon ne sert pas retombe sur l'anglais
 (il repond 400 au lieu de l'ignorer, ce qui rendrait la recherche entierement muette), et qu'une
 reponse illisible donne une liste vide plutot qu'une exception.
+
+Il verrouille surtout l'**absence** des parametres `lat`/`lon`, que Photon accepte pourtant : ils
+reordonnent les resultats par proximite, si bien qu'un hameau voisin passerait devant la ville du meme
+nom. Les rajouter parait une amelioration ; c'en est le contraire.
 
 ### `update` - mises a jour
 
