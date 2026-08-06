@@ -29,9 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
-
-/** Largeur de l'infobulle de géocodage, alignée sur celle des infobulles de marqueur. */
-private val BubbleWidth = 280.dp
+import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 
 /**
  * Infobulle du lieu trouvé : son adresse, puis les deux mesures de distance possibles, une par ligne.
@@ -54,7 +52,7 @@ fun GeocodeBubble(
     backgroundAlpha: Float = 1f,
 ) {
     Card(
-        modifier = modifier.width(BubbleWidth),
+        modifier = modifier.width(InfoBubbleWidth),   // même largeur que l'infobulle d'un marqueur
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(16.dp),
         // Couleur de contenu imposée : sous 100 % d'opacité, le fond n'est plus l'une des couleurs du thème

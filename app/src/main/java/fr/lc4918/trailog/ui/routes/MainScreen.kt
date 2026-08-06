@@ -115,6 +115,7 @@ import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
 import fr.lc4918.trailog.ui.points.BubblePlacement
 import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.InfoBubbleLoading
+import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
@@ -682,7 +683,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // Infobulle. Affichée dès le tap (spinner tant que les propriétés chargent), placée selon le
                 // réglage Carte / Infobulles. Le placement est calculé dans la phase de layout, une fois la
                 // taille réelle mesurée : la bulle apparaît donc directement au bon endroit, sans le saut que
-                // provoquait un premier passage à taille nulle.
+                // provoquait un premier passage à taille nulle. Le décalage de carte qu'impose ce placement,
+                // lui, part dès le tap sur une taille majorée (cf. le placement provisoire plus bas) : attendre
+                // la vraie bulle le faisait survenir après coup, la lecture déjà commencée.
                 val off = bubbleOffset
                 if (off != null && selectedMarkerId != null && !editing) {
                     val maxH = constraints.maxHeight
@@ -696,12 +699,26 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         minOf(maxH - topInset - 2 * margin, (maxH * BubbleMaxHeightRatio).toInt()).toDp()
                     }
                     val bubblePos = BubblePosition.of(settings?.bubblePosition)
-                    // Dernier placement calculé au layout : sert au recentrage de carte (hors AUTO).
-                    // Publié seulement une fois les propriétés arrivées : mesurée à la taille du spinner, la
-                    // bulle tient presque toujours à l'écran et le recentrage (à usage unique) aurait été
-                    // consommé pour rien, laissant la vraie bulle simplement bornée dans l'écran.
+                    // Dernier placement calculé au layout, sur la taille réelle : sert au recentrage de carte
+                    // (hors AUTO) une fois les propriétés arrivées.
                     var placement by remember(selectedMarkerId) { mutableStateOf<BubblePlacement?>(null) }
                     val contentReady = selectedFeature != null
+                    // Placement PROVISOIRE, pendant le chargement des propriétés : la carte doit se décaler
+                    // dès le tap, pas une fois la bulle rendue. Faute de connaître sa hauteur (elle dépend des
+                    // propriétés, absentes du fichier de rendu qui ne porte que l'identifiant et le titre), on
+                    // réserve l'encombrement MAXIMAL qu'elle peut prendre : largeur fixe, hauteur plafond.
+                    // Le décalage est donc au moins celui qu'il faudra ; la vraie bulle, plus courte, tient
+                    // alors sans nouveau mouvement - c'est tout l'objet du choix du maximum plutôt que d'une
+                    // taille probable, qui aurait fait bouger la carte une seconde fois, tard.
+                    val provisional = remember(off, bubblePos, maxBubbleHeightDp, constraints, markerPxI, topInset) {
+                        computeBubblePlacement(
+                            pos = bubblePos, markerX = off.x, markerY = off.y,
+                            bubbleW = with(density) { InfoBubbleWidth.roundToPx() },
+                            bubbleH = with(density) { maxBubbleHeightDp.roundToPx() },
+                            viewW = constraints.maxWidth, viewH = constraints.maxHeight,
+                            topInset = topInset, margin = margin, gap = gap, markerHeight = markerPxI,
+                        )
+                    }
                     Layout(
                         content = {
                             if (selectedFeature != null) {
@@ -726,15 +743,22 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         if (contentReady && placement != pl) placement = pl
                         layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
                     }
-                    // Recentrage de la carte quand le placement demandé ne tient pas (jamais en AUTO).
-                    // Une seule fois par marqueur : la carte bouge -> le marqueur bouge -> nouveau placement,
-                    // qui tient cette fois ; sans ce garde-fou, les deux se relanceraient mutuellement.
-                    var pannedFor by remember { mutableStateOf<String?>(null) }
-                    LaunchedEffect(selectedMarkerId, placement) {
-                        val pl = placement ?: return@LaunchedEffect
-                        if (bubblePos == BubblePosition.AUTO || pannedFor == selectedMarkerId) return@LaunchedEffect
+                    // Recentrage de la carte quand le placement demandé ne tient pas (jamais en AUTO) : sur le
+                    // placement provisoire tant que les propriétés chargent, puis sur le placement réel.
+                    //
+                    // Une fois par marqueur ET par phase, d'où la clé de garde à deux termes : la carte bouge
+                    // -> le marqueur bouge -> nouveau placement, qui tient cette fois ; sans garde-fou, les
+                    // deux se relanceraient mutuellement, et un déplacement fait à la main serait défait.
+                    // La seconde passe ne rejoue en général aucun mouvement, la première ayant déjà réservé
+                    // de quoi loger la bulle la plus haute possible.
+                    val panTarget = if (contentReady) placement else provisional
+                    var pannedFor by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+                    LaunchedEffect(selectedMarkerId, contentReady, panTarget) {
+                        val pl = panTarget ?: return@LaunchedEffect
+                        val id = selectedMarkerId ?: return@LaunchedEffect
+                        if (bubblePos == BubblePosition.AUTO || pannedFor == (id to contentReady)) return@LaunchedEffect
                         if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                        pannedFor = selectedMarkerId
+                        pannedFor = id to contentReady
                     }
                 }
                 // Infobulle du lieu trouvé : même placement que celle d'un marqueur (réglage Carte /

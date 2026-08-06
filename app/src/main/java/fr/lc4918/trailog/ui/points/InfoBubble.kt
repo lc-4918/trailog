@@ -93,7 +93,7 @@ fun InfoBubble(
     }.filter { it != KEY_NAME && !isHiddenKey(it) && (pinnedImage == null || it != feature.pinnedImageKey) }
 
     Card(
-        modifier = modifier.width(BubbleWidth.dp),
+        modifier = modifier.width(InfoBubbleWidth),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(BubbleRadius),
         // Couleur de contenu imposée. Sous 100 % d'opacité, le fond n'est plus l'une des couleurs du thème :
@@ -207,7 +207,7 @@ private fun rememberPinnedImageFillsWidth(path: String, painter: AsyncImagePaint
     val aspect = localAspect ?: painter.intrinsicSize.let {
         if (it.isSpecified && it.height > 0f) it.width / it.height else null
     }
-    return aspect == null || aspect >= BubbleWidth / BubbleImageMaxHeight
+    return aspect == null || aspect >= InfoBubbleWidth.value / BubbleImageMaxHeight
 }
 
 @Composable
@@ -253,9 +253,11 @@ internal val OverlayInset = 4.dp
 /** Rayons des conteneurs qui portent les boutons : l'infobulle et les images. [arcInset] en dépend. */
 private val BubbleRadius = 16.dp
 internal val ImageRadius = 12.dp
-/** Largeur de l'infobulle et hauteur max de l'image de garde (en dp) ; leur ratio dit si l'image de
- *  garde remplit la largeur ou laisse des bandes vides sur les côtés. */
-private const val BubbleWidth = 280f
+/** Largeur de l'infobulle. Exposée hors du composable : l'écran de carte s'en sert pour décaler la carte
+ *  avant que la bulle n'existe, tant que ses propriétés chargent (cf. placement provisoire). */
+internal val InfoBubbleWidth = 280.dp
+/** Hauteur max de l'image de garde (en dp) ; son ratio avec la largeur de la bulle dit si l'image remplit
+ *  la largeur ou laisse des bandes vides sur les côtés. */
 private const val BubbleImageMaxHeight = 220f
 
 /** Halo du bouton sans fond : épaisseur du contour blanc tracé derrière l'icône, et son opacité
