@@ -703,13 +703,32 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // (hors AUTO) une fois les propriétés arrivées.
                     var placement by remember(selectedMarkerId) { mutableStateOf<BubblePlacement?>(null) }
                     val contentReady = selectedFeature != null
-                    // Placement PROVISOIRE, pendant le chargement des propriétés : la carte doit se décaler
-                    // dès le tap, pas une fois la bulle rendue. Faute de connaître sa hauteur (elle dépend des
-                    // propriétés, absentes du fichier de rendu qui ne porte que l'identifiant et le titre), on
-                    // réserve l'encombrement MAXIMAL qu'elle peut prendre : largeur fixe, hauteur plafond.
-                    // Le décalage est donc au moins celui qu'il faudra ; la vraie bulle, plus courte, tient
-                    // alors sans nouveau mouvement - c'est tout l'objet du choix du maximum plutôt que d'une
-                    // taille probable, qui aurait fait bouger la carte une seconde fois, tard.
+                    /*
+                     * Placement PROVISOIRE, pendant le chargement des propriétés : la carte doit se décaler
+                     * dès le tap, pas une fois la bulle rendue.
+                     *
+                     * Sa hauteur dépend des propriétés du marqueur, et le fichier de rendu (.map) ne porte
+                     * que l'identifiant et le titre : elle est donc réellement inconnue tant que la couche
+                     * charge. On réserve alors l'encombrement MAXIMAL possible - largeur fixe, hauteur
+                     * plafond (cf. maxBubbleHeightDp). Le décalage vaut ainsi au moins celui qu'il faudra,
+                     * et la vraie bulle, plus courte, tient sans second mouvement.
+                     *
+                     * CONTREPARTIE ASSUMÉE : on décale parfois plus que nécessaire, et l'on décale là où une
+                     * bulle courte n'aurait rien exigé. L'excès vaut le débordement de la boîte majorée moins
+                     * celui de la bulle réelle ; pour un marqueur en plein écran et le placement par défaut
+                     * (BOTTOM_LEFT), il approche 10 % de la hauteur d'écran, là où rien ne bougeait avant.
+                     *
+                     * Les deux autres options ont été écartées :
+                     *   - une hauteur PROBABLE (valeur typique) : la bulle la dépasse une fois sur deux, d'où
+                     *     un second mouvement, tardif - précisément le défaut que ceci corrige ;
+                     *   - attendre la taille réelle : c'est le comportement d'avant, et le même défaut.
+                     *
+                     * Si l'excès gêne à l'usage, le réglage à toucher est la hauteur réservée : la plafonner
+                     * (un tiers d'écran plutôt que BubbleMaxHeightRatio) réduit d'autant le mouvement, au prix
+                     * d'un second ajustement pour les seules bulles qui dépassent cette réserve. Le mécanisme
+                     * le supporte déjà : la passe "contenu prêt" rejoue un décalage si le placement réel en
+                     * demande encore un.
+                     */
                     val provisional = remember(off, bubblePos, maxBubbleHeightDp, constraints, markerPxI, topInset) {
                         computeBubblePlacement(
                             pos = bubblePos, markerX = off.x, markerY = off.y,

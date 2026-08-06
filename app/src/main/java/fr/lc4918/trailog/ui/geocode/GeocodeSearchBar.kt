@@ -49,6 +49,10 @@ private val SuggestionHeight = 52.dp
 /** Opacité du champ et des propositions : la carte reste lisible dessous pendant la frappe. */
 private const val PanelAlpha = 0.8f
 
+/** Arrondi des deux panneaux. Porté aussi par le contour du champ (celui qui vire au bleu au focus) :
+ *  laissé à la forme M3 par defaut, il valait 4dp et ses angles ne suivaient pas ceux du fond. */
+private val PanelShape = RoundedCornerShape(8.dp)
+
 /**
  * Barre de recherche de lieu/adresse et ses propositions.
  *
@@ -70,7 +74,7 @@ fun GeocodeSearchBar(
 
     Column(modifier.fillMaxWidth()) {
         Surface(
-            shape = RoundedCornerShape(8.dp),
+            shape = PanelShape,
             color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
             // Couleur de contenu imposée : un fond translucide n'est plus l'une des couleurs du thème, et
             // contentColorFor n'y reconnaît donc rien. Sans elle, le texte hérite du LocalContentColor
@@ -80,7 +84,7 @@ fun GeocodeSearchBar(
         ) {
             CompactOutlinedTextField(
                 value = query, onValueChange = onQueryChange, singleLine = true,
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus), shape = PanelShape,
                 // Une seule ligne quoi qu'il arrive : le libellé est court, mais une police système agrandie
                 // ou une traduction plus longue le ferait sinon passer à la ligne et grandir le champ.
                 placeholder = {
@@ -106,7 +110,7 @@ fun GeocodeSearchBar(
         if (results.isNotEmpty()) {
             Surface(
                 modifier = Modifier.padding(top = 4.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = PanelShape,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
                 contentColor = MaterialTheme.colorScheme.onSurface,   // cf. le champ ci-dessus
                 shadowElevation = 4.dp,

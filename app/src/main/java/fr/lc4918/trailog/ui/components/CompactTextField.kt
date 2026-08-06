@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
@@ -39,6 +40,10 @@ fun CompactOutlinedTextField(
     readOnly: Boolean = false,
     enabled: Boolean = true,
     textStyle: TextStyle = LocalTextStyle.current,
+    // Forme du contour, celui-là même qui vire au bleu à la prise de focus. Réglable pour les appelants qui
+    // posent un fond derrière le champ : les deux arrondis doivent être le même, sinon le fond dépasse du
+    // contour dans les angles.
+    shape: Shape = OutlinedTextFieldDefaults.shape,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val mergedTextStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface)
@@ -59,7 +64,8 @@ fun CompactOutlinedTextField(
                 suffix = suffix, supportingText = supportingText, isError = isError,
                 contentPadding = OutlinedTextFieldDefaults.contentPadding(top = 8.dp, bottom = 8.dp),
                 container = {
-                    OutlinedTextFieldDefaults.Container(enabled = enabled, isError = isError, interactionSource = interactionSource)
+                    OutlinedTextFieldDefaults.Container(enabled = enabled, isError = isError,
+                        interactionSource = interactionSource, shape = shape)
                 },
             )
         }
