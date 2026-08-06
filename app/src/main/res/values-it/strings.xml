@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">Il rilevamento della posizione è disattivato. Vuoi attivarlo?</string>
     <string name="dialog_location_off_title">Posizione non attiva</string>
     <string name="dialog_location_off_text">La localizzazione GPS non è attiva. Vuoi attivarla?</string>
+    <string name="dialog_no_connection_title">Nessuna connessione</string>
+    <string name="dialog_no_connection_text">La ricerca di luoghi interroga un servizio online, e il telefono non ha accesso a Internet.</string>
     <string name="dialog_move_to_title">Sposta in...</string>
     <string name="dialog_color_title">Colore di visualizzazione</string>
     <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>

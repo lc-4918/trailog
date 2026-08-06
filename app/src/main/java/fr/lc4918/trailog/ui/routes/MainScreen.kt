@@ -92,6 +92,7 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.map.CoverageBounds
 import fr.lc4918.trailog.map.CoverageProbe
@@ -297,6 +298,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Popup "la localisation n'est pas active" : propre à la mesure de distance, distincte de celle du
     // capteur éteint (showLocationDisabledDialog), qui reste le second temps du même parcours.
     var showLocationOffDialog by remember { mutableStateOf(false) }
+    var showNoConnectionDialog by remember { mutableStateOf(false) }
 
     // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
     // le service public le refuserait, et les réponses arriveraient dans le désordre.
@@ -333,6 +335,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     /** "Distance depuis la position" : mesure immédiate si le GPS tourne déjà, sinon on propose de l'activer. */
     fun onDistanceFromPositionTap() {
         if (gpsActive) geo.requestDistanceFromPosition() else showLocationOffDialog = true
+    }
+
+    /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
+     *  champ dont aucune frappe ne rendra jamais rien laisserait croire à un service muet. */
+    fun onGeocodeButtonTap() {
+        val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+        when {
+            geo.searchOpen -> geo.closeSearch()
+            Photon.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
+            else -> geo.openSearch()
+        }
     }
 
     // barre de statut : icônes noires en mode transparent, sinon inverse du thème
@@ -626,7 +639,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                     if (settings?.geocodingEnabled == true) {
-                        IconButton(onClick = { if (geo.searchOpen) geo.closeSearch() else geo.openSearch() }) {
+                        IconButton(onClick = { onGeocodeButtonTap() }) {
                             Icon(Icons.Filled.LocationSearching, stringResource(R.string.content_desc_geocode_search))
                         }
                     }
@@ -1134,6 +1147,19 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             },
             confirmButton = { TextButton(onClick = { importReport = emptyList() }) { Text(stringResource(R.string.action_ok)) } },
+        )
+    }
+
+    // Recherche demandée sans accès à Internet, alors que le service visé en exige un (cf. needsInternet :
+    // une instance auto-hébergée sur le réseau local n'est pas concernée).
+    if (showNoConnectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showNoConnectionDialog = false },
+            title = { Text(stringResource(R.string.dialog_no_connection_title)) },
+            text = { Text(stringResource(R.string.dialog_no_connection_text)) },
+            confirmButton = {
+                TextButton(onClick = { showNoConnectionDialog = false }) { Text(stringResource(R.string.action_ok)) }
+            },
         )
     }
 

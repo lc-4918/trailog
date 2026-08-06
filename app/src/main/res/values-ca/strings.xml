@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">La localització està desactivada. Vols activar-la?</string>
     <string name="dialog_location_off_title">Localització no activa</string>
     <string name="dialog_location_off_text">La localització GPS no està activa. Vols activar-la?</string>
+    <string name="dialog_no_connection_title">Sense connexió</string>
+    <string name="dialog_no_connection_text">La cerca de llocs consulta un servei en línia, i el telèfon no té accés a Internet.</string>
     <string name="dialog_move_to_title">Mou a...</string>
     <string name="dialog_color_title">Color de visualització</string>
     <string name="dialog_edit_bubble_title">Edita la bombolla informativa</string>

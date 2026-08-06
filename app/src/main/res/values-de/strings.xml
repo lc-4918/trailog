@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">Die Standorterkennung ist deaktiviert. Möchten Sie sie aktivieren?</string>
     <string name="dialog_location_off_title">Standort nicht aktiv</string>
     <string name="dialog_location_off_text">Die GPS-Ortung ist nicht aktiv. Möchten Sie sie aktivieren?</string>
+    <string name="dialog_no_connection_title">Keine Verbindung</string>
+    <string name="dialog_no_connection_text">Die Ortssuche fragt einen Online-Dienst ab, und das Telefon hat keinen Internetzugang.</string>
     <string name="dialog_move_to_title">Verschieben nach...</string>
     <string name="dialog_color_title">Anzeigefarbe</string>
     <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>

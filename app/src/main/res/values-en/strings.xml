@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">Location sensing is disabled. Do you want to enable it?</string>
     <string name="dialog_location_off_title">Location not active</string>
     <string name="dialog_location_off_text">GPS location is not active. Do you want to enable it?</string>
+    <string name="dialog_no_connection_title">No connection</string>
+    <string name="dialog_no_connection_text">Place search queries an online service, and the phone has no Internet access.</string>
     <string name="dialog_move_to_title">Move to...</string>
     <string name="dialog_color_title">Display color</string>
     <string name="dialog_edit_bubble_title">Edit info bubble</string>

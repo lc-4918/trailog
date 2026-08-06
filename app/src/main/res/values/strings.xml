@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">Le capteur de localisation est désactivé. Voulez-vous l\'activer ?</string>
     <string name="dialog_location_off_title">Localisation non active</string>
     <string name="dialog_location_off_text">La localisation GPS n\'est pas active. Voulez-vous l\'activer ?</string>
+    <string name="dialog_no_connection_title">Aucune connexion</string>
+    <string name="dialog_no_connection_text">La recherche d\'un lieu interroge un service en ligne, et le téléphone n\'a pas d\'accès à Internet.</string>
     <string name="dialog_move_to_title">Déplacer vers...</string>
     <string name="dialog_color_title">Couleur d\'affichage</string>
     <string name="dialog_edit_bubble_title">Éditer l\'infobulle</string>

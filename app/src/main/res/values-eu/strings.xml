@@ -92,6 +92,8 @@
     <string name="dialog_gps_disabled_text">Kokapen-detekzioa desgaituta dago. Gaitu nahi duzu?</string>
     <string name="dialog_location_off_title">Kokapena ez dago aktibo</string>
     <string name="dialog_location_off_text">GPS kokapena ez dago aktibo. Gaitu nahi duzu?</string>
+    <string name="dialog_no_connection_title">Konexiorik ez</string>
+    <string name="dialog_no_connection_text">Lekuen bilaketak lineako zerbitzu bat kontsultatzen du, eta telefonoak ez du Internet sarbiderik.</string>
     <string name="dialog_move_to_title">Mugitu hona...</string>
     <string name="dialog_color_title">Bistaratze-kolorea</string>
     <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>

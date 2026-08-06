@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**235 tests, 27 fichiers**, tous verts.
+**239 tests, 27 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -216,7 +216,7 @@ mesure oubliee au changement de lieu affiche une distance calculee vers un autre
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `PhotonTest` | 13 | construction de la requete et lecture de la reponse du geocodeur |
+| `PhotonTest` | 17 | construction de la requete, lecture de la reponse, portee du service |
 
 Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
@@ -228,6 +228,12 @@ reponse illisible donne une liste vide plutot qu'une exception.
 Il verrouille surtout l'**absence** des parametres `lat`/`lon`, que Photon accepte pourtant : ils
 reordonnent les resultats par proximite, si bien qu'un hameau voisin passerait devant la ville du meme
 nom. Les rajouter parait une amelioration ; c'en est le contraire.
+
+`needsInternet` decide si l'absence de connexion doit etre signalee avant d'ouvrir la recherche. Son
+test balaie les plages privees (10/8, 172.16/12 et ses deux bornes, 192.168/16, boucle locale,
+lien-local, `.local`, nom de machine seul) : les compter comme externes priverait de recherche celui
+qui heberge son propre Photon et se trouve en wifi sans sortie Internet, c'est-a-dire exactement le
+cas que l'auto-hebergement sert a couvrir.
 
 ### `update` - mises a jour
 

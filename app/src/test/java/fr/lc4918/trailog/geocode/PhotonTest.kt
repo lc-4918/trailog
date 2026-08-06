@@ -55,6 +55,42 @@ class PhotonTest {
         assertEquals(listOf("34500 Béziers, France", "Béziers, Aude, France"), r.map { it.label })
     }
 
+    // ---------- Portee du service (avertissement d'absence de connexion) ----------
+
+    @Test fun `l'instance publique exige internet`() {
+        assertTrue(Photon.needsInternet(Photon.DEFAULT_URL))
+        assertTrue(Photon.needsInternet("https://geo.exemple.fr/api"))
+        assertTrue(Photon.needsInternet("https://api-adresse.data.gouv.fr/search/"))
+    }
+
+    /** Une instance auto-hebergee reste joignable en wifi sans sortie Internet : refuser la recherche dans
+     *  ce cas serait faux, et priverait justement l'utilisateur qui a fait l'effort de l'heberger. */
+    @Test fun `une instance du reseau local n'exige pas internet`() {
+        listOf(
+            "http://192.168.1.10:2322/api",
+            "http://10.0.0.5/api",
+            "http://172.16.0.1/api",
+            "http://172.31.255.254/api",
+            "http://127.0.0.1:2322/api",
+            "http://localhost:2322/api",
+            "http://photon.local/api",
+            "http://nas:2322/api",          // nom de machine seul, resolu sur le reseau local
+        ).forEach { assertTrue("compte a tort comme externe : $it", !Photon.needsInternet(it)) }
+    }
+
+    /** 172.16.0.0/12 s'arrete a 172.31 : au-dela, l'adresse est publique et routable. */
+    @Test fun `les adresses hors plages privees exigent internet`() {
+        assertTrue(Photon.needsInternet("http://172.32.0.1/api"))
+        assertTrue(Photon.needsInternet("http://172.15.0.1/api"))
+        assertTrue(Photon.needsInternet("http://193.168.1.10/api"))
+    }
+
+    /** Prevenir a tort vaut mieux que laisser une recherche echouer sans explication. */
+    @Test fun `une url illisible est comptee comme externe`() {
+        assertTrue(Photon.needsInternet("pas une url"))
+        assertTrue(Photon.needsInternet(""))
+    }
+
     // ---------- Reponse ----------
 
     private fun feature(props: String, coords: String = "[6.08,44.56]") =
