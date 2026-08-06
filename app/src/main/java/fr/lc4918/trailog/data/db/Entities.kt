@@ -167,4 +167,8 @@ data class SettingsEntity(
     // Service d'autocompletion interroge (API Photon). Vide = instance publique (Photon.DEFAULT_URL) ;
     // renseignable pour viser sa propre instance, l'interet d'avoir choisi un geocodeur auto-hebergeable.
     val geocodingUrl: String = "",
+    // Service d'itineraire (API Valhalla). Vide = instance publique (Valhalla.DEFAULT_URL).
+    val routingUrl: String = "",
+    // Discipline des itineraires mesures depuis l'infobulle d'un lieu (cf. RoutingProfile).
+    val routingProfile: String = "hybrid",
 )

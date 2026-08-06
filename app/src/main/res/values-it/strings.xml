@@ -84,6 +84,15 @@
     <string name="geocode_distance_from_position">Distanza dalla posizione</string>
     <string name="geocode_distance_from_point">Distanza da un punto</string>
     <string name="geocode_pick_point_prompt">Scegli un punto qualsiasi sulla mappa</string>
+    <string name="geocode_route_summary">%1$s - %2$s</string>
+    <string name="geocode_no_route">Nessun itinerario</string>
+    <string name="geocode_route_info">Itinerario consigliato per: %1$s. Non è una distanza in linea d\'aria.</string>
+    <string name="content_desc_route_info">Informazioni su questa distanza</string>
+    <string name="profile_road_bike">Bici da corsa</string>
+    <string name="profile_gravel">Gravel</string>
+    <string name="profile_hybrid_bike">Bici ibrida</string>
+    <string name="profile_mtb">Mountain bike</string>
+    <string name="profile_foot">A piedi</string>
 
     <!-- Finestre di dialogo -->
     <string name="dialog_composite_title">Nuova mappa di base composita</string>
@@ -183,6 +192,8 @@
     <string name="settings_section_geocoding">Geocodifica</string>
     <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
     <string name="settings_geocoding_url">URL del servizio di geocodifica</string>
+    <string name="settings_routing_url">URL del servizio di itinerari</string>
+    <string name="settings_routing_profile">Disciplina degli itinerari</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>

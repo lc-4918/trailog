@@ -227,6 +227,17 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 26 -> 27 : itineraires ----------
+
+    @Test fun `26 vers 27 ajoute l'itineraire sans url et en VTC`() {
+        val db = freshDb("m2627"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTING_URL)
+        db.execSQL(MigrationSql.ADD_ROUTING_PROFILE)
+        assertEquals("", scalar(db, "SELECT routingUrl FROM settings") { it.getString(0) })
+        assertEquals("hybrid", scalar(db, "SELECT routingProfile FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -237,7 +248,7 @@ class MigrationsTest {
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
-            "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl")
+            "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

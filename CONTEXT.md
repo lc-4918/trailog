@@ -152,6 +152,16 @@ C'est pour cela que son URL est un reglage et non une constante : le jour ou une
 tourne, il suffit de la designer. Le defaut vide, et non l'URL publique ecrite en base, evite qu'un
 changement de defaut dans le code laisse les installations existantes sur l'ancienne adresse.
 
+Le moteur d'itineraire suit la meme regle. **Valhalla** y est retenu pour une raison qui lui est propre :
+ses cinq disciplines (route, gravel, VTC, VTT, marche) sortent d'une **seule** instance, via le
+`bicycle_type` de son modele de cout. OSRM demanderait un serveur par profil, soit cinq a heberger, et
+GraphHopper n'offre pas d'instance publique sans cle. BRouter, seul a savoir router hors ligne, resterait
+le choix du jour ou l'on voudrait s'affranchir du reseau : il faudrait alors gerer ses tuiles `.rd5`.
+
+Consequence a connaitre : une mesure de distance est une **requete reseau**, la ou le vol d'oiseau ne
+coutait rien. L'origine de la mesure depuis la position est donc figee a la premiere position recue et ne
+suit pas le capteur : la suivre lancerait une requete toutes les deux secondes.
+
 ### Mises a jour : manifeste en asset de Release
 
 La CI joint `latest-release.json` a la Release ; l'app le lit a l'URL stable

@@ -92,8 +92,11 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.net.ServiceUrl
+import fr.lc4918.trailog.routing.Valhalla
 import fr.lc4918.trailog.map.CoverageBounds
 import fr.lc4918.trailog.map.CoverageProbe
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
@@ -109,6 +112,7 @@ import fr.lc4918.trailog.ui.components.MapPromptBar
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
+import fr.lc4918.trailog.ui.geocode.MeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
@@ -121,6 +125,7 @@ import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
@@ -319,22 +324,48 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
 
     val imperialUnits = settings?.units == "imperial"
-    // Distance depuis la position : recalculée à chaque position reçue tant que la mesure est demandée.
-    val geoDistanceFromPosition = remember(geo.place, geo.distanceFromPositionRequested, lastUserLocation, imperialUnits) {
-        val p = geo.place ?: return@remember null
-        if (!geo.distanceFromPositionRequested) return@remember null
-        val (la, lo) = lastUserLocation ?: return@remember null
-        Format.shortDistance(TrackMath.haversine(p.lon, p.lat, lo, la), imperialUnits)
+    val routingProfile = RoutingProfile.of(settings?.routingProfile)
+    val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
+
+    /** Un itinéraire depuis (lat, lon) jusqu'au lieu trouvé, traduit en état affichable. */
+    suspend fun measureTo(fromLat: Double, fromLon: Double, place: fr.lc4918.trailog.geocode.GeocodePlace): MeasureState {
+        val r = Valhalla.route(routingUrl, fromLat, fromLon, place.lat, place.lon, routingProfile)
+        return if (r == null) MeasureState.Failed else MeasureState.Done(r.meters, r.seconds)
     }
-    val geoDistanceFromPoint = remember(geo.place, geo.refPoint, imperialUnits) {
-        val p = geo.place ?: return@remember null
-        val (lo, la) = geo.refPoint ?: return@remember null
-        Format.shortDistance(TrackMath.haversine(p.lon, p.lat, lo, la), imperialUnits)
+
+    // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
+    // capteur en livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
+    LaunchedEffect(geo.positionMeasure, lastUserLocation) {
+        if (geo.positionMeasure == MeasureState.Loading) {
+            lastUserLocation?.let { (la, lo) -> geo.fixPositionOrigin(la, lo) }
+        }
+    }
+    LaunchedEffect(geo.place, geo.positionOrigin, routingUrl, routingProfile) {
+        val p = geo.place ?: return@LaunchedEffect
+        val (la, lo) = geo.positionOrigin ?: return@LaunchedEffect
+        geo.publishPositionMeasure(MeasureState.Loading)
+        geo.publishPositionMeasure(measureTo(la, lo, p))
+    }
+    LaunchedEffect(geo.place, geo.refPoint, routingUrl, routingProfile) {
+        val p = geo.place ?: return@LaunchedEffect
+        val (lo, la) = geo.refPoint ?: return@LaunchedEffect
+        geo.publishPointMeasure(MeasureState.Loading)
+        geo.publishPointMeasure(measureTo(la, lo, p))
     }
 
     /** "Distance depuis la position" : mesure immédiate si le GPS tourne déjà, sinon on propose de l'activer. */
     fun onDistanceFromPositionTap() {
-        if (gpsActive) geo.requestDistanceFromPosition() else showLocationOffDialog = true
+        when {
+            ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
+            gpsActive -> geo.requestDistanceFromPosition()
+            else -> showLocationOffDialog = true
+        }
+    }
+
+    /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
+    fun onDistanceFromPointTap() {
+        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
+        else geo.startPickingPoint()
     }
 
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
@@ -343,7 +374,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         when {
             geo.searchOpen -> geo.closeSearch()
-            Photon.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
+            ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
             else -> geo.openSearch()
         }
     }
@@ -809,10 +840,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             content = {
                                 GeocodeBubble(
                                     address = gPlace.label,
-                                    distanceFromPosition = geoDistanceFromPosition,
-                                    distanceFromPoint = geoDistanceFromPoint,
+                                    profileLabel = routingProfileLabel(routingProfile),
+                                    positionMeasure = geo.positionMeasure,
+                                    pointMeasure = geo.pointMeasure,
+                                    imperial = imperialUnits,
                                     onDistanceFromPosition = { onDistanceFromPositionTap() },
-                                    onDistanceFromPoint = { geo.startPickingPoint() },
+                                    onDistanceFromPoint = { onDistanceFromPointTap() },
                                     onClose = { geo.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,

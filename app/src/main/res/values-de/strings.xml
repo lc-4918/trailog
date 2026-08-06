@@ -84,6 +84,15 @@
     <string name="geocode_distance_from_position">Entfernung vom Standort</string>
     <string name="geocode_distance_from_point">Entfernung von einem Punkt</string>
     <string name="geocode_pick_point_prompt">Einen beliebigen Punkt auf der Karte wählen</string>
+    <string name="geocode_route_summary">%1$s - %2$s</string>
+    <string name="geocode_no_route">Keine Route</string>
+    <string name="geocode_route_info">Empfohlene Route für: %1$s. Dies ist keine Luftlinie.</string>
+    <string name="content_desc_route_info">Über diese Entfernung</string>
+    <string name="profile_road_bike">Rennrad</string>
+    <string name="profile_gravel">Gravel</string>
+    <string name="profile_hybrid_bike">Trekkingrad</string>
+    <string name="profile_mtb">Mountainbike</string>
+    <string name="profile_foot">Zu Fuß</string>
 
     <!-- Dialoge -->
     <string name="dialog_composite_title">Neue kombinierte Kartengrundlage</string>
@@ -183,6 +192,8 @@
     <string name="settings_section_geocoding">Geokodierung</string>
     <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
     <string name="settings_geocoding_url">URL des Geokodierungsdienstes</string>
+    <string name="settings_routing_url">URL des Routing-Dienstes</string>
+    <string name="settings_routing_profile">Disziplin für Routen</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>

@@ -50,32 +50,6 @@ object Photon {
         return sb.toString()
     }
 
-    /**
-     * L'URL sort-elle du réseau local ? Vrai pour l'instance publique et pour tout hôte routable, faux pour
-     * une instance auto-hébergée à la maison.
-     *
-     * Sert à ne prévenir de l'absence de connexion que lorsqu'elle empêche vraiment la recherche : un
-     * téléphone en wifi sans accès Internet atteint encore le Photon du NAS, refuser la recherche y serait
-     * faux. Une URL illisible est comptée comme externe : c'est le cas courant, et prévenir à tort vaut
-     * mieux que laisser une recherche échouer sans explication.
-     */
-    fun needsInternet(base: String): Boolean {
-        val host = runCatching { java.net.URI(base.trim()).host }.getOrNull()?.lowercase()
-            ?: return true
-        if (host == "localhost" || host == "::1" || host.endsWith(".local")) return false
-        if ('.' !in host && ':' !in host) return false      // nom de machine seul, resolu sur le reseau local
-        val o = host.split('.').mapNotNull { it.toIntOrNull() }
-        if (o.size != 4) return true                        // nom de domaine : routable
-        return when {
-            o[0] == 127 -> false                            // boucle locale
-            o[0] == 10 -> false                             // 10.0.0.0/8
-            o[0] == 192 && o[1] == 168 -> false             // 192.168.0.0/16
-            o[0] == 172 && o[1] in 16..31 -> false          // 172.16.0.0/12
-            o[0] == 169 && o[1] == 254 -> false             // lien-local
-            else -> true
-        }
-    }
-
     /** Lit la réponse GeoJSON. Une entrée sans coordonnées exploitables est ignorée plutôt que de faire
      *  échouer toute la liste : Photon renvoie occasionnellement des géométries non ponctuelles. */
     fun parse(body: String): List<GeocodePlace> = runCatching {

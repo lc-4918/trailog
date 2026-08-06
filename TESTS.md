@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**239 tests, 27 fichiers**, tous verts.
+**253 tests, 29 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -132,7 +132,7 @@ disque, et que l'amorcage ne ressuscite pas un fond que l'utilisateur a supprime
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `MigrationsTest` | 15 | les 10 migrations, rejouees sur un vrai SQLite |
+| `MigrationsTest` | 16 | les 11 migrations, rejouees sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 detruit les couches importees de l'utilisateur, en silence, au premier lancement.
@@ -203,20 +203,23 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 |---|---|---|
 | `BubblePlacementTest` | 9 | placement de l'infobulle autour du marqueur, bornes d'ecran |
 | `BasemapHoverTargetTest` | 5 | cible de depot du drag & drop du gestionnaire de fonds |
-| `GeocodeSearchStateTest` | 8 | transitions de la recherche de lieu (bulle, mesures, mode de saisie) |
+| `GeocodeSearchStateTest` | 10 | transitions de la recherche de lieu (bulle, mesures, mode de saisie) |
 
 Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
 gestionnaire n'etait pas couvert du tout.
 
 `GeocodeSearchStateTest` porte sur les transitions, pas sur les valeurs : ce sont elles qui se trompent
 sans rien casser. Une infobulle laissee affichee recouvre la carte au moment de choisir un point ; une
-mesure oubliee au changement de lieu affiche une distance calculee vers un autre endroit.
+mesure oubliee au changement de lieu affiche une distance calculee vers un autre endroit. Il verrouille
+aussi le figeage de l'origine de la mesure depuis la position : la suivre ferait partir une requete
+d'itineraire a chaque point GPS, soit une toutes les deux secondes.
 
 ### `geocode` - recherche de lieu
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `PhotonTest` | 17 | construction de la requete, lecture de la reponse, portee du service |
+| `PhotonTest` | 13 | construction de la requete et lecture de la reponse du geocodeur |
+| `ValhallaTest` | 12 | construction de la requete et lecture de la reponse du moteur d'itineraire |
 
 Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
@@ -229,11 +232,24 @@ Il verrouille surtout l'**absence** des parametres `lat`/`lon`, que Photon accep
 reordonnent les resultats par proximite, si bien qu'un hameau voisin passerait devant la ville du meme
 nom. Les rajouter parait une amelioration ; c'en est le contraire.
 
-`needsInternet` decide si l'absence de connexion doit etre signalee avant d'ouvrir la recherche. Son
-test balaie les plages privees (10/8, 172.16/12 et ses deux bornes, 192.168/16, boucle locale,
-lien-local, `.local`, nom de machine seul) : les compter comme externes priverait de recherche celui
-qui heberge son propre Photon et se trouve en wifi sans sortie Internet, c'est-a-dire exactement le
-cas que l'auto-hebergement sert a couvrir.
+`ValhallaTest` couvre la meme surface pour les itineraires, et deux pieges qui lui sont propres : les
+coordonnees passent par `toString()` et non `format()`, faute de quoi une locale francaise ecrirait
+`44,56` et rendrait le JSON invalide - une faute qu'un poste anglophone ne verrait jamais ; et un total
+incomplet (longueur sans duree, ou l'inverse) doit valoir "aucun itineraire" plutot qu'une distance de
+zero. Il verrouille aussi la correspondance des cinq disciplines avec les modeles de cout, seul endroit
+du code qui parle le vocabulaire du moteur.
+
+### `net` - portee des services
+
+| Fichier | Tests | Ce qui est verrouille |
+|---|---|---|
+| `ServiceUrlTest` | 4 | reseau local ou service externe, pour l'avertissement d'absence de connexion |
+
+`needsInternet` decide si l'absence de connexion doit etre signalee avant d'ouvrir une recherche ou de
+lancer une mesure. Son test balaie les plages privees (10/8, 172.16/12 et ses deux bornes, 192.168/16,
+boucle locale, lien-local, `.local`, nom de machine seul) : les compter comme externes priverait de la
+fonction celui qui heberge ses propres services et se trouve en wifi sans sortie Internet, c'est-a-dire
+exactement le cas que l'auto-hebergement sert a couvrir.
 
 ### `update` - mises a jour
 

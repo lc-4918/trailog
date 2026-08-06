@@ -173,8 +173,14 @@ Les propositions sont classées par importance du lieu, sans biais de proximité
 centre de recherche, mais il ferait remonter un hameau voisin devant la ville du même nom.
 
 Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12) pour qu'il reste
-situable depuis une vue à l'échelle d'un pays ; son infobulle offre deux mesures de distance, depuis la
-position GPS (qu'elle propose d'activer si besoin) ou depuis un point désigné sur la carte.
+situable depuis une vue à l'échelle d'un pays ; son infobulle offre deux mesures, depuis la position GPS
+(qu'elle propose d'activer si besoin) ou depuis un point désigné sur la carte.
+
+Ces mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol d'oiseau
+(sans usage ici), pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied.
+Le moteur est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule instance via
+`bicycle_type` — OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé. Son URL est
+un réglage, comme celle du géocodeur.
 
 ### Mises à jour automatiques
 Non prévu en v1 : l'app lit un manifeste publié par sa propre CI, compare les versions, puis

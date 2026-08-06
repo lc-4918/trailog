@@ -54,7 +54,8 @@ sans dépendre d'un service en ligne.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
 - **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
-  sur la carte, et vous pouvez mesurer sa distance depuis votre position ou depuis un point choisi.
+  sur la carte, et vous pouvez mesurer la distance et la durée pour l'atteindre, depuis votre position
+  ou depuis un point choisi, dans la discipline de votre choix (vélo de route, gravel, VTC, VTT, à pied).
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.
@@ -123,8 +124,12 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
   propose deux mesures : la distance depuis votre position GPS, et la distance depuis un point que
   vous désignez n'importe où sur la carte. Les propositions sont classées par importance du lieu, une
-  ville passant donc avant un hameau du même nom. Le service interrogé est **Photon**, sans compte ni clé ;
-  vous pouvez lui substituer votre propre instance en renseignant son URL dans les réglages.
+  ville passant donc avant un hameau du même nom.
+- **Distance et durée jusqu'au lieu** : ce ne sont pas des distances à vol d'oiseau mais celles de
+  l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Carte / Géocodage* :
+  vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle. Les services
+  interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
+  leur substituer vos propres instances en renseignant leurs URL dans les réglages.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
 - **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
   (jusqu'à trois niveaux), régler le lissage et l'échelle verticale (par exemple 1 cm = 100 m,
@@ -142,8 +147,9 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   Vous pouvez la passer en manuel dans les réglages.
 - La **recherche d'un lieu** est la seule fonction qui interroge un service tiers pendant que vous
   vous en servez : chaque recherche envoie le texte tapé, et rien d'autre — ni votre position, ni
-  l'endroit que vous regardez. Elle est **désactivée par défaut**, et le service visé est
-  configurable : vous pouvez héberger le vôtre.
+  l'endroit que vous regardez. Une mesure de distance, elle, envoie les deux points concernés (dont
+  votre position GPS si vous la demandez depuis celle-ci) au service d'itinéraire. L'ensemble est
+  **désactivé par défaut**, et les deux services visés sont configurables : vous pouvez héberger les vôtres.
 
 ## Contribution & Développement
 

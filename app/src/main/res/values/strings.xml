@@ -84,6 +84,15 @@
     <string name="geocode_distance_from_position">Distance depuis la position</string>
     <string name="geocode_distance_from_point">Distance depuis un point</string>
     <string name="geocode_pick_point_prompt">Choisir un point n\'importe où sur la carte</string>
+    <string name="geocode_route_summary">%1$s - %2$s</string>
+    <string name="geocode_no_route">Aucun itinéraire</string>
+    <string name="geocode_route_info">Itinéraire recommandé pour : %1$s. Ce n\'est pas une distance à vol d\'oiseau.</string>
+    <string name="content_desc_route_info">À propos de cette distance</string>
+    <string name="profile_road_bike">Vélo de route</string>
+    <string name="profile_gravel">Gravel</string>
+    <string name="profile_hybrid_bike">VTC</string>
+    <string name="profile_mtb">VTT</string>
+    <string name="profile_foot">À pied</string>
 
     <!-- Dialogues -->
     <string name="dialog_composite_title">Nouveau fond de plan composite</string>
@@ -185,6 +194,8 @@
     <string name="settings_section_geocoding">Géocodage</string>
     <string name="settings_enable_geocoding">Activer la recherche de lieu et d\'adresse</string>
     <string name="settings_geocoding_url">URL du service de géocodage</string>
+    <string name="settings_routing_url">URL du service d\'itinéraire</string>
+    <string name="settings_routing_profile">Discipline des itinéraires</string>
     <string name="settings_section_markers">Marqueurs (carte)</string>
     <string name="settings_marker_size">Taille des marqueurs (dp)</string>
     <string name="settings_section_import_folder">Dossier de départ des imports</string>

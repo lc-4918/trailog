@@ -84,6 +84,15 @@
     <string name="geocode_distance_from_position">Distance from location</string>
     <string name="geocode_distance_from_point">Distance from a point</string>
     <string name="geocode_pick_point_prompt">Pick any point on the map</string>
+    <string name="geocode_route_summary">%1$s - %2$s</string>
+    <string name="geocode_no_route">No route</string>
+    <string name="geocode_route_info">Recommended route for: %1$s. This is not a straight-line distance.</string>
+    <string name="content_desc_route_info">About this distance</string>
+    <string name="profile_road_bike">Road bike</string>
+    <string name="profile_gravel">Gravel</string>
+    <string name="profile_hybrid_bike">Hybrid bike</string>
+    <string name="profile_mtb">Mountain bike</string>
+    <string name="profile_foot">On foot</string>
 
     <!-- Dialogs -->
     <string name="dialog_composite_title">New composite basemap</string>
@@ -183,6 +192,8 @@
     <string name="settings_section_geocoding">Geocoding</string>
     <string name="settings_enable_geocoding">Enable place and address search</string>
     <string name="settings_geocoding_url">Geocoding service URL</string>
+    <string name="settings_routing_url">Routing service URL</string>
+    <string name="settings_routing_profile">Routing discipline</string>
     <string name="settings_section_markers">Markers (map)</string>
     <string name="settings_marker_size">Marker size (dp)</string>
     <string name="settings_section_import_folder">Default import folder</string>

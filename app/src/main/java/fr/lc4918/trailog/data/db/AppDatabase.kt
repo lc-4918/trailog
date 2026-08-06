@@ -58,6 +58,12 @@ internal object MigrationSql {
     // la laisserait perimee ici le jour ou le defaut du code change.
     const val ADD_GEOCODING_URL =
         "ALTER TABLE settings ADD COLUMN geocodingUrl TEXT NOT NULL DEFAULT ''"
+    // Meme raison que l'URL du geocodeur : vide = instance publique, resolue a l'usage.
+    const val ADD_ROUTING_URL =
+        "ALTER TABLE settings ADD COLUMN routingUrl TEXT NOT NULL DEFAULT ''"
+    // Defaut VTC : le velo a tout faire, celui qui emprunte le plus de chemins sans en exclure.
+    const val ADD_ROUTING_PROFILE =
+        "ALTER TABLE settings ADD COLUMN routingProfile TEXT NOT NULL DEFAULT 'hybrid'"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -72,7 +78,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 26,
+    version = 27,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -171,11 +177,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Ajout de settings.routingUrl / routingProfile : migration explicite, meme raison que la 16->17.
+        private val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_ROUTING_URL)
+                db.execSQL(MigrationSql.ADD_ROUTING_PROFILE)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

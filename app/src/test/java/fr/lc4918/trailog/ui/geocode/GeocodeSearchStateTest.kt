@@ -46,6 +46,7 @@ class GeocodeSearchStateTest {
         assertFalse(s.pickingPoint)
         assertTrue(s.bubbleVisible)
         assertEquals(5.0 to 44.0, s.refPoint)
+        assertEquals(MeasureState.Loading, s.pointMeasure)   // le calcul part des que le point est pose
     }
 
     /** Sortir du choix par le retour systeme ne pose aucun point et rend l'infobulle telle qu'elle etait. */
@@ -61,11 +62,13 @@ class GeocodeSearchStateTest {
      *  distances calculees vers le lieu precedent. */
     @Test fun `changer de lieu efface les mesures du precedent`() {
         val s = GeocodeSearchState().apply {
-            select(gap); requestDistanceFromPosition(); setRefPoint(5.0, 44.0)
+            select(gap); requestDistanceFromPosition(); fixPositionOrigin(44.0, 5.0); setRefPoint(5.0, 44.0)
         }
         s.select(grenoble)
         assertEquals(grenoble, s.place)
-        assertFalse(s.distanceFromPositionRequested)
+        assertNull(s.positionMeasure)
+        assertNull(s.positionOrigin)
+        assertNull(s.pointMeasure)
         assertNull(s.refPoint)
     }
 
@@ -76,8 +79,26 @@ class GeocodeSearchStateTest {
         s.openSearch(); s.query = "gre"
         s.closeSearch()
         assertEquals(gap, s.place)
-        assertTrue(s.distanceFromPositionRequested)
+        assertEquals(MeasureState.Loading, s.positionMeasure)
         assertTrue(s.bubbleVisible)
+    }
+
+    /**
+     * L'origine de la mesure depuis la position est figee a la premiere position recue, et ne suit pas les
+     * suivantes : chaque itineraire est une requete reseau, et le capteur livre une position toutes les 2 s.
+     */
+    @Test fun `l'origine depuis la position est figee a la premiere position`() {
+        val s = GeocodeSearchState().apply { select(gap); requestDistanceFromPosition() }
+        s.fixPositionOrigin(44.0, 5.0)
+        s.fixPositionOrigin(44.1, 5.1)          // position suivante : ignoree
+        assertEquals(44.0 to 5.0, s.positionOrigin)
+    }
+
+    /** Rien ne doit se figer tant que la mesure n'a pas ete demandee. */
+    @Test fun `aucune origine n'est figee sans demande`() {
+        val s = GeocodeSearchState().apply { select(gap) }
+        s.fixPositionOrigin(44.0, 5.0)
+        assertNull(s.positionOrigin)
     }
 
     @Test fun `tout fermer ne laisse ni lieu ni mesure ni mode de saisie`() {
@@ -88,7 +109,8 @@ class GeocodeSearchStateTest {
         assertNull(s.place)
         assertNull(s.refPoint)
         assertFalse(s.pickingPoint)
-        assertFalse(s.distanceFromPositionRequested)
+        assertNull(s.positionMeasure)
+        assertNull(s.pointMeasure)
         assertFalse(s.searchOpen)
         assertFalse(s.bubbleVisible)
     }

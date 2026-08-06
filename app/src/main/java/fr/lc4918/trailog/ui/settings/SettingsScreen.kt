@@ -12,6 +12,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,8 @@ import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -46,10 +49,13 @@ import androidx.compose.material.icons.filled.FlipToBack
 import androidx.compose.material.icons.filled.FlipToFront
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -62,6 +68,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -100,6 +107,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -115,7 +123,9 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
+import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.routing.Valhalla
 import fr.lc4918.trailog.map.compositeBasemapId
 import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.map.flagCodeFor
@@ -231,6 +241,15 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             label = { Text(stringResource(R.string.settings_geocoding_url)) },
             placeholder = { Text(Photon.DEFAULT_URL) },
         )
+        CompactOutlinedTextField(
+            value = cur.routingUrl, onValueChange = { vm.save(cur.copy(routingUrl = it.trim())) },
+            singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            label = { Text(stringResource(R.string.settings_routing_url)) },
+            placeholder = { Text(Valhalla.DEFAULT_URL) },
+        )
+        Text(stringResource(R.string.settings_routing_profile), style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp))
+        RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
     }
     Section(stringResource(R.string.settings_section_basemap_control))
     SwitchRow(stringResource(R.string.settings_show_basemap_control_button), cur.showBasemapControlButton) {
@@ -259,6 +278,51 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     Text(stringResource(R.string.settings_bubble_opacity, cur.bubbleOpacityPct), style = MaterialTheme.typography.bodyMedium)
     CompactSlider(value = cur.bubbleOpacityPct.toFloat(), valueRange = 30f..100f,
         onValueChange = { vm.save(cur.copy(bubbleOpacityPct = it.toInt())) })
+}
+
+/** Libellé traduit d'une discipline d'itinéraire. */
+@Composable fun routingProfileLabel(p: RoutingProfile): String = stringResource(
+    when (p) {
+        RoutingProfile.ROAD_BIKE -> R.string.profile_road_bike
+        RoutingProfile.GRAVEL -> R.string.profile_gravel
+        RoutingProfile.HYBRID_BIKE -> R.string.profile_hybrid_bike
+        RoutingProfile.MOUNTAIN_BIKE -> R.string.profile_mtb
+        RoutingProfile.FOOT -> R.string.profile_foot
+    }
+)
+
+/** Icône d'une discipline. Le libellé l'accompagne toujours : les cinq pictogrammes se distinguent bien
+ *  entre eux, mais aucun ne dit à lui seul "gravel" plutôt que "VTC". */
+private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
+    RoutingProfile.ROAD_BIKE -> Icons.Filled.DirectionsBike
+    RoutingProfile.GRAVEL -> Icons.Filled.Grain
+    RoutingProfile.HYBRID_BIKE -> Icons.Filled.PedalBike
+    RoutingProfile.MOUNTAIN_BIKE -> Icons.Filled.Terrain
+    RoutingProfile.FOOT -> Icons.Filled.DirectionsWalk
+}
+
+/** Choix de la discipline : les cinq icônes en ligne, la retenue en pastille pleine. Un select déroulant
+ *  aurait caché quatre choix sur cinq derrière un tap, pour un réglage qu'on change au gré de la sortie. */
+@Composable private fun RoutingProfilePicker(current: RoutingProfile, onSelect: (RoutingProfile) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        RoutingProfile.entries.forEach { p ->
+            val selected = p == current
+            val label = routingProfileLabel(p)
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .clickable { onSelect(p) }
+                    .padding(vertical = 6.dp, horizontal = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(routingProfileIcon(p), label, modifier = Modifier.size(24.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current)
+                Text(label, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 2,
+                    textAlign = TextAlign.Center,
+                    color = if (selected) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current)
+            }
+        }
+    }
 }
 
 /** Libellé traduit d'un placement d'infobulle. */
