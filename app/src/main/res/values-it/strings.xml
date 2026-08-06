@@ -181,7 +181,6 @@
     <string name="settings_section_geocoding">Geocodifica</string>
     <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
     <string name="settings_geocoding_url">URL del servizio di geocodifica</string>
-    <string name="settings_geocoding_url_hint">Vuoto = istanza pubblica Photon. Un\'istanza self-hosted (Photon, Addok) si indica qui.</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>

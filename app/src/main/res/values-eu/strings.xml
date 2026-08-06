@@ -181,7 +181,6 @@
     <string name="settings_section_geocoding">Geokodetzea</string>
     <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
     <string name="settings_geocoding_url">Geokodetze-zerbitzuaren URLa</string>
-    <string name="settings_geocoding_url_hint">Hutsik = Photon instantzia publikoa. Norberak ostatatutako instantzia bat (Photon, Addok) hemen jartzen da.</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>
     <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
     <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>

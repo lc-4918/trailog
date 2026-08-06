@@ -96,8 +96,13 @@ fun InfoBubble(
         modifier = modifier.width(BubbleWidth.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         shape = RoundedCornerShape(BubbleRadius),
+        // Couleur de contenu imposée. Sous 100 % d'opacité, le fond n'est plus l'une des couleurs du thème :
+        // contentColorFor n'y reconnaît rien et rend Color.Unspecified, laissant le texte hériter du
+        // LocalContentColor ambiant. À 100 %, copy(alpha = 1f) rend une couleur identique à surface, qui
+        // retrouve donc son onSurface - d'où un défaut invisible tant qu'on ne baisse pas l'opacité.
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
+            contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
         Column(Modifier.heightIn(max = maxHeightDp)) {
             // ---- en-tête fixe (toujours visible) : boutons + titre, superposés à l'image de garde si présente ----

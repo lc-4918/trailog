@@ -181,7 +181,6 @@
     <string name="settings_section_geocoding">Geokodierung</string>
     <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
     <string name="settings_geocoding_url">URL des Geokodierungsdienstes</string>
-    <string name="settings_geocoding_url_hint">Leer = öffentliche Photon-Instanz. Eine selbst gehostete Instanz (Photon, Addok) hier eintragen.</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>

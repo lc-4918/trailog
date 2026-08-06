@@ -181,7 +181,6 @@
     <string name="settings_section_geocoding">Geocoding</string>
     <string name="settings_enable_geocoding">Enable place and address search</string>
     <string name="settings_geocoding_url">Geocoding service URL</string>
-    <string name="settings_geocoding_url_hint">Empty = public Photon instance. A self-hosted instance (Photon, Addok) goes here.</string>
     <string name="settings_section_markers">Markers (map)</string>
     <string name="settings_marker_size">Marker size (dp)</string>
     <string name="settings_section_import_folder">Default import folder</string>

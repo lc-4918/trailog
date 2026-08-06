@@ -181,7 +181,6 @@
     <string name="settings_section_geocoding">Geocodificació</string>
     <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
     <string name="settings_geocoding_url">URL del servei de geocodificació</string>
-    <string name="settings_geocoding_url_hint">Buit = instància pública de Photon. Una instància autoallotjada (Photon, Addok) s\'indica aquí.</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>
     <string name="settings_marker_size">Mida dels marcadors (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>

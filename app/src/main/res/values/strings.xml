@@ -183,7 +183,6 @@
     <string name="settings_section_geocoding">Géocodage</string>
     <string name="settings_enable_geocoding">Activer la recherche de lieu et d\'adresse</string>
     <string name="settings_geocoding_url">URL du service de géocodage</string>
-    <string name="settings_geocoding_url_hint">Vide = instance publique Photon. Une instance auto-hébergée (Photon, Addok) se renseigne ici.</string>
     <string name="settings_section_markers">Marqueurs (carte)</string>
     <string name="settings_marker_size">Taille des marqueurs (dp)</string>
     <string name="settings_section_import_folder">Dossier de départ des imports</string>

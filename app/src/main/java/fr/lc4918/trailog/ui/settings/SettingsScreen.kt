@@ -230,11 +230,8 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             singleLine = true, modifier = Modifier.fillMaxWidth(),
             label = { Text(stringResource(R.string.settings_geocoding_url)) },
             placeholder = { Text(Photon.DEFAULT_URL) },
-            supportingText = { Text(stringResource(R.string.settings_geocoding_url_hint)) },
         )
     }
-    Section(stringResource(R.string.settings_section_rotation))
-    SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
     Section(stringResource(R.string.settings_section_basemap_control))
     SwitchRow(stringResource(R.string.settings_show_basemap_control_button), cur.showBasemapControlButton) {
         vm.save(cur.copy(showBasemapControlButton = it))
@@ -248,6 +245,8 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     TextButton(onClick = { vm.save(cur.copy(basemapControlWidthPct = 50, basemapControlOpacityPct = 80)) }) {
         Text(stringResource(R.string.action_reset_defaults))
     }
+    Section(stringResource(R.string.settings_section_rotation))
+    SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
     Section(stringResource(R.string.settings_section_scale))
     SwitchRow(stringResource(R.string.settings_show_scale_bar), cur.showScale) { vm.save(cur.copy(showScale = it)) }
     Section(stringResource(R.string.settings_section_markers))
