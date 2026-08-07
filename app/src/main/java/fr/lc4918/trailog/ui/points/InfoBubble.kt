@@ -253,8 +253,8 @@ internal val OverlayInset = 4.dp
 /** Rayons des conteneurs qui portent les boutons : l'infobulle et les images. [arcInset] en dépend. */
 private val BubbleRadius = 16.dp
 internal val ImageRadius = 12.dp
-/** Largeur de l'infobulle. Exposée hors du composable : l'écran de carte s'en sert pour décaler la carte
- *  avant que la bulle n'existe, tant que ses propriétés chargent (cf. placement provisoire). */
+/** Largeur de l'infobulle. Exposée hors du composable : l'infobulle de géocodage s'y aligne plutôt que de
+ *  redéclarer la sienne, les deux devant faire le même bloc au-dessus de la carte. */
 internal val InfoBubbleWidth = 280.dp
 /** Hauteur max de l'image de garde (en dp) ; son ratio avec la largeur de la bulle dit si l'image remplit
  *  la largeur ou laisse des bandes vides sur les côtés. */
