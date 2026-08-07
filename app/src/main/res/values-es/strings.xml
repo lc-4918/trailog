@@ -217,7 +217,6 @@
     <!-- Ajustes: Mapa -->
     <string name="settings_show_scale_bar">Mostrar la escala gráfica</string>
     <string name="settings_allow_rotation">Permitir la rotación del mapa</string>
-    <string name="settings_group_controls">Controles</string>
     <string name="settings_group_pois">Puntos de interés</string>
     <string name="settings_group_elevation_profile">Perfil altimétrico</string>
     <string name="settings_control_buttons_background">Fondo detrás de los botones</string>

@@ -219,7 +219,6 @@
     <!-- Réglages : Carte -->
     <string name="settings_show_scale_bar">Afficher l\'échelle graphique</string>
     <string name="settings_allow_rotation">Autoriser la rotation de la carte</string>
-    <string name="settings_group_controls">Contrôles</string>
     <string name="settings_group_pois">Points d\'intérêt</string>
     <string name="settings_group_elevation_profile">Profil altimétrique</string>
     <string name="settings_control_buttons_background">Fond derrière les boutons</string>

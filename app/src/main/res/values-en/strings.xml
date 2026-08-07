@@ -217,7 +217,6 @@
     <!-- Settings: Map -->
     <string name="settings_show_scale_bar">Show scale bar</string>
     <string name="settings_allow_rotation">Allow map rotation</string>
-    <string name="settings_group_controls">Controls</string>
     <string name="settings_group_pois">Points of interest</string>
     <string name="settings_group_elevation_profile">Elevation profile</string>
     <string name="settings_control_buttons_background">Background behind buttons</string>

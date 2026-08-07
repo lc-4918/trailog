@@ -217,7 +217,6 @@
     <!-- Configuració: Mapa -->
     <string name="settings_show_scale_bar">Mostra l\'escala gràfica</string>
     <string name="settings_allow_rotation">Permet la rotació del mapa</string>
-    <string name="settings_group_controls">Controls</string>
     <string name="settings_group_pois">Punts d\'interès</string>
     <string name="settings_group_elevation_profile">Perfil altimètric</string>
     <string name="settings_control_buttons_background">Fons darrere dels botons</string>

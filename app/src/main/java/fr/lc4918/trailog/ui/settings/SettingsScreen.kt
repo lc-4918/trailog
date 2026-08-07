@@ -232,10 +232,12 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 /* --------------- Onglets --------------- */
 
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    // Trois groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis
+    // Trois parties, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis
     // ce qui decrit le relief. L'onglet ayant recu tout l'ancien onglet "Profil", il devenait trop long
-    // pour se lire d'une traite.
-    Group(stringResource(R.string.settings_group_controls))
+    // pour se lire d'une traite ; les deux suivantes portent donc un titre de groupe.
+    //
+    // La premiere n'en a pas : elle commence en tete de l'onglet, ou il n'y a encore rien dont la
+    // distinguer, et son titre ne faisait que repeter le nom de l'onglet a une ligne d'intervalle.
     // Suite d'interrupteurs sans titre de rubrique : chacun ne porte qu'un reglage, et son libelle le dit
     // deja entierement. Un titre au-dessus n'aurait fait que repeter la ligne qu'il coiffe, et les six
     // rubriques d'une ligne donnaient un groupe deux fois plus long que son contenu.

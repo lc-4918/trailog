@@ -217,7 +217,6 @@
     <!-- Einstellungen: Karte -->
     <string name="settings_show_scale_bar">Maßstabsleiste anzeigen</string>
     <string name="settings_allow_rotation">Kartendrehung zulassen</string>
-    <string name="settings_group_controls">Bedienelemente</string>
     <string name="settings_group_pois">Points of Interest</string>
     <string name="settings_group_elevation_profile">Höhenprofil</string>
     <string name="settings_control_buttons_background">Hintergrund hinter den Schaltflächen</string>
