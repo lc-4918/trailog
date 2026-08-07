@@ -182,4 +182,7 @@ data class SettingsEntity(
     // boutons flottent nus au-dessus du fond, ce qui est plus leger mais devient illisible sur une
     // orthophoto ou un relief clair.
     val controlButtonsBackground: Boolean = false,
+    // Bouton de mesure sur trace. Desactive par defaut comme les deux boutons voisins, mais pour une autre
+    // raison : il n'interroge aucun service, il ne sert simplement qu'a qui mesure ses parcours.
+    val trackMeasureEnabled: Boolean = false,
 )

@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Nessun itinerario</string>
     <string name="geocode_route_info">Itinerario consigliato per: %1$s. Non è una distanza in linea d\'aria.</string>
     <string name="content_desc_route_info">Informazioni su questa distanza</string>
+    <string name="measure_title">Misurare su una traccia</string>
+    <string name="measure_pick_start">Scegliere il punto di partenza su una traccia</string>
+    <string name="measure_pick_end">Scegliere il punto finale della misura sulla traccia %1$s</string>
     <string name="planner_title">Pianificatore di percorsi</string>
     <string name="planner_collapse">Riduci</string>
     <string name="planner_expand">Riapri il pianificatore</string>
@@ -217,6 +220,7 @@
     <string name="settings_control_buttons_background">Sfondo dietro i pulsanti</string>
     <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
     <string name="settings_enable_route_planner">Mostra il pulsante del pianificatore</string>
+    <string name="settings_enable_track_measure">Mostra il pulsante di misura</string>
     <string name="settings_section_geocoding_service">Servizio di geocodifica</string>
     <string name="settings_section_routing_service">Servizio di percorsi</string>
     <string name="settings_section_default_discipline">Disciplina predefinita</string>

@@ -14,6 +14,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
@@ -24,6 +25,7 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
+import fr.lc4918.trailog.ui.measure.MeasurePoint
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.ui.profile.ProfileZoom
 import kotlinx.coroutines.CancellationException
@@ -207,6 +209,56 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (_markerLayerId.value != id || _selectedMarkerId.value != featureId) return@launch
             _markerLayerData.value = data
         }
+    }
+
+    // ---------- mesure sur trace ----------
+    /**
+     * Premier point d'une mesure : le tap est rabattu sur la trace VISIBLE la plus proche, toutes couches
+     * confondues (cf. TrackMeasure.project). Null si aucune trace n'est affichée - il n'y a alors rien à
+     * mesurer, et le tap reste sans effet.
+     *
+     * Les profils sont lus par le dépôt, donc servis par son cache dès la première fois : le kilométrage
+     * cumulé qu'ils portent est calculé sur la géométrie complète, avant décimation, et la mesure suit
+     * donc le parcours réel et non la ligne allégée du rendu.
+     */
+    fun pickMeasureStart(lon: Double, lat: Double, onResult: (MeasurePoint?) -> Unit) = viewModelScope.launch {
+        var best: MeasurePoint? = null
+        var bestAway = Double.MAX_VALUE
+        layers.value.filter { it.visible && it.hasLine }.forEach { ly ->
+            val profiles = repo.loadProfiles(ly)
+            val nearest = withContext(Dispatchers.Default) {
+                profiles.mapIndexedNotNull { i, ct -> TrackMeasure.project(ct.samples, lon, lat)?.let { i to it } }
+                    .minByOrNull { it.second.awayM }
+            } ?: return@forEach
+            val (index, p) = nearest
+            if (p.awayM < bestAway) {
+                bestAway = p.awayM
+                best = MeasurePoint(ly.id, ly.name, index, p.lon, p.lat, p.alongM)
+            }
+        }
+        onResult(best)
+    }
+
+    /**
+     * Second point, contraint au segment du premier : mesurer suppose un parcours commun, et deux traces
+     * distinctes n'en offrent aucun. Le tap est donc rabattu sur CETTE trace, où qu'il tombe.
+     *
+     * Rend aussi le milieu du parcours mesuré, calculé sur les mêmes samples : c'est là que l'infobulle
+     * vient pointer, et le demander ailleurs relirait la couche pour la même réponse.
+     */
+    fun pickMeasureEnd(
+        start: MeasurePoint, lon: Double, lat: Double,
+        onResult: (MeasurePoint, Pair<Double, Double>?) -> Unit,
+    ) = viewModelScope.launch {
+        val layer = layers.value.firstOrNull { it.id == start.layerId } ?: return@launch
+        val samples = repo.loadProfiles(layer).getOrNull(start.trackIndex)?.samples ?: return@launch
+        val computed = withContext(Dispatchers.Default) {
+            TrackMeasure.project(samples, lon, lat)?.let { p ->
+                p to TrackMeasure.pointAt(samples, (start.alongM + p.alongM) / 2)
+            }
+        } ?: return@launch
+        val (p, mid) = computed
+        onResult(start.copy(lon = p.lon, lat = p.lat, alongM = p.alongM), mid)
     }
 
     fun closeProfile() {

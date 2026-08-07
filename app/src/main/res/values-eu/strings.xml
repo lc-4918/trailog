@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Ibilbiderik ez</string>
     <string name="geocode_route_info">Gomendatutako ibilbidea: %1$s. Ez da lerro zuzeneko distantzia bat.</string>
     <string name="content_desc_route_info">Distantzia honi buruz</string>
+    <string name="measure_title">Neurtu arrasto batean</string>
+    <string name="measure_pick_start">Aukeratu hasiera-puntua arrasto batean</string>
+    <string name="measure_pick_end">Aukeratu neurketaren amaiera-puntua %1$s arrastoan</string>
     <string name="planner_title">Ibilbide-planifikatzailea</string>
     <string name="planner_collapse">Txikitu</string>
     <string name="planner_expand">Ireki berriro planifikatzailea</string>
@@ -217,6 +220,7 @@
     <string name="settings_control_buttons_background">Botoien atzeko planoa</string>
     <string name="settings_show_gps_button">Erakutsi GPS kokapen-botoia</string>
     <string name="settings_enable_route_planner">Erakutsi planifikatzailearen botoia</string>
+    <string name="settings_enable_track_measure">Erakutsi neurtzeko botoia</string>
     <string name="settings_section_geocoding_service">Geokodetze-zerbitzua</string>
     <string name="settings_section_routing_service">Ibilbide-zerbitzua</string>
     <string name="settings_section_default_discipline">Diziplina lehenetsia</string>

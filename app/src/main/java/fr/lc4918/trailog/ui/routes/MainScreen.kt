@@ -110,6 +110,9 @@ import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
+import fr.lc4918.trailog.ui.components.MapPromptBar
+import fr.lc4918.trailog.ui.measure.MeasureBubble
+import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
@@ -329,6 +332,23 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
     LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
 
+    // ---------- mesure sur trace ----------
+    val measure = remember { TrackMeasureState() }
+    // Hauteur mesurée de la bande de consigne, pour décaler l'échelle graphique au-dessus (cf. bbox).
+    var measureBarHeightPx by remember { mutableIntStateOf(0) }
+    // La mesure désactivée dans les réglages alors qu'elle est en cours efface tout : sans cela les
+    // marqueurs noirs et leur infobulle survivraient au réglage qui les a fait naître (cf. géocodage).
+    LaunchedEffect(settings?.trackMeasureEnabled) {
+        if (settings?.trackMeasureEnabled == false) measure.clear()
+    }
+    // Trace masquée ou supprimée alors qu'elle portait la mesure : celle-ci n'a plus de support. La laisser
+    // afficherait deux marqueurs noirs et une distance au milieu d'une carte vide, sans rien à quoi les
+    // rapporter.
+    LaunchedEffect(layers, measure.start) {
+        val id = measure.start?.layerId ?: return@LaunchedEffect
+        if (layers.none { it.id == id && it.visible }) measure.clear()
+    }
+
     // ---------- planificateur d'itinéraire ----------
     val planner = remember { RoutePlannerState() }
     val imperialUnits = settings?.units == "imperial"
@@ -523,19 +543,33 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             autoFramed = false
         }
     }
-    // Mode de saisie exclusif (tracé de la bounding box hors-ligne) : tout tap lui revient, y compris sur
-    // une trace ou un marqueur, qui n'ouvrent alors ni profil ni infobulle. Hors de ce mode, la sélection
-    // habituelle reprend.
-    LaunchedEffect(controller, offlineDrawingActive) {
-        if (offlineDrawingActive) {
-            controller.onRawTap = { lon, lat ->
+    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure) : tout tap
+    // leur revient, y compris sur une trace ou un marqueur, qui n'ouvrent alors ni profil ni infobulle. Hors
+    // de ces modes, la sélection habituelle reprend.
+    //
+    // Les deux ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte),
+    // mais l'ordre reste explicite : celui qui occupe déjà l'écran garde les taps.
+    LaunchedEffect(controller, offlineDrawingActive, measure.picking) {
+        when {
+            offlineDrawingActive -> controller.onRawTap = { lon, lat ->
                 if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
             }
-        } else {
-            controller.onRawTap = null
-            controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
-            controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
-            controller.onTapEmpty = { vm.closeOnEmpty() }
+            // Le point retenu n'est pas celui du doigt mais son projeté sur la trace : le calcul passe par
+            // le ViewModel, seul à savoir lire les profils des couches (cf. pickMeasureStart).
+            measure.picking -> controller.onRawTap = { lon, lat ->
+                val started = measure.start
+                if (started == null) {
+                    vm.pickMeasureStart(lon, lat) { p -> if (p != null && measure.picking) measure.chooseStart(p) }
+                } else {
+                    vm.pickMeasureEnd(started, lon, lat) { p, mid -> if (measure.picking) measure.chooseEnd(p, mid) }
+                }
+            }
+            else -> {
+                controller.onRawTap = null
+                controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
+                controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
+                controller.onTapEmpty = { vm.closeOnEmpty() }
+            }
         }
     }
     val bearing = remember(bearingTick) { controller.bearing() }
@@ -591,6 +625,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Calques carte (comme le marqueur sélectionné) : ils suivent seuls le pan et le zoom.
     LaunchedEffect(geo.place, styleTick, markerPx) {
         controller.setGeocodeMarker(false, geo.place?.lon, geo.place?.lat, markerPx)
+    }
+    // Marqueurs noirs des deux bouts d'une mesure sur trace : mêmes épingles, même calque carte.
+    LaunchedEffect(measure.markers, styleTick, markerPx) {
+        controller.setMeasureMarkers(measure.markers, markerPx)
     }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
@@ -707,6 +745,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     BackHandler(enabled = planner.open && planner.collapsed) { planner.close() }
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
+    // Mesure sur trace, du plus général au plus prioritaire : le retour ferme d'abord le résultat affiché,
+    // et sort en priorité du choix des points, qui est le mode de saisie en cours.
+    BackHandler(enabled = measure.mid != null) { measure.clear() }
+    BackHandler(enabled = measure.picking) { measure.closeBand() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
     BackHandler(enabled = offlineDownload?.minimized == false) {
         val dl = offlineDownload
@@ -819,6 +861,20 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             }
                         }, modifier = controlBg) {
                             Icon(Icons.Filled.Route, stringResource(R.string.planner_title))
+                        }
+                    }
+                    // Sous le planificateur, et à sa place quand lui ou le géocodeur sont masqués : la
+                    // colonne se resserre d'elle-même, aucun des trois boutons ne réserve son rang.
+                    // Masqué pendant le choix des points, que sa bande porte déjà entièrement.
+                    if (settings?.trackMeasureEnabled == true && !measure.picking) {
+                        IconButton(onClick = {
+                            // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
+                            // planificateur se replie dans son coin (son trajet, lui, est conservé).
+                            vm.closeProfile()
+                            if (planner.open) planner.collapse(true)
+                            measure.open()
+                        }, modifier = controlBg) {
+                            Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title))
                         }
                     }
                     if (geo.searchOpen) {
@@ -1028,6 +1084,39 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { plannerBandHeightPx = it.size.height },
                     )
                 }
+                // Consigne de la mesure sur trace : le point à poser, et la croix qui referme la fonction.
+                // Elle s'efface d'elle-même une fois le second point posé (cf. TrackMeasureState.chooseEnd).
+                if (measure.picking) {
+                    val started = measure.start
+                    MapPromptBar(
+                        text = if (started == null) stringResource(R.string.measure_pick_start)
+                            else stringResource(R.string.measure_pick_end, started.layerName),
+                        onClose = { measure.closeBand() },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                            .onGloballyPositioned { measureBarHeightPx = it.size.height },
+                    )
+                }
+                // Infobulle de la mesure : pointe posée sur le milieu du parcours mesuré, qui suit la carte
+                // au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu).
+                val measureMid = measure.mid
+                val measureMeters = measure.meters
+                if (measureMid != null && measureMeters != null) {
+                    val midOff = remember(measureMid, idleTick) {
+                        controller.screenOf(measureMid.first, measureMid.second)
+                            ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+                    }
+                    if (midOff != null) {
+                        MeasureBubble(
+                            text = Format.shortDistance(measureMeters, imperialUnits),
+                            tipX = midOff.x, tipY = midOff.y,
+                            topInset = WindowInsets.statusBars.getTop(density),
+                            margin = with(density) { 8.dp.roundToPx() },
+                            onClose = { measure.clear() },
+                            fontSp = settings?.bubbleFont ?: 14,
+                            backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                        )
+                    }
+                }
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
@@ -1050,8 +1139,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // il ne prend plus qu'un bouton de coin, et la carte redevient l'objet du regard.
                 val plannerExpanded = planner.open && !planner.collapsed
                 if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
-                    val scaleBarModifier = if (offlineDrawingActive) {
-                        val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
+                    // Barre du bas actuellement posée (tracé de bbox, ou consigne de mesure) : l'échelle se
+                    // range au-dessus d'elle. Les deux portent déjà leur propre marge de barre de navigation.
+                    val bottomBarPx = when {
+                        offlineDrawingActive -> offlineBarHeightPx
+                        measure.picking -> measureBarHeightPx
+                        else -> 0
+                    }
+                    val scaleBarModifier = if (bottomBarPx > 0) {
+                        val barHeightDp = with(density) { bottomBarPx.toDp() }
                         Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
                     } else {
                         Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()

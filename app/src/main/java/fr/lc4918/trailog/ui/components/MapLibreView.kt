@@ -448,6 +448,43 @@ class MapController {
         }
     }
 
+    /** Calque et source des marqueurs noirs de la mesure sur trace (cf. [setMeasureMarkers]). */
+    private val MEASURE_PTS = "measure-points"
+    private val MEASURE_SRC = "measure-points-src"
+
+    /**
+     * Épingles noires des deux bouts d'une mesure sur trace (zéro, une ou deux).
+     *
+     * Une seule source pour les deux : elles ont même style, apparaissent et disparaissent ensemble, et
+     * deux couches n'apporteraient qu'un ordre d'empilement à tenir. Distinctes des épingles du géocodage,
+     * qui peuvent être à l'écran en même temps et ne se ferment pas par le même geste.
+     */
+    fun setMeasureMarkers(points: List<Pair<Double, Double>>, heightPx: Float) {
+        val s = style ?: return
+        if (points.isEmpty()) {
+            s.getLayer(MEASURE_PTS)?.let { s.removeLayer(it) }
+            s.getSource(MEASURE_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val img = ensurePin(s, appContext, "#000000", heightPx)
+        val features = points.joinToString(",") { (lon, lat) ->
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(MEASURE_SRC)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(MEASURE_SRC, geojson))
+            s.addLayer(SymbolLayer(MEASURE_PTS, MEASURE_SRC).withProperties(
+                PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter))
+        } else {
+            existing.setGeoJson(geojson)
+            (s.getLayer(MEASURE_PTS) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+        }
+    }
+
     /**
      * Tracés des itinéraires mesurés depuis l'infobulle d'un lieu (zéro, un ou deux : depuis la position,
      * depuis un point choisi). Une seule source pour les deux : ils ont même style et changent ensemble,

@@ -247,6 +247,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SwitchRow(stringResource(R.string.settings_enable_route_planner), cur.routePlannerEnabled) {
         vm.save(cur.copy(routePlannerEnabled = it))
     }
+    SwitchRow(stringResource(R.string.settings_enable_track_measure), cur.trackMeasureEnabled) {
+        vm.save(cur.copy(trackMeasureEnabled = it))
+    }
     SwitchRow(stringResource(R.string.settings_show_scale_bar), cur.showScale) { vm.save(cur.copy(showScale = it)) }
     SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
     SwitchRow(stringResource(R.string.settings_control_buttons_background), cur.controlButtonsBackground) {

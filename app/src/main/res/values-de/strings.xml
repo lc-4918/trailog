@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Keine Route</string>
     <string name="geocode_route_info">Empfohlene Route für: %1$s. Dies ist keine Luftlinie.</string>
     <string name="content_desc_route_info">Über diese Entfernung</string>
+    <string name="measure_title">Auf einem Track messen</string>
+    <string name="measure_pick_start">Startpunkt auf einem Track wählen</string>
+    <string name="measure_pick_end">Endpunkt der Messung auf dem Track %1$s wählen</string>
     <string name="planner_title">Routenplaner</string>
     <string name="planner_collapse">Einklappen</string>
     <string name="planner_expand">Planer wieder öffnen</string>
@@ -217,6 +220,7 @@
     <string name="settings_control_buttons_background">Hintergrund hinter den Schaltflächen</string>
     <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
     <string name="settings_enable_route_planner">Planer-Schaltfläche anzeigen</string>
+    <string name="settings_enable_track_measure">Mess-Schaltfläche anzeigen</string>
     <string name="settings_section_geocoding_service">Geokodierungsdienst</string>
     <string name="settings_section_routing_service">Routing-Dienst</string>
     <string name="settings_section_default_discipline">Standarddisziplin</string>

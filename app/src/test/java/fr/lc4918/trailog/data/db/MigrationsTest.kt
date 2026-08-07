@@ -262,6 +262,16 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 29 -> 30 : mesure sur trace ----------
+
+    /** Desactivee sur une base deja en place : un bouton de plus sur la carte ne s'invite pas de lui-meme. */
+    @Test fun `29 vers 30 ajoute la mesure sur trace desactivee`() {
+        val db = freshDb("m2930"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_TRACK_MEASURE_ENABLED)
+        assertEquals(0, scalar(db, "SELECT trackMeasureEnabled FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -273,7 +283,7 @@ class MigrationsTest {
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
-            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground")
+            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground", "trackMeasureEnabled")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

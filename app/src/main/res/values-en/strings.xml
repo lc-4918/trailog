@@ -88,6 +88,9 @@
     <string name="geocode_no_route">No route</string>
     <string name="geocode_route_info">Recommended route for: %1$s. This is not a straight-line distance.</string>
     <string name="content_desc_route_info">About this distance</string>
+    <string name="measure_title">Measure along a track</string>
+    <string name="measure_pick_start">Pick the start point on a track</string>
+    <string name="measure_pick_end">Pick the measurement end point on track %1$s</string>
     <string name="planner_title">Route planner</string>
     <string name="planner_collapse">Collapse</string>
     <string name="planner_expand">Reopen planner</string>
@@ -217,6 +220,7 @@
     <string name="settings_control_buttons_background">Background behind buttons</string>
     <string name="settings_show_gps_button">Show GPS location button</string>
     <string name="settings_enable_route_planner">Show planner button</string>
+    <string name="settings_enable_track_measure">Show measure button</string>
     <string name="settings_section_geocoding_service">Geocoding service</string>
     <string name="settings_section_routing_service">Routing service</string>
     <string name="settings_section_default_discipline">Default discipline</string>
