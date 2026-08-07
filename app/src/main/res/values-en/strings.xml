@@ -40,6 +40,7 @@
     <string name="action_show">Show</string>
     <string name="action_show_folder">Show folder</string>
     <string name="action_zoom_to_layer">Zoom to layer</string>
+    <string name="action_color_layers">Color all layers</string>
     <string name="action_center_on_location">Center on my location</string>
     <string name="action_reset_avatar">Reset avatar</string>
     <string name="action_pin_image">Pin as cover image</string>

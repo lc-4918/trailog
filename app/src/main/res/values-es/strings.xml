@@ -40,6 +40,7 @@
     <string name="action_show">Mostrar</string>
     <string name="action_show_folder">Mostrar carpeta</string>
     <string name="action_zoom_to_layer">Zoom a la capa</string>
+    <string name="action_color_layers">Color de las capas</string>
     <string name="action_center_on_location">Centrar en mi posición</string>
     <string name="action_reset_avatar">Restablecer avatar</string>
     <string name="action_pin_image">Fijar como imagen de portada</string>

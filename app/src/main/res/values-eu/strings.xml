@@ -40,6 +40,7 @@
     <string name="action_show">Erakutsi</string>
     <string name="action_show_folder">Erakutsi karpeta</string>
     <string name="action_zoom_to_layer">Zooma geruzan</string>
+    <string name="action_color_layers">Geruza guztien kolorea</string>
     <string name="action_center_on_location">Zentratu nire kokapenean</string>
     <string name="action_reset_avatar">Berrezarri avatarra</string>
     <string name="action_pin_image">Ainguratu azal-irudi gisa</string>

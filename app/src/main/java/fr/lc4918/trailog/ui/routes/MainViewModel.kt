@@ -353,13 +353,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun setLayerColor(l: LayerEntity, color: String) = viewModelScope.launch { db.layers().setColor(l.id, color) }
 
+    /**
+     * Applique une même couleur à toutes les couches du dossier, sous-dossiers compris.
+     *
+     * Récursif comme la visibilité et la suppression : un dossier répond de tout ce qu'il contient, et
+     * s'arrêter à ses couches directes laisserait, sous le même dossier, des sous-dossiers d'une autre
+     * couleur - ce qui est précisément ce qu'on cherchait à défaire.
+     *
+     * Aucune trace de la couleur d'avant : c'est une écriture par couche, et chacune garde ensuite la
+     * sienne, modifiable une à une. Le dossier n'a pas de couleur propre dont celles-ci dériveraient.
+     */
+    fun setFolderColor(folderId: Long, color: String) = viewModelScope.launch {
+        val ids = descendantFolderIds(folderId, folders.value)
+        layers.value.filter { it.folderId in ids }.forEach { db.layers().setColor(it.id, color) }
+    }
+
     /** Applique la visibilité à toutes les couches du dossier (et de ses sous-dossiers). */
     fun setFolderVisible(folderId: Long, visible: Boolean) = viewModelScope.launch {
-        val ids = HashSet<Long>(); val stack = ArrayDeque<Long>(); stack.add(folderId)
-        while (stack.isNotEmpty()) {
-            val f = stack.removeLast()
-            if (ids.add(f)) folders.value.filter { it.parentId == f }.forEach { stack.add(it.id) }
-        }
+        val ids = descendantFolderIds(folderId, folders.value)
         val affected = layers.value.filter { it.folderId in ids }
         affected.forEach { db.layers().setVisible(it.id, visible) }
         if (!visible) {
@@ -468,7 +479,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** [rootId] et l'ensemble de ses descendants (dossiers), pour une suppression récursive. */
+    /** [rootId] et l'ensemble de ses descendants (dossiers) : ce sur quoi porte une action de dossier
+     *  (visibilité, couleur, suppression récursive). */
     private fun descendantFolderIds(rootId: Long, all: List<FolderEntity>): Set<Long> {
         val result = linkedSetOf(rootId)
         var frontier = listOf(rootId)

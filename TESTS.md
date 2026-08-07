@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**311 tests, 35 fichiers**, tous verts.
+**315 tests, 36 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -205,6 +205,7 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 | `BasemapHoverTargetTest` | 5 | cible de depot du drag & drop du gestionnaire de fonds |
 | `GeocodeSearchStateTest` | 5 | transitions de la recherche de lieu (barre de saisie, lieu retenu) |
 | `MapPointStateTest` | 9 | transitions du point designe par un appui long (adresse, mesures, mode de saisie) |
+| `LayersUnderTest` | 4 | ce sur quoi porte une action de dossier : ses couches, sous-dossiers compris |
 
 Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
 gestionnaire n'etait pas couvert du tout.
@@ -215,6 +216,11 @@ oubliee au changement de point affiche une distance calculee vers un autre endro
 survit a son infobulle ne se retire plus par aucun geste. `MapPointStateTest` verrouille aussi le figeage
 de l'origine de la mesure depuis la position : la suivre ferait partir une requete d'itineraire a chaque
 point GPS, soit une toutes les deux secondes.
+
+`LayersUnderTest` verrouille une decision, pas un calcul : une action de dossier - l'oeil, la couleur
+commune, le cadrage - porte aussi sur ses sous-dossiers. S'arreter aux couches directes ne casse rien
+et ne se voit pas en test : cela laisse seulement, sous un dossier qu'on vient de colorer d'un bloc,
+des sous-dossiers d'une autre couleur.
 
 ### `geocode` - recherche de lieu
 

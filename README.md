@@ -48,7 +48,8 @@ sans dépendre d'un service en ligne.
   des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement).
 - **Profil altimétrique** natif, synchronisé avec un curseur sur la carte, avec zoom sur une
   portion du parcours et échelle verticale réglable.
-- **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires.
+- **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires,
+  et donner d'un coup la même couleur à toutes les traces d'un dossier.
 - **Points d'intérêt** : marqueurs avec infobulles que vous pouvez modifier (titre, texte,
   liens, photos), y compris les photos des waypoints GPX de votre téléphone.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos

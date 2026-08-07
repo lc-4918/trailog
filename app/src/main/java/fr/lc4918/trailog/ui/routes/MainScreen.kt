@@ -1986,6 +1986,10 @@ private fun FolderNode(
     importingIds: Set<Long?>, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
+    var showColor by remember { mutableStateOf(false) }
+    // Les couches sur lesquelles portent les actions du dossier : sous-dossiers compris, comme la
+    // suppression et l'oeil. Calculees une fois, l'oeil et le choix de couleur en repondent tous deux.
+    val contents = layersUnder(folder.id, allFolders, allLayers)
     val context = LocalContext.current
     val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo.id == folder.id
     val offset = if (isDragging) dctx.dragInfo.offset else 0f
@@ -1999,7 +2003,7 @@ private fun FolderNode(
         .background(if (hoverZone == HoverZone.INTO) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
         .padding(start = (4 + depth * 20).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        val allVisible = folderAllVisible(folder.id, allFolders, allLayers)
+        val allVisible = contents.isEmpty() || contents.all { it.visible }
         IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(40.dp)) {
             Icon(if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight, if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand))
         }
@@ -2021,9 +2025,19 @@ private fun FolderNode(
         Spacer(Modifier.width(6.dp))
         RowMenu(onRename = { onRename("folder", folder.id, folder.name) }, onMove = { onMove("folder", folder.id) },
             onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
-            onZoom = { onZoom("folder", folder.id) })
+            onZoom = { onZoom("folder", folder.id) },
+            onColor = if (contents.isEmpty()) null else ({ showColor = true }))
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
+    // Coche posee sur la couleur commune aux couches du dossier, s'il y en a une : autrement elles sont de
+    // plusieurs couleurs, et en designer une comme "celle du dossier" serait faux.
+    if (showColor) {
+        ColorPickerDialog(
+            current = contents.map { it.color }.distinct().singleOrNull() ?: "",
+            onPick = { vm.setFolderColor(folder.id, it); showColor = false },
+            onDismiss = { showColor = false },
+        )
+    }
     if (expanded) {
         // Spinner d'import entre la ligne du dossier et sa première couche (SPEC).
         if (folder.id in importingIds) ImportSpinnerRow(depth + 1)
@@ -2378,12 +2392,21 @@ private fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () -
 
 /** 3 points : menu contextuel (appui simple). */
 @Composable
-private fun RowMenu(onRename: () -> Unit, onMove: () -> Unit, onNewSub: (() -> Unit)?, onDelete: () -> Unit, onZoom: () -> Unit) {
+private fun RowMenu(
+    onRename: () -> Unit, onMove: () -> Unit, onNewSub: (() -> Unit)?, onDelete: () -> Unit, onZoom: () -> Unit,
+    // Propre au dossier, et seulement s'il porte des couches : une couche a deja sa pastille de couleur
+    // dans sa ligne, et un dossier vide n'a rien a colorer - l'entree disparait plutot que de ne rien faire.
+    onColor: (() -> Unit)? = null,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.action_zoom_to_layer)) }, onClick = { open = false; onZoom() })
+            if (onColor != null) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
+                    onClick = { open = false; onColor() })
+            }
             DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { open = false; onRename() })
             DropdownMenuItem(text = { Text(stringResource(R.string.action_move)) }, onClick = { open = false; onMove() })
             if (onNewSub != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_new_subfolder)) }, onClick = { open = false; onNewSub() })
@@ -2512,18 +2535,16 @@ private fun niceDistance(max: Double): Double {
     return when { max / pow >= 5 -> 5 * pow; max / pow >= 2 -> 2 * pow; else -> pow }
 }
 
-/** Vrai si toutes les couches du dossier (et de ses sous-dossiers) sont visibles (vrai aussi si aucune couche). */
-private fun folderAllVisible(folderId: Long, folders: List<FolderEntity>, layers: List<LayerEntity>): Boolean {
+/** Les couches que porte un dossier, sous-dossiers compris : ce sur quoi portent ses actions (oeil,
+ *  couleur, cadrage). Cote base, cf. MainViewModel.descendantFolderIds. */
+internal fun layersUnder(folderId: Long, folders: List<FolderEntity>, layers: List<LayerEntity>): List<LayerEntity> {
     val ids = HashSet<Long>(); val stack = ArrayDeque<Long>(); stack.add(folderId)
     while (stack.isNotEmpty()) { val f = stack.removeLast(); if (ids.add(f)) folders.filter { it.parentId == f }.forEach { stack.add(it.id) } }
-    val ls = layers.filter { it.folderId in ids }
-    return ls.isEmpty() || ls.all { it.visible }
+    return layers.filter { it.folderId in ids }
 }
 
 private fun folderBbox(folderId: Long, folders: List<FolderEntity>, layers: List<LayerEntity>): DoubleArray? {
-    val ids = HashSet<Long>(); val stack = ArrayDeque<Long>(); stack.add(folderId)
-    while (stack.isNotEmpty()) { val f = stack.removeLast(); if (ids.add(f)) folders.filter { it.parentId == f }.forEach { stack.add(it.id) } }
-    val ls = layers.filter { it.folderId in ids }
+    val ls = layersUnder(folderId, folders, layers)
     val w = ls.map { it.west }.filter { it != 0.0 }.minOrNull() ?: return null
     val s = ls.map { it.south }.filter { it != 0.0 }.minOrNull() ?: return null
     val e = ls.map { it.east }.filter { it != 0.0 }.maxOrNull() ?: return null

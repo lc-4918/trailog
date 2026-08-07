@@ -40,6 +40,7 @@
     <string name="action_show">Einblenden</string>
     <string name="action_show_folder">Ordner einblenden</string>
     <string name="action_zoom_to_layer">Auf Ebene zoomen</string>
+    <string name="action_color_layers">Farbe aller Ebenen</string>
     <string name="action_center_on_location">Auf meinen Standort zentrieren</string>
     <string name="action_reset_avatar">Avatar zurücksetzen</string>
     <string name="action_pin_image">Als Titelbild anheften</string>
