@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,6 +61,7 @@ fun GeocodeBubble(
     imperial: Boolean,
     onDistanceFromPosition: () -> Unit,
     onDistanceFromPoint: () -> Unit,
+    onShowProfile: (MeasureKind) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     fontSp: Int = 14,
@@ -89,9 +91,11 @@ fun GeocodeBubble(
                 }
             }
             MeasureRow(stringResource(R.string.geocode_distance_from_position), positionMeasure,
-                profileLabel, imperial, fontSp, onDistanceFromPosition)
+                profileLabel, imperial, fontSp, onDistanceFromPosition,
+                { onShowProfile(MeasureKind.POSITION) })
             MeasureRow(stringResource(R.string.geocode_distance_from_point), pointMeasure,
-                profileLabel, imperial, fontSp, onDistanceFromPoint)
+                profileLabel, imperial, fontSp, onDistanceFromPoint,
+                { onShowProfile(MeasureKind.POINT) })
         }
     }
 }
@@ -105,6 +109,7 @@ private fun MeasureRow(
     imperial: Boolean,
     fontSp: Int,
     onClick: () -> Unit,
+    onShowProfile: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -127,7 +132,22 @@ private fun MeasureRow(
                     color = MaterialTheme.colorScheme.primary, maxLines = 1,
                 )
                 RouteInfoButton(profileLabel)
+                // Bouton de profil seulement si le moteur a rendu des altitudes : sans elles le graphique
+                // serait une ligne plate, et l'application refuse déjà ce profil-là pour les traces.
+                if (measure.track?.hasZ == true) ProfileButton(onShowProfile)
             }
+        }
+    }
+}
+
+/** Ouvre le profil altimétrique de l'itinéraire mesuré, au bas de l'écran. Même gabarit que le "i" qui le
+ *  précède, pour que les deux se lisent comme une paire d'appels et non comme des boutons de tailles. */
+@Composable
+private fun ProfileButton(onClick: () -> Unit) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        IconButton(onClick = onClick, modifier = Modifier.size(20.dp)) {
+            Icon(Icons.Filled.Timeline, stringResource(R.string.content_desc_route_profile),
+                modifier = Modifier.size(17.dp), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

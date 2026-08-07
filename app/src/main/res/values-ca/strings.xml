@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Cap itinerari</string>
     <string name="geocode_route_info">Itinerari recomanat per a: %1$s. No és una distància en línia recta.</string>
     <string name="content_desc_route_info">Sobre aquesta distància</string>
+    <string name="content_desc_route_profile">Perfil de la ruta</string>
+    <string name="geocode_profile_from_position">Ruta des de la ubicació</string>
+    <string name="geocode_profile_from_point">Ruta des d\'un punt</string>
     <string name="profile_road_bike">Bicicleta de carretera</string>
     <string name="profile_gravel">Gravel</string>
     <string name="profile_hybrid_bike">Bicicleta híbrida</string>

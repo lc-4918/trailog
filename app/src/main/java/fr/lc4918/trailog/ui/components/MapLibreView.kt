@@ -22,7 +22,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.map.offline.Bbox
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -446,31 +448,36 @@ class MapController {
     }
 
     /**
-     * Tracés noirs des itinéraires mesurés depuis l'infobulle d'un lieu (zéro, un ou deux : depuis la
-     * position, depuis un point choisi). Une seule source pour les deux : ils ont même style et changent
-     * ensemble, deux couches n'apporteraient qu'un ordre d'empilement à tenir.
+     * Tracés des itinéraires mesurés depuis l'infobulle d'un lieu (zéro, un ou deux : depuis la position,
+     * depuis un point choisi). Une seule source pour les deux : ils ont même style et changent ensemble,
+     * deux couches n'apporteraient qu'un ordre d'empilement à tenir.
+     *
+     * Noirs par défaut ; teintés par classe de pente ([colorBySlope]) quand le moteur a rendu des altitudes,
+     * avec la rampe et les classes du profil (cf. [SlopeRamp]) - une même couleur y désigne donc la même
+     * pente, en haut sur le graphique et en bas sur la carte.
+     *
+     * La couleur voyage dans une propriété de chaque tronçon et non dans le style : le style est fixe, et
+     * les couleurs, elles, changent à chaque mesure.
      *
      * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
      * doit pas passer devant le marqueur qui le termine.
      */
-    fun setRouteLines(shapes: List<List<Pair<Double, Double>>>) {
+    fun setRouteLines(tracks: List<ComputedTrack>, colorBySlope: Boolean) {
         val s = style ?: return
-        val drawable = shapes.filter { it.size >= 2 }
+        val drawable = tracks.filter { it.samples.size >= 2 }
         if (drawable.isEmpty()) {
             s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
             s.getSource(ROUTE_SRC)?.let { s.removeSource(it) }
             return
         }
-        val features = drawable.joinToString(",") { line ->
-            val coords = line.joinToString(",") { (lon, lat) -> "[$lon,$lat]" }
-            """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},"properties":{}}"""
-        }
+        val features = drawable.joinToString(",") { routeFeatures(it, colorBySlope) }
         val geojson = """{"type":"FeatureCollection","features":[$features]}"""
         val existing = s.getSourceAs<GeoJsonSource>(ROUTE_SRC)
         if (existing == null) {
             s.addSource(GeoJsonSource(ROUTE_SRC, geojson))
             val layer = LineLayer(ROUTE_LINE, ROUTE_SRC).withProperties(
-                PropertyFactory.lineColor("#000000"), PropertyFactory.lineWidth(4f),
+                PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+                PropertyFactory.lineWidth(4f),
                 PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
                 .withFilter(lineGeometryFilter)
             val belowPin = listOf(GEO_PLACE, GEO_REF).firstOrNull { s.getLayer(it) != null }
@@ -478,6 +485,33 @@ class MapController {
         } else {
             existing.setGeoJson(geojson)
         }
+    }
+
+    /**
+     * Tronçons d'un itinéraire : un seul quand il est d'une teinte, sinon un par plage de pente de même
+     * classe. Les plages **partagent leur point de jonction**, sans quoi la ligne s'ouvrirait d'un trou à
+     * chaque changement de couleur.
+     */
+    private fun routeFeatures(track: ComputedTrack, colorBySlope: Boolean): String {
+        val pts = track.samples
+        fun feature(from: Int, to: Int, color: String): String {
+            val coords = (from..to).joinToString(",") { "[${pts[it].lon},${pts[it].lat}]" }
+            return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},""" +
+                """"properties":{"color":"$color"}}"""
+        }
+        if (!colorBySlope || !track.hasZ) return feature(0, pts.lastIndex, "#000000")
+        val max = track.stats.maxAbsSlope
+        val out = StringBuilder()
+        var i = 0
+        while (i < pts.lastIndex) {
+            val color = SlopeRamp.hexFor(pts[i + 1].slope, max)
+            var j = i + 1
+            while (j < pts.lastIndex && SlopeRamp.hexFor(pts[j + 1].slope, max) == color) j++
+            if (out.isNotEmpty()) out.append(',')
+            out.append(feature(i, j, color))
+            i = j
+        }
+        return out.toString()
     }
 
     /** Croix "+" simple : les deux traits se croisent exactement au centre (le point exact posé),

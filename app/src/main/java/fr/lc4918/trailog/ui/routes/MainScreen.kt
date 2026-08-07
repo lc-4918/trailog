@@ -112,6 +112,7 @@ import fr.lc4918.trailog.ui.components.MapPromptBar
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
+import fr.lc4918.trailog.ui.geocode.MeasureKind
 import fr.lc4918.trailog.ui.geocode.MeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
@@ -129,8 +130,10 @@ import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -325,11 +328,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val imperialUnits = settings?.units == "imperial"
     val routingProfile = RoutingProfile.of(settings?.routingProfile)
     val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
+    // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire mesuré n'a pas de raison
+    // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
+    val profileSmoothingM = (settings?.profileSmoothingM ?: 5).toDouble()
 
-    /** Un itinéraire depuis (lat, lon) jusqu'au lieu trouvé, traduit en état affichable. */
+    /**
+     * Un itinéraire depuis (lat, lon) jusqu'au lieu trouvé, traduit en état affichable.
+     *
+     * Les points rendus par le moteur passent par le même calcul que les traces importées : distance
+     * cumulée, lissage de l'altitude au réglage de l'utilisateur, pente par point. La ligne sur la carte,
+     * sa teinte et le profil sortent ensuite tous les trois de ces mêmes points.
+     *
+     * Aucune décimation (contrairement aux traces, ramenées à 2000 points) : ici les points dessinent aussi
+     * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché. Le moteur en
+     * rend un tous les 17 m environ, densité qu'il n'y a de toute façon pas lieu de réduire.
+     */
     suspend fun measureTo(fromLat: Double, fromLon: Double, place: fr.lc4918.trailog.geocode.GeocodePlace): MeasureState {
         val r = Valhalla.route(routingUrl, fromLat, fromLon, place.lat, place.lon, routingProfile)
-        return if (r == null) MeasureState.Failed else MeasureState.Done(r.meters, r.seconds, r.shape)
+            ?: return MeasureState.Failed
+        val track = withContext(Dispatchers.Default) {
+            if (r.points.size < 2) null
+            else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
+        }
+        return MeasureState.Done(r.meters, r.seconds, track)
     }
 
     // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
@@ -471,14 +492,31 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(geo.refPoint, styleTick, markerPx) {
         controller.setGeocodeMarker(true, geo.refPoint?.first, geo.refPoint?.second, markerPx)
     }
-    // Traces noirs des itineraires mesures. Poses apres les epingles (memes cles de relance) pour qu'ils
-    // trouvent leurs calques et se glissent dessous.
-    LaunchedEffect(geo.routeShapes, styleTick) { controller.setRouteLines(geo.routeShapes) }
-    LaunchedEffect(cursor, computed) {
-        val idx = cursor; val s = computed?.samples
+    // Traces des itineraires mesures, teintes par classe de pente comme l'aire du profil quand le reglage
+    // le demande. Poses apres les epingles (memes cles de relance) pour qu'ils trouvent leurs calques et se
+    // glissent dessous.
+    // Relancés sur le numéro d'ordre des mesures et non sur les itinéraires eux-mêmes : cf. measureRevision.
+    val routeSlopeTint = settings?.profileSlope != false
+    LaunchedEffect(geo.measureRevision, styleTick, routeSlopeTint) {
+        controller.setRouteLines(geo.routeTracks, routeSlopeTint)
+    }
+    // Profil de l'itinéraire mesuré, quand il est ouvert. Il exclut celui d'une trace (cf. plus bas) :
+    // les deux occupent le bas de l'écran, et un seul curseur peut être posé sur la carte.
+    val routeTrack = geo.profileOf?.let { geo.trackOf(it) }
+    // Dernier itinéraire profilé, gardé le temps que le panneau finisse de se replier (cf. lastComputed
+    // pour les traces) : sans lui la fermeture montrerait un panneau vide qui se rétracte.
+    var lastRouteTrack by remember { mutableStateOf<ComputedTrack?>(null) }
+    LaunchedEffect(geo.measureRevision, geo.profileOf) { if (routeTrack != null) lastRouteTrack = routeTrack }
+    LaunchedEffect(cursor, computed, geo.profileCursor, geo.measureRevision, geo.profileOf) {
+        val s = routeTrack?.samples ?: computed?.samples
+        val idx = if (routeTrack != null) geo.profileCursor else cursor
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
         else controller.clearCursor()
     }
+    // Taper une trace ferme le profil d'itinéraire ; ouvrir celui d'un itinéraire ferme celui d'une trace
+    // (cf. onShowProfile de l'infobulle). Deux sens, deux endroits : le second est un geste explicite, le
+    // premier une conséquence d'un tap sur la carte, que le modèle de vue ignore.
+    LaunchedEffect(activeLayerId) { if (activeLayerId != null) geo.closeProfile() }
     // Synchronisation carte <-> zoom du profil : on recadre UNIQUEMENT sur l'emprise de la portion zoomée
     // (sélection A/B). Un simple tap sur une trace, sans zoom actif, ne déplace jamais la carte : on garde la
     // vue courante de l'utilisateur (pas de "zoom global" sur toute la trace, qui recadrait brutalement et
@@ -818,6 +856,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     imperial = imperialUnits,
                                     onDistanceFromPosition = { onDistanceFromPositionTap() },
                                     onDistanceFromPoint = { onDistanceFromPointTap() },
+                                    onShowProfile = { kind -> vm.closeProfile(); geo.openProfile(kind) },
                                     onClose = { geo.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
@@ -860,9 +899,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
                 }
-                // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
-                // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
-                if (activeLayerId == null && settings?.showScale != false) {
+                // échelle graphique (uniquement quand aucun profil n'est actif, trace ou itinéraire) :
+                // décalée au-dessus de la barre de tracé bbox tant qu'elle est affichée, pour ne pas être
+                // recouverte.
+                if (activeLayerId == null && routeTrack == null && settings?.showScale != false) {
                     val scaleBarModifier = if (offlineDrawingActive) {
                         val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
                         Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
@@ -873,6 +913,27 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
                     }
                     ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
+                }
+                // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit de l'écran. On
+                // calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et non le rayon plein, qui n'est
+                // atteint que tout en bas) : le label est remonté par la barre de navigation, l'angle y mord
+                // donc bien moins.
+                //   - r = rayon de l'angle (px, API 31+, sinon 0 = écran plat)
+                //   - dy = distance verticale du label au bord bas de l'écran (barre de nav + ~6 px entre la
+                //     ligne de base du label et le bas du tracé)
+                //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
+                //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
+                // Commun aux deux profils (trace et itinéraire mesuré), qui se posent au même endroit.
+                val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+                val lastLabelInsetPx = remember(view, navBottomPx) {
+                    val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                        view.rootWindowInsets?.getRoundedCorner(android.view.RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
+                    else 0).toFloat()
+                    if (r <= 0f) 0f else {
+                        val dy = navBottomPx + 6f
+                        val intrusion = if (dy >= r) 0f else r - kotlin.math.sqrt(r * r - (r - dy) * (r - dy))
+                        (intrusion - with(density) { 10.dp.toPx() }).coerceAtLeast(0f)
+                    }
                 }
                 // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
                 // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
@@ -902,8 +963,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
                 // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
                 // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
-                val cIdx = cursorInWindow; val cSamples = windowSamples
-                if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
+                // Valent pour le profil affiché, quel qu'il soit : celui d'une trace ou celui d'un itinéraire
+                // mesuré. Les deux s'excluent, une seule hauteur de panneau est donc à connaître.
+                val cSamples = routeTrack?.samples ?: windowSamples
+                val cIdx = if (routeTrack != null) geo.profileCursor else cursorInWindow
+                if ((routeTrack != null || computed != null) && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
                     val imp = settings?.units == "imperial"
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
                     Text(cursorInfoText(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
@@ -974,26 +1038,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             if (shown != null && !shown.hasZ && !profileLoading) {
                                 NoElevationBanner(Modifier.fillMaxSize())
                             } else if (windowSamples != null && windowStats != null && !profileLoading) {
-                                // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit
-                                // de l'écran. On calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et
-                                // non le rayon plein, qui n'est atteint que tout en bas) : le label est remonté
-                                // par la barre de navigation, l'angle y mord donc bien moins.
-                                //   - r = rayon de l'angle (px, API 31+, sinon 0 = écran plat)
-                                //   - dy = distance verticale du label au bord bas de l'écran (barre de nav +
-                                //     ~6 px entre la ligne de base du label et le bas du tracé)
-                                //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
-                                //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
-                                val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
-                                val lastLabelInsetPx = remember(view, navBottomPx) {
-                                    val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                                        view.rootWindowInsets?.getRoundedCorner(android.view.RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
-                                    else 0).toFloat()
-                                    if (r <= 0f) 0f else {
-                                        val dy = navBottomPx + 6f
-                                        val intrusion = if (dy >= r) 0f else r - kotlin.math.sqrt(r * r - (r - dy) * (r - dy))
-                                        (intrusion - with(density) { 10.dp.toPx() }).coerceAtLeast(0f)
-                                    }
-                                }
                                 ElevationProfile(
                                     samples = windowSamples, stats = windowStats,
                                     grid = settings?.profileGrid ?: true,
@@ -1011,6 +1055,34 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 CircularProgressIndicator()
                             }
                         }
+                    }
+                }
+                // Profil de l'itinéraire mesuré, au même endroit et dans la même forme que celui d'une
+                // trace. Il n'a ni spinner (l'itinéraire est déjà calculé quand le bouton apparaît) ni zoom
+                // A/B (le parcours est court et d'un seul tenant), mais il se ferme, lui, d'une croix : rien
+                // ne le désigne sur la carte, où un tap ne le rouvrirait pas.
+                AnimatedVisibility(
+                    visible = routeTrack != null, enter = expandVertically(), exit = shrinkVertically(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
+                    // Retenu pendant l'animation de fermeture : sans cela le panneau se replierait vide.
+                    val t = routeTrack ?: lastRouteTrack
+                    if (t != null) {
+                        RouteProfilePanel(
+                            track = t,
+                            title = stringResource(
+                                if (geo.profileOf == MeasureKind.POINT) R.string.geocode_profile_from_point
+                                else R.string.geocode_profile_from_position
+                            ),
+                            settings = settings,
+                            imperial = imperialUnits,
+                            lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
+                            cursorIndex = geo.profileCursor,
+                            lastLabelInsetPx = lastLabelInsetPx,
+                            onScrub = { geo.moveProfileCursor(it) },
+                            onClose = { geo.closeProfile() },
+                            modifier = Modifier.onGloballyPositioned { profileBarHeightPx = it.size.height },
+                        )
                     }
                 }
             }
@@ -1672,6 +1744,71 @@ private fun NoElevationBanner(modifier: Modifier = Modifier) {
         ) {
             Text(stringResource(R.string.profile_no_elevation), color = NoElevationText,
                 textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp))
+        }
+    }
+}
+
+/**
+ * Panneau de profil d'un itinéraire mesuré depuis l'infobulle d'un lieu.
+ *
+ * Reprend la forme du profil d'une trace - mêmes réglages d'apparence, même légende, même graphique - pour
+ * qu'une pente s'y lise de la même façon. Trois différences, toutes tenant à la nature de l'objet : pas de
+ * spinner (l'itinéraire est calculé avant que le bouton n'apparaisse), pas de zoom A/B (un parcours court,
+ * d'un seul tenant), et une croix de fermeture, car rien sur la carte ne permettrait de le rouvrir.
+ *
+ * Aucun garde-fou sur l'altimétrie : le bouton qui ouvre ce panneau n'existe que si le moteur a rendu des
+ * altitudes (cf. GeocodeBubble).
+ */
+@Composable
+private fun RouteProfilePanel(
+    track: ComputedTrack,
+    title: String,
+    settings: SettingsEntity?,
+    imperial: Boolean,
+    lineColor: Color,
+    cursorIndex: Int?,
+    lastLabelInsetPx: Float,
+    onScrub: (Int) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.fillMaxWidth().background(Color.White).padding(horizontal = 8.dp).navigationBarsPadding(),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ProfileTitleRow(Modifier.weight(1f)) {
+                Text(title, fontSize = (settings?.profTitleFont ?: 13).sp,
+                    fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                TitleInfosRow(
+                    titleInfos(track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial),
+                    fontSize = settings?.profBarFont ?: 11,
+                    bold = settings?.profBarBold == true)
+            }
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
+                }
+            }
+        }
+        if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+            SlopeLegend(track.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                bold = settings?.profLegendBold == true)
+        }
+        Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+            ElevationProfile(
+                samples = track.samples, stats = track.stats,
+                grid = settings?.profileGrid ?: true,
+                slope = settings?.profileSlope ?: true,
+                lineColor = lineColor,
+                axisFontSp = settings?.profAxisFont ?: 9,
+                axisBold = settings?.profAxisBold == true,
+                cursorIndex = cursorIndex, onScrub = onScrub,
+                lastLabelInsetPx = lastLabelInsetPx,
+                verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+            )
         }
     }
 }

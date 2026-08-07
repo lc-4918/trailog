@@ -4,7 +4,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.geocode.GeocodePlace
+
+/** Laquelle des deux mesures : depuis la position du porteur, ou depuis un point posé à la main. */
+enum class MeasureKind { POSITION, POINT }
 
 /** Où en est une mesure de distance. Null = jamais demandée : le bouton est alors seul, sans rien à droite. */
 sealed interface MeasureState {
@@ -12,11 +16,15 @@ sealed interface MeasureState {
     data object Loading : MeasureState
     /** Aucun itinéraire : points non reliés dans cette discipline, service muet, ou réseau absent. */
     data object Failed : MeasureState
-    /** [shape] : le trace, en (lon, lat), tel que rendu par le moteur ; vide s'il n'en a pas fourni. */
+    /**
+     * [track] : l'itinéraire mesuré, prêt à dessiner - points, altitudes et pentes. Null si le moteur n'a
+     * rendu aucune géométrie exploitable ; `hasZ` faux s'il n'a pas rendu d'altitudes, auquel cas la ligne
+     * reste traçable mais le profil est refusé (il serait plat et muet).
+     */
     data class Done(
         val meters: Double,
         val seconds: Double,
-        val shape: List<Pair<Double, Double>> = emptyList(),
+        val track: ComputedTrack? = null,
     ) : MeasureState
 }
 
@@ -63,12 +71,42 @@ class GeocodeSearchState {
     var positionOrigin by mutableStateOf<Pair<Double, Double>?>(null)
         private set
 
+    /**
+     * Profil ouvert, et sur laquelle des deux mesures. Null = aucun panneau de profil affiché.
+     *
+     * Ici et non dans le modèle de vue, où vivent les profils des traces importées : celui-ci ne décrit
+     * rien d'enregistré, il ne survit pas à la mesure qui l'a produit, et il disparaît avec elle.
+     */
+    var profileOf by mutableStateOf<MeasureKind?>(null)
+        private set
+
+    /** Index du curseur dans les points du profil ouvert (repère sur la carte + infos du point). */
+    var profileCursor by mutableStateOf<Int?>(null)
+        private set
+
+    /**
+     * Numéro d'ordre des mesures, incrémenté chaque fois que l'une d'elles change.
+     *
+     * Sert de clé de relance aux effets qui posent les itinéraires sur la carte. Les prendre eux-mêmes pour
+     * clé serait correct mais coûteux : un itinéraire porte plusieurs milliers de points, et Compose
+     * compare ses clés à chaque recomposition - soit, pendant un balayage du curseur du profil, une
+     * comparaison point par point soixante fois par seconde.
+     */
+    var measureRevision by mutableStateOf(0)
+        private set
+
     /** Traces des itineraires mesures, a poser sur la carte. Vide tant qu'aucune mesure n'a abouti. */
-    val routeShapes: List<List<Pair<Double, Double>>>
+    val routeTracks: List<ComputedTrack>
         get() = listOfNotNull(positionMeasure, pointMeasure)
             .filterIsInstance<MeasureState.Done>()
-            .map { it.shape }
-            .filter { it.size >= 2 }
+            .mapNotNull { it.track }
+            .filter { it.samples.size >= 2 }
+
+    /** L'itinéraire d'une mesure, s'il a abouti. */
+    fun trackOf(kind: MeasureKind): ComputedTrack? = (measure(kind) as? MeasureState.Done)?.track
+
+    private fun measure(kind: MeasureKind): MeasureState? =
+        if (kind == MeasureKind.POSITION) positionMeasure else pointMeasure
 
     /** L'infobulle s'efface le temps de choisir un point sur la carte, qu'elle recouvrirait. */
     val bubbleVisible: Boolean get() = place != null && !pickingPoint
@@ -103,7 +141,11 @@ class GeocodeSearchState {
         if (positionMeasure == MeasureState.Loading && positionOrigin == null) positionOrigin = lat to lon
     }
 
-    fun publishPositionMeasure(m: MeasureState) { positionMeasure = m }
+    fun publishPositionMeasure(m: MeasureState) {
+        positionMeasure = m
+        measureRevision++
+        forgetCursorOf(MeasureKind.POSITION)
+    }
 
     fun startPickingPoint() { pickingPoint = true }
 
@@ -115,7 +157,31 @@ class GeocodeSearchState {
         pickingPoint = false
     }
 
-    fun publishPointMeasure(m: MeasureState) { pointMeasure = m }
+    fun publishPointMeasure(m: MeasureState) {
+        pointMeasure = m
+        measureRevision++
+        forgetCursorOf(MeasureKind.POINT)
+    }
+
+    /** Le profil reste ouvert sur sa mesure, mais son curseur retombe : il désignait un point d'un autre
+     *  itinéraire, et son index ne veut plus rien dire dans le nouveau. */
+    private fun forgetCursorOf(kind: MeasureKind) {
+        if (profileOf == kind) profileCursor = null
+    }
+
+    fun openProfile(kind: MeasureKind) {
+        profileOf = kind
+        profileCursor = null
+    }
+
+    fun closeProfile() {
+        profileOf = null
+        profileCursor = null
+    }
+
+    /** Nommée ainsi et non `setProfileCursor` : ce nom-là est déjà celui du mutateur que Kotlin engendre
+     *  pour la propriété, et les deux se heurteraient sur la JVM. */
+    fun moveProfileCursor(index: Int?) { profileCursor = index }
 
     /** Ferme tout : la recherche, le lieu, ses mesures. */
     fun clear() {
@@ -130,5 +196,7 @@ class GeocodeSearchState {
         positionMeasure = null
         pointMeasure = null
         positionOrigin = null
+        measureRevision++
+        closeProfile()
     }
 }

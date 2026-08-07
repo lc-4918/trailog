@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Ibilbiderik ez</string>
     <string name="geocode_route_info">Gomendatutako ibilbidea: %1$s. Ez da lerro zuzeneko distantzia bat.</string>
     <string name="content_desc_route_info">Distantzia honi buruz</string>
+    <string name="content_desc_route_profile">Ibilbidearen profila</string>
+    <string name="geocode_profile_from_position">Ibilbidea kokapenetik</string>
+    <string name="geocode_profile_from_point">Ibilbidea puntu batetik</string>
     <string name="profile_road_bike">Errepideko bizikleta</string>
     <string name="profile_gravel">Gravel</string>
     <string name="profile_hybrid_bike">Bizikleta hibridoa</string>

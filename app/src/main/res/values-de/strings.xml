@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Keine Route</string>
     <string name="geocode_route_info">Empfohlene Route für: %1$s. Dies ist keine Luftlinie.</string>
     <string name="content_desc_route_info">Über diese Entfernung</string>
+    <string name="content_desc_route_profile">Höhenprofil der Route</string>
+    <string name="geocode_profile_from_position">Route ab Standort</string>
+    <string name="geocode_profile_from_point">Route ab einem Punkt</string>
     <string name="profile_road_bike">Rennrad</string>
     <string name="profile_gravel">Gravel</string>
     <string name="profile_hybrid_bike">Trekkingrad</string>

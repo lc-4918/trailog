@@ -1,18 +1,26 @@
 package fr.lc4918.trailog.routing
 
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 
-/** Longueur et durée d'un itinéraire, en mètres et en secondes, et son tracé en (lon, lat). */
+/**
+ * Longueur et durée d'un itinéraire, en mètres et en secondes, et son tracé.
+ *
+ * [points] porte les altitudes quand le moteur en a rendu (cf. [RouteElevation]) ; sinon les mêmes points,
+ * sans altitude. Un seul tracé, et non un couple géométrie/altitudes : tout ce qui le consomme - la ligne
+ * sur la carte, sa teinte de pente, le profil - a besoin des deux ensemble.
+ */
 data class RouteResult(
     val meters: Double,
     val seconds: Double,
-    val shape: List<Pair<Double, Double>> = emptyList(),
+    val points: List<TrackPoint> = emptyList(),
 )
 
 /**
@@ -31,6 +39,18 @@ object Valhalla {
 
     private const val TIMEOUT_MS = 15_000
 
+    /**
+     * Pas d'échantillonnage des altitudes, en mètres.
+     *
+     * 30 m parce que c'est la résolution des modèles de terrain que sert le moteur (SRTM et assimilés) :
+     * descendre plus bas n'ajoute aucun relief, seulement des points interpolés et du poids de réponse.
+     *
+     * Demandé à chaque mesure, et non lors de l'ouverture du profil : le tracé est déjà teinté par la pente
+     * quand il se pose sur la carte, et le profil s'ouvre alors sans attendre - c'est le parti que prend
+     * déjà l'application pour les traces importées, dont les profils sont calculés à l'import.
+     */
+    const val ELEVATION_INTERVAL_M = 30
+
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Modèle de coût et, pour le vélo, type de monture. Seule fonction à connaître le vocabulaire du moteur. */
@@ -48,17 +68,23 @@ object Valhalla {
      * `directions_type=none` coupe la génération du guidage vocal virage par virage : on ne veut qu'un total,
      * et la narration représente l'essentiel du poids de la réponse.
      *
+     * `elevation_interval` demande les altitudes du terrain le long de l'itinéraire ([elevationIntervalM],
+     * 0 pour ne pas les demander). Un moteur trop ancien, ou dépourvu de données de terrain, ignore le
+     * paramètre sans faillir : la réponse revient simplement sans altitudes.
+     *
      * Les coordonnées sont interpolées par `toString()`, insensible à la locale, et non par `format()`, qui
      * écrirait une virgule décimale en français et produirait un JSON invalide.
      */
     fun url(
         base: String, fromLat: Double, fromLon: Double, toLat: Double, toLon: Double, profile: RoutingProfile,
+        elevationIntervalM: Int = ELEVATION_INTERVAL_M,
     ): String {
         val (costing, bicycleType) = costingOf(profile)
         val options = if (bicycleType == null) ""
         else ""","costing_options":{"bicycle":{"bicycle_type":"$bicycleType"}}"""
+        val elevation = if (elevationIntervalM > 0) ""","elevation_interval":$elevationIntervalM""" else ""
         val body = """{"locations":[{"lat":$fromLat,"lon":$fromLon},{"lat":$toLat,"lon":$toLon}],""" +
-            """"costing":"$costing"$options,"units":"kilometers","directions_type":"none"}"""
+            """"costing":"$costing"$options,"units":"kilometers","directions_type":"none"$elevation}"""
         val sep = if ('?' in base) '&' else '?'
         return base.trimEnd('&', '?') + sep + "json=" + URLEncoder.encode(body, "UTF-8")
     }
@@ -70,15 +96,33 @@ object Valhalla {
      * Le tracé vient des segments, chacun encodé en polyligne (cf. [Polyline]) ; il est facultatif, et une
      * réponse qui n'en porterait pas donne quand même sa mesure. `directions_type=none` ne supprime que le
      * guidage rédigé, pas la géométrie.
+     *
+     * Les altitudes sont lues segment par segment, chacun ayant son propre pas d'échantillonnage, puis
+     * reportées sur les points du tracé (cf. [RouteElevation]).
      */
     fun parse(body: String): RouteResult? = runCatching {
         val trip = json.decodeFromString<Response>(body).trip
         val km = trip?.summary?.length
         val sec = trip?.summary?.time
         if (km == null || sec == null) return@runCatching null
-        val shape = trip.legs.flatMap { leg -> leg.shape?.let { Polyline.decode(it) } ?: emptyList() }
-        RouteResult(km * 1000.0, sec, shape)
+        val points = trip.legs.flatMap { leg ->
+            val shape = leg.shape?.let { Polyline.decode(it) } ?: emptyList()
+            RouteElevation.pointsOf(shape, elevationsOf(leg), leg.elevationInterval ?: 0.0)
+        }
+        RouteResult(km * 1000.0, sec, points)
     }.getOrNull()
+
+    /**
+     * Altitudes exploitables d'un segment, vide s'il n'y en a pas.
+     *
+     * Un trou dans le modèle de terrain (le moteur rend alors un `null`) fait rejeter **toute** la table du
+     * segment plutôt que de combler : une altitude inventée en travers d'un profil se lit comme une côte,
+     * et vaut moins qu'un itinéraire sans profil du tout.
+     */
+    private fun elevationsOf(leg: Leg): List<Double> {
+        val e = leg.elevation ?: return emptyList()
+        return if (e.any { it == null }) emptyList() else e.filterNotNull()
+    }
 
     /**
      * Calcule l'itinéraire. Null quand il n'y en a pas : les deux points ne sont reliés par aucune voie
@@ -97,6 +141,12 @@ object Valhalla {
         val summary: Summary? = null,
         val legs: List<Leg> = emptyList(),
     )
-    @Serializable internal data class Leg(val shape: String? = null)
+
+    /** [elevation] tolère les nulls : le moteur en rend là où son modèle de terrain n'a pas de donnée. */
+    @Serializable internal data class Leg(
+        val shape: String? = null,
+        val elevation: List<Double?>? = null,
+        @SerialName("elevation_interval") val elevationInterval: Double? = null,
+    )
     @Serializable internal data class Summary(val length: Double? = null, val time: Double? = null)
 }

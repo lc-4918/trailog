@@ -94,26 +94,70 @@ class ValhallaTest {
         assertNull(Valhalla.parse(""))
     }
 
-    /** Le trace vient des segments, decode en (lon, lat) : c'est lui qu'on pose en noir sur la carte. */
+    /** Le trace vient des segments, decode en (lon, lat) : c'est lui qu'on pose sur la carte. */
     @Test fun `le trace des segments est decode`() {
         val r = Valhalla.parse(
             """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[{"shape":"_p~iF~ps|U_ulLnnqC"}]}}""")
-        assertEquals(2, r!!.shape.size)
-        assertEquals(Polyline.decode("_p~iF~ps|U_ulLnnqC"), r.shape)
+        assertEquals(2, r!!.points.size)
+        assertEquals(Polyline.decode("_p~iF~ps|U_ulLnnqC"), r.points.map { it.lon to it.lat })
     }
 
     /** Un itineraire a plusieurs segments : leurs traces se suivent en un seul, pas un par segment. */
     @Test fun `les traces de plusieurs segments se suivent`() {
         val r = Valhalla.parse(
             """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[{"shape":"_p~iF~ps|U"},{"shape":"_p~iF~ps|U"}]}}""")
-        assertEquals(2, r!!.shape.size)
+        assertEquals(2, r!!.points.size)
     }
 
     /** La mesure ne depend pas de la geometrie : une reponse sans trace reste exploitable. */
     @Test fun `une reponse sans trace garde sa mesure`() {
         val r = Valhalla.parse("""{"trip":{"summary":{"time":60.0,"length":1.0}}}""")
         assertEquals(1000.0, r!!.meters, 1e-6)
-        assertTrue(r.shape.isEmpty())
+        assertTrue(r.points.isEmpty())
+    }
+
+    // ---------- Altitudes ----------
+
+    /** Sans ce parametre le moteur ne rend aucune altitude : ni profil, ni teinte de pente. */
+    @Test fun `la requete demande les altitudes`() {
+        assertTrue(""""elevation_interval":30""" in body(RoutingProfile.ROAD_BIKE))
+    }
+
+    @Test fun `un pas nul ne demande pas d'altitudes`() {
+        val u = Valhalla.url(Valhalla.DEFAULT_URL, 1.0, 2.0, 3.0, 4.0, RoutingProfile.FOOT, elevationIntervalM = 0)
+        assertTrue("elevation_interval" !in URLDecoder.decode(u, "UTF-8"))
+    }
+
+    /** Les altitudes sont echantillonnees a pas constant, pas une par point : elles sont reportees sur le
+     *  trace. Ici deux points aux extremites d'une table de trois altitudes. */
+    @Test fun `les altitudes sont reportees sur les points du trace`() {
+        val r = Valhalla.parse(
+            """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[""" +
+                """{"shape":"_p~iF~ps|U_ulLnnqC","elevation":[100.0,150.0,200.0],"elevation_interval":30.0}]}}""")
+        assertEquals(2, r!!.points.size)
+        assertEquals(100.0, r.points.first().ele!!, 1e-6)
+        // Le second point est a des dizaines de km : bien au-dela de la table, donc borne a sa derniere valeur.
+        assertEquals(200.0, r.points.last().ele!!, 1e-6)
+    }
+
+    /** Instance sans donnees de terrain, ou trop ancienne pour connaitre le parametre : le trace reste la. */
+    @Test fun `une reponse sans altitudes garde son trace`() {
+        val r = Valhalla.parse(
+            """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[{"shape":"_p~iF~ps|U_ulLnnqC"}]}}""")
+        assertEquals(2, r!!.points.size)
+        assertNull(r.points.first().ele)
+    }
+
+    /**
+     * Un trou dans le modele de terrain fait rejeter toute la table du segment. Combler donnerait une cote
+     * inventee au milieu du profil, ce qui se lit comme du relief - une absence de profil est plus honnete.
+     */
+    @Test fun `un trou dans les altitudes fait renoncer a tout le segment`() {
+        val r = Valhalla.parse(
+            """{"trip":{"summary":{"time":60.0,"length":1.0},"legs":[""" +
+                """{"shape":"_p~iF~ps|U_ulLnnqC","elevation":[100.0,null,200.0],"elevation_interval":30.0}]}}""")
+        assertEquals(2, r!!.points.size)
+        assertNull(r.points.first().ele)
     }
 
     /** Valhalla enrichit ses reponses au fil de ses versions : les champs en trop sont ignores. */

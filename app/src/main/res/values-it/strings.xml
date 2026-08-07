@@ -88,6 +88,9 @@
     <string name="geocode_no_route">Nessun itinerario</string>
     <string name="geocode_route_info">Itinerario consigliato per: %1$s. Non è una distanza in linea d\'aria.</string>
     <string name="content_desc_route_info">Informazioni su questa distanza</string>
+    <string name="content_desc_route_profile">Profilo altimetrico del percorso</string>
+    <string name="geocode_profile_from_position">Percorso dalla posizione</string>
+    <string name="geocode_profile_from_point">Percorso da un punto</string>
     <string name="profile_road_bike">Bici da corsa</string>
     <string name="profile_gravel">Gravel</string>
     <string name="profile_hybrid_bike">Bici ibrida</string>

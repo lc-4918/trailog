@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Rampe de pente bleu->rouge (cyan/vert, jaune pur au milieu), portée depuis la lib JS. */
 object SlopeRamp {
@@ -33,5 +34,17 @@ object SlopeRamp {
         val maxIdx = min(floor(maxAbsSlope / classSize).toInt(), maxClasses - 1).coerceAtLeast(1)
         val idx = min(maxIdx, floor(abs(slope) / classSize).toInt())
         return at(idx.toFloat() / maxIdx)
+    }
+
+    /**
+     * Même couleur, écrite "#RRGGBB" pour une feuille de style de carte, qui ne connaît que des chaînes.
+     *
+     * Composée à partir des canaux plutôt que via `toArgb()` : la conversion resterait juste, mais elle
+     * passe par le graphisme Android, et cette fonction doit rester vérifiable sans émulateur.
+     */
+    fun hexFor(slope: Double, maxAbsSlope: Double, classSize: Double = 2.5, maxClasses: Int = 8): String {
+        val c = colorFor(slope, maxAbsSlope, classSize, maxClasses)
+        fun ch(v: Float) = (v * 255f).roundToInt().coerceIn(0, 255)
+        return "#%02X%02X%02X".format(ch(c.red), ch(c.green), ch(c.blue))
     }
 }

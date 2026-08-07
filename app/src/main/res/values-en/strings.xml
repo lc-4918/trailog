@@ -88,6 +88,9 @@
     <string name="geocode_no_route">No route</string>
     <string name="geocode_route_info">Recommended route for: %1$s. This is not a straight-line distance.</string>
     <string name="content_desc_route_info">About this distance</string>
+    <string name="content_desc_route_profile">Route elevation profile</string>
+    <string name="geocode_profile_from_position">Route from location</string>
+    <string name="geocode_profile_from_point">Route from a point</string>
     <string name="profile_road_bike">Road bike</string>
     <string name="profile_gravel">Gravel</string>
     <string name="profile_hybrid_bike">Hybrid bike</string>
