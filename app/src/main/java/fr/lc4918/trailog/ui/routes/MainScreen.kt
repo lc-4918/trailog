@@ -92,11 +92,9 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
-import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.net.ServiceUrl
-import fr.lc4918.trailog.routing.Valhalla
 import fr.lc4918.trailog.map.CoverageBounds
 import fr.lc4918.trailog.map.CoverageProbe
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
@@ -108,12 +106,9 @@ import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
-import fr.lc4918.trailog.ui.components.MapPromptBar
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
-import fr.lc4918.trailog.ui.geocode.MeasureKind
-import fr.lc4918.trailog.ui.geocode.MeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
@@ -125,15 +120,12 @@ import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
-import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -162,7 +154,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
     var offlineBarHeightPx by remember { mutableIntStateOf(0) }
     // Hauteur mesurée de la barre de consigne du géocodage, même usage que ci-dessus.
-    var promptBarHeightPx by remember { mutableIntStateOf(0) }
     // Hauteur mesurée du panneau de profil (superposé à la carte, qui garde toujours sa taille pleine),
     // pour décaler les infos du curseur juste au-dessus.
     var profileBarHeightPx by remember { mutableIntStateOf(0) }
@@ -302,9 +293,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
     val geo = remember { GeocodeSearchState() }
-    // Popup "la localisation n'est pas active" : propre à la mesure de distance, distincte de celle du
-    // capteur éteint (showLocationDisabledDialog), qui reste le second temps du même parcours.
-    var showLocationOffDialog by remember { mutableStateOf(false) }
     var showNoConnectionDialog by remember { mutableStateOf(false) }
 
     // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
@@ -324,69 +312,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
     // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
     LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
-
-    val imperialUnits = settings?.units == "imperial"
-    val routingProfile = RoutingProfile.of(settings?.routingProfile)
-    val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
-    // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire mesuré n'a pas de raison
-    // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
-    val profileSmoothingM = (settings?.profileSmoothingM ?: 5).toDouble()
-
-    /**
-     * Un itinéraire depuis (lat, lon) jusqu'au lieu trouvé, traduit en état affichable.
-     *
-     * Les points rendus par le moteur passent par le même calcul que les traces importées : distance
-     * cumulée, lissage de l'altitude au réglage de l'utilisateur, pente par point. La ligne sur la carte,
-     * sa teinte et le profil sortent ensuite tous les trois de ces mêmes points.
-     *
-     * Aucune décimation (contrairement aux traces, ramenées à 2000 points) : ici les points dessinent aussi
-     * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché. Le moteur en
-     * rend un tous les 17 m environ, densité qu'il n'y a de toute façon pas lieu de réduire.
-     */
-    suspend fun measureTo(fromLat: Double, fromLon: Double, place: fr.lc4918.trailog.geocode.GeocodePlace): MeasureState {
-        val r = Valhalla.route(routingUrl, fromLat, fromLon, place.lat, place.lon, routingProfile)
-            ?: return MeasureState.Failed
-        val track = withContext(Dispatchers.Default) {
-            if (r.points.size < 2) null
-            else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
-        }
-        return MeasureState.Done(r.meters, r.seconds, track)
-    }
-
-    // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
-    // capteur en livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
-    LaunchedEffect(geo.positionMeasure, lastUserLocation) {
-        if (geo.positionMeasure == MeasureState.Loading) {
-            lastUserLocation?.let { (la, lo) -> geo.fixPositionOrigin(la, lo) }
-        }
-    }
-    LaunchedEffect(geo.place, geo.positionOrigin, routingUrl, routingProfile) {
-        val p = geo.place ?: return@LaunchedEffect
-        val (la, lo) = geo.positionOrigin ?: return@LaunchedEffect
-        geo.publishPositionMeasure(MeasureState.Loading)
-        geo.publishPositionMeasure(measureTo(la, lo, p))
-    }
-    LaunchedEffect(geo.place, geo.refPoint, routingUrl, routingProfile) {
-        val p = geo.place ?: return@LaunchedEffect
-        val (lo, la) = geo.refPoint ?: return@LaunchedEffect
-        geo.publishPointMeasure(MeasureState.Loading)
-        geo.publishPointMeasure(measureTo(la, lo, p))
-    }
-
-    /** "Distance depuis la position" : mesure immédiate si le GPS tourne déjà, sinon on propose de l'activer. */
-    fun onDistanceFromPositionTap() {
-        when {
-            ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
-            gpsActive -> geo.requestDistanceFromPosition()
-            else -> showLocationOffDialog = true
-        }
-    }
-
-    /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
-    fun onDistanceFromPointTap() {
-        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
-        else geo.startPickingPoint()
-    }
 
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
      *  champ dont aucune frappe ne rendra jamais rien laisserait croire à un service muet. */
@@ -418,16 +343,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         controller.onCameraMove = { bearingTick++ }
         controller.onUserMoveBegin = { if (gpsActive) gpsButtonDimmed = true }
     }
-    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix du point de référence d'une
-    // mesure de distance) : tout tap leur revient, y compris sur une trace ou un marqueur, qui n'ouvrent
-    // alors ni profil ni infobulle. Hors de ces modes, la sélection habituelle reprend.
-    LaunchedEffect(controller, offlineDrawingActive, geo.pickingPoint) {
+    // Mode de saisie exclusif (tracé de la bounding box hors-ligne) : tout tap lui revient, y compris sur
+    // une trace ou un marqueur, qui n'ouvrent alors ni profil ni infobulle. Hors de ce mode, la sélection
+    // habituelle reprend.
+    LaunchedEffect(controller, offlineDrawingActive) {
         if (offlineDrawingActive) {
             controller.onRawTap = { lon, lat ->
                 if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
             }
-        } else if (geo.pickingPoint) {
-            controller.onRawTap = { lon, lat -> geo.setRefPoint(lon, lat) }
         } else {
             controller.onRawTap = null
             controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
@@ -489,34 +412,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(geo.place, styleTick, markerPx) {
         controller.setGeocodeMarker(false, geo.place?.lon, geo.place?.lat, markerPx)
     }
-    LaunchedEffect(geo.refPoint, styleTick, markerPx) {
-        controller.setGeocodeMarker(true, geo.refPoint?.first, geo.refPoint?.second, markerPx)
-    }
-    // Traces des itineraires mesures, teintes par classe de pente comme l'aire du profil quand le reglage
-    // le demande. Poses apres les epingles (memes cles de relance) pour qu'ils trouvent leurs calques et se
-    // glissent dessous.
-    // Relancés sur le numéro d'ordre des mesures et non sur les itinéraires eux-mêmes : cf. measureRevision.
-    val routeSlopeTint = settings?.profileSlope != false
-    LaunchedEffect(geo.measureRevision, styleTick, routeSlopeTint) {
-        controller.setRouteLines(geo.routeTracks, routeSlopeTint)
-    }
-    // Profil de l'itinéraire mesuré, quand il est ouvert. Il exclut celui d'une trace (cf. plus bas) :
-    // les deux occupent le bas de l'écran, et un seul curseur peut être posé sur la carte.
-    val routeTrack = geo.profileOf?.let { geo.trackOf(it) }
-    // Dernier itinéraire profilé, gardé le temps que le panneau finisse de se replier (cf. lastComputed
-    // pour les traces) : sans lui la fermeture montrerait un panneau vide qui se rétracte.
-    var lastRouteTrack by remember { mutableStateOf<ComputedTrack?>(null) }
-    LaunchedEffect(geo.measureRevision, geo.profileOf) { if (routeTrack != null) lastRouteTrack = routeTrack }
-    LaunchedEffect(cursor, computed, geo.profileCursor, geo.measureRevision, geo.profileOf) {
-        val s = routeTrack?.samples ?: computed?.samples
-        val idx = if (routeTrack != null) geo.profileCursor else cursor
+    LaunchedEffect(cursor, computed) {
+        val idx = cursor; val s = computed?.samples
         if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
         else controller.clearCursor()
     }
-    // Taper une trace ferme le profil d'itinéraire ; ouvrir celui d'un itinéraire ferme celui d'une trace
-    // (cf. onShowProfile de l'infobulle). Deux sens, deux endroits : le second est un geste explicite, le
-    // premier une conséquence d'un tap sur la carte, que le modèle de vue ignore.
-    LaunchedEffect(activeLayerId) { if (activeLayerId != null) geo.closeProfile() }
     // Synchronisation carte <-> zoom du profil : on recadre UNIQUEMENT sur l'emprise de la portion zoomée
     // (sélection A/B). Un simple tap sur une trace, sans zoom actif, ne déplace jamais la carte : on garde la
     // vue courante de l'utilisateur (pas de "zoom global" sur toute la trace, qui recadrait brutalement et
@@ -623,7 +523,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
-    BackHandler(enabled = geo.pickingPoint) { geo.cancelPickingPoint() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
     BackHandler(enabled = offlineDownload?.minimized == false) {
         val dl = offlineDownload
@@ -838,7 +737,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // Infobulles), calculé une fois la bulle mesurée. Elle ne recentre jamais la carte : la
                 // sélection vient de le faire, sur le lieu lui-même.
                 val gPlace = geo.place
-                if (gPlace != null && geo.bubbleVisible) {
+                if (gPlace != null) {
                     val gOff = remember(gPlace, idleTick) {
                         controller.screenOf(gPlace.lon, gPlace.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
@@ -850,13 +749,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             content = {
                                 GeocodeBubble(
                                     address = gPlace.label,
-                                    profileLabel = routingProfileLabel(routingProfile),
-                                    positionMeasure = geo.positionMeasure,
-                                    pointMeasure = geo.pointMeasure,
-                                    imperial = imperialUnits,
-                                    onDistanceFromPosition = { onDistanceFromPositionTap() },
-                                    onDistanceFromPoint = { onDistanceFromPointTap() },
-                                    onShowProfile = { kind -> vm.closeProfile(); geo.openProfile(kind) },
                                     onClose = { geo.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
@@ -875,14 +767,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
-                // Consigne du choix d'un point de référence : même barre que la saisie de la bbox hors-ligne.
-                if (geo.pickingPoint) {
-                    MapPromptBar(
-                        stringResource(R.string.geocode_pick_point_prompt),
-                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                            .onGloballyPositioned { promptBarHeightPx = it.size.height },
-                    )
-                }
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
@@ -899,15 +783,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
                 }
-                // échelle graphique (uniquement quand aucun profil n'est actif, trace ou itinéraire) :
-                // décalée au-dessus de la barre de tracé bbox tant qu'elle est affichée, pour ne pas être
-                // recouverte.
-                if (activeLayerId == null && routeTrack == null && settings?.showScale != false) {
+                // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
+                // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
+                if (activeLayerId == null && settings?.showScale != false) {
                     val scaleBarModifier = if (offlineDrawingActive) {
                         val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
-                        Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
-                    } else if (geo.pickingPoint) {
-                        val barHeightDp = with(density) { promptBarHeightPx.toDp() }
                         Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
                     } else {
                         Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
@@ -923,7 +803,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 //     ligne de base du label et le bas du tracé)
                 //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
                 //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
-                // Commun aux deux profils (trace et itinéraire mesuré), qui se posent au même endroit.
+                // Commun au profil d'une trace et à celui d'un itinéraire planifié, posés au même endroit.
                 val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
                 val lastLabelInsetPx = remember(view, navBottomPx) {
                     val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
@@ -963,11 +843,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
                 // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
                 // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
-                // Valent pour le profil affiché, quel qu'il soit : celui d'une trace ou celui d'un itinéraire
-                // mesuré. Les deux s'excluent, une seule hauteur de panneau est donc à connaître.
-                val cSamples = routeTrack?.samples ?: windowSamples
-                val cIdx = if (routeTrack != null) geo.profileCursor else cursorInWindow
-                if ((routeTrack != null || computed != null) && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
+                val cIdx = cursorInWindow; val cSamples = windowSamples
+                if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
                     val imp = settings?.units == "imperial"
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
                     Text(cursorInfoText(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
@@ -1055,34 +932,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 CircularProgressIndicator()
                             }
                         }
-                    }
-                }
-                // Profil de l'itinéraire mesuré, au même endroit et dans la même forme que celui d'une
-                // trace. Il n'a ni spinner (l'itinéraire est déjà calculé quand le bouton apparaît) ni zoom
-                // A/B (le parcours est court et d'un seul tenant), mais il se ferme, lui, d'une croix : rien
-                // ne le désigne sur la carte, où un tap ne le rouvrirait pas.
-                AnimatedVisibility(
-                    visible = routeTrack != null, enter = expandVertically(), exit = shrinkVertically(),
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                ) {
-                    // Retenu pendant l'animation de fermeture : sans cela le panneau se replierait vide.
-                    val t = routeTrack ?: lastRouteTrack
-                    if (t != null) {
-                        RouteProfilePanel(
-                            track = t,
-                            title = stringResource(
-                                if (geo.profileOf == MeasureKind.POINT) R.string.geocode_profile_from_point
-                                else R.string.geocode_profile_from_position
-                            ),
-                            settings = settings,
-                            imperial = imperialUnits,
-                            lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
-                            cursorIndex = geo.profileCursor,
-                            lastLabelInsetPx = lastLabelInsetPx,
-                            onScrub = { geo.moveProfileCursor(it) },
-                            onClose = { geo.closeProfile() },
-                            modifier = Modifier.onGloballyPositioned { profileBarHeightPx = it.size.height },
-                        )
                     }
                 }
             }
@@ -1244,24 +1093,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // oui fait aussi apparaître le bouton GPS sur la carte, sans quoi la position s'allumerait sans que
     // rien ne le montre ni ne permette de l'éteindre. La suite du parcours (permission, capteur éteint)
     // est celle du bouton lui-même, et la distance s'affiche dès la première position reçue.
-    if (showLocationOffDialog) {
-        AlertDialog(
-            onDismissRequest = { showLocationOffDialog = false },
-            title = { Text(stringResource(R.string.dialog_location_off_title)) },
-            text = { Text(stringResource(R.string.dialog_location_off_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLocationOffDialog = false
-                    vm.setShowGpsButton(true)
-                    geo.requestDistanceFromPosition()
-                    onGpsButtonTap()
-                }) { Text(stringResource(R.string.action_yes)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLocationOffDialog = false }) { Text(stringResource(R.string.action_no)) }
-            },
-        )
-    }
 
     if (showLocationDisabledDialog) {
         AlertDialog(
