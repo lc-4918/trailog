@@ -88,6 +88,8 @@
     <string name="geocode_no_route">Keine Route</string>
     <string name="geocode_route_info">Empfohlene Route für: %1$s. Dies ist keine Luftlinie.</string>
     <string name="content_desc_route_info">Über diese Entfernung</string>
+    <string name="mappoint_address_none">Keine Adresse hier</string>
+    <string name="mappoint_address_failed">Adresse nicht verfügbar</string>
     <string name="measure_title">Auf einem Track messen</string>
     <string name="measure_pick_start">Startpunkt auf einem Track wählen</string>
     <string name="measure_pick_end">Endpunkt der Messung auf dem Track %1$s wählen</string>

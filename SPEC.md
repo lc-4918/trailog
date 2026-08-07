@@ -173,15 +173,29 @@ Les propositions sont classées par importance du lieu, sans biais de proximité
 centre de recherche, mais il ferait remonter un hameau voisin devant la ville du même nom.
 
 Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12) pour qu'il reste
-situable depuis une vue à l'échelle d'un pays ; son infobulle offre deux mesures, depuis la position GPS
-(qu'elle propose d'activer si besoin) ou depuis un point désigné sur la carte.
+situable depuis une vue à l'échelle d'un pays ; son infobulle en donne l'adresse, et rien de plus.
 
-Ces mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol d'oiseau
-(sans usage ici), pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied.
-Le moteur est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule instance via
-`bicycle_type` — OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé. Son URL est
-un réglage, comme celle du géocodeur. L'itinéraire calculé est tracé en noir sur la carte, sous les
-épingles : sa géométrie arrive dans la même réponse que le total, encodée en polyligne.
+### Point quelconque de la carte (appui long)
+
+Un appui long hors d'une trace et d'un marqueur pose une épingle et ouvre une infobulle qui répond à
+trois questions : quelle adresse est là, à quelle distance elle est de la position GPS, et à quelle
+distance elle est d'un second point désigné d'un tap.
+
+L'adresse vient du **géocodage inverse** de Photon, servi par un chemin frère de la recherche
+(`/reverse` là où celle-ci est `/api`) : c'est donc la même instance, et la même URL réglée. Ce
+géocodage-ci ne dépend pas de l'interrupteur de la recherche : il n'y a pas de bouton à cacher, et rien
+ne part tant que le doigt ne s'attarde pas (cf. [`CONTEXT.md`](CONTEXT.md)).
+
+Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
+d'oiseau (sans usage ici), pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT,
+à pied. Le moteur est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule instance
+via `bicycle_type` — OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé. Son URL
+est un réglage, comme celle du géocodeur. L'itinéraire calculé est tracé sur la carte, sous les épingles
+et teinté par classe de pente : sa géométrie arrive dans la même réponse que le total, encodée en
+polyligne.
+
+La mesure depuis la position n'est proposée que le capteur allumé, et son origine est **figée** à la
+première position reçue : la suivre lancerait une requête toutes les deux secondes.
 
 ### Mises à jour automatiques
 Non prévu en v1 : l'app lit un manifeste publié par sa propre CI, compare les versions, puis

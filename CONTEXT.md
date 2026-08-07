@@ -162,6 +162,20 @@ Consequence a connaitre : une mesure de distance est une **requete reseau**, la 
 coutait rien. L'origine de la mesure depuis la position est donc figee a la premiere position recue et ne
 suit pas le capteur : la suivre lancerait une requete toutes les deux secondes.
 
+### L'adresse d'un point n'attend pas le reglage du geocodage
+
+L'appui long sur la carte cherche l'adresse du point touche (geocodage **inverse**) meme si la recherche
+par le nom est eteinte, et vise alors l'instance par defaut.
+
+Pourquoi cette exception : le reglage sert a ne pas poser sur la carte un bouton de recherche dont la
+frappe n'aboutirait a rien. Ici il n'y a pas de bouton, et rien ne part tant que le doigt ne s'attarde pas
+sur un endroit precis - le geste EST la demande. Le cacher derriere un interrupteur reviendrait a rendre
+muet un appui long, sans que rien a l'ecran ne dise pourquoi.
+
+Le prix a connaitre : c'est le seul endroit ou l'application interroge un service tiers sans que
+l'utilisateur l'ait autorise dans ses reglages. Il reste maitre de l'instance visee (la meme URL, sa
+terminaison changee) et, a defaut, du geste : on ne s'attarde pas par accident.
+
 ### Mises a jour : manifeste en asset de Release
 
 La CI joint `latest-release.json` a la Release ; l'app le lit a l'URL stable

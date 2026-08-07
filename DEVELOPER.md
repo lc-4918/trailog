@@ -52,6 +52,9 @@ app/src/main/java/fr/lc4918/trailog/
    ├─ routes/                    MainScreen, MainViewModel
    ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement
    ├─ geocode/                   barre de recherche, infobulle du lieu, etat de la recherche
+   ├─ mappoint/                  point designe par un appui long : adresse et mesures de distance
+   ├─ measure/                   mesure d'une distance entre deux points d'une trace
+   ├─ planner/                   bande du planificateur d'itineraire, etat de ses etapes
    ├─ offline/                   Saisie de la zone et configuration du téléchargement
    ├─ settings/                  SettingsScreen, SettingsViewModel
    ├─ theme/                     Theme.kt

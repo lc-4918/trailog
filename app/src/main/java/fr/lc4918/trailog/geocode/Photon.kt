@@ -57,6 +57,33 @@ object Photon {
         return sb.toString()
     }
 
+    /**
+     * URL de géocodage **inverse** : quelle adresse se trouve en ce point.
+     *
+     * Photon sert l'inverse sur un chemin frère de la recherche, `/reverse` là où celle-ci est `/api`. C'est
+     * donc l'URL réglée par l'utilisateur qui le désigne, sa terminaison remplacée : une instance
+     * auto-hébergée expose les deux au même endroit, et lui demander une seconde URL pour la même instance
+     * serait deux fois plus de chances de se tromper.
+     *
+     * La chaîne de requête d'une base déjà paramétrée (clé de service, chemin derrière un proxy) est
+     * conservée devant les paramètres du point.
+     *
+     * `limit=1` : on ne cherche pas les lieux autour du point mais le nom de ce point-là. Les coordonnées
+     * sont interpolées par `toString()`, insensible à la locale : `format()` écrirait une virgule décimale
+     * en français, que le service lirait comme un séparateur de valeurs.
+     */
+    fun reverseUrl(base: String, lon: Double, lat: Double, lang: String): String {
+        val cut = base.indexOf('?')
+        val path = (if (cut >= 0) base.substring(0, cut) else base).trimEnd('/')
+        val query = if (cut >= 0) base.substring(cut + 1).trim('&', '?') else ""
+        val l = if (lang in SUPPORTED_LANGS) lang else "en"
+        val sb = StringBuilder(if (path.endsWith("/api")) path.removeSuffix("api") + "reverse" else "$path/reverse")
+        sb.append('?')
+        if (query.isNotEmpty()) sb.append(query).append('&')
+        sb.append("lon=").append(lon).append("&lat=").append(lat).append("&limit=1&lang=").append(l)
+        return sb.toString()
+    }
+
     /** Lit la réponse GeoJSON. Une entrée sans coordonnées exploitables est ignorée plutôt que de faire
      *  échouer toute la liste : Photon renvoie occasionnellement des géométries non ponctuelles. */
     fun parse(body: String): List<GeocodePlace> = runCatching {
@@ -107,6 +134,23 @@ object Photon {
         base: String, query: String, lang: String, limit: Int,
     ): List<GeocodePlace>? = withContext(Dispatchers.IO) {
         val resp = TileHttp.fetch(url(base, query, lang, limit), TIMEOUT_MS, TIMEOUT_MS)
+        if (resp.status !in 200..299) return@withContext null
+        val body = resp.body ?: return@withContext null
+        parse(body.toString(Charsets.UTF_8))
+    }
+
+    /**
+     * Adresse d'un point (géocodage inverse), même distinction que [search] : **null** quand le service
+     * n'a pas répondu, liste vide quand il a répondu qu'il n'y avait rien là. Les deux appellent des mots
+     * différents dans l'infobulle - "réessayez" n'a aucun sens au milieu d'un lac.
+     *
+     * La réponse a la forme de celle d'une recherche, d'où la même lecture : une entrée, dont on ne retient
+     * que le libellé, le point étant déjà connu.
+     */
+    suspend fun reverse(
+        base: String, lon: Double, lat: Double, lang: String,
+    ): List<GeocodePlace>? = withContext(Dispatchers.IO) {
+        val resp = TileHttp.fetch(reverseUrl(base, lon, lat, lang), TIMEOUT_MS, TIMEOUT_MS)
         if (resp.status !in 200..299) return@withContext null
         val body = resp.body ?: return@withContext null
         parse(body.toString(Charsets.UTF_8))

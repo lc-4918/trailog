@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**261 tests, 30 fichiers**, tous verts.
+**311 tests, 35 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -203,23 +203,25 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 |---|---|---|
 | `BubblePlacementTest` | 9 | placement de l'infobulle autour du marqueur, bornes d'ecran |
 | `BasemapHoverTargetTest` | 5 | cible de depot du drag & drop du gestionnaire de fonds |
-| `GeocodeSearchStateTest` | 10 | transitions de la recherche de lieu (bulle, mesures, mode de saisie) |
+| `GeocodeSearchStateTest` | 5 | transitions de la recherche de lieu (barre de saisie, lieu retenu) |
+| `MapPointStateTest` | 9 | transitions du point designe par un appui long (adresse, mesures, mode de saisie) |
 
 Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
 gestionnaire n'etait pas couvert du tout.
 
-`GeocodeSearchStateTest` porte sur les transitions, pas sur les valeurs : ce sont elles qui se trompent
-sans rien casser. Une infobulle laissee affichee recouvre la carte au moment de choisir un point ; une
-mesure oubliee au changement de lieu affiche une distance calculee vers un autre endroit. Il verrouille
-aussi le figeage de l'origine de la mesure depuis la position : la suivre ferait partir une requete
-d'itineraire a chaque point GPS, soit une toutes les deux secondes.
+Ces deux etats portent sur les transitions, pas sur les valeurs : ce sont elles qui se trompent sans
+rien casser. Une infobulle laissee affichee recouvre la carte au moment de choisir un point ; une mesure
+oubliee au changement de point affiche une distance calculee vers un autre endroit ; une epingle qui
+survit a son infobulle ne se retire plus par aucun geste. `MapPointStateTest` verrouille aussi le figeage
+de l'origine de la mesure depuis la position : la suivre ferait partir une requete d'itineraire a chaque
+point GPS, soit une toutes les deux secondes.
 
 ### `geocode` - recherche de lieu
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `PhotonTest` | 13 | construction de la requete et lecture de la reponse du geocodeur |
-| `ValhallaTest` | 15 | construction de la requete et lecture de la reponse du moteur d'itineraire |
+| `PhotonTest` | 18 | construction des requetes (recherche et inverse) et lecture de la reponse du geocodeur |
+| `ValhallaTest` | 20 | construction de la requete et lecture de la reponse du moteur d'itineraire |
 | `PolylineTest` | 5 | decodage des polylignes encodees, dont la precision propre a Valhalla |
 
 Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
@@ -228,6 +230,11 @@ Le test verifie l'encodage du texte cherche, qu'une URL de base deja parametree 
 proxy) recoit bien un `&` et non un `?`, qu'une langue que Photon ne sert pas retombe sur l'anglais
 (il repond 400 au lieu de l'ignorer, ce qui rendrait la recherche entierement muette), et qu'une
 reponse illisible donne une liste vide plutot qu'une exception.
+
+Le geocodage **inverse** y ajoute ses propres pieges, tous muets : il n'est pas servi par le meme chemin
+que la recherche (`/reverse` la ou celle-ci est `/api`), et ses coordonnees ne doivent pas suivre la
+locale de l'appareil - une virgule decimale francaise separerait a la fois les decimales et les deux
+valeurs, et le service lirait tout autre chose.
 
 Il verrouille surtout l'**absence** des parametres `lat`/`lon`, que Photon accepte pourtant : ils
 reordonnent les resultats par proximite, si bien qu'un hameau voisin passerait devant la ville du meme

@@ -111,6 +111,10 @@ import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
 import fr.lc4918.trailog.ui.components.MapPromptBar
+import fr.lc4918.trailog.ui.mappoint.AddressState
+import fr.lc4918.trailog.ui.mappoint.MapPointBubble
+import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.measure.MeasureBubble
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
@@ -135,6 +139,7 @@ import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.RouteState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
+import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -349,14 +354,94 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (layers.none { it.id == id && it.visible }) measure.clear()
     }
 
-    // ---------- planificateur d'itinéraire ----------
-    val planner = remember { RoutePlannerState() }
+    // ---------- services et réglages partagés (point de la carte, planificateur) ----------
     val imperialUnits = settings?.units == "imperial"
     val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
     val geocodingBase = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
-    // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire planifié n'a pas de raison
+    // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire calculé n'a pas de raison
     // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
     val profileSmoothingM = (settings?.profileSmoothingM ?: 5).toDouble()
+
+    // ---------- point quelconque de la carte (appui long) ----------
+    val mapPoint = remember { MapPointState() }
+    // Hauteur mesurée de la barre de consigne du choix d'un point, pour décaler l'échelle graphique
+    // au-dessus (cf. bbox et mesure sur trace).
+    var pointBarHeightPx by remember { mutableIntStateOf(0) }
+    // Discipline des mesures : celle réglée dans les réglages, et non celle du planificateur, qui la choisit
+    // pour le trajet qu'on y compose. Une distance demandée sur la carte n'a pas de composition derrière elle.
+    val routingProfile = RoutingProfile.of(settings?.routingProfile)
+
+    /**
+     * Adresse du point désigné (géocodage inverse).
+     *
+     * Relancée sur le seul point : le service, lui, ne change qu'en réglages, et l'adresse d'un point déjà
+     * affiché n'a aucune raison de changer sous les yeux de qui la lit.
+     *
+     * Une seconde tentative avant d'abandonner, comme la recherche par le nom : le premier appel paie
+     * l'ouverture de la liaison et échoue parfois au délai.
+     */
+    LaunchedEffect(mapPoint.point) {
+        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
+        mapPoint.publishAddress(AddressState.Loading)
+        val lang = ctx.resources.configuration.locales[0].language
+        val r = Photon.reverse(geocodingBase, lon, lat, lang) ?: Photon.reverse(geocodingBase, lon, lat, lang)
+        mapPoint.publishAddress(when {
+            r == null -> AddressState.Failed
+            r.isEmpty() -> AddressState.NotFound
+            else -> AddressState.Done(r.first().label)
+        })
+    }
+
+    /**
+     * Un itinéraire depuis (fromLat, fromLon) jusqu'au point désigné, traduit en état affichable. Les
+     * deux points sont donnés en (lat, lon), comme les attend le moteur.
+     *
+     * Les points rendus par le moteur passent par le même calcul que les traces importées : distance
+     * cumulée, lissage de l'altitude au réglage de l'utilisateur, pente par point. La ligne sur la carte et
+     * sa teinte sortent ensuite de ces mêmes points.
+     *
+     * Aucune décimation (contrairement aux traces, ramenées à 2000 points) : ici les points dessinent aussi
+     * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché.
+     */
+    suspend fun measureTo(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): MeasureState {
+        val r = Valhalla.route(routingUrl, listOf(fromLat to fromLon, toLat to toLon), routingProfile)
+            ?: return MeasureState.Failed
+        val track = withContext(Dispatchers.Default) {
+            if (r.points.size < 2) null
+            else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
+        }
+        return MeasureState.Done(r.meters, r.seconds, track)
+    }
+
+    // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
+    // capteur en livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
+    LaunchedEffect(mapPoint.positionMeasure, lastUserLocation) {
+        if (mapPoint.positionMeasure == MeasureState.Loading) {
+            lastUserLocation?.let { (la, lo) -> mapPoint.fixPositionOrigin(la, lo) }
+        }
+    }
+    // Capteur éteint alors qu'une mesure attendait encore sa position d'origine : elle ne partira jamais,
+    // et son spinner tournerait indéfiniment. On l'abandonne, ce qui est exactement ce qu'elle est devenue.
+    LaunchedEffect(gpsActive) {
+        if (!gpsActive && mapPoint.positionMeasure == MeasureState.Loading && mapPoint.positionOrigin == null) {
+            mapPoint.publishPositionMeasure(MeasureState.Failed)
+        }
+    }
+    LaunchedEffect(mapPoint.point, mapPoint.positionOrigin, routingUrl, routingProfile) {
+        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
+        val (la, lo) = mapPoint.positionOrigin ?: return@LaunchedEffect
+        mapPoint.publishPositionMeasure(MeasureState.Loading)
+        mapPoint.publishPositionMeasure(measureTo(la, lo, lat, lon))
+    }
+    LaunchedEffect(mapPoint.point, mapPoint.refPoint, routingUrl, routingProfile) {
+        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
+        val (refLon, refLat) = mapPoint.refPoint ?: return@LaunchedEffect
+        mapPoint.publishPointMeasure(MeasureState.Loading)
+        mapPoint.publishPointMeasure(measureTo(refLat, refLon, lat, lon))
+    }
+
+    // ---------- planificateur d'itinéraire ----------
+    val planner = remember { RoutePlannerState() }
     // Thème de la bande : le réglage l'emporte, "system" suivant celui de l'application.
     val bandThemePref = settings?.plannerBandTheme ?: "system"
     val bandDark = isDarkTheme(if (bandThemePref == "system") settings?.theme else bandThemePref)
@@ -478,10 +563,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(settings?.routePlannerEnabled) {
         if (settings?.routePlannerEnabled == false && planner.open) planner.close()
     }
-    // Tracé du parcours sur la carte, teinté par classe de pente comme l'aire du profil.
+    // Tracés posés sur la carte, teintés par classe de pente comme l'aire du profil : le parcours du
+    // planificateur, et les itinéraires mesurés depuis un point de la carte. Un seul calque pour les trois :
+    // ils ont même style, et rien n'impose d'ordre entre eux.
+    // Relancé sur le numéro d'ordre des mesures et non sur les itinéraires eux-mêmes (cf. measureRevision).
     val routeSlopeTint = settings?.profileSlope != false
-    LaunchedEffect(planner.revision, planner.route, styleTick, routeSlopeTint) {
-        controller.setRouteLines(listOfNotNull(planner.done?.track), routeSlopeTint)
+    LaunchedEffect(planner.revision, planner.route, mapPoint.measureRevision, styleTick, routeSlopeTint) {
+        controller.setRouteLines(listOfNotNull(planner.done?.track) + mapPoint.routeTracks, routeSlopeTint)
     }
     // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
     // planificateur fermant le profil ouvert quand il s'ouvre (cf. plus bas).
@@ -508,6 +596,22 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (uri != null && bytes != null) {
             runCatching { ctx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
         }
+    }
+
+    /*
+     * Les deux mesures s'assurent d'abord qu'elles pourront aboutir : un itinéraire est une requête, et
+     * sans réseau la mesure ne rendrait qu'un échec, que rien n'expliquerait. Le bouton "depuis la
+     * position" n'est proposé que le capteur allumé (cf. MapPointBubble), il n'a donc pas à s'en soucier.
+     */
+    fun onDistanceFromPositionTap() {
+        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
+        else mapPoint.requestDistanceFromPosition()
+    }
+
+    /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
+    fun onDistanceFromPointTap() {
+        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
+        else mapPoint.startPickingPoint()
     }
 
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
@@ -542,14 +646,18 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             if (gpsActive) gpsButtonDimmed = true
             autoFramed = false
         }
+        // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
+        // les modes de saisie exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point.
+        controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
     }
-    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure) : tout tap
-    // leur revient, y compris sur une trace ou un marqueur, qui n'ouvrent alors ni profil ni infobulle. Hors
-    // de ces modes, la sélection habituelle reprend.
+    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure, choix du
+    // point de référence d'une distance) : tout tap leur revient, y compris sur une trace ou un marqueur,
+    // qui n'ouvrent alors ni profil ni infobulle. Hors de ces modes, la sélection habituelle reprend.
     //
-    // Les deux ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte),
-    // mais l'ordre reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offlineDrawingActive, measure.picking) {
+    // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
+    // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
+    // reste explicite : celui qui occupe déjà l'écran garde les taps.
+    LaunchedEffect(controller, offlineDrawingActive, measure.picking, mapPoint.pickingPoint) {
         when {
             offlineDrawingActive -> controller.onRawTap = { lon, lat ->
                 if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
@@ -564,6 +672,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     vm.pickMeasureEnd(started, lon, lat) { p, mid -> if (measure.picking) measure.chooseEnd(p, mid) }
                 }
             }
+            mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
             else -> {
                 controller.onRawTap = null
                 controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
@@ -629,6 +738,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Marqueurs noirs des deux bouts d'une mesure sur trace : mêmes épingles, même calque carte.
     LaunchedEffect(measure.markers, styleTick, markerPx) {
         controller.setMeasureMarkers(measure.markers, markerPx)
+    }
+    // Épingles noires du point désigné par un appui long et de son point de référence : mêmes épingles
+    // encore, sur leur propre calque - les deux fonctions peuvent être à l'écran en même temps.
+    LaunchedEffect(mapPoint.markers, styleTick, markerPx) {
+        controller.setMapPointMarkers(mapPoint.markers, markerPx)
     }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
@@ -749,6 +863,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // et sort en priorité du choix des points, qui est le mode de saisie en cours.
     BackHandler(enabled = measure.mid != null) { measure.clear() }
     BackHandler(enabled = measure.picking) { measure.closeBand() }
+    // Point désigné par un appui long, même gradation : le retour ferme d'abord son infobulle, et sort en
+    // priorité du choix d'un point de référence, qui est le mode de saisie en cours.
+    BackHandler(enabled = mapPoint.point != null) { mapPoint.clear() }
+    BackHandler(enabled = mapPoint.pickingPoint) { mapPoint.cancelPickingPoint() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
     BackHandler(enabled = offlineDownload?.minimized == false) {
         val dl = offlineDownload
@@ -1031,6 +1149,52 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
+                // Infobulle du point désigné par un appui long : même placement que celle d'un marqueur
+                // (réglage Carte / Infobulles). Elle ne recentre jamais la carte : le point est là où le
+                // doigt s'est posé, et déplacer la carte sous lui déferait le geste.
+                val mPoint = mapPoint.point
+                if (mPoint != null && mapPoint.bubbleVisible) {
+                    val mOff = remember(mPoint, idleTick) {
+                        controller.screenOf(mPoint.first, mPoint.second)
+                            ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+                    }
+                    if (mOff != null) {
+                        val topInset = WindowInsets.statusBars.getTop(density)
+                        val margin = with(density) { 8.dp.roundToPx() }
+                        val gap = with(density) { 10.dp.roundToPx() }
+                        Layout(
+                            content = {
+                                MapPointBubble(
+                                    address = mapPoint.address,
+                                    profileLabel = routingProfileLabel(routingProfile),
+                                    // Le capteur éteint, la ligne disparaît : une mesure depuis une position
+                                    // inconnue ne partirait jamais (cf. MapPointBubble). Une mesure déjà
+                                    // demandée la retient, elle : son résultat vaut pour l'endroit d'où elle
+                                    // est partie, et son tracé est sur la carte - rien ne l'expliquerait plus.
+                                    showPositionRow = gpsActive || mapPoint.positionMeasure != null,
+                                    positionMeasure = mapPoint.positionMeasure,
+                                    pointMeasure = mapPoint.pointMeasure,
+                                    imperial = imperialUnits,
+                                    onDistanceFromPosition = { onDistanceFromPositionTap() },
+                                    onDistanceFromPoint = { onDistanceFromPointTap() },
+                                    onClose = { mapPoint.clear() },
+                                    fontSp = settings?.bubbleFont ?: 14,
+                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                                )
+                            },
+                        ) { measurables, cs ->
+                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
+                            val pl = computeBubblePlacement(
+                                pos = BubblePosition.of(settings?.bubblePosition),
+                                markerX = mOff.x, markerY = mOff.y,
+                                bubbleW = p.width, bubbleH = p.height,
+                                viewW = cs.maxWidth, viewH = cs.maxHeight,
+                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
+                            )
+                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                        }
+                    }
+                }
                 /*
                  * Hauteur maximale de la bande : 60 % de l'écran, MAIS jamais plus que ce qui reste
                  * réellement visible entre la barre de statut et le bas occupé (clavier, ou barre de
@@ -1096,6 +1260,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { measureBarHeightPx = it.size.height },
                     )
                 }
+                // Consigne du choix d'un point de référence : même barre que la mesure sur trace, l'une et
+                // l'autre ne demandant qu'un tap sur la carte.
+                if (mapPoint.pickingPoint) {
+                    MapPromptBar(
+                        text = stringResource(R.string.geocode_pick_point_prompt),
+                        onClose = { mapPoint.cancelPickingPoint() },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                            .onGloballyPositioned { pointBarHeightPx = it.size.height },
+                    )
+                }
                 // Infobulle de la mesure : pointe posée sur le milieu du parcours mesuré, qui suit la carte
                 // au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu).
                 val measureMid = measure.mid
@@ -1139,11 +1313,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // il ne prend plus qu'un bouton de coin, et la carte redevient l'objet du regard.
                 val plannerExpanded = planner.open && !planner.collapsed
                 if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
-                    // Barre du bas actuellement posée (tracé de bbox, ou consigne de mesure) : l'échelle se
-                    // range au-dessus d'elle. Les deux portent déjà leur propre marge de barre de navigation.
+                    // Barre du bas actuellement posée (tracé de bbox, ou l'une des deux consignes de choix
+                    // d'un point) : l'échelle se range au-dessus d'elle. Toutes portent déjà leur propre
+                    // marge de barre de navigation.
                     val bottomBarPx = when {
                         offlineDrawingActive -> offlineBarHeightPx
                         measure.picking -> measureBarHeightPx
+                        mapPoint.pickingPoint -> pointBarHeightPx
                         else -> 0
                     }
                     val scaleBarModifier = if (bottomBarPx > 0) {

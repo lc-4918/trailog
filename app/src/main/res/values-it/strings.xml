@@ -88,6 +88,8 @@
     <string name="geocode_no_route">Nessun itinerario</string>
     <string name="geocode_route_info">Itinerario consigliato per: %1$s. Non è una distanza in linea d\'aria.</string>
     <string name="content_desc_route_info">Informazioni su questa distanza</string>
+    <string name="mappoint_address_none">Nessun indirizzo qui</string>
+    <string name="mappoint_address_failed">Indirizzo non disponibile</string>
     <string name="measure_title">Misurare su una traccia</string>
     <string name="measure_pick_start">Scegliere il punto di partenza su una traccia</string>
     <string name="measure_pick_end">Scegliere il punto finale della misura sulla traccia %1$s</string>

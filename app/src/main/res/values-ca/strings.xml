@@ -88,6 +88,8 @@
     <string name="geocode_no_route">Cap itinerari</string>
     <string name="geocode_route_info">Itinerari recomanat per a: %1$s. No és una distància en línia recta.</string>
     <string name="content_desc_route_info">Sobre aquesta distància</string>
+    <string name="mappoint_address_none">Cap adreça aquí</string>
+    <string name="mappoint_address_failed">Adreça no disponible</string>
     <string name="measure_title">Mesurar sobre una traça</string>
     <string name="measure_pick_start">Triar el punt d\'inici en una traça</string>
     <string name="measure_pick_end">Triar el punt final del mesurament a la traça %1$s</string>

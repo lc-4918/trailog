@@ -88,6 +88,8 @@
     <string name="geocode_no_route">Ibilbiderik ez</string>
     <string name="geocode_route_info">Gomendatutako ibilbidea: %1$s. Ez da lerro zuzeneko distantzia bat.</string>
     <string name="content_desc_route_info">Distantzia honi buruz</string>
+    <string name="mappoint_address_none">Helbiderik ez hemen</string>
+    <string name="mappoint_address_failed">Helbidea ez dago erabilgarri</string>
     <string name="measure_title">Neurtu arrasto batean</string>
     <string name="measure_pick_start">Aukeratu hasiera-puntua arrasto batean</string>
     <string name="measure_pick_end">Aukeratu neurketaren amaiera-puntua %1$s arrastoan</string>

@@ -55,6 +55,10 @@ class MapController {
     var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
+    /** Appui long sur un endroit quelconque de la carte - hors trace et hors marqueur : reçoit (lon, lat).
+     *  Un appui long qui tombe sur une trace ou un marqueur ne l'appelle pas : ceux-là se décrivent déjà
+     *  eux-mêmes, par leur profil et leur infobulle. */
+    var onLongPressEmpty: ((Double, Double) -> Unit)? = null
     /** Si défini, intercepte tout tap sur la carte AVANT le test de sélection point/ligne habituel
      *  (mode de saisie exclusif, ex. tracé de bounding box hors-ligne) : reçoit (lon, lat). */
     var onRawTap: ((Double, Double) -> Unit)? = null
@@ -132,18 +136,30 @@ class MapController {
      */
     private fun handleFastTap(screen: PointF) {
         if (onRawTap != null) return          // mode de saisie exclusif (bbox hors-ligne) : pas de selection ici
-        val m = map ?: return
+        val hit = markerPickAt(screen) ?: return
+        fastPicked = true
+        hit()
+    }
+
+    /** Action de selection du marqueur sous [screen], ou null si aucun n'y est. */
+    private fun markerPickAt(screen: PointF): (() -> Unit)? {
+        val m = map ?: return null
         val tol = tapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
         for (k in layerKeys) {
-            val feats = m.queryRenderedFeatures(rect, pointLayerId(k))
-            val hit = feats.firstOrNull()?.let { pickOf(k, it) }
-            if (hit != null) {
-                fastPicked = true
-                hit()
-                return
-            }
+            val hit = m.queryRenderedFeatures(rect, pointLayerId(k)).firstOrNull()?.let { pickOf(k, it) }
+            if (hit != null) return hit
         }
+        return null
+    }
+
+    /** Cle de la couche dont une ligne passe sous [screen], ou null. Tolerance propre aux traces, plus
+     *  large que celle des marqueurs (cf. [lineTapToleranceDp]). */
+    private fun lineKeyAt(screen: PointF): String? {
+        val m = map ?: return null
+        val tol = lineTapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return layerKeys.firstOrNull { m.queryRenderedFeatures(rect, lineLayerId(it)).isNotEmpty() }
     }
 
     /** Action de selection d'un marqueur interroge, ou null si la feature n'est pas exploitable. */
@@ -448,6 +464,21 @@ class MapController {
         }
     }
 
+    /** Calque et source des epingles noires du point designe par un appui long (cf. [setMapPointMarkers]). */
+    private val MAP_POINTS = "map-point-pins"
+    private val MAP_POINTS_SRC = "map-point-pins-src"
+
+    /**
+     * Épingles noires du point désigné par un appui long, et de son point de référence (zéro, une ou deux).
+     *
+     * Une seule source pour les deux, comme les bouts d'une mesure sur trace : elles ont même style, et
+     * apparaissent et disparaissent ensemble - l'infobulle du point refermée n'en laisse aucune. Distinctes
+     * des épingles du géocodage, qui peuvent être à l'écran en même temps et ne se ferment pas par le même
+     * geste.
+     */
+    fun setMapPointMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
+        setBlackPins(MAP_POINTS, MAP_POINTS_SRC, points, heightPx)
+
     /** Calque et source des marqueurs noirs de la mesure sur trace (cf. [setMeasureMarkers]). */
     private val MEASURE_PTS = "measure-points"
     private val MEASURE_SRC = "measure-points-src"
@@ -459,11 +490,18 @@ class MapController {
      * deux couches n'apporteraient qu'un ordre d'empilement à tenir. Distinctes des épingles du géocodage,
      * qui peuvent être à l'écran en même temps et ne se ferment pas par le même geste.
      */
-    fun setMeasureMarkers(points: List<Pair<Double, Double>>, heightPx: Float) {
+    fun setMeasureMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
+        setBlackPins(MEASURE_PTS, MEASURE_SRC, points, heightPx)
+
+    /** Un groupe d'épingles noires posé au sommet du style, sous ses propres identifiants : une source et
+     *  un calque par groupe, les groupes pouvant être à l'écran en même temps. Vide = tout est retiré. */
+    private fun setBlackPins(
+        layerId: String, srcId: String, points: List<Pair<Double, Double>>, heightPx: Float,
+    ) {
         val s = style ?: return
         if (points.isEmpty()) {
-            s.getLayer(MEASURE_PTS)?.let { s.removeLayer(it) }
-            s.getSource(MEASURE_SRC)?.let { s.removeSource(it) }
+            s.getLayer(layerId)?.let { s.removeLayer(it) }
+            s.getSource(srcId)?.let { s.removeSource(it) }
             return
         }
         val img = ensurePin(s, appContext, "#000000", heightPx)
@@ -471,17 +509,17 @@ class MapController {
             """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}"""
         }
         val geojson = """{"type":"FeatureCollection","features":[$features]}"""
-        val existing = s.getSourceAs<GeoJsonSource>(MEASURE_SRC)
+        val existing = s.getSourceAs<GeoJsonSource>(srcId)
         if (existing == null) {
-            s.addSource(GeoJsonSource(MEASURE_SRC, geojson))
-            s.addLayer(SymbolLayer(MEASURE_PTS, MEASURE_SRC).withProperties(
+            s.addSource(GeoJsonSource(srcId, geojson))
+            s.addLayer(SymbolLayer(layerId, srcId).withProperties(
                 PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
                 PropertyFactory.iconAnchor("bottom"),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
                 .withFilter(pointGeometryFilter))
         } else {
             existing.setGeoJson(geojson)
-            (s.getLayer(MEASURE_PTS) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+            (s.getLayer(layerId) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
         }
     }
 
@@ -518,7 +556,7 @@ class MapController {
                 PropertyFactory.lineWidth(4f),
                 PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
                 .withFilter(lineGeometryFilter)
-            val belowPin = listOf(GEO_PLACE, GEO_REF).firstOrNull { s.getLayer(it) != null }
+            val belowPin = listOf(GEO_PLACE, GEO_REF, MAP_POINTS).firstOrNull { s.getLayer(it) != null }
             if (belowPin != null) s.addLayerBelow(layer, belowPin) else addLayerSafe(layer)
         } else {
             existing.setGeoJson(geojson)
@@ -693,23 +731,25 @@ class MapController {
         // Marqueur deja selectionne au lever du doigt (handleFastTap) : ne rien refaire ici.
         if (fastPicked) return
         onRawTap?.let { it(latLng.longitude, latLng.latitude); return }
-        val m = map ?: return
-        val tol = tapToleranceDp * density
-        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
-        for (k in layerKeys) {
-            val feats = m.queryRenderedFeatures(rect, pointLayerId(k))
-            val hit = feats.firstOrNull()?.let { pickOf(k, it) }
-            if (hit != null) { hit(); return }
-        }
-        val lineTol = lineTapToleranceDp * density
-        val lineRect = RectF(screen.x - lineTol, screen.y - lineTol, screen.x + lineTol, screen.y + lineTol)
-        for (k in layerKeys) {
-            val hit = m.queryRenderedFeatures(lineRect, lineLayerId(k)).isNotEmpty()
-            if (hit) {
-                onPickLine?.invoke(k, latLng.longitude, latLng.latitude); return
-            }
-        }
+        markerPickAt(screen)?.let { it(); return }
+        lineKeyAt(screen)?.let { onPickLine?.invoke(it, latLng.longitude, latLng.latitude); return }
         onTapEmpty?.invoke()
+    }
+
+    /**
+     * Appui long : ne vaut que sur un endroit quelconque de la carte.
+     *
+     * Un mode de saisie exclusif le neutralise, comme il neutralise la selection : la ou tout tap pose un
+     * point, un appui long est un tap qui a dure, et non un second geste a interpreter.
+     *
+     * La meme interrogation que le tap ecarte les traces et les marqueurs, avec les memes tolerances : une
+     * epingle qu'un tap selectionne doit se comporter en epingle sous un doigt qui s'attarde.
+     */
+    fun handleLongPress(latLng: LatLng, screen: PointF) {
+        if (onRawTap != null) return
+        val cb = onLongPressEmpty ?: return
+        if (markerPickAt(screen) != null || lineKeyAt(screen) != null) return
+        cb(latLng.longitude, latLng.latitude)
     }
 
     private fun emptyFc() = "{\"type\":\"FeatureCollection\",\"features\":[]}"
@@ -758,6 +798,10 @@ fun MapLibreView(
                 map.uiSettings.isLogoEnabled = false
                 controller.onMapReady(map)
                 map.addOnMapClickListener { ll -> controller.handleTap(ll, map.projection.toScreenLocation(ll)); false }
+                // false = evenement non consomme : MapLibre garde son comportement d'appui long.
+                map.addOnMapLongClickListener { ll ->
+                    controller.handleLongPress(ll, map.projection.toScreenLocation(ll)); false
+                }
                 map.addOnCameraIdleListener { controller.onCameraIdle?.invoke() }
                 map.addOnCameraMoveListener { controller.onCameraMove?.invoke() }
                 // Gestes déclenchés par l'UTILISATEUR uniquement (jamais les mouvements programmatiques

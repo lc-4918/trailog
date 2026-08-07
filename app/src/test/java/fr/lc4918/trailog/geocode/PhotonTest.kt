@@ -119,4 +119,54 @@ class PhotonTest {
         val r = Photon.parse(fc(feature(""""name":"Gap","osm_id":1234,"extent":[1,2,3,4],"country":"France"""")))
         assertEquals("Gap, France", r[0].label)
     }
+
+    // ---------- URL du geocodage inverse ----------
+
+    /**
+     * L'inverse n'est pas servi par le meme chemin que la recherche : viser `/api` avec lon/lat rend une
+     * erreur, non une adresse. C'est la terminaison de l'URL reglee qui change, l'instance restant la meme.
+     */
+    @Test fun `l'url inverse remplace api par reverse`() {
+        val u = Photon.reverseUrl(Photon.DEFAULT_URL, 6.08, 44.56, "fr")
+        assertTrue("chemin inattendu : $u", u.startsWith("https://photon.komoot.io/reverse?"))
+        assertTrue("/api" !in u)
+        assertTrue("lon=6.08" in u)
+        assertTrue("lat=44.56" in u)
+        assertTrue("lang=fr" in u)
+    }
+
+    /** Une instance exposee a la racine, ou derriere un chemin qui ne finit pas par `api`, recoit le
+     *  segment sans rien perdre du sien. */
+    @Test fun `une base sans api recoit reverse a la suite`() {
+        assertTrue("https://geo.exemple.fr/photon/reverse?" in
+            Photon.reverseUrl("https://geo.exemple.fr/photon/", 6.0, 44.0, "fr"))
+    }
+
+    /** Meme parametrage qu'une recherche (cle de service, chemin derriere un proxy) : la chaine de requete
+     *  deja presente doit survivre, devant les parametres du point. */
+    @Test fun `une url de base deja parametree conserve sa requete`() {
+        val u = Photon.reverseUrl("https://geo.exemple.fr/api?token=abc", 6.0, 44.0, "fr")
+        assertTrue(u, u.startsWith("https://geo.exemple.fr/reverse?token=abc&"))
+        assertTrue("lon=6.0" in u)
+    }
+
+    /**
+     * Les coordonnees s'ecrivent au point decimal, quelle que soit la locale de l'appareil : une virgule
+     * francaise separerait a la fois les decimales et les deux valeurs, et le service lirait tout autre chose.
+     */
+    @Test fun `les coordonnees ne suivent pas la locale`() {
+        val defaut = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.FRANCE)
+            val u = Photon.reverseUrl(Photon.DEFAULT_URL, 6.08, 44.56, "fr")
+            assertTrue("virgule decimale dans $u", "6,08" !in u && "44,56" !in u)
+        } finally {
+            java.util.Locale.setDefault(defaut)
+        }
+    }
+
+    /** Meme repli que la recherche : Photon rejette (400) une langue qu'il ne sert pas. */
+    @Test fun `l'url inverse retombe sur l'anglais pour une langue non servie`() {
+        assertTrue("lang=en" in Photon.reverseUrl(Photon.DEFAULT_URL, 6.0, 44.0, "eu"))
+    }
 }

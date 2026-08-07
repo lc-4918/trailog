@@ -54,8 +54,10 @@ sans dépendre d'un service en ligne.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
 - **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
-  sur la carte, et vous pouvez mesurer la distance et la durée pour l'atteindre, depuis votre position
-  ou depuis un point choisi, dans la discipline de votre choix (vélo de route, gravel, VTC, VTT, à pied).
+  sur la carte, avec son adresse.
+- **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
+  l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
+  ou depuis un second point que vous désignez.
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.
@@ -122,13 +124,16 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   d'information sur la carte qui déplie leur légende.
 - **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
   recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
-  propose deux mesures : la distance depuis votre position GPS, et la distance depuis un point que
-  vous désignez n'importe où sur la carte. Les propositions sont classées par importance du lieu, une
-  ville passant donc avant un hameau du même nom.
-- **Distance et durée jusqu'au lieu** : ce ne sont pas des distances à vol d'oiseau mais celles de
-  l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Carte / Géocodage* :
-  vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle. Les services
-  L'itinéraire lui-même se dessine en noir sur la carte. Les services
+  en donne l'adresse. Les propositions sont classées par importance du lieu, une ville passant donc
+  avant un hameau du même nom.
+- **Interroger un point de la carte** : un appui long n'importe où, hors d'une trace et d'un
+  marqueur, y pose une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet
+  endroit, puis propose deux mesures : la distance depuis votre position GPS (si elle est active),
+  et la distance depuis un second point, que vous désignez ensuite d'un tap sur la carte.
+- **Distance et durée jusqu'au point** : ce ne sont pas des distances à vol d'oiseau mais celles de
+  l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Trajets* :
+  vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle.
+  L'itinéraire lui-même se dessine sur la carte, teinté selon la pente. Les services
   interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
   leur substituer vos propres instances en renseignant leurs URL dans les réglages.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
@@ -146,11 +151,13 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   avez configurés, et à la vérification des mises à jour auprès de GitHub. Cette dernière ne
   transmet rien sur vous : elle lit un fichier public indiquant la dernière version publiée.
   Vous pouvez la passer en manuel dans les réglages.
-- La **recherche d'un lieu** est la seule fonction qui interroge un service tiers pendant que vous
-  vous en servez : chaque recherche envoie le texte tapé, et rien d'autre — ni votre position, ni
-  l'endroit que vous regardez. Une mesure de distance, elle, envoie les deux points concernés (dont
-  votre position GPS si vous la demandez depuis celle-ci) au service d'itinéraire. L'ensemble est
-  **désactivé par défaut**, et les deux services visés sont configurables : vous pouvez héberger les vôtres.
+- La **recherche d'un lieu**, l'**adresse d'un point** et les **mesures de distance** sont les seules
+  fonctions qui interrogent un service tiers pendant que vous vous en servez. Une recherche envoie le
+  texte tapé, et rien d'autre — ni votre position, ni l'endroit que vous regardez. L'adresse d'un point
+  envoie ce point, celui que vous venez de désigner du doigt. Une mesure de distance envoie les deux
+  points concernés (dont votre position GPS si vous la demandez depuis celle-ci) au service
+  d'itinéraire. La recherche par le nom est **désactivée par défaut**, et les deux services visés sont
+  configurables : vous pouvez héberger les vôtres.
 
 ## Contribution & Développement
 
