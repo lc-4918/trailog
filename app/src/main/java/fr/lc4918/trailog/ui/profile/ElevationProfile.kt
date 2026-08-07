@@ -4,9 +4,12 @@ import android.annotation.SuppressLint
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -65,10 +68,6 @@ fun ElevationProfile(
     textColor: Color = Color(0xFF555555),
     cursorIndex: Int? = null,
     onScrub: (Int) -> Unit = {},
-    // Repères de sélection du zoom A/B (index dans [samples]) : barre verticale + label, tant que le
-    // second point n'est pas posé (puis brièvement le temps que la vue zoomée les remplace - cf. MainScreen).
-    markA: Int? = null,
-    markB: Int? = null,
     // Marge (px) dont on rentre le dernier label de l'axe X, pour dégager la courbure de l'angle bas-droit
     // de l'écran. 0 si l'écran n'a pas d'angle arrondi (détecté par l'appelant via l'API RoundedCorner).
     lastLabelInsetPx: Float = 0f,
@@ -77,6 +76,11 @@ fun ElevationProfile(
     // rendu absolu et honnête : le même dénivelé occupe toujours la même hauteur, une pente de 2% ne ressemble
     // plus à un mur. Le profil est alors ancré sur la ligne de base (borné au remplissage pour ne pas déborder).
     verticalScaleMPerCm: Int = 0,
+    // Zoom par pincement et double-tap, facultatif : seul le profil du planificateur l'utilise, celui
+    // d'une trace gardant sa selection de bornes. Null = aucun geste de zoom, comportement inchange.
+    // [onZoom] recoit le facteur de grossissement et la fraction horizontale visee (0 a gauche, 1 a droite).
+    onZoom: ((Float, Float) -> Unit)? = null,
+    onDoubleTap: ((Float) -> Unit)? = null,
 ) {
     if (samples.size < 2) return
     val areaColor = lineColor.copy(alpha = 0.30f)   // aire = couleur de la trace si pentes inactives
@@ -96,14 +100,54 @@ fun ElevationProfile(
 
     val cache = remember { ProfileDrawCache() }
     val labelPaint = remember { Paint().apply { isAntiAlias = true } }
-    val markPaint = remember { Paint().apply { isAntiAlias = true; isFakeBoldText = true; textAlign = Paint.Align.CENTER } }
+
+    /** Fraction horizontale d'une abscisse ecran, dans la zone de trace (hors marges d'axes). */
+    fun fractionAt(px: Float, w: Float): Float =
+        ((px - padLpx) / (w - padLpx - padR)).coerceIn(0f, 1f)
+
+    /*
+     * Rappels et convertisseurs lus a travers rememberUpdatedState, et detecteurs cles sur Unit.
+     *
+     * Les cles d'un pointerInput le RELANCENT quand elles changent, ce qui annule le geste en cours. Or
+     * [onZoom] est une lambda recreee a chaque recomposition, et [samples] une sous-liste dont l'identite
+     * change a chaque cran de zoom : les prendre pour cles tuait le pincement des son premier evenement,
+     * qu'il fallait alors recommencer depuis le seuil de deplacement. Ecarter les bras d'un bout a l'autre
+     * de l'ecran ne grossissait que de deux pour cent.
+     */
+    val scrub by rememberUpdatedState(onScrub)
+    val zoomCb by rememberUpdatedState(onZoom)
+    val doubleTapCb by rememberUpdatedState(onDoubleTap)
+    val toIndex by rememberUpdatedState<(Float, Float) -> Int> { px, w -> idxAt(px, w) }
+    val toFraction by rememberUpdatedState<(Float, Float) -> Float> { px, w -> fractionAt(px, w) }
+    val zoomable = onZoom != null
 
     Canvas(
         modifier = modifier
-            .pointerInput(samples) { detectTapGestures { onScrub(idxAt(it.x, size.width.toFloat())) } }
-            .pointerInput(samples) {
-                detectHorizontalDragGestures { ch, _ -> onScrub(idxAt(ch.position.x, size.width.toFloat())) }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { off -> doubleTapCb?.invoke(toFraction(off.x, size.width.toFloat())) },
+                    onTap = { scrub(toIndex(it.x, size.width.toFloat())) },
+                )
             }
+            .then(
+                if (!zoomable) {
+                    // Profil d'une trace : le seul geste est le deplacement du curseur.
+                    Modifier.pointerInput(Unit) {
+                        detectHorizontalDragGestures { ch, _ -> scrub(toIndex(ch.position.x, size.width.toFloat())) }
+                    }
+                } else {
+                    // Profil du planificateur : le detecteur de transformation de Compose couvre les deux
+                    // gestes d'un coup. A deux doigts le facteur s'ecarte de 1 et l'on zoome ; a un doigt
+                    // il vaut exactement 1 et le centroide est le doigt lui-meme, qu'on suit du curseur.
+                    Modifier.pointerInput(Unit) {
+                        detectTransformGestures(panZoomLock = false) { centroid, _, zoom, _ ->
+                            val w = size.width.toFloat()
+                            if (zoom != 1f) zoomCb?.invoke(zoom, toFraction(centroid.x, w))
+                            else scrub(toIndex(centroid.x, w))
+                        }
+                    }
+                }
+            )
     ) {
         val padBpx = axisFontSp.sp.toPx() + 12f
         val w = size.width; val h = size.height
@@ -202,26 +246,8 @@ fun ElevationProfile(
             }
         }
 
-        // Repères A/B du zoom : barre verticale pleine largeur + label juste sous le bord haut du graphique
-        // (la légende de pente, elle, est un composable externe au-dessus de ce Canvas).
-        if (markA != null || markB != null) {
-            markPaint.textSize = (axisFontSp + 2).sp.toPx()
-            markPaint.color = MARK_COLOR.toArgb()
-            fun drawMark(idx: Int, label: String) {
-                if (idx !in samples.indices) return
-                val x = sx(samples[idx].x)
-                val labelBaseline = padT + markPaint.textSize
-                drawContext.canvas.nativeCanvas.drawText(label, x, labelBaseline, markPaint)
-                // La barre démarre sous la lettre (baseline + descente) pour ne pas la traverser.
-                drawLine(MARK_COLOR, Offset(x, labelBaseline + markPaint.descent() + 2f), Offset(x, baseY), strokeWidth = 2f)
-            }
-            markA?.let { drawMark(it, "A") }
-            markB?.let { drawMark(it, "B") }
-        }
     }
 }
-
-private val MARK_COLOR = Color(0xFFE8590C)
 
 /** Regroupe les segments consécutifs de même couleur (classe de pente) en un seul Path : évite
  *  jusqu'à ~2000 Path/drawPath (un par segment) pour n'en garder qu'un par plage de pente stable. */

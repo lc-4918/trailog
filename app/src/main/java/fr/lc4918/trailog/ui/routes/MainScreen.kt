@@ -57,6 +57,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -118,6 +122,19 @@ import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
+import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.routing.Valhalla
+import fr.lc4918.trailog.ui.planner.GeocodingParams
+import fr.lc4918.trailog.ui.planner.PlannerStep
+import fr.lc4918.trailog.ui.planner.RoutePlannerBand
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
+import fr.lc4918.trailog.ui.planner.RouteState
+import fr.lc4918.trailog.ui.planner.StepTarget
+import fr.lc4918.trailog.ui.planner.defaultRouteName
+import fr.lc4918.trailog.ui.theme.isDarkTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import kotlin.math.floor
@@ -179,10 +196,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val computed by vm.computed.collectAsState()
     val profileLoading by vm.profileLoading.collectAsState()
     val cursor by vm.cursor.collectAsState()
-    val profileZoomStack by vm.profileZoomStack.collectAsState()
-    val profilePickMode by vm.profilePickMode.collectAsState()
-    val profilePointA by vm.profilePointA.collectAsState()
-    val profilePointB by vm.profilePointB.collectAsState()
+    val profileZoom by vm.profileZoom.collectAsState()
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
     val selectedMarkerPos by vm.selectedMarkerPos.collectAsState()
     val markerLayerData by vm.markerLayerData.collectAsState()
@@ -302,16 +316,179 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (q.length < 3) { geo.results = emptyList(); geo.searching = false; return@LaunchedEffect }
         geo.searching = true
         delay(350)
-        geo.results = Photon.search(
-            base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL,
-            query = q, lang = ctx.resources.configuration.locales[0].language,
-            limit = GeocodeResultLimit,
-        )
+        // Une seconde tentative avant d'abandonner, comme dans le planificateur : le premier appel paie
+        // l'ouverture de la liaison et echoue parfois au delai. Un echec reste ici une liste vide - la
+        // barre de recherche de la carte n'a pas de place pour un message.
+        val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+        val lang = ctx.resources.configuration.locales[0].language
+        geo.results = (Photon.search(base, q, lang, GeocodeResultLimit)
+            ?: Photon.search(base, q, lang, GeocodeResultLimit)).orEmpty()
         geo.searching = false
     }
     // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
     // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
     LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
+
+    // ---------- planificateur d'itinéraire ----------
+    val planner = remember { RoutePlannerState() }
+    val imperialUnits = settings?.units == "imperial"
+    val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
+    val geocodingBase = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+    // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire planifié n'a pas de raison
+    // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
+    val profileSmoothingM = (settings?.profileSmoothingM ?: 5).toDouble()
+    // Thème de la bande : le réglage l'emporte, "system" suivant celui de l'application.
+    val bandThemePref = settings?.plannerBandTheme ?: "system"
+    val bandDark = isDarkTheme(if (bandThemePref == "system") settings?.theme else bandThemePref)
+    var importDialog by remember { mutableStateOf(false) }
+    /**
+     * Fond des boutons poses sur la carte, quand le reglage le demande.
+     *
+     * Blanc a la meme opacite que l'echelle graphique (cf. ScaleBar) : les deux flottent au-dessus du meme
+     * fond de carte et doivent s'y detacher de la meme facon, sans quoi l'ecran porterait deux conventions
+     * de lisibilite differentes.
+     *
+     * Le bouton GPS actif en est exclu par son appelant : il porte deja un fond bleu, qui dit qu'il est
+     * allume - un fond blanc par-dessus lui oterait sa seule marque d'etat.
+     */
+    val controlBg: Modifier = if (settings?.controlButtonsBackground != true) Modifier
+        else Modifier.mapButtonBackground(Color.White.copy(alpha = ControlButtonBgAlpha))
+    // Hauteur reelle de la bande, mesuree : le cadrage du parcours doit degager ce qu'elle recouvre, et
+    // elle varie avec le nombre d'etapes et la presence du profil.
+    var plannerBandHeightPx by remember { mutableIntStateOf(0) }
+    /*
+     * Hauteur a degager en haut de la carte lors d'un cadrage.
+     *
+     * Ce n'est pas seulement la barre de statut, sous laquelle la carte passe en mode bord-a-bord : la
+     * colonne de boutons du coin haut-gauche (menu, GPS, recentrage, geocodeur, planificateur) la recouvre
+     * aussi, et un parcours cadre au plus juste passait dessous. On mesure donc cette colonne - sa hauteur
+     * varie avec le nombre de boutons affiches - et elle comprend deja la marge de barre de statut.
+     */
+    var topControlsHeightPx by remember { mutableIntStateOf(0) }
+    val statusBarTopPx = maxOf(
+        WindowInsets.statusBars.getTop(LocalDensity.current),
+        topControlsHeightPx,
+    )
+
+    /**
+     * Calcul du parcours, relancé par tout ce qui le rend caduc (cf. RoutePlannerState.revision).
+     *
+     * La position actuelle est résolue ICI et non au moment où l'étape a été choisie : on pose souvent ses
+     * étapes puis on se déplace avant de lancer, et c'est bien d'où l'on est alors qu'on veut partir.
+     */
+    // La carte cadre le parcours ENTIER a son apparition, et seulement alors : une fois le trajet a
+    // l'ecran, l'utilisateur le fait glisser et zoome a sa guise, et recadrer a chaque etape ajoutee
+    // defairait son travail. Un parcours qui disparait (moins de deux etapes, ou echec) remet le drapeau,
+    // pour que le suivant soit cadre a son tour - c'est le cas des trois etapes dont on en retire deux.
+    var routeFramed by remember { mutableStateOf(false) }
+    var framePending by remember { mutableStateOf(false) }
+    /*
+     * La vue courante est-elle encore celle que NOUS avons cadree ?
+     *
+     * Tant qu'elle l'est, tout changement de la surface de carte reellement visible - la bande qui se
+     * replie, se redeploie ou se ferme - doit rejouer le cadrage sur cette nouvelle surface. Des que
+     * l'utilisateur touche la carte, en la faisant glisser ou en pincant, ce drapeau retombe : la vue est
+     * desormais la sienne, et rien ne doit plus la lui reprendre.
+     */
+    var autoFramed by remember { mutableStateOf(false) }
+    LaunchedEffect(planner.revision, routingUrl, planner.profile, profileSmoothingM) {
+        val targets = planner.targets
+        if (targets.size < 2) {
+            planner.publish(RouteState.Idle); routeFramed = false; framePending = false
+            return@LaunchedEffect
+        }
+        planner.beginRecompute()
+        val pts = targets.map { t ->
+            when (t) {
+                is StepTarget.Place -> t.place.lat to t.place.lon
+                StepTarget.CurrentPosition -> lastUserLocation ?: run {
+                    planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
+                }
+            }
+        }
+        val r = Valhalla.route(routingUrl, pts, planner.profile)
+        if (r == null || r.points.size < 2) {
+            planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
+        }
+        val track = withContext(Dispatchers.Default) {
+            TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
+        }
+        planner.publish(RouteState.Done(r.meters, r.seconds, track))
+        if (!routeFramed) framePending = true
+    }
+    /*
+     * Cadrage differe, et non enchaine au calcul : au moment ou le parcours arrive, la bande n'a pas encore
+     * grandi de sa zone resultats, et sa hauteur mesuree est celle d'AVANT. Cadrer tout de suite laissait
+     * donc la fin du trajet cachee derriere la bande, qui s'etendait juste apres.
+     *
+     * L'effet depend de la hauteur de la bande : il se relance a chaque etape de sa croissance, et le court
+     * delai annule les passes intermediaires. Le cadrage n'a lieu qu'une fois la bande stabilisee.
+     */
+    LaunchedEffect(framePending, plannerBandHeightPx, planner.route) {
+        if (!framePending) return@LaunchedEffect
+        val s = planner.done?.track?.samples ?: return@LaunchedEffect
+        delay(120)
+        controller.fitTo(
+            s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
+            topPaddingPx = statusBarTopPx, bottomPaddingPx = plannerBandHeightPx,
+        )
+        routeFramed = true
+        autoFramed = true
+        framePending = false
+    }
+    /*
+     * La carte suit le zoom du profil : grossir une portion du graphique recadre la carte sur cette
+     * portion, revenir a la vue complete la recadre sur tout le parcours. Les deux representent le meme
+     * trajet, et regarder de pres sur l'un sans l'autre oblige a refaire le rapprochement de tete.
+     *
+     * Relance sur la seule fenetre de zoom, et non sur le parcours : un recalcul ne doit pas deplacer la
+     * carte (cf. routeFramed), et la fenetre retombant a null au meme moment, la cle ne change pas.
+     */
+    LaunchedEffect(planner.zoomRange) {
+        val all = planner.done?.track?.samples ?: return@LaunchedEffect
+        val s = planner.zoomRange?.let { z -> all.subList(z.first, (z.last + 1).coerceAtMost(all.size)) } ?: all
+        if (s.size < 2) return@LaunchedEffect
+        controller.fitTo(
+            s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
+            topPaddingPx = statusBarTopPx, bottomPaddingPx = plannerBandHeightPx,
+        )
+    }
+    // Le planificateur désactivé dans les réglages pendant qu'il est ouvert le referme : sans cela sa bande
+    // survivrait au réglage qui l'a fait naître.
+    LaunchedEffect(settings?.routePlannerEnabled) {
+        if (settings?.routePlannerEnabled == false && planner.open) planner.close()
+    }
+    // Tracé du parcours sur la carte, teinté par classe de pente comme l'aire du profil.
+    val routeSlopeTint = settings?.profileSlope != false
+    LaunchedEffect(planner.revision, planner.route, styleTick, routeSlopeTint) {
+        controller.setRouteLines(listOfNotNull(planner.done?.track), routeSlopeTint)
+    }
+    // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
+    // planificateur fermant le profil ouvert quand il s'ouvre (cf. plus bas).
+    LaunchedEffect(planner.cursor, planner.route) {
+        val s = planner.done?.track?.samples ?: return@LaunchedEffect
+        val i = planner.cursor
+        if (i != null && i in s.indices) controller.setCursor(s[i].lon, s[i].lat) else controller.clearCursor()
+    }
+
+    /** Octets GPX du parcours calculé, sous [name] : servent au téléchargement comme à l'import. */
+    fun routeGpx(name: String): ByteArray? {
+        val t = planner.done?.track ?: return null
+        return GpxWriter.write(name, t.samples, t.hasZ)
+    }
+
+    val currentPositionLabel = stringResource(R.string.planner_current_position)
+    // Téléchargement : on laisse le système choisir où écrire (SAF), plutôt que d'imposer un dossier -
+    // le fichier a vocation à sortir de l'application, vers un GPS ou un autre appareil.
+    val gpxSaver = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/gpx+xml")
+    ) { uri ->
+        val name = defaultRouteName(planner.targets, currentPositionLabel)
+        val bytes = routeGpx(name)
+        if (uri != null && bytes != null) {
+            runCatching { ctx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+        }
+    }
 
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
      *  champ dont aucune frappe ne rendra jamais rien laisserait croire à un service muet. */
@@ -341,7 +518,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     var bearingTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(controller) {
         controller.onCameraMove = { bearingTick++ }
-        controller.onUserMoveBegin = { if (gpsActive) gpsButtonDimmed = true }
+        controller.onUserMoveBegin = {
+            if (gpsActive) gpsButtonDimmed = true
+            autoFramed = false
+        }
     }
     // Mode de saisie exclusif (tracé de la bounding box hors-ligne) : tout tap lui revient, y compris sur
     // une trace ou un marqueur, qui n'ouvrent alors ni profil ni infobulle. Hors de ce mode, la sélection
@@ -422,8 +602,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // vue courante de l'utilisateur (pas de "zoom global" sur toute la trace, qui recadrait brutalement et
     // dont l'animation ralentissait l'affichage du premier profil). L'"expand" jusqu'à la vue complète laisse
     // donc la carte là où elle est. Fermer le profil ne redéclenche rien ici (profileZoomStack revidé).
-    LaunchedEffect(profileZoomStack, computed) {
-        val range = profileZoomStack.lastOrNull() ?: return@LaunchedEffect
+    LaunchedEffect(profileZoom, computed) {
+        val range = profileZoom ?: return@LaunchedEffect
         val samples = computed?.samples ?: return@LaunchedEffect
         if (range.last >= samples.size) return@LaunchedEffect
         val sub = samples.subList(range.first, range.last + 1)
@@ -521,6 +701,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     BackHandler(enabled = offlineConfigBbox != null) { closeOfflineFlow() }
     // Géocodage, du plus général au plus prioritaire (déclaré après = intercepté en premier) : le retour
     // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
+    // Le retour système replie d'abord la bande, puis la ferme : deux appuis pour perdre un trajet saisi,
+    // et non un seul. Placé avant les gestes du géocodage, plus anodins.
+    BackHandler(enabled = planner.open && !planner.collapsed) { planner.collapse(true) }
+    BackHandler(enabled = planner.open && planner.collapsed) { planner.close() }
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
@@ -570,22 +754,30 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
                 // Colonne des boutons du coin haut-gauche : la barre habituelle, puis le bouton de recherche
                 // de lieu juste dessous, à l'écart vertical qui sépare déjà le burger du bouton GPS.
-                Column(Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
+                        .onGloballyPositioned { topControlsHeightPx = it.size.height },
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (mode != "swipe") {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = controlBg) {
                                 Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
                             }
                         }
                         if (settings?.showGpsButton == true) {
                             IconButton(
                                 onClick = { onGpsButtonTap() },
-                                modifier = Modifier
-                                    .alpha(if (gpsButtonDimmed) 0.6f else 1f)
-                                    .background(
-                                        if (gpsActive) MaterialTheme.colorScheme.primary else Color.Transparent,
-                                        RoundedCornerShape(8.dp)),
+                                // Actif, il porte son fond bleu, seule marque de son etat ; eteint, il
+                                // recoit le fond commun des boutons de controle s'il est demande. Les deux
+                                // passent par le MEME peintre : le bleu etait auparavant pose par un
+                                // background() couvrant les 48 dp entiers du bouton, ce qui le rendait plus
+                                // large que les autres fonds et le faisait cohabiter avec l'ondulation de
+                                // l'IconButton, d'ou un aplat inegal.
+                                modifier = (
+                                    if (gpsActive) Modifier.mapButtonBackground(MaterialTheme.colorScheme.primary)
+                                    else controlBg
+                                ).alpha(if (gpsButtonDimmed) 0.6f else 1f),
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
@@ -597,7 +789,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             // recentre la carte sur la position GPS courante ; même style que le bouton menu
                             // (couleur, taille, transparence par défaut d'un IconButton)
                             if (gpsActive) {
-                                IconButton(onClick = { recenterOnGps() }) {
+                                IconButton(onClick = { recenterOnGps() }, modifier = controlBg) {
                                     Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
                                 }
                             }
@@ -609,8 +801,24 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                     if (settings?.geocodingEnabled == true) {
-                        IconButton(onClick = { onGeocodeButtonTap() }) {
+                        IconButton(onClick = { onGeocodeButtonTap() }, modifier = controlBg) {
                             Icon(Icons.Filled.LocationSearching, stringResource(R.string.content_desc_geocode_search))
+                        }
+                    }
+                    // Sous le bouton du géocodeur, et à sa place quand celui-ci est masqué : les deux
+                    // occupent la même colonne, le planificateur ne doit pas laisser un trou au-dessus de
+                    // lui. Masqué tant que la bande est ouverte, qu'il ne servirait qu'à rouvrir.
+                    if (settings?.routePlannerEnabled == true && !planner.open) {
+                        IconButton(onClick = {
+                            if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
+                                showNoConnectionDialog = true
+                            } else {
+                                vm.closeProfile()          // les deux occupent le bas de l'écran
+                                planner.openPlanner()
+                                planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+                            }
+                        }, modifier = controlBg) {
+                            Icon(Icons.Filled.Route, stringResource(R.string.planner_title))
                         }
                     }
                     if (geo.searchOpen) {
@@ -629,7 +837,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (kotlin.math.abs(bearing) > 0.5) {
-                        IconButton(onClick = { controller.resetNorth() }) {
+                        IconButton(onClick = { controller.resetNorth() }, modifier = controlBg) {
                             Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
                                 modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() })
                         }
@@ -650,7 +858,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                     if (settings?.showBasemapControlButton == true) {
-                        IconButton(onClick = { basemapControlOpen = true }) {
+                        IconButton(onClick = { basemapControlOpen = true }, modifier = controlBg) {
                             // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
                             // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
                             Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control))
@@ -767,6 +975,59 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
+                /*
+                 * Hauteur maximale de la bande : 60 % de l'écran, MAIS jamais plus que ce qui reste
+                 * réellement visible entre la barre de statut et le bas occupé (clavier, ou barre de
+                 * navigation à défaut).
+                 *
+                 * La seconde borne n'est pas une précaution : sans elle, la marge basse qui dégage le
+                 * clavier s'ajoutait à une hauteur déjà calculée sur l'écran ENTIER. Le total dépassait
+                 * l'écran, et la bande, alignée en bas d'une boîte trop petite pour elle, était projetée
+                 * vers le haut - son en-tête sortant de l'écran et passant sous la barre de statut.
+                 */
+                val imeBottomPx = WindowInsets.ime.getBottom(density)
+                val navInsetPx = WindowInsets.navigationBars.getBottom(density)
+                val statusTopPx = WindowInsets.statusBars.getTop(density)
+                val plannerMaxHeight = with(density) {
+                    val visible = constraints.maxHeight - statusTopPx - maxOf(imeBottomPx, navInsetPx)
+                    minOf((constraints.maxHeight * PlannerMaxHeightRatio).toInt(), visible.coerceAtLeast(0)).toDp()
+                }
+                // Bande du planificateur. Réduite, elle se range au coin bas-gauche ; déployée, elle
+                // occupe toute la largeur. Deux alignements pour un même composable, d'où le choix ici.
+                if (planner.open) {
+                    RoutePlannerBand(
+                        state = planner,
+                        dark = bandDark,
+                        imperial = imperialUnits,
+                        settings = settings,
+                        lastLabelInsetPx = 0f,
+                        maxHeight = plannerMaxHeight,
+                        onToggleTheme = {
+                            // Le premier appui fige une valeur explicite, opposée à ce qu'on voit : tant
+                            // qu'on n'y a pas touché, la bande suivait l'application.
+                            vm.setPlannerBandTheme(if (bandDark) "light" else "dark")
+                        },
+                        onPickCurrentPosition = { step -> planner.choose(step, StepTarget.CurrentPosition) },
+                        gpsActive = gpsActive,
+                        geocoding = GeocodingParams(geocodingBase,
+                            ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
+                        onImport = { importDialog = true },
+                        onDownload = {
+                            val name = defaultRouteName(planner.targets, currentPositionLabel)
+                            gpxSaver.launch(GpxWriter.fileName(name))
+                        },
+                        modifier = Modifier
+                            .align(if (planner.collapsed) Alignment.BottomStart else Alignment.BottomCenter)
+                            // Le clavier pousse la bande au-dessus de lui : sans cela il recouvrirait les
+                            // propositions du champ qui vient de prendre le focus, c'est-a-dire
+                            // precisement ce qu'on cherche a lire en tapant.
+                            // L'UNION des deux marges, et non les deux appliquees l'une apres l'autre :
+                            // elle en prend le maximum, la sur ou la barre de navigation s'additionnerait
+                            // a un clavier qui la recouvre deja.
+                            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                            .onGloballyPositioned { plannerBandHeightPx = it.size.height },
+                    )
+                }
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
@@ -783,9 +1044,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
                 }
-                // échelle graphique (uniquement quand le profil n'est pas actif) : décalée au-dessus de
-                // la barre de tracé bbox tant qu'elle est affichée, pour ne pas être recouverte.
-                if (activeLayerId == null && settings?.showScale != false) {
+                // échelle graphique (uniquement quand ni le profil ni la bande du planificateur déployée
+                // n'occupent le bas de l'écran) : décalée au-dessus de la barre de tracé bbox tant qu'elle
+                // est affichée, pour ne pas être recouverte. Réduit, le planificateur la laisse revenir :
+                // il ne prend plus qu'un bouton de coin, et la carte redevient l'objet du regard.
+                val plannerExpanded = planner.open && !planner.collapsed
+                if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
                     val scaleBarModifier = if (offlineDrawingActive) {
                         val barHeightDp = with(density) { offlineBarHeightPx.toDp() }
                         Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
@@ -822,7 +1086,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // complète si aucun zoom. Le kilométrage (Sample.x) n'est jamais remis à zéro (cumulé depuis
                 // le début de la trace) ; seules les infos (distance/D+/D- du bandeau titre) sont recalculées
                 // pour la seule portion visible (cf. TrackMath.statsOf, réutilisable sur une sous-plage).
-                val zoomRange = profileZoomStack.lastOrNull()
+                val zoomRange = profileZoom
                 val windowStart = zoomRange?.first ?: 0
                 // Mémorisé sur (shown, zoomRange) : sinon subList()/statsOf() recréaient une liste d'identité
                 // différente à CHAQUE recomposition (déplacement du curseur, etc.), invalidant le cache de
@@ -838,8 +1102,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
                 fun toWindow(absolute: Int?) = absolute?.let { a -> windowSamples?.let { (a - windowStart).takeIf { i -> i in it.indices } } }
                 val cursorInWindow = toWindow(cursor)
-                val markAInWindow = toWindow(profilePointA)
-                val markBInWindow = toWindow(profilePointB)
 
                 // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
                 // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
@@ -865,17 +1127,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = cursorBottomDp + 4.dp)
                             .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
                     ) {
-                        if (profileZoomStack.isNotEmpty()) {
+                        // Seul bouton restant : le retour a la vue complete. Le zoom lui-meme se fait aux
+                        // doigts sur le graphique (ecartement ou double-tap), comme dans le planificateur.
+                        if (profileZoom != null) {
                             ProfileZoomButton(R.drawable.ic_profile_zoom_expand,
                                 stringResource(R.string.content_desc_profile_zoom_expand), active = false) { vm.expandProfileZoom() }
-                        }
-                        if (profileZoomStack.size < 3) {
-                            ProfileZoomButton(R.drawable.ic_profile_zoom_start,
-                                stringResource(R.string.content_desc_profile_zoom_start),
-                                active = profilePickMode == ProfilePickMode.A) { vm.startProfilePickA() }
-                            ProfileZoomButton(R.drawable.ic_profile_zoom_end,
-                                stringResource(R.string.content_desc_profile_zoom_end),
-                                active = profilePickMode == ProfilePickMode.B) { vm.startProfilePickB() }
                         }
                     }
                 }
@@ -923,7 +1179,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     axisFontSp = settings?.profAxisFont ?: 9,
                                     axisBold = settings?.profAxisBold == true,
                                     cursorIndex = cursorInWindow, onScrub = { vm.onProfileTap(it) },
-                                    markA = markAInWindow, markB = markBInWindow,
+                                    onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
+                                    onDoubleTap = { fraction -> vm.zoomProfile(2f, fraction) },
                                     lastLabelInsetPx = lastLabelInsetPx,
                                     verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
                                     modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -1019,6 +1276,52 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             },
             confirmButton = {}, dismissButton = { TextButton(onClick = { folderPicker = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    // Import du parcours calculé en couche : on demande d'abord son nom, puis son dossier d'accueil - dans
+    // cet ordre parce que le nom est obligatoire et le dossier facultatif. Le choix de dossier ne s'affiche
+    // que s'il y en a : sans dossier, la couche va forcément à la racine, et l'offrir serait une question
+    // sans réponse possible.
+    if (importDialog) {
+        var layerName by remember { mutableStateOf(defaultRouteName(planner.targets, currentPositionLabel)) }
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        fun doImport(folderId: Long?) {
+            routeGpx(layerName)?.let { vm.importLayer(it, GpxWriter.fileName(layerName), folderId) }
+            importDialog = false
+        }
+        AlertDialog(
+            onDismissRequest = { importDialog = false },
+            title = { Text(stringResource(R.string.planner_import_layer)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    CompactOutlinedTextField(
+                        value = layerName, onValueChange = { layerName = it }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                        label = { Text(stringResource(R.string.planner_layer_name)) },
+                    )
+                    if (folders.isNotEmpty()) {
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                        Text(stringResource(R.string.dialog_import_into_title),
+                            style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onClick = { doImport(null) }) { Text(stringResource(R.string.label_root)) }
+                        folders.forEach { f -> TextButton(onClick = { doImport(f.id) }) { Text(f.name) } }
+                    }
+                }
+            },
+            // Sans dossier, rien ne reste à choisir : le bouton de validation suffit à conclure. Avec des
+            // dossiers, c'est le tap sur l'un d'eux qui conclut, et ce bouton disparaît.
+            confirmButton = {
+                if (folders.isEmpty()) {
+                    TextButton(onClick = { doImport(null) }, enabled = layerName.isNotBlank()) {
+                        Text(stringResource(R.string.action_ok))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { importDialog = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 
@@ -1551,6 +1854,37 @@ private const val BubbleMaxHeightRatio = 0.6f
 /** Propositions demandées au géocodeur. Plus que les 4 visibles : le défilement de la liste n'a de sens
  *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
 private const val GeocodeResultLimit = 10
+
+/** Opacite du fond des boutons de controle. Egale a celle de l'echelle graphique (cf. ScaleBar), les deux
+ *  devant se detacher du fond de carte de la meme facon. */
+private const val ControlButtonBgAlpha = 0.7f
+
+/**
+ * Fond d'un bouton pose sur la carte : un carre a peine adouci, resserre autour de l'icone.
+ *
+ * Dessine SOUS le contenu plutot que pose sur toute la surface : un IconButton mesure 48 dp pour la zone
+ * tactile, l'icone n'en occupe que 24. Un fond plein donnerait une pastille deux fois plus large que ce
+ * qu'elle habille, et se superposerait a l'ondulation que l'IconButton peint lui-meme.
+ */
+private fun Modifier.mapButtonBackground(color: Color): Modifier = drawBehind {
+    val inset = ControlButtonInset.toPx()
+    val r = ControlButtonRadius.toPx()
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(inset, inset),
+        size = Size(size.width - 2 * inset, size.height - 2 * inset),
+        cornerRadius = CornerRadius(r, r),
+    )
+}
+
+/** Retrait du fond par rapport aux bords du bouton : ramene le carre a la taille de l'icone. */
+private val ControlButtonInset = 6.dp
+
+/** Angles du fond : un carre franc, a peine adouci pour ne pas jurer avec le reste de l'interface. */
+private val ControlButtonRadius = 6.dp
+
+/** Part de la hauteur d'ecran que la bande du planificateur ne depasse jamais. */
+private const val PlannerMaxHeightRatio = 0.6f
 
 /** Zoom minimal garanti sur le lieu trouvé, un zoom plus serré étant conservé. À 12, la ville et ses
  *  abords tiennent à l'écran : de quoi situer l'épingle, sans plonger sur une adresse à la parcelle. */

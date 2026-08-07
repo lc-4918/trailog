@@ -30,6 +30,7 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.gestures.MoveGestureDetector
+import org.maplibre.android.gestures.StandardScaleGestureDetector
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -636,11 +637,19 @@ class MapController {
 
     fun screenOf(lon: Double, lat: Double): PointF? = map?.projection?.toScreenLocation(LatLng(lat, lon))
 
-    fun fitTo(west: Double, south: Double, east: Double, north: Double) {
+    /**
+     * [topPaddingPx] / [bottomPaddingPx] : hauteurs masquees en haut (barre de statut, la carte passant
+     * dessous en mode bord-a-bord) et en bas (bande du planificateur). A laisser libres pour que le
+     * contenu cadre tienne dans ce qu'on voit REELLEMENT, et non sous une barre ou un panneau.
+     */
+    fun fitTo(
+        west: Double, south: Double, east: Double, north: Double,
+        topPaddingPx: Int = 0, bottomPaddingPx: Int = 0,
+    ) {
         val m = map ?: return
         if (west == 0.0 && east == 0.0) return
         val b = LatLngBounds.Builder().include(LatLng(north, east)).include(LatLng(south, west)).build()
-        m.easeCamera(CameraUpdateFactory.newLatLngBounds(b, 90))
+        m.easeCamera(CameraUpdateFactory.newLatLngBounds(b, 90, 90 + topPaddingPx, 90, 90 + bottomPaddingPx))
     }
 
     fun handleTap(latLng: LatLng, screen: PointF) {
@@ -714,12 +723,20 @@ fun MapLibreView(
                 map.addOnMapClickListener { ll -> controller.handleTap(ll, map.projection.toScreenLocation(ll)); false }
                 map.addOnCameraIdleListener { controller.onCameraIdle?.invoke() }
                 map.addOnCameraMoveListener { controller.onCameraMove?.invoke() }
-                // geste de déplacement déclenché par l'utilisateur uniquement (pas les mouvements programmatiques
-                // comme moveTo/centerOn/fitTo) : sert à estomper le bouton GPS quand la carte est bougée à la main.
+                // Gestes déclenchés par l'UTILISATEUR uniquement (jamais les mouvements programmatiques
+                // comme moveTo/centerOn/fitTo) : estompent le bouton GPS, et disent qu'un cadrage
+                // automatique ne doit plus être rejoué - la vue est désormais celle qu'on a choisie.
+                // Le zoom à deux doigts compte autant que le déplacement, d'où les DEUX écouteurs :
+                // pincer pour regarder de plus près est tout aussi délibéré que faire glisser.
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: MoveGestureDetector) { controller.onUserMoveBegin?.invoke() }
                     override fun onMove(detector: MoveGestureDetector) {}
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
+                })
+                map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
+                    override fun onScaleBegin(detector: StandardScaleGestureDetector) { controller.onUserMoveBegin?.invoke() }
+                    override fun onScale(detector: StandardScaleGestureDetector) {}
+                    override fun onScaleEnd(detector: StandardScaleGestureDetector) {}
                 })
             }
         }

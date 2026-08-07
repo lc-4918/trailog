@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Cap itinerari</string>
     <string name="geocode_route_info">Itinerari recomanat per a: %1$s. No és una distància en línia recta.</string>
     <string name="content_desc_route_info">Sobre aquesta distància</string>
+    <string name="planner_title">Planificador d\'itineraris</string>
+    <string name="planner_collapse">Redueix</string>
+    <string name="planner_expand">Reobre el planificador</string>
+    <string name="planner_toggle_theme">Canvia el tema de la barra</string>
+    <string name="planner_start">Sortida</string>
+    <string name="planner_end">Arribada</string>
+    <string name="planner_via">Etapa</string>
+    <string name="planner_current_position">Ubicació actual</string>
+    <string name="planner_add_step">Afegeix una etapa</string>
+    <string name="planner_move_up">Puja</string>
+    <string name="planner_move_down">Baixa</string>
+    <string name="planner_remove_step">Elimina l\'etapa</string>
+    <string name="planner_import_layer">Importa com a capa</string>
+    <string name="planner_download_gpx">Baixa en GPX</string>
+    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Vista completa</string>
+    <string name="planner_layer_name">Nom de la capa</string>
+    <string name="planner_clear_step">Esborra</string>
+    <string name="planner_search_failed">Servei de cerca inaccessible</string>
+    <string name="planner_retry">Torna-ho a provar</string>
+    <string name="planner_show_profile">Mostra el perfil altimètric</string>
+    <string name="planner_hide_profile">Amaga el perfil altimètric</string>
     <string name="content_desc_route_profile">Perfil de la ruta</string>
     <string name="geocode_profile_from_position">Ruta des de la ubicació</string>
     <string name="geocode_profile_from_point">Ruta des d\'un punt</string>
@@ -118,7 +141,7 @@
     <!-- Configuració: pestanyes -->
     <string name="settings_title">Configuració</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_routes">Itineraris</string>
+    <string name="settings_tab_routes">Trajectes</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Tessel·les</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">N</string>
 
     <!-- Configuració: Mapa -->
-    <string name="settings_section_scale">Escala</string>
     <string name="settings_show_scale_bar">Mostra l\'escala gràfica</string>
-    <string name="settings_section_rotation">Rotació</string>
-    <string name="settings_allow_rotation">Permet la rotació del mapa (gest de 2 dits)</string>
-    <string name="settings_section_gps_position">Posició GPS</string>
+    <string name="settings_allow_rotation">Permet la rotació del mapa</string>
+    <string name="settings_group_controls">Controls</string>
+    <string name="settings_group_pois">Punts d\'interès</string>
+    <string name="settings_group_elevation_profile">Perfil altimètric</string>
+    <string name="settings_control_buttons_background">Fons darrere dels botons</string>
     <string name="settings_show_gps_button">Mostra el botó de localització GPS</string>
-    <string name="settings_section_geocoding">Geocodificació</string>
-    <string name="settings_section_route_planner">Planificador d\'itineraris</string>
     <string name="settings_enable_route_planner">Mostra el botó del planificador</string>
     <string name="settings_section_geocoding_service">Servei de geocodificació</string>
     <string name="settings_section_routing_service">Servei d\'itineraris</string>
     <string name="settings_section_default_discipline">Disciplina per defecte</string>
     <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
-    <string name="settings_geocoding_url">URL del servei de geocodificació</string>
-    <string name="settings_routing_url">URL del servei d\'itineraris</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>
     <string name="settings_marker_size">Mida dels marcadors (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Mostra el botó del gestor de mapes base</string>
     <string name="settings_basemap_control_width">Amplada del panell: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacitat del plafó: %1$d%%</string>
-    <string name="settings_bubble_opacity">Opacitat de la bombolla: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacitat: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapa base predeterminat</string>
     <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
     <string name="settings_app_folder_default">Carpeta de l\'app (per defecte)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Mapes base</string>
     <string name="content_desc_basemap_control">Gestor de mapes base</string>
     <string name="content_desc_basemap_legend">Llegenda del mapa base</string>
-    <string name="content_desc_profile_zoom_start">Inici de la selecció de zoom</string>
-    <string name="content_desc_profile_zoom_end">Final de la selecció de zoom</string>
     <string name="content_desc_profile_zoom_expand">Redueix el zoom del perfil</string>
 
     <!-- Estat / errors -->
@@ -275,7 +293,7 @@
     <!-- Importació/exportació de proveïdors -->
     <string name="dialog_import_providers_title">Vols importar els proveïdors?</string>
     <string name="dialog_import_providers_text">S\'importaran %1$d proveïdor(s). Els proveïdors existents amb el mateix id se sobreescriuran.</string>
-    <string name="settings_bubble_position">Posició del globus</string>
+    <string name="settings_bubble_position">Posició</string>
     <string name="bubble_pos_auto">Automàtica</string>
     <string name="bubble_pos_top_left">Dalt-esquerra</string>
     <string name="bubble_pos_top">Dalt</string>

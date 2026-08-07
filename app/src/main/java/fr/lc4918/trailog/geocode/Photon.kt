@@ -29,8 +29,15 @@ object Photon {
      *  service (400) et non ignoré, une locale exotique rendrait donc la recherche muette. */
     private val SUPPORTED_LANGS = setOf("de", "en", "fr", "it")
 
-    /** Délais courts : la frappe suivante rend la requête caduque, mieux vaut abandonner tôt. */
-    private const val TIMEOUT_MS = 8_000
+    /**
+     * Délais d'attente. Portés de 8 à 12 s : une PREMIERE requête sur un réseau mobile paie la résolution
+     * DNS, la poignée de main TCP puis TLS avant le moindre octet utile, et 8 s ne suffisaient pas
+     * toujours - la recherche retombait alors sur "aucun résultat", sans rien dire.
+     *
+     * Les frappes suivantes réutilisent la connexion (cf. TileHttp) et répondent bien plus vite ; ce délai
+     * ne vaut donc en pratique que pour la première.
+     */
+    private const val TIMEOUT_MS = 12_000
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -87,17 +94,21 @@ object Photon {
     }
 
     /**
-     * Interroge le service. Renvoie une liste vide aussi bien quand il n'y a rien à trouver que lorsque le
-     * réseau manque : l'appelant n'a rien à en faire de différent, et l'application est utilisable hors
-     * ligne, où l'absence de résultat est le fonctionnement normal.
+     * Interroge le service.
+     *
+     * **Null quand le service n'a pas répondu** (réseau absent, délai dépassé, statut d'erreur), liste vide
+     * quand il a répondu qu'il ne trouvait rien. La distinction compte : confondues, une panne réseau
+     * s'affichait comme une absence de résultat, et l'utilisateur voyait le spinner s'arrêter sans rien,
+     * sans savoir s'il devait corriger sa frappe ou réessayer.
      *
      * Réutilise le client HTTP des tuiles (mêmes en-têtes, mêmes garde-fous) plutôt que d'en ouvrir un second.
      */
     suspend fun search(
         base: String, query: String, lang: String, limit: Int,
-    ): List<GeocodePlace> = withContext(Dispatchers.IO) {
+    ): List<GeocodePlace>? = withContext(Dispatchers.IO) {
         val resp = TileHttp.fetch(url(base, query, lang, limit), TIMEOUT_MS, TIMEOUT_MS)
-        val body = resp.body ?: return@withContext emptyList()
+        if (resp.status !in 200..299) return@withContext null
+        val body = resp.body ?: return@withContext null
         parse(body.toString(Charsets.UTF_8))
     }
 

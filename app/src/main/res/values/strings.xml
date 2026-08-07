@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Aucun itinéraire</string>
     <string name="geocode_route_info">Itinéraire recommandé pour : %1$s. Ce n\'est pas une distance à vol d\'oiseau.</string>
     <string name="content_desc_route_info">À propos de cette distance</string>
+    <string name="planner_title">Planificateur d\'itinéraire</string>
+    <string name="planner_collapse">Réduire</string>
+    <string name="planner_expand">Rouvrir le planificateur</string>
+    <string name="planner_toggle_theme">Changer le thème de la bande</string>
+    <string name="planner_start">Départ</string>
+    <string name="planner_end">Arrivée</string>
+    <string name="planner_via">Étape</string>
+    <string name="planner_current_position">Position actuelle</string>
+    <string name="planner_add_step">Ajouter une étape</string>
+    <string name="planner_move_up">Monter</string>
+    <string name="planner_move_down">Descendre</string>
+    <string name="planner_remove_step">Supprimer l\'étape</string>
+    <string name="planner_import_layer">Importer en couche</string>
+    <string name="planner_download_gpx">Télécharger en GPX</string>
+    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Vue complète</string>
+    <string name="planner_layer_name">Nom de la couche</string>
+    <string name="planner_clear_step">Effacer</string>
+    <string name="planner_search_failed">Service de recherche injoignable</string>
+    <string name="planner_retry">Réessayer</string>
+    <string name="planner_show_profile">Afficher le profil altimétrique</string>
+    <string name="planner_hide_profile">Masquer le profil altimétrique</string>
     <string name="content_desc_route_profile">Profil de l\'itinéraire</string>
     <string name="geocode_profile_from_position">Itinéraire depuis la position</string>
     <string name="geocode_profile_from_point">Itinéraire depuis un point</string>
@@ -118,7 +141,7 @@
     <!-- Réglages : onglets -->
     <string name="settings_title">Réglages</string>
     <string name="settings_tab_general">Système</string>
-    <string name="settings_tab_routes">Itinéraires</string>
+    <string name="settings_tab_routes">Trajets</string>
     <string name="settings_tab_map">Carte</string>
     <string name="settings_tab_tiles">Tuiles</string>
 
@@ -188,21 +211,18 @@
     <string name="settings_bold_abbrev">G</string>
 
     <!-- Réglages : Carte -->
-    <string name="settings_section_scale">Échelle</string>
     <string name="settings_show_scale_bar">Afficher l\'échelle graphique</string>
-    <string name="settings_section_rotation">Rotation</string>
-    <string name="settings_allow_rotation">Autoriser la rotation de la carte (geste à 2 doigts)</string>
-    <string name="settings_section_gps_position">Position GPS</string>
+    <string name="settings_allow_rotation">Autoriser la rotation de la carte</string>
+    <string name="settings_group_controls">Contrôles</string>
+    <string name="settings_group_pois">Points d\'intérêt</string>
+    <string name="settings_group_elevation_profile">Profil altimétrique</string>
+    <string name="settings_control_buttons_background">Fond derrière les boutons</string>
     <string name="settings_show_gps_button">Afficher le bouton de localisation GPS</string>
-    <string name="settings_section_geocoding">Géocodage</string>
-    <string name="settings_section_route_planner">Planificateur d\'itinéraire</string>
     <string name="settings_enable_route_planner">Afficher le bouton du planificateur</string>
     <string name="settings_section_geocoding_service">Service de géocodage</string>
     <string name="settings_section_routing_service">Service d\'itinéraire</string>
     <string name="settings_section_default_discipline">Discipline par défaut</string>
     <string name="settings_enable_geocoding">Activer la recherche de lieu et d\'adresse</string>
-    <string name="settings_geocoding_url">URL du service de géocodage</string>
-    <string name="settings_routing_url">URL du service d\'itinéraire</string>
     <string name="settings_section_markers">Marqueurs (carte)</string>
     <string name="settings_marker_size">Taille des marqueurs (dp)</string>
     <string name="settings_section_import_folder">Dossier de départ des imports</string>
@@ -211,7 +231,7 @@
     <string name="settings_show_basemap_control_button">Afficher le bouton du gestionnaire de fonds de plan</string>
     <string name="settings_basemap_control_width">Largeur du panneau : %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacité du panneau : %1$d%%</string>
-    <string name="settings_bubble_opacity">Opacité de l\'infobulle : %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacité : %1$d%%</string>
     <string name="settings_section_default_basemap">Fond par défaut</string>
     <string name="settings_section_mbtiles_folder">Dossier des MBTiles</string>
     <string name="settings_app_folder_default">Dossier de l\'app (défaut)</string>
@@ -259,8 +279,6 @@
     <string name="basemap_control_title">Fonds de plan</string>
     <string name="content_desc_basemap_control">Gestionnaire de fonds de plan</string>
     <string name="content_desc_basemap_legend">Légende du fond de plan</string>
-    <string name="content_desc_profile_zoom_start">Début de la sélection de zoom</string>
-    <string name="content_desc_profile_zoom_end">Fin de la sélection de zoom</string>
     <string name="content_desc_profile_zoom_expand">Réduire le zoom du profil</string>
 
     <!-- Statuts / erreurs -->
@@ -277,7 +295,7 @@
     <!-- Import/Export des fournisseurs -->
     <string name="dialog_import_providers_title">Importer les fournisseurs ?</string>
     <string name="dialog_import_providers_text">%1$d fournisseur(s) seront importés. Les fournisseurs existants portant le même identifiant seront écrasés.</string>
-    <string name="settings_bubble_position">Position de l\'infobulle</string>
+    <string name="settings_bubble_position">Position</string>
     <string name="bubble_pos_auto">Auto</string>
     <string name="bubble_pos_top_left">Haut-gauche</string>
     <string name="bubble_pos_top">Haut</string>

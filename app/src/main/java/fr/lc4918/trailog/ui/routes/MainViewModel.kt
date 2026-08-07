@@ -25,6 +25,7 @@ import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
+import fr.lc4918.trailog.ui.profile.ProfileZoom
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,9 +46,6 @@ import kotlinx.coroutines.withContext
 
 /** Position de dépose lors d'un drag & drop dans la légende : avant/après un sibling, ou dedans (dossier cible). */
 enum class DropPosition { BEFORE, INTO, AFTER }
-
-/** Sélection en cours pour un zoom sur le profil (bouton "début"/"fin" tapé, en attente d'un tap sur le graphique). */
-enum class ProfilePickMode { A, B }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
@@ -82,18 +80,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _profileLoading = MutableStateFlow(false)
     val profileLoading = _profileLoading.asStateFlow()
 
-    // --- zoom sur le profil (boutons A/B, jusqu'a 3 niveaux imbriques) ---
-    // Empile les plages (indices absolus dans computed.samples) successivement zoomees ; le sommet de la
-    // pile est la vue courante, la pile vide = vue complete. Remise a zero a chaque nouvelle trace tapee
-    // ou fermeture du profil (jamais lors d'un simple "expand", qui ne fait que depiler un niveau).
-    private val _profileZoomStack = MutableStateFlow<List<IntRange>>(emptyList())
-    val profileZoomStack = _profileZoomStack.asStateFlow()
-    private val _profilePickMode = MutableStateFlow<ProfilePickMode?>(null)
-    val profilePickMode = _profilePickMode.asStateFlow()
-    private val _profilePointA = MutableStateFlow<Int?>(null)
-    val profilePointA = _profilePointA.asStateFlow()
-    private val _profilePointB = MutableStateFlow<Int?>(null)
-    val profilePointB = _profilePointB.asStateFlow()
+    // --- zoom sur le profil ---
+    /**
+     * Portion du profil actuellement affichee (indices absolus dans computed.samples), ou null pour la
+     * trace entiere. Une seule fenetre et non une pile de niveaux : le zoom se fait desormais aux doigts,
+     * en continu, et l'on ne "remonte" plus d'un cran mais on revient d'un coup a la vue complete.
+     */
+    private val _profileZoom = MutableStateFlow<IntRange?>(null)
+    val profileZoom = _profileZoom.asStateFlow()
 
     // --- marqueur sélectionné (infobulle) ---
     private val _markerLayerData = MutableStateFlow<PointLayerData?>(null)
@@ -227,52 +221,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setCursor(index: Int?) { _cursor.value = index }
 
     private fun resetProfileZoom() {
-        _profileZoomStack.value = emptyList()
-        _profilePickMode.value = null
-        _profilePointA.value = null
-        _profilePointB.value = null
+        _profileZoom.value = null
     }
 
-    /** Bouton "début" : le prochain tap sur le graphique posera le point A. */
-    fun startProfilePickA() { _profilePickMode.value = ProfilePickMode.A; _profilePointA.value = null }
-    /** Bouton "fin" : le prochain tap sur le graphique posera le point B et zoomera sur [A, B]. */
-    fun startProfilePickB() { _profilePickMode.value = ProfilePickMode.B }
+    /** Retour a la vue complete (bouton "expand"). Ne touche pas a la position de la carte ailleurs que
+     *  via l'effet de recadrage observant profileZoom (cf. MainScreen). */
+    fun expandProfileZoom() { _profileZoom.value = null }
 
-    /** Un niveau de zoom en moins (le dernier empilé) ; ne touche pas a la position de la carte ailleurs
-     *  que via l'effet de recadrage observant profileZoomStack (cf. MainScreen). */
-    fun expandProfileZoom() { _profileZoomStack.update { it.dropLast(1) } }
+    /** Grossissement au pincement ou au double-tap, centre sur [focusFraction] (cf. [ProfileZoom]). */
+    fun zoomProfile(scale: Float, focusFraction: Float) {
+        val total = _computed.value?.samples?.size ?: return
+        val next = ProfileZoom.window(_profileZoom.value, total, scale, focusFraction)
+        if (next == _profileZoom.value) return
+        _profileZoom.value = next
+        _cursor.value = null
+    }
 
     /**
-     * Tap sur le graphique du profil. [localIndex] est relatif a la fenêtre actuellement affichée (la
-     * plage zoomée courante, ou la trace complète si aucun zoom). Hors sélection A/B, comportement normal
-     * (déplace le curseur). En sélection A, pose le point A. En sélection B, pose B et empile une nouvelle
-     * plage [min(A,B), max(A,B)] (jusqu'à 3 niveaux) ; A et B restent affichés brièvement avant que la vue
-     * zoomée (sans ces repères, ses propres bords en tenant lieu) ne les remplace.
+     * Tap sur le graphique du profil : deplace le curseur. [localIndex] est relatif a la fenetre
+     * actuellement affichee (la portion zoomee, ou la trace complete si aucun zoom).
      */
     fun onProfileTap(localIndex: Int) {
-        val windowStart = _profileZoomStack.value.lastOrNull()?.first ?: 0
-        val absolute = windowStart + localIndex
-        when (_profilePickMode.value) {
-            ProfilePickMode.A -> {
-                _profilePointA.value = absolute
-                _profilePickMode.value = null
-            }
-            ProfilePickMode.B -> {
-                val a = _profilePointA.value
-                _profilePickMode.value = null
-                if (a != null && a != absolute && _profileZoomStack.value.size < 3) {
-                    _profilePointB.value = absolute
-                    val range = minOf(a, absolute)..maxOf(a, absolute)
-                    _profileZoomStack.update { it.plusElement(range) }
-                    viewModelScope.launch {
-                        delay(400)
-                        _profilePointA.value = null
-                        _profilePointB.value = null
-                    }
-                }
-            }
-            null -> _cursor.value = absolute
-        }
+        _cursor.value = (_profileZoom.value?.first ?: 0) + localIndex
     }
 
     /** Import d'une image choisie par l'utilisateur pour un champ IMAGE d'infobulle. */
@@ -515,11 +485,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         db.settings().upsert(s.copy(defaultBasemapId = id))
     }
 
-    /** Fait apparaître le bouton de localisation sur la carte (accepter d'activer la position depuis la
-     *  mesure de distance du géocodage) : la position ne doit pas s'allumer sans que rien ne le montre. */
+    /** Fait apparaître le bouton de localisation sur la carte : la position ne doit pas s'allumer sans que
+     *  rien ne le montre. */
     fun setShowGpsButton(show: Boolean) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         if (s.showGpsButton != show) db.settings().upsert(s.copy(showGpsButton = show))
+    }
+
+    /** Thème de la seule bande du planificateur : "system", "light" ou "dark". Mémorisé d'une ouverture à
+     *  l'autre, le choix valant pour la façon de travailler et non pour un trajet. */
+    fun setPlannerBandTheme(pref: String) = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        if (s.plannerBandTheme != pref) db.settings().upsert(s.copy(plannerBandTheme = pref))
     }
 
     /** Active/désactive le relief (tap sur son entrée dans le gestionnaire de couches) : contrairement aux

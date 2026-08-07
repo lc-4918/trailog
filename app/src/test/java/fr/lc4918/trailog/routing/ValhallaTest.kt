@@ -16,7 +16,7 @@ class ValhallaTest {
 
     /** Corps JSON reellement envoye, une fois l'URL decodee. */
     private fun body(profile: RoutingProfile): String {
-        val u = Valhalla.url(Valhalla.DEFAULT_URL, 44.56, 6.08, 45.18, 5.72, profile)
+        val u = Valhalla.url(Valhalla.DEFAULT_URL, listOf(44.56 to 6.08, 45.18 to 5.72), profile)
         return URLDecoder.decode(u.substringAfter("json="), "UTF-8")
     }
 
@@ -62,9 +62,18 @@ class ValhallaTest {
         assertTrue(""""directions_type":"none"""" in body(RoutingProfile.ROAD_BIKE))
     }
 
+    /** Le planificateur autorise jusqu'a 25 lieux : les etapes intermediaires doivent figurer dans la
+     *  requete, dans l'ordre, sinon le moteur relierait simplement le depart a l'arrivee. */
+    @Test fun `les etapes intermediaires figurent dans l'ordre donne`() {
+        val u = Valhalla.url(Valhalla.DEFAULT_URL,
+            listOf(44.0 to 5.0, 44.5 to 5.5, 45.0 to 6.0), RoutingProfile.GRAVEL)
+        val b = URLDecoder.decode(u.substringAfter("json="), "UTF-8")
+        assertTrue(b, """"locations":[{"lat":44.0,"lon":5.0},{"lat":44.5,"lon":5.5},{"lat":45.0,"lon":6.0}]""" in b)
+    }
+
     /** Une instance auto-hebergee peut exposer une URL portant deja une chaine de requete. */
     @Test fun `une url de base deja parametree recoit un et commercial`() {
-        val u = Valhalla.url("https://route.exemple.fr/route?token=abc", 1.0, 2.0, 3.0, 4.0, RoutingProfile.FOOT)
+        val u = Valhalla.url("https://route.exemple.fr/route?token=abc", listOf(1.0 to 2.0, 3.0 to 4.0), RoutingProfile.FOOT)
         assertTrue(u, "https://route.exemple.fr/route?token=abc&json=" in u)
     }
 
@@ -124,7 +133,7 @@ class ValhallaTest {
     }
 
     @Test fun `un pas nul ne demande pas d'altitudes`() {
-        val u = Valhalla.url(Valhalla.DEFAULT_URL, 1.0, 2.0, 3.0, 4.0, RoutingProfile.FOOT, elevationIntervalM = 0)
+        val u = Valhalla.url(Valhalla.DEFAULT_URL, listOf(1.0 to 2.0, 3.0 to 4.0), RoutingProfile.FOOT, elevationIntervalM = 0)
         assertTrue("elevation_interval" !in URLDecoder.decode(u, "UTF-8"))
     }
 

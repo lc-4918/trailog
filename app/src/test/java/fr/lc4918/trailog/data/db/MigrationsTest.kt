@@ -251,6 +251,17 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 28 -> 29 : fond des boutons de controle ----------
+
+    /** Desactive sur une base deja en place : les boutons nus sont l'aspect connu de l'application, et une
+     *  mise a jour n'a pas a changer l'allure de la carte sans qu'on l'ait demande. */
+    @Test fun `28 vers 29 ajoute le fond des boutons desactive`() {
+        val db = freshDb("m2829"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_CONTROL_BUTTONS_BACKGROUND)
+        assertEquals(0, scalar(db, "SELECT controlButtonsBackground FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -262,7 +273,7 @@ class MigrationsTest {
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
-            "routePlannerEnabled", "plannerBandTheme")
+            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

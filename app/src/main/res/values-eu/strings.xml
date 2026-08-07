@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Ibilbiderik ez</string>
     <string name="geocode_route_info">Gomendatutako ibilbidea: %1$s. Ez da lerro zuzeneko distantzia bat.</string>
     <string name="content_desc_route_info">Distantzia honi buruz</string>
+    <string name="planner_title">Ibilbide-planifikatzailea</string>
+    <string name="planner_collapse">Txikitu</string>
+    <string name="planner_expand">Ireki berriro planifikatzailea</string>
+    <string name="planner_toggle_theme">Aldatu barraren gaia</string>
+    <string name="planner_start">Irteera</string>
+    <string name="planner_end">Helmuga</string>
+    <string name="planner_via">Etapa</string>
+    <string name="planner_current_position">Uneko kokapena</string>
+    <string name="planner_add_step">Gehitu etapa bat</string>
+    <string name="planner_move_up">Igo</string>
+    <string name="planner_move_down">Jaitsi</string>
+    <string name="planner_remove_step">Kendu etapa</string>
+    <string name="planner_import_layer">Inportatu geruza gisa</string>
+    <string name="planner_download_gpx">Deskargatu GPX gisa</string>
+    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Ikuspegi osoa</string>
+    <string name="planner_layer_name">Geruzaren izena</string>
+    <string name="planner_clear_step">Garbitu</string>
+    <string name="planner_search_failed">Bilaketa-zerbitzua eskuraezina</string>
+    <string name="planner_retry">Saiatu berriro</string>
+    <string name="planner_show_profile">Erakutsi altuera-profila</string>
+    <string name="planner_hide_profile">Ezkutatu altuera-profila</string>
     <string name="content_desc_route_profile">Ibilbidearen profila</string>
     <string name="geocode_profile_from_position">Ibilbidea kokapenetik</string>
     <string name="geocode_profile_from_point">Ibilbidea puntu batetik</string>
@@ -118,7 +141,7 @@
     <!-- Ezarpenak: fitxak -->
     <string name="settings_title">Ezarpenak</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_routes">Ibilbideak</string>
+    <string name="settings_tab_routes">Bidaiak</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Lauzak</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">L</string>
 
     <!-- Ezarpenak: Mapa -->
-    <string name="settings_section_scale">Eskala</string>
     <string name="settings_show_scale_bar">Erakutsi eskala grafikoa</string>
-    <string name="settings_section_rotation">Errotazioa</string>
-    <string name="settings_allow_rotation">Baimendu maparen errotazioa (2 hatzeko keinua)</string>
-    <string name="settings_section_gps_position">GPS kokapena</string>
+    <string name="settings_allow_rotation">Baimendu maparen biraketa</string>
+    <string name="settings_group_controls">Kontrolak</string>
+    <string name="settings_group_pois">Intereseko puntuak</string>
+    <string name="settings_group_elevation_profile">Altuera-profila</string>
+    <string name="settings_control_buttons_background">Botoien atzeko planoa</string>
     <string name="settings_show_gps_button">Erakutsi GPS kokapen-botoia</string>
-    <string name="settings_section_geocoding">Geokodetzea</string>
-    <string name="settings_section_route_planner">Ibilbide-planifikatzailea</string>
     <string name="settings_enable_route_planner">Erakutsi planifikatzailearen botoia</string>
     <string name="settings_section_geocoding_service">Geokodetze-zerbitzua</string>
     <string name="settings_section_routing_service">Ibilbide-zerbitzua</string>
     <string name="settings_section_default_discipline">Diziplina lehenetsia</string>
     <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
-    <string name="settings_geocoding_url">Geokodetze-zerbitzuaren URLa</string>
-    <string name="settings_routing_url">Ibilbide-zerbitzuaren URLa</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>
     <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
     <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Erakutsi oinarrizko mapen kudeatzailearen botoia</string>
     <string name="settings_basemap_control_width">Panelaren zabalera: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Panelaren opakutasuna: %1$d%%</string>
-    <string name="settings_bubble_opacity">Informazio-burbuilaren opakutasuna: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opakutasuna: %1$d%%</string>
     <string name="settings_section_default_basemap">Oinarrizko mapa lehenetsia</string>
     <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
     <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Oinarrizko mapak</string>
     <string name="content_desc_basemap_control">Oinarrizko mapen kudeatzailea</string>
     <string name="content_desc_basemap_legend">Oinarrizko maparen legenda</string>
-    <string name="content_desc_profile_zoom_start">Zoom hautapenaren hasiera</string>
-    <string name="content_desc_profile_zoom_end">Zoom hautapenaren amaiera</string>
     <string name="content_desc_profile_zoom_expand">Profilaren zooma txikitu</string>
 
     <!-- Egoera / erroreak -->
@@ -275,7 +293,7 @@
     <!-- Hornitzaileen inportazioa/esportazioa -->
     <string name="dialog_import_providers_title">Hornitzaileak inportatu?</string>
     <string name="dialog_import_providers_text">%1$d hornitzaile inportatuko dira. Id bera duten hornitzaile existenteak gainidatziko dira.</string>
-    <string name="settings_bubble_position">Bunbuiloaren kokapena</string>
+    <string name="settings_bubble_position">Kokapena</string>
     <string name="bubble_pos_auto">Automatikoa</string>
     <string name="bubble_pos_top_left">Goian-ezkerrean</string>
     <string name="bubble_pos_top">Goian</string>

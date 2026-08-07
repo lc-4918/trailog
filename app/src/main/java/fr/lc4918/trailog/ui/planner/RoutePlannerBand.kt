@@ -1,0 +1,598 @@
+package fr.lc4918.trailog.ui.planner
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.ui.profile.ElevationProfile
+import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.settings.RoutingProfilePicker
+import fr.lc4918.trailog.ui.theme.TrailogDark
+import fr.lc4918.trailog.ui.theme.TrailogLight
+import kotlinx.coroutines.delay
+
+/** Hauteur minimale de la bande : le double de celle des barres de consigne existantes, qui n'affichent
+ *  qu'une ligne de texte. Le planificateur porte au moins la discipline et deux champs. */
+private val BandMinHeight = 96.dp
+
+/** Fond de la bande, dans son propre theme. Opaque a 94 % : la carte transparait juste assez pour qu'on
+ *  garde le sentiment de la survoler, sans nuire a la lecture des champs. */
+private const val BandAlpha = 0.94f
+
+/** Gabarit du champ d'une etape, partage entre le champ de saisie et l'affichage replie qui le remplace
+ *  au repos : les deux doivent avoir exactement la meme allure, sans quoi la ligne sauterait au focus. */
+private val FieldShape = RoundedCornerShape(4.dp)
+private val FieldHeight = 48.dp
+private val FieldTextPadding = 16.dp
+
+/** Fond du bouton de reouverture : un peu plus opaque que l'echelle graphique (0,7), qu'il cotoie dans le
+ *  meme coin d'ecran et devant laquelle il doit se detacher. */
+private const val CollapsedAlpha = 0.85f
+
+/**
+ * Bande du planificateur d'itineraire, posee au bas de l'ecran.
+ *
+ * Elle porte son propre theme ([dark]), independant de celui de l'application : on planifie souvent en
+ * plein jour devant une carte claire, et l'inverse le soir. Le bouton soleil/lune de son en-tete la
+ * bascule sans rien changer au reste de l'ecran.
+ *
+ * Reduite, elle se retire dans un simple bouton du coin bas-gauche : la carte redevient entierement
+ * visible, ce qui est le geste attendu quand on veut regarder le trace qu'on vient de calculer.
+ */
+@Composable
+fun RoutePlannerBand(
+    state: RoutePlannerState,
+    dark: Boolean,
+    imperial: Boolean,
+    settings: SettingsEntity?,
+    lastLabelInsetPx: Float,
+    maxHeight: Dp,
+    onToggleTheme: () -> Unit,
+    onPickCurrentPosition: (PlannerStep) -> Unit,
+    gpsActive: Boolean,
+    geocoding: GeocodingParams,
+    onImport: () -> Unit,
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Le theme s'applique a la bande ET a tout ce qu'elle contient (champs, menus, profil) : c'est bien
+    // l'ensemble qui bascule, pas seulement son fond.
+    androidx.compose.material3.MaterialTheme(colorScheme = if (dark) TrailogDark else TrailogLight) {
+        if (state.collapsed) {
+            CollapsedButton(onExpand = { state.collapse(false) }, modifier = modifier)
+        } else {
+            Surface(
+                modifier = modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                shadowElevation = 8.dp,
+            ) {
+                // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle
+                // sert a composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les
+                // disciplines et les resultats gardant leur hauteur propre - une etape de plus fait donc
+                // defiler la liste plutot que grandir la bande.
+                Column(
+                    // Le plancher cede devant le plafond : sur un petit ecran, un clavier haut peut ne
+                    // laisser moins que [BandMinHeight], et une hauteur minimale superieure au maximum
+                    // ferait a nouveau deborder la bande hors de l'ecran.
+                    Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    BandHeader(
+                        dark = dark,
+                        recomputing = state.recomputing,
+                        onCollapse = { state.collapse(true) },
+                        onToggleTheme = onToggleTheme,
+                        onClose = { state.close() },
+                    )
+                    RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
+                    StepList(state, onPickCurrentPosition, gpsActive, dark, geocoding,
+                        Modifier.weight(1f, fill = false).padding(top = 10.dp))
+                    ResultsZone(state, imperial, settings, lastLabelInsetPx, onImport, onDownload)
+                }
+            }
+        }
+    }
+}
+
+/** En-tete : reduire a gauche, basculer le theme juste a sa droite, fermer a l'oppose. */
+@Composable
+private fun BandHeader(
+    dark: Boolean,
+    recomputing: Boolean,
+    onCollapse: () -> Unit,
+    onToggleTheme: () -> Unit,
+    onClose: () -> Unit,
+) {
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onCollapse, modifier = Modifier.size(28.dp)) {
+                Icon(Icons.Filled.ExpandMore, stringResource(R.string.planner_collapse), Modifier.size(20.dp))
+            }
+            // L'icone montre ce vers quoi on bascule, non l'etat courant : en clair on propose la lune.
+            IconButton(onClick = onToggleTheme, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    if (dark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                    stringResource(R.string.planner_toggle_theme), Modifier.size(18.dp),
+                )
+            }
+            Text(stringResource(R.string.planner_title), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp))
+            // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
+            // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
+            if (recomputing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+            IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
+                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+/** Bande reduite : un seul bouton, au coin bas-gauche, qui la redeploie. */
+@Composable
+private fun CollapsedButton(onExpand: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.padding(8.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = CollapsedAlpha),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shadowElevation = 4.dp,
+    ) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+            IconButton(onClick = onExpand, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.ExpandLess, stringResource(R.string.planner_expand), Modifier.size(22.dp))
+            }
+        }
+    }
+}
+
+/**
+ * Les etapes, et le bouton d'ajout sous la derniere.
+ *
+ * Le bouton `+` est aligne dans la marge gauche, a l'aplomb des champs et non dedans : il n'appartient a
+ * aucune etape, il en cree une de plus.
+ */
+@Composable
+private fun StepList(
+    state: RoutePlannerState,
+    onPickCurrentPosition: (PlannerStep) -> Unit,
+    gpsActive: Boolean,
+    dark: Boolean,
+    geocoding: GeocodingParams,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.verticalScroll(rememberScrollState())) {
+        state.steps.forEachIndexed { i, step ->
+            StepRow(
+                state = state, step = step, index = i,
+                placeholder = stringResource(
+                    when {
+                        i == 0 -> R.string.planner_start
+                        i == state.steps.lastIndex -> R.string.planner_end
+                        else -> R.string.planner_via
+                    }
+                ),
+                onPickCurrentPosition = onPickCurrentPosition,
+                gpsActive = gpsActive,
+                dark = dark,
+                geocoding = geocoding,
+            )
+        }
+        if (state.canAddStep) {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                IconButton(onClick = { state.addStep() }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Filled.Add, stringResource(R.string.planner_add_step), Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Une etape : son champ, ses deux fleches de reordonnancement, sa suppression, puis ses propositions. */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun StepRow(
+    state: RoutePlannerState,
+    step: PlannerStep,
+    index: Int,
+    placeholder: String,
+    onPickCurrentPosition: (PlannerStep) -> Unit,
+    gpsActive: Boolean,
+    dark: Boolean,
+    geocoding: GeocodingParams,
+) {
+    var focused by remember(step.id) { mutableStateOf(false) }
+    // La liste des etapes defile sur elle-meme : un champ situe en bas peut voir ses propositions naitre
+    // hors de la zone visible. On les y ramene des qu'elles apparaissent, faute de quoi la premiere ligne
+    // - la position actuelle, ou le spinner - resterait invisible sous le bord.
+    val bringIntoView = remember(step.id) { BringIntoViewRequester() }
+    val focusRequester = remember(step.id) { FocusRequester() }
+    // Choisir une proposition termine la saisie : on rend le clavier et on relache le focus, faute de quoi
+    // le clavier resterait leve devant une bande dont il n'y a plus rien a lire.
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    fun settle() { keyboard?.hide(); focusManager.clearFocus() }
+    // Interrogation du geocodeur, une frappe stabilisee - meme delai et meme seuil que la recherche de
+    // lieu de la carte : c'est le meme service, et il refuserait une requete par lettre.
+    LaunchedEffect(step.query, step.target, step.retry) {
+        val q = step.query.trim()
+        if (step.target != null || q.length < 3) {
+            step.results = emptyList(); step.searching = false; step.failed = false; return@LaunchedEffect
+        }
+        step.searching = true
+        step.failed = false
+        delay(350)
+        // Une seconde tentative avant d'abandonner : le premier appel paie l'ouverture de la liaison et
+        // echoue parfois au delai, la ou le suivant, sur connexion deja etablie, repond aussitot.
+        var found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit)
+        if (found == null) {
+            delay(300)
+            found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit)
+        }
+        step.results = found ?: emptyList()
+        step.failed = found == null
+        step.searching = false
+    }
+    // Ce que le champ montre : le lieu retenu s'il y en a un, sinon la frappe en cours. Un lieu retenu
+    // n'est pas modifiable en place - on tape par-dessus, ce qui le remplace (cf. RoutePlannerState.type).
+    val shown = when (val t = step.target) {
+        is StepTarget.Place -> t.place.label
+        StepTarget.CurrentPosition -> stringResource(R.string.planner_current_position)
+        null -> step.query
+    }
+    Column(Modifier.bringIntoViewRequester(bringIntoView)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                if (step.target != null && !focused) {
+                    // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie
+                    // ne sait pas abreger - il fait defiler son texte et le coupe net au bord, sans dire
+                    // qu'il en reste. Le champ reel reprend sa place des qu'on le touche.
+                    Box(
+                        Modifier.fillMaxWidth().heightIn(min = FieldHeight)
+                            .border(1.dp, MaterialTheme.colorScheme.outline, FieldShape)
+                            .clickable { focusRequester.requestFocus() }
+                            .padding(horizontal = FieldTextPadding),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    CompactOutlinedTextField(
+                        value = shown,
+                        onValueChange = { state.type(step, it) },
+                        singleLine = true,
+                        shape = FieldShape,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                            .onFocusChanged {
+                                focused = it.isFocused
+                                if (it.isFocused) state.focus(step)
+                            },
+                        placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                }
+                // Attente et effacement POSES SUR le champ, et non dans son emplacement d'icone de fin :
+                // le texte garde ainsi la meme marge a gauche qu'a droite, et court sous eux, que leur
+                // transparence laisse lire. Le spinner se tient a gauche de la croix : l'interrogation
+                // porte sur ce qu'on vient de taper, elle appartient au champ et non a la liste dessous.
+                Row(
+                    Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (step.searching) {
+                        CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 2.dp)
+                    }
+                    if (shown.isNotEmpty()) {
+                        Box(
+                            Modifier.size(15.dp)
+                                .background(
+                                    (if (dark) Color.White else Color(0xFF9E9E9E)).copy(alpha = 0.6f),
+                                    CircleShape)
+                                .clickable { state.clearStep(step) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Filled.Close, stringResource(R.string.planner_clear_step),
+                                Modifier.size(11.dp), tint = if (dark) Color.Black else Color.White)
+                        }
+                    }
+                }
+            }
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                // Fleches plutot qu'une poignee de glissement : le geste est plus sur au doigt sur une
+                // liste courte, et il ne rentre pas en concurrence avec le defilement de la zone.
+                // Empilees, et non cote a cote : monter et descendre sont deux sens d'un meme axe, et les
+                // poser l'un au-dessus de l'autre le dit sans qu'on ait a lire les icones.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    IconButton(onClick = { state.moveStep(index, -1) }, enabled = index > 0,
+                        modifier = Modifier.size(22.dp)) {
+                        Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.planner_move_up),
+                            Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = { state.moveStep(index, 1) }, enabled = index < state.steps.lastIndex,
+                        modifier = Modifier.size(22.dp)) {
+                        Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.planner_move_down),
+                            Modifier.size(18.dp))
+                    }
+                }
+                IconButton(onClick = { state.removeStep(index) }, enabled = state.steps.size > 2,
+                    modifier = Modifier.size(26.dp)) {
+                    Icon(Icons.Filled.DeleteOutline, stringResource(R.string.planner_remove_step), Modifier.size(18.dp))
+                }
+            }
+        }
+        val suggesting = focused && (step.searching || step.results.isNotEmpty() ||
+            step.failed || (gpsActive && step.untouched && step.target == null))
+        LaunchedEffect(suggesting, step.results.size, step.searching) {
+            if (suggesting) bringIntoView.bringIntoView()
+        }
+        // Position actuelle : proposee au focus tant que rien n'a ete tape, et non offerte par un bouton
+        // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
+        // Seulement si le capteur tourne : sans position connue, le calcul echouerait sur un "Aucun
+        // itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas honorer ne vaut rien.
+        if (gpsActive && focused && step.untouched && step.target == null) {
+            SuggestionRow(
+                label = stringResource(R.string.planner_current_position),
+                icon = true,
+                onClick = { onPickCurrentPosition(step); settle() },
+            )
+        }
+        // Echec du service : on le DIT, avec de quoi reessayer. Le silence laissait croire que le lieu
+        // n'existait pas.
+        if (step.failed) {
+            Row(
+                Modifier.fillMaxWidth().clickable { step.askRetry() }
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.planner_search_failed), fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        step.results.forEach { place ->
+            SuggestionRow(label = place.label, icon = false,
+                onClick = { state.choose(step, StepTarget.Place(place)); settle() })
+        }
+    }
+}
+
+/** Une proposition sous un champ : la position actuelle, ou un lieu rendu par le geocodeur. */
+@Composable
+private fun SuggestionRow(label: String, icon: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon) {
+            Icon(Icons.Filled.MyLocation, null, Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary)
+        }
+        Text(label, fontSize = 13.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = if (icon) 6.dp else 0.dp))
+    }
+}
+
+/**
+ * Ce que donne le calcul : les totaux, les deux sorties, et le profil.
+ *
+ * Rien tant que le parcours n'a pas deux etapes : la zone n'apparait qu'avec quelque chose a dire.
+ */
+@Composable
+private fun ResultsZone(
+    state: RoutePlannerState,
+    imperial: Boolean,
+    settings: SettingsEntity?,
+    lastLabelInsetPx: Float,
+    onImport: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    when (val r = state.route) {
+        RouteState.Idle -> Unit
+        // Premier calcul : rien a montrer encore, et le spinner de l'en-tete le dit deja. Ne rien poser
+        // ici evite d'ouvrir puis refermer une zone de 40 dp a chaque frappe.
+        RouteState.Loading -> Unit
+        RouteState.Failed -> Text(stringResource(R.string.geocode_no_route),
+            fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        is RouteState.Done -> {
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            // Fenetre affichee du profil : la plage zoomee, ou tout le parcours. Le kilometrage n'est
+            // jamais remis a zero, seules les stats du bandeau sont recalculees sur la portion visible.
+            val zoom = state.zoomRange
+            val samples = remember(r.track, zoom) {
+                val s = r.track.samples
+                if (zoom != null && zoom.last < s.size) s.subList(zoom.first, zoom.last + 1) else s
+            }
+            val stats = remember(r.track, zoom, samples) {
+                if (zoom != null) TrackMath.statsOf(samples) else r.track.stats
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Zoome, la duree DISPARAIT : le moteur ne la rend que pour le trajet entier, et rien
+                // n'autorise a la decouper - une portion de meme longueur ne se parcourt pas au meme
+                // rythme selon qu'elle monte ou descend. Mieux vaut ne rien dire que d'inventer.
+                // Zoome, la duree est ESTIMEE au prorata de la distance : le moteur ne la rend que pour
+                // le trajet entier. C'est une approximation - une portion qui monte se parcourt plus
+                // lentement qu'une portion plate de meme longueur - d'ou le "~" qui la precede.
+                val partSeconds = if (r.track.stats.distance > 0)
+                    r.seconds * stats.distance / r.track.stats.distance else 0.0
+                Text(
+                    if (state.zoomed) stringResource(R.string.planner_summary_part,
+                        Format.distance(stats.distance, imperial),
+                        Format.elevation(stats.ascent, imperial),
+                        Format.elevation(stats.descent, imperial),
+                        Format.duration(partSeconds))
+                    else stringResource(R.string.planner_summary,
+                        Format.distance(stats.distance, imperial),
+                        Format.elevation(stats.ascent, imperial),
+                        Format.elevation(stats.descent, imperial),
+                        Format.duration(r.seconds)),
+                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                )
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    IconButton(onClick = onImport, modifier = Modifier.size(30.dp)) {
+                        Icon(Icons.Filled.Save, stringResource(R.string.planner_import_layer), Modifier.size(19.dp))
+                    }
+                    IconButton(onClick = onDownload, modifier = Modifier.size(30.dp)) {
+                        Icon(Icons.Filled.FileDownload, stringResource(R.string.planner_download_gpx), Modifier.size(19.dp))
+                    }
+                }
+            }
+            // Le profil est replie derriere son libelle : il occupe a lui seul la moitie de la hauteur
+            // disponible, et il n'a d'interet qu'une fois le trajet compose. La zone resultats se reduit
+            // donc a une ligne de totaux et a cette bascule, tant qu'on ne demande pas le relief.
+            Row(
+                Modifier.fillMaxWidth().clickable { state.toggleProfile() }.padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(
+                        if (state.profileVisible) R.string.planner_hide_profile
+                        else R.string.planner_show_profile
+                    ),
+                    fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
+                )
+                // Retour a la vue complete : sur cette ligne parce qu'il concerne le profil, et non le
+                // parcours. Bouton a part DANS une ligne cliquable : son propre clic l'emporte sur celui
+                // de la ligne, qui continue d'ouvrir et de fermer le profil partout ailleurs.
+                if (state.zoomed) {
+                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                        IconButton(onClick = { state.resetZoom() }, modifier = Modifier.size(26.dp)) {
+                            Icon(Icons.Filled.Fullscreen, stringResource(R.string.planner_zoom_out),
+                                Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                // Le chevron montre le SENS DU GESTE a venir, non l'etat courant : profil replie, il
+                // pointe vers le bas pour dire qu'il va se deployer ; deploye, vers le haut pour le
+                // refermer.
+                Icon(
+                    if (state.profileVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    null, Modifier.size(18.dp),
+                )
+            }
+            if (state.profileVisible) {
+                if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+                    SlopeLegend(stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        bold = settings?.profLegendBold == true)
+                }
+                Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
+                    fun toWindow(absolute: Int?) =
+                        absolute?.let { a -> (a - state.windowStart).takeIf { it in samples.indices } }
+                    ElevationProfile(
+                        samples = samples, stats = stats,
+                        grid = settings?.profileGrid ?: true,
+                        slope = settings?.profileSlope ?: true,
+                        lineColor = MaterialTheme.colorScheme.primary,
+                        axisFontSp = settings?.profAxisFont ?: 9,
+                        axisBold = settings?.profAxisBold == true,
+                        cursorIndex = toWindow(state.cursor),
+                        onScrub = { state.tapProfile(it) },
+                        onZoom = { scale, fraction -> state.zoomBy(scale, fraction, r.track.samples.size) },
+                        // Double-tap : un grossissement franc au point vise, la ou le pincement dose.
+                        onDoubleTap = { fraction -> state.zoomBy(2f, fraction, r.track.samples.size) },
+                        lastLabelInsetPx = lastLabelInsetPx,
+                        verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
+                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Libelle par defaut d'une couche importee : les deux bouts du trajet. */
+fun defaultRouteName(steps: List<StepTarget>, currentPositionLabel: String): String {
+    fun label(t: StepTarget) = when (t) {
+        is StepTarget.Place -> t.place.label.substringBefore(',')
+        StepTarget.CurrentPosition -> currentPositionLabel
+    }
+    val a = steps.firstOrNull()?.let(::label) ?: return ""
+    val b = steps.lastOrNull()?.let(::label) ?: return a
+    return if (steps.size < 2) a else "$a - $b"
+}
+
+/**
+ * De quoi interroger le geocodeur depuis une etape : l'instance reglee, la langue, et le nombre de
+ * propositions. Un porteur de valeurs plutot qu'une fonction de recherche : une lambda `suspend` traversant
+ * un composable perd son caractere suspendu a la compilation, et l'appel ne compile plus.
+ */
+data class GeocodingParams(val base: String, val lang: String, val limit: Int)
+
+/** Discipline retenue au demarrage du planificateur, tiree des reglages. */
+fun initialProfile(settings: SettingsEntity?): RoutingProfile = RoutingProfile.of(settings?.routingProfile)

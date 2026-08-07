@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Keine Route</string>
     <string name="geocode_route_info">Empfohlene Route für: %1$s. Dies ist keine Luftlinie.</string>
     <string name="content_desc_route_info">Über diese Entfernung</string>
+    <string name="planner_title">Routenplaner</string>
+    <string name="planner_collapse">Einklappen</string>
+    <string name="planner_expand">Planer wieder öffnen</string>
+    <string name="planner_toggle_theme">Design der Leiste wechseln</string>
+    <string name="planner_start">Start</string>
+    <string name="planner_end">Ziel</string>
+    <string name="planner_via">Zwischenziel</string>
+    <string name="planner_current_position">Aktueller Standort</string>
+    <string name="planner_add_step">Zwischenziel hinzufügen</string>
+    <string name="planner_move_up">Nach oben</string>
+    <string name="planner_move_down">Nach unten</string>
+    <string name="planner_remove_step">Zwischenziel entfernen</string>
+    <string name="planner_import_layer">Als Ebene importieren</string>
+    <string name="planner_download_gpx">Als GPX herunterladen</string>
+    <string name="planner_summary">%1$s · Aufstieg %2$s · Abstieg %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · Aufstieg %2$s · Abstieg %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Gesamtansicht</string>
+    <string name="planner_layer_name">Name der Ebene</string>
+    <string name="planner_clear_step">Löschen</string>
+    <string name="planner_search_failed">Suchdienst nicht erreichbar</string>
+    <string name="planner_retry">Erneut versuchen</string>
+    <string name="planner_show_profile">Höhenprofil anzeigen</string>
+    <string name="planner_hide_profile">Höhenprofil ausblenden</string>
     <string name="content_desc_route_profile">Höhenprofil der Route</string>
     <string name="geocode_profile_from_position">Route ab Standort</string>
     <string name="geocode_profile_from_point">Route ab einem Punkt</string>
@@ -118,7 +141,7 @@
     <!-- Einstellungen: Tabs -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_tab_general">System</string>
-    <string name="settings_tab_routes">Routen</string>
+    <string name="settings_tab_routes">Strecken</string>
     <string name="settings_tab_map">Karte</string>
     <string name="settings_tab_tiles">Kacheln</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">F</string>
 
     <!-- Einstellungen: Karte -->
-    <string name="settings_section_scale">Maßstab</string>
     <string name="settings_show_scale_bar">Maßstabsleiste anzeigen</string>
-    <string name="settings_section_rotation">Drehung</string>
-    <string name="settings_allow_rotation">Kartendrehung erlauben (2-Finger-Geste)</string>
-    <string name="settings_section_gps_position">GPS-Position</string>
+    <string name="settings_allow_rotation">Kartendrehung zulassen</string>
+    <string name="settings_group_controls">Bedienelemente</string>
+    <string name="settings_group_pois">Points of Interest</string>
+    <string name="settings_group_elevation_profile">Höhenprofil</string>
+    <string name="settings_control_buttons_background">Hintergrund hinter den Schaltflächen</string>
     <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
-    <string name="settings_section_geocoding">Geokodierung</string>
-    <string name="settings_section_route_planner">Routenplaner</string>
     <string name="settings_enable_route_planner">Planer-Schaltfläche anzeigen</string>
     <string name="settings_section_geocoding_service">Geokodierungsdienst</string>
     <string name="settings_section_routing_service">Routing-Dienst</string>
     <string name="settings_section_default_discipline">Standarddisziplin</string>
     <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
-    <string name="settings_geocoding_url">URL des Geokodierungsdienstes</string>
-    <string name="settings_routing_url">URL des Routing-Dienstes</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Button für Kartengrundlagen-Verwaltung anzeigen</string>
     <string name="settings_basemap_control_width">Panelbreite: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Deckkraft des Bereichs: %1$d%%</string>
-    <string name="settings_bubble_opacity">Deckkraft der Infoblase: %1$d%%</string>
+    <string name="settings_bubble_opacity">Deckkraft: %1$d%%</string>
     <string name="settings_section_default_basemap">Standardkartengrundlage</string>
     <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
     <string name="settings_app_folder_default">App-Ordner (Standard)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Kartengrundlagen</string>
     <string name="content_desc_basemap_control">Kartengrundlagen-Verwaltung</string>
     <string name="content_desc_basemap_legend">Legende der Hintergrundkarte</string>
-    <string name="content_desc_profile_zoom_start">Anfang der Zoomauswahl</string>
-    <string name="content_desc_profile_zoom_end">Ende der Zoomauswahl</string>
     <string name="content_desc_profile_zoom_expand">Profilzoom verkleinern</string>
 
     <!-- Status / Fehler -->
@@ -275,7 +293,7 @@
     <!-- Import/Export von Anbietern -->
     <string name="dialog_import_providers_title">Anbieter importieren?</string>
     <string name="dialog_import_providers_text">%1$d Anbieter werden importiert. Bestehende Anbieter mit derselben ID werden überschrieben.</string>
-    <string name="settings_bubble_position">Position der Sprechblase</string>
+    <string name="settings_bubble_position">Position</string>
     <string name="bubble_pos_auto">Automatisch</string>
     <string name="bubble_pos_top_left">Oben links</string>
     <string name="bubble_pos_top">Oben</string>

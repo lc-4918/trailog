@@ -66,6 +66,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -231,17 +232,29 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 /* --------------- Onglets --------------- */
 
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    Section(stringResource(R.string.settings_section_gps_position))
+    // Trois groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis
+    // ce qui decrit le relief. L'onglet ayant recu tout l'ancien onglet "Profil", il devenait trop long
+    // pour se lire d'une traite.
+    Group(stringResource(R.string.settings_group_controls))
+    // Suite d'interrupteurs sans titre de rubrique : chacun ne porte qu'un reglage, et son libelle le dit
+    // deja entierement. Un titre au-dessus n'aurait fait que repeter la ligne qu'il coiffe, et les six
+    // rubriques d'une ligne donnaient un groupe deux fois plus long que son contenu.
+    // Les services que deux d'entre eux commandent (geocodeur, moteur d'itineraire) se configurent dans
+    // l'onglet "Itineraires" : cet onglet-ci repond a "qu'est-ce qui s'affiche", l'autre a "comment ca se
+    // calcule".
     SwitchRow(stringResource(R.string.settings_show_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
-    // Les deux rubriques qui suivent ne portent qu'un interrupteur chacune : elles disent seulement quel
-    // bouton apparait sur la carte. Leur configuration (URL des services, discipline) vit dans l'onglet
-    // "Itineraires" - cet onglet-ci repond a "qu'est-ce qui s'affiche", l'autre a "comment ca se calcule".
-    Section(stringResource(R.string.settings_section_geocoding))
     SwitchRow(stringResource(R.string.settings_enable_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
-    Section(stringResource(R.string.settings_section_route_planner))
     SwitchRow(stringResource(R.string.settings_enable_route_planner), cur.routePlannerEnabled) {
         vm.save(cur.copy(routePlannerEnabled = it))
     }
+    SwitchRow(stringResource(R.string.settings_show_scale_bar), cur.showScale) { vm.save(cur.copy(showScale = it)) }
+    SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
+    SwitchRow(stringResource(R.string.settings_control_buttons_background), cur.controlButtonsBackground) {
+        vm.save(cur.copy(controlButtonsBackground = it))
+    }
+    // Seule rubrique titree du groupe, et placee en dernier : c'est la seule qui porte plus qu'un
+    // interrupteur - deux reglages de panneau et leur remise a zero, qu'il faut bien rattacher a quelque
+    // chose. La poser au milieu aurait coupe la suite d'interrupteurs en deux.
     Section(stringResource(R.string.settings_section_basemap_control))
     SwitchRow(stringResource(R.string.settings_show_basemap_control_button), cur.showBasemapControlButton) {
         vm.save(cur.copy(showBasemapControlButton = it))
@@ -255,10 +268,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     TextButton(onClick = { vm.save(cur.copy(basemapControlWidthPct = 50, basemapControlOpacityPct = 80)) }) {
         Text(stringResource(R.string.action_reset_defaults))
     }
-    Section(stringResource(R.string.settings_section_rotation))
-    SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
-    Section(stringResource(R.string.settings_section_scale))
-    SwitchRow(stringResource(R.string.settings_show_scale_bar), cur.showScale) { vm.save(cur.copy(showScale = it)) }
+    Group(stringResource(R.string.settings_group_pois))
     Section(stringResource(R.string.settings_section_markers))
     FontStepper(stringResource(R.string.settings_marker_size), cur.markerSize, min = 16, max = 80) { vm.save(cur.copy(markerSize = it)) }
     Section(stringResource(R.string.settings_section_bubbles))
@@ -271,6 +281,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         onValueChange = { vm.save(cur.copy(bubbleOpacityPct = it.toInt())) })
     // L'apparence du profil altimetrique termine cet onglet : elle decrit, elle aussi, ce qui s'affiche
     // par-dessus la carte. Elle avait son propre onglet, rendu au calcul d'itineraire.
+    Group(stringResource(R.string.settings_group_elevation_profile))
     ProfileSettings(cur, vm)
 }
 
@@ -297,7 +308,9 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 
 /** Choix de la discipline : les cinq icônes en ligne, la retenue en pastille pleine. Un select déroulant
  *  aurait caché quatre choix sur cinq derrière un tap, pour un réglage qu'on change au gré de la sortie. */
-@Composable private fun RoutingProfilePicker(current: RoutingProfile, onSelect: (RoutingProfile) -> Unit) {
+/** Ligne des disciplines. Partagee avec le planificateur, qui doit offrir exactement le meme choix, dans
+ *  la meme forme : c'est le meme reglage, une fois par defaut et une fois pour le trajet en cours. */
+@Composable internal fun RoutingProfilePicker(current: RoutingProfile, onSelect: (RoutingProfile) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         RoutingProfile.entries.forEach { p ->
             val selected = p == current
@@ -601,15 +614,15 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     Section(stringResource(R.string.settings_section_geocoding_service))
     CompactOutlinedTextField(
         value = cur.geocodingUrl, onValueChange = { vm.save(cur.copy(geocodingUrl = it.trim())) },
+        // Sans libelle : le titre de la rubrique le porte deja, et le repeter dans le champ mange une
+        // ligne pour rien.
         singleLine = true, modifier = Modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.settings_geocoding_url)) },
         placeholder = { Text(Photon.DEFAULT_URL) },
     )
     Section(stringResource(R.string.settings_section_routing_service))
     CompactOutlinedTextField(
         value = cur.routingUrl, onValueChange = { vm.save(cur.copy(routingUrl = it.trim())) },
         singleLine = true, modifier = Modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.settings_routing_url)) },
         placeholder = { Text(Valhalla.DEFAULT_URL) },
     )
     Section(stringResource(R.string.settings_section_default_discipline))
@@ -794,6 +807,20 @@ private val CompactChipHeight = 28.dp
 
 @Composable private fun Section(t: String) {
     Spacer(Modifier.height(10.dp)); Text(t, style = MaterialTheme.typography.titleSmall); Spacer(Modifier.height(4.dp))
+}
+
+/**
+ * Titre de groupe : un cran au-dessus de [Section], pour reunir les rubriques d'un meme sujet dans un
+ * onglet devenu long.
+ *
+ * Se distingue par la taille, la couleur d'accent et un filet, et non par un simple gras : entre un
+ * `titleSmall` de rubrique et un `titleMedium` de groupe, l'ecart seul ne suffirait pas a faire lire une
+ * hierarchie sur une liste qui defile.
+ */
+@Composable private fun Group(t: String) {
+    Spacer(Modifier.height(18.dp))
+    Text(t, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    HorizontalDivider(Modifier.padding(top = 2.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
 }
 
 @Composable private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {

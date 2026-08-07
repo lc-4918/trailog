@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Nessun itinerario</string>
     <string name="geocode_route_info">Itinerario consigliato per: %1$s. Non è una distanza in linea d\'aria.</string>
     <string name="content_desc_route_info">Informazioni su questa distanza</string>
+    <string name="planner_title">Pianificatore di percorsi</string>
+    <string name="planner_collapse">Riduci</string>
+    <string name="planner_expand">Riapri il pianificatore</string>
+    <string name="planner_toggle_theme">Cambia il tema della barra</string>
+    <string name="planner_start">Partenza</string>
+    <string name="planner_end">Arrivo</string>
+    <string name="planner_via">Tappa</string>
+    <string name="planner_current_position">Posizione attuale</string>
+    <string name="planner_add_step">Aggiungi una tappa</string>
+    <string name="planner_move_up">Su</string>
+    <string name="planner_move_down">Giù</string>
+    <string name="planner_remove_step">Elimina la tappa</string>
+    <string name="planner_import_layer">Importa come livello</string>
+    <string name="planner_download_gpx">Scarica in GPX</string>
+    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Vista completa</string>
+    <string name="planner_layer_name">Nome del livello</string>
+    <string name="planner_clear_step">Cancella</string>
+    <string name="planner_search_failed">Servizio di ricerca irraggiungibile</string>
+    <string name="planner_retry">Riprova</string>
+    <string name="planner_show_profile">Mostra il profilo altimetrico</string>
+    <string name="planner_hide_profile">Nascondi il profilo altimetrico</string>
     <string name="content_desc_route_profile">Profilo altimetrico del percorso</string>
     <string name="geocode_profile_from_position">Percorso dalla posizione</string>
     <string name="geocode_profile_from_point">Percorso da un punto</string>
@@ -118,7 +141,7 @@
     <!-- Impostazioni: schede -->
     <string name="settings_title">Impostazioni</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_routes">Itinerari</string>
+    <string name="settings_tab_routes">Tragitti</string>
     <string name="settings_tab_map">Mappa</string>
     <string name="settings_tab_tiles">Tessere</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">G</string>
 
     <!-- Impostazioni: Mappa -->
-    <string name="settings_section_scale">Scala</string>
     <string name="settings_show_scale_bar">Mostra la scala grafica</string>
-    <string name="settings_section_rotation">Rotazione</string>
-    <string name="settings_allow_rotation">Consenti la rotazione della mappa (gesto a 2 dita)</string>
-    <string name="settings_section_gps_position">Posizione GPS</string>
+    <string name="settings_allow_rotation">Consenti la rotazione della mappa</string>
+    <string name="settings_group_controls">Controlli</string>
+    <string name="settings_group_pois">Punti di interesse</string>
+    <string name="settings_group_elevation_profile">Profilo altimetrico</string>
+    <string name="settings_control_buttons_background">Sfondo dietro i pulsanti</string>
     <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
-    <string name="settings_section_geocoding">Geocodifica</string>
-    <string name="settings_section_route_planner">Pianificatore di percorsi</string>
     <string name="settings_enable_route_planner">Mostra il pulsante del pianificatore</string>
     <string name="settings_section_geocoding_service">Servizio di geocodifica</string>
     <string name="settings_section_routing_service">Servizio di percorsi</string>
     <string name="settings_section_default_discipline">Disciplina predefinita</string>
     <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
-    <string name="settings_geocoding_url">URL del servizio di geocodifica</string>
-    <string name="settings_routing_url">URL del servizio di itinerari</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Mostra il pulsante di gestione delle mappe di base</string>
     <string name="settings_basemap_control_width">Larghezza del pannello: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacità del pannello: %1$d%%</string>
-    <string name="settings_bubble_opacity">Opacità del fumetto: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacità: %1$d%%</string>
     <string name="settings_section_default_basemap">Mappa di base predefinita</string>
     <string name="settings_section_mbtiles_folder">Cartella MBTiles</string>
     <string name="settings_app_folder_default">Cartella dell\'app (predefinita)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Mappe di base</string>
     <string name="content_desc_basemap_control">Gestione mappe di base</string>
     <string name="content_desc_basemap_legend">Legenda della mappa di base</string>
-    <string name="content_desc_profile_zoom_start">Inizio della selezione dello zoom</string>
-    <string name="content_desc_profile_zoom_end">Fine della selezione dello zoom</string>
     <string name="content_desc_profile_zoom_expand">Riduci lo zoom del profilo</string>
 
     <!-- Stato / errori -->
@@ -275,7 +293,7 @@
     <!-- Importazione/esportazione dei fornitori -->
     <string name="dialog_import_providers_title">Importare i fornitori?</string>
     <string name="dialog_import_providers_text">Verranno importati %1$d fornitori. I fornitori esistenti con lo stesso id verranno sovrascritti.</string>
-    <string name="settings_bubble_position">Posizione del fumetto</string>
+    <string name="settings_bubble_position">Posizione</string>
     <string name="bubble_pos_auto">Automatica</string>
     <string name="bubble_pos_top_left">In alto a sinistra</string>
     <string name="bubble_pos_top">In alto</string>

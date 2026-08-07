@@ -63,7 +63,10 @@ object Valhalla {
     }
 
     /**
-     * URL de requête, de ([fromLat], [fromLon]) vers ([toLat], [toLon]).
+     * URL de requête passant par [points], en (lat, lon), dans l'ordre donné.
+     *
+     * Deux points suffisent ; au-delà, les intermédiaires deviennent des étapes que l'itinéraire doit
+     * traverser, et le moteur rend un segment par intervalle. C'est le mode dont vit le planificateur.
      *
      * `directions_type=none` coupe la génération du guidage vocal virage par virage : on ne veut qu'un total,
      * et la narration représente l'essentiel du poids de la réponse.
@@ -76,14 +79,15 @@ object Valhalla {
      * écrirait une virgule décimale en français et produirait un JSON invalide.
      */
     fun url(
-        base: String, fromLat: Double, fromLon: Double, toLat: Double, toLon: Double, profile: RoutingProfile,
+        base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
         elevationIntervalM: Int = ELEVATION_INTERVAL_M,
     ): String {
         val (costing, bicycleType) = costingOf(profile)
         val options = if (bicycleType == null) ""
         else ""","costing_options":{"bicycle":{"bicycle_type":"$bicycleType"}}"""
         val elevation = if (elevationIntervalM > 0) ""","elevation_interval":$elevationIntervalM""" else ""
-        val body = """{"locations":[{"lat":$fromLat,"lon":$fromLon},{"lat":$toLat,"lon":$toLon}],""" +
+        val locations = points.joinToString(",") { (lat, lon) -> """{"lat":$lat,"lon":$lon}""" }
+        val body = """{"locations":[$locations],""" +
             """"costing":"$costing"$options,"units":"kilometers","directions_type":"none"$elevation}"""
         val sep = if ('?' in base) '&' else '?'
         return base.trimEnd('&', '?') + sep + "json=" + URLEncoder.encode(body, "UTF-8")
@@ -125,14 +129,19 @@ object Valhalla {
     }
 
     /**
-     * Calcule l'itinéraire. Null quand il n'y en a pas : les deux points ne sont reliés par aucune voie
-     * praticable dans cette discipline, le service ne répond pas, ou le réseau manque. L'appelant n'a rien
-     * à en faire de différent - il ne peut afficher aucune distance dans les trois cas.
+     * Calcule l'itinéraire passant par [points], en (lat, lon). Null quand il n'y en a pas : deux étapes
+     * consécutives ne sont reliées par aucune voie praticable dans cette discipline, le service ne répond
+     * pas, ou le réseau manque. L'appelant n'a rien à en faire de différent - il ne peut afficher aucune
+     * distance dans les trois cas.
+     *
+     * Null également en deçà de deux étapes, sans interroger le service : il n'y a pas d'itinéraire à
+     * calculer, et le moteur répondrait une erreur.
      */
     suspend fun route(
-        base: String, fromLat: Double, fromLon: Double, toLat: Double, toLon: Double, profile: RoutingProfile,
+        base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
     ): RouteResult? = withContext(Dispatchers.IO) {
-        val resp = TileHttp.fetch(url(base, fromLat, fromLon, toLat, toLon, profile), TIMEOUT_MS, TIMEOUT_MS)
+        if (points.size < 2) return@withContext null
+        val resp = TileHttp.fetch(url(base, points, profile), TIMEOUT_MS, TIMEOUT_MS)
         resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
     }
 

@@ -178,4 +178,8 @@ data class SettingsEntity(
     // "dark" l'imposent. Trois valeurs et non un booleen : tant que l'utilisateur n'a pas touche au
     // bouton soleil/lune, la bande doit continuer de suivre l'application, y compris si celle-ci change.
     val plannerBandTheme: String = "system",
+    // Fond blanc translucide derriere les boutons poses sur la carte. Desactive par defaut : sans lui les
+    // boutons flottent nus au-dessus du fond, ce qui est plus leger mais devient illisible sur une
+    // orthophoto ou un relief clair.
+    val controlButtonsBackground: Boolean = false,
 )

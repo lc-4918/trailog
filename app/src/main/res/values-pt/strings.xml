@@ -88,6 +88,29 @@
     <string name="geocode_no_route">Sem itinerário</string>
     <string name="geocode_route_info">Itinerário recomendado para: %1$s. Não é uma distância em linha reta.</string>
     <string name="content_desc_route_info">Sobre esta distância</string>
+    <string name="planner_title">Planeador de rotas</string>
+    <string name="planner_collapse">Reduzir</string>
+    <string name="planner_expand">Reabrir o planeador</string>
+    <string name="planner_toggle_theme">Mudar o tema da barra</string>
+    <string name="planner_start">Partida</string>
+    <string name="planner_end">Chegada</string>
+    <string name="planner_via">Ponto intermédio</string>
+    <string name="planner_current_position">Localização atual</string>
+    <string name="planner_add_step">Adicionar um ponto</string>
+    <string name="planner_move_up">Subir</string>
+    <string name="planner_move_down">Descer</string>
+    <string name="planner_remove_step">Eliminar o ponto</string>
+    <string name="planner_import_layer">Importar como camada</string>
+    <string name="planner_download_gpx">Descarregar em GPX</string>
+    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Vista completa</string>
+    <string name="planner_layer_name">Nome da camada</string>
+    <string name="planner_clear_step">Limpar</string>
+    <string name="planner_search_failed">Serviço de pesquisa inacessível</string>
+    <string name="planner_retry">Tentar novamente</string>
+    <string name="planner_show_profile">Mostrar o perfil altimétrico</string>
+    <string name="planner_hide_profile">Ocultar o perfil altimétrico</string>
     <string name="content_desc_route_profile">Perfil da rota</string>
     <string name="geocode_profile_from_position">Rota a partir da localização</string>
     <string name="geocode_profile_from_point">Rota a partir de um ponto</string>
@@ -118,7 +141,7 @@
     <!-- Definições: separadores -->
     <string name="settings_title">Definições</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_routes">Itinerários</string>
+    <string name="settings_tab_routes">Trajetos</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Mosaicos</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">N</string>
 
     <!-- Definições: Mapa -->
-    <string name="settings_section_scale">Escala</string>
     <string name="settings_show_scale_bar">Mostrar a escala gráfica</string>
-    <string name="settings_section_rotation">Rotação</string>
-    <string name="settings_allow_rotation">Permitir a rotação do mapa (gesto de 2 dedos)</string>
-    <string name="settings_section_gps_position">Posição GPS</string>
+    <string name="settings_allow_rotation">Permitir a rotação do mapa</string>
+    <string name="settings_group_controls">Controlos</string>
+    <string name="settings_group_pois">Pontos de interesse</string>
+    <string name="settings_group_elevation_profile">Perfil altimétrico</string>
+    <string name="settings_control_buttons_background">Fundo atrás dos botões</string>
     <string name="settings_show_gps_button">Mostrar o botão de localização GPS</string>
-    <string name="settings_section_geocoding">Geocodificação</string>
-    <string name="settings_section_route_planner">Planeador de rotas</string>
     <string name="settings_enable_route_planner">Mostrar o botão do planeador</string>
     <string name="settings_section_geocoding_service">Serviço de geocodificação</string>
     <string name="settings_section_routing_service">Serviço de rotas</string>
     <string name="settings_section_default_discipline">Disciplina predefinida</string>
     <string name="settings_enable_geocoding">Ativar a procura de locais e endereços</string>
-    <string name="settings_geocoding_url">URL do serviço de geocodificação</string>
-    <string name="settings_routing_url">URL do serviço de itinerários</string>
     <string name="settings_section_markers">Marcadores (mapa)</string>
     <string name="settings_marker_size">Tamanho dos marcadores (dp)</string>
     <string name="settings_section_import_folder">Pasta inicial das importações</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Mostrar o botão do gestor de mapas base</string>
     <string name="settings_basemap_control_width">Largura do painel: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacidade do painel: %1$d%%</string>
-    <string name="settings_bubble_opacity">Opacidade do balão: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacidade: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapa base predefinido</string>
     <string name="settings_section_mbtiles_folder">Pasta de MBTiles</string>
     <string name="settings_app_folder_default">Pasta da app (predefinida)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Mapas base</string>
     <string name="content_desc_basemap_control">Gestor de mapas base</string>
     <string name="content_desc_basemap_legend">Legenda do mapa base</string>
-    <string name="content_desc_profile_zoom_start">Início da seleção de zoom</string>
-    <string name="content_desc_profile_zoom_end">Fim da seleção de zoom</string>
     <string name="content_desc_profile_zoom_expand">Reduzir o zoom do perfil</string>
 
     <!-- Estado / erros -->
@@ -275,7 +293,7 @@
     <!-- Importação/exportação de fornecedores -->
     <string name="dialog_import_providers_title">Importar os fornecedores?</string>
     <string name="dialog_import_providers_text">%1$d fornecedor(es) serão importados. Os fornecedores existentes com o mesmo id serão substituídos.</string>
-    <string name="settings_bubble_position">Posição do balão</string>
+    <string name="settings_bubble_position">Posição</string>
     <string name="bubble_pos_auto">Automática</string>
     <string name="bubble_pos_top_left">Cima-esquerda</string>
     <string name="bubble_pos_top">Cima</string>

@@ -145,6 +145,31 @@ Il n'y a pas encore de tests instrumentés (UI), contributions bienvenues.
 - Commentaires réservés à ce qui n'est pas évident (contraintes, contournements) ; pas de
   commentaires décrivant ce que le code fait déjà de façon lisible.
 
+### Pièges connus de Compose
+
+**Ne pas passer de lambda `suspend` en paramètre d'un `@Composable`.** Le plugin du compilateur
+Compose réécrit la signature des composables (ajout du `Composer` et des index de changement) et
+les types fonctionnels des paramètres perdent au passage leur modificateur `suspend`. Un appel de
+cette lambda depuis un `LaunchedEffect` échoue alors à la compilation, avec un message trompeur
+qui désigne la fonction appelée et non le paramètre :
+
+```
+Suspend function 'search' should be called only from a coroutine or another suspend function
+```
+
+Le piège est que le code paraît correct : le type déclaré est bien `suspend (String) -> List<T>`,
+et l'appel a bien lieu dans une coroutine.
+
+**Contournement retenu** : passer les *données* nécessaires à l'appel, et laisser le composable
+appeler lui-même la fonction suspendue. Cf. `ui/planner/RoutePlannerBand.kt`, où `GeocodingParams`
+(instance, langue, nombre de propositions) remplace la lambda de recherche, `StepRow` appelant
+`Photon.search` directement dans son `LaunchedEffect`.
+
+**Ne pas nommer une méthode `setX` quand la classe expose une propriété `x`.** Kotlin engendre déjà
+un mutateur `setX` pour la propriété, et les deux se heurtent sur la JVM (`Platform declaration
+clash`), y compris lorsque le mutateur est `private set`. Préférer un verbe : `collapse(v)` plutôt
+que `setCollapsed(v)`, `moveProfileCursor(i)` plutôt que `setProfileCursor(i)`.
+
 ## 9. Workflow CI/CD
 
 Le détail du pipeline GitHub Actions (build debug à chaque push, release signée à chaque tag,

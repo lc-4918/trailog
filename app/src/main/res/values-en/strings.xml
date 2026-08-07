@@ -88,6 +88,29 @@
     <string name="geocode_no_route">No route</string>
     <string name="geocode_route_info">Recommended route for: %1$s. This is not a straight-line distance.</string>
     <string name="content_desc_route_info">About this distance</string>
+    <string name="planner_title">Route planner</string>
+    <string name="planner_collapse">Collapse</string>
+    <string name="planner_expand">Reopen planner</string>
+    <string name="planner_toggle_theme">Switch band theme</string>
+    <string name="planner_start">Start</string>
+    <string name="planner_end">Finish</string>
+    <string name="planner_via">Waypoint</string>
+    <string name="planner_current_position">Current location</string>
+    <string name="planner_add_step">Add a waypoint</string>
+    <string name="planner_move_up">Move up</string>
+    <string name="planner_move_down">Move down</string>
+    <string name="planner_remove_step">Remove waypoint</string>
+    <string name="planner_import_layer">Import as layer</string>
+    <string name="planner_download_gpx">Download as GPX</string>
+    <string name="planner_summary">%1$s · climb %2$s · descent %3$s · %4$s</string>
+    <string name="planner_summary_part">%1$s · climb %2$s · descent %3$s · ~%4$s</string>
+    <string name="planner_zoom_out">Full view</string>
+    <string name="planner_layer_name">Layer name</string>
+    <string name="planner_clear_step">Clear</string>
+    <string name="planner_search_failed">Search service unreachable</string>
+    <string name="planner_retry">Retry</string>
+    <string name="planner_show_profile">Show elevation profile</string>
+    <string name="planner_hide_profile">Hide elevation profile</string>
     <string name="content_desc_route_profile">Route elevation profile</string>
     <string name="geocode_profile_from_position">Route from location</string>
     <string name="geocode_profile_from_point">Route from a point</string>
@@ -118,7 +141,7 @@
     <!-- Settings: tabs -->
     <string name="settings_title">Settings</string>
     <string name="settings_tab_general">System</string>
-    <string name="settings_tab_routes">Routes</string>
+    <string name="settings_tab_routes">Trips</string>
     <string name="settings_tab_map">Map</string>
     <string name="settings_tab_tiles">Tiles</string>
 
@@ -186,21 +209,18 @@
     <string name="settings_bold_abbrev">B</string>
 
     <!-- Settings: Map -->
-    <string name="settings_section_scale">Scale</string>
     <string name="settings_show_scale_bar">Show scale bar</string>
-    <string name="settings_section_rotation">Rotation</string>
-    <string name="settings_allow_rotation">Allow map rotation (2-finger gesture)</string>
-    <string name="settings_section_gps_position">GPS position</string>
+    <string name="settings_allow_rotation">Allow map rotation</string>
+    <string name="settings_group_controls">Controls</string>
+    <string name="settings_group_pois">Points of interest</string>
+    <string name="settings_group_elevation_profile">Elevation profile</string>
+    <string name="settings_control_buttons_background">Background behind buttons</string>
     <string name="settings_show_gps_button">Show GPS location button</string>
-    <string name="settings_section_geocoding">Geocoding</string>
-    <string name="settings_section_route_planner">Route planner</string>
     <string name="settings_enable_route_planner">Show planner button</string>
     <string name="settings_section_geocoding_service">Geocoding service</string>
     <string name="settings_section_routing_service">Routing service</string>
     <string name="settings_section_default_discipline">Default discipline</string>
     <string name="settings_enable_geocoding">Enable place and address search</string>
-    <string name="settings_geocoding_url">Geocoding service URL</string>
-    <string name="settings_routing_url">Routing service URL</string>
     <string name="settings_section_markers">Markers (map)</string>
     <string name="settings_marker_size">Marker size (dp)</string>
     <string name="settings_section_import_folder">Default import folder</string>
@@ -209,7 +229,7 @@
     <string name="settings_show_basemap_control_button">Show basemap manager button</string>
     <string name="settings_basemap_control_width">Panel width: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Panel opacity: %1$d%%</string>
-    <string name="settings_bubble_opacity">Info bubble opacity: %1$d%%</string>
+    <string name="settings_bubble_opacity">Opacity: %1$d%%</string>
     <string name="settings_section_default_basemap">Default basemap</string>
     <string name="settings_section_mbtiles_folder">MBTiles folder</string>
     <string name="settings_app_folder_default">App folder (default)</string>
@@ -257,8 +277,6 @@
     <string name="basemap_control_title">Basemaps</string>
     <string name="content_desc_basemap_control">Basemap manager</string>
     <string name="content_desc_basemap_legend">Basemap legend</string>
-    <string name="content_desc_profile_zoom_start">Start of zoom selection</string>
-    <string name="content_desc_profile_zoom_end">End of zoom selection</string>
     <string name="content_desc_profile_zoom_expand">Zoom out on profile</string>
 
     <!-- Status / errors -->
@@ -275,7 +293,7 @@
     <!-- Provider import/export -->
     <string name="dialog_import_providers_title">Import providers?</string>
     <string name="dialog_import_providers_text">%1$d provider(s) will be imported. Existing providers with the same id will be overwritten.</string>
-    <string name="settings_bubble_position">Bubble position</string>
+    <string name="settings_bubble_position">Position</string>
     <string name="bubble_pos_auto">Auto</string>
     <string name="bubble_pos_top_left">Top-left</string>
     <string name="bubble_pos_top">Top</string>
