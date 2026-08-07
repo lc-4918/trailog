@@ -169,6 +169,13 @@ data class SettingsEntity(
     val geocodingUrl: String = "",
     // Service d'itineraire (API Valhalla). Vide = instance publique (Valhalla.DEFAULT_URL).
     val routingUrl: String = "",
-    // Discipline des itineraires mesures depuis l'infobulle d'un lieu (cf. RoutingProfile).
+    // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",
+    // Bouton du planificateur d'itineraire sur la carte. Desactive par defaut, comme le geocodage :
+    // le planificateur interroge lui aussi des services tiers en cours d'usage.
+    val routePlannerEnabled: Boolean = false,
+    // Theme de la seule bande du planificateur : "system" suit le theme de l'application, "light" et
+    // "dark" l'imposent. Trois valeurs et non un booleen : tant que l'utilisateur n'a pas touche au
+    // bouton soleil/lune, la bande doit continuer de suivre l'application, y compris si celle-ci change.
+    val plannerBandTheme: String = "system",
 )

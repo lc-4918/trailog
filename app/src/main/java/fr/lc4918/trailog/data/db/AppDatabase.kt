@@ -64,6 +64,11 @@ internal object MigrationSql {
     // Defaut VTC : le velo a tout faire, celui qui emprunte le plus de chemins sans en exclure.
     const val ADD_ROUTING_PROFILE =
         "ALTER TABLE settings ADD COLUMN routingProfile TEXT NOT NULL DEFAULT 'hybrid'"
+    const val ADD_ROUTE_PLANNER_ENABLED =
+        "ALTER TABLE settings ADD COLUMN routePlannerEnabled INTEGER NOT NULL DEFAULT 0"
+    // "system" : la bande du planificateur suit le theme de l'application tant qu'on n'a rien impose.
+    const val ADD_PLANNER_BAND_THEME =
+        "ALTER TABLE settings ADD COLUMN plannerBandTheme TEXT NOT NULL DEFAULT 'system'"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -78,7 +83,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 27,
+    version = 28,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -185,11 +190,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_ROUTE_PLANNER_ENABLED)
+                db.execSQL(MigrationSql.ADD_PLANNER_BAND_THEME)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

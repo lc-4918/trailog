@@ -111,14 +111,14 @@
     <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>
 
     <!-- Seitenmenü -->
-    <string name="drawer_default_title">Routen</string>
+    <string name="drawer_default_title">Bibliothek</string>
     <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
     <string name="demo_folder_name">Demo</string>
 
     <!-- Einstellungen: Tabs -->
     <string name="settings_title">Einstellungen</string>
     <string name="settings_tab_general">System</string>
-    <string name="settings_tab_profile">Profil</string>
+    <string name="settings_tab_routes">Routen</string>
     <string name="settings_tab_map">Karte</string>
     <string name="settings_tab_tiles">Kacheln</string>
 
@@ -193,10 +193,14 @@
     <string name="settings_section_gps_position">GPS-Position</string>
     <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
     <string name="settings_section_geocoding">Geokodierung</string>
+    <string name="settings_section_route_planner">Routenplaner</string>
+    <string name="settings_enable_route_planner">Planer-Schaltfläche anzeigen</string>
+    <string name="settings_section_geocoding_service">Geokodierungsdienst</string>
+    <string name="settings_section_routing_service">Routing-Dienst</string>
+    <string name="settings_section_default_discipline">Standarddisziplin</string>
     <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
     <string name="settings_geocoding_url">URL des Geokodierungsdienstes</string>
     <string name="settings_routing_url">URL des Routing-Dienstes</string>
-    <string name="settings_routing_profile">Disziplin für Routen</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>

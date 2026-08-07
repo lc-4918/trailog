@@ -111,14 +111,14 @@
     <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>
 
     <!-- Alboko menua -->
-    <string name="drawer_default_title">Ibilbideak</string>
+    <string name="drawer_default_title">Liburutegia</string>
     <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
     <string name="demo_folder_name">Demo</string>
 
     <!-- Ezarpenak: fitxak -->
     <string name="settings_title">Ezarpenak</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_profile">Profila</string>
+    <string name="settings_tab_routes">Ibilbideak</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Lauzak</string>
 
@@ -193,10 +193,14 @@
     <string name="settings_section_gps_position">GPS kokapena</string>
     <string name="settings_show_gps_button">Erakutsi GPS kokapen-botoia</string>
     <string name="settings_section_geocoding">Geokodetzea</string>
+    <string name="settings_section_route_planner">Ibilbide-planifikatzailea</string>
+    <string name="settings_enable_route_planner">Erakutsi planifikatzailearen botoia</string>
+    <string name="settings_section_geocoding_service">Geokodetze-zerbitzua</string>
+    <string name="settings_section_routing_service">Ibilbide-zerbitzua</string>
+    <string name="settings_section_default_discipline">Diziplina lehenetsia</string>
     <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
     <string name="settings_geocoding_url">Geokodetze-zerbitzuaren URLa</string>
     <string name="settings_routing_url">Ibilbide-zerbitzuaren URLa</string>
-    <string name="settings_routing_profile">Ibilbideen diziplina</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>
     <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
     <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>

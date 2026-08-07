@@ -111,14 +111,14 @@
     <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>
 
     <!-- Menu laterale -->
-    <string name="drawer_default_title">Itinerari</string>
+    <string name="drawer_default_title">Biblioteca</string>
     <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
     <string name="demo_folder_name">Demo</string>
 
     <!-- Impostazioni: schede -->
     <string name="settings_title">Impostazioni</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_profile">Profilo</string>
+    <string name="settings_tab_routes">Itinerari</string>
     <string name="settings_tab_map">Mappa</string>
     <string name="settings_tab_tiles">Tessere</string>
 
@@ -193,10 +193,14 @@
     <string name="settings_section_gps_position">Posizione GPS</string>
     <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
     <string name="settings_section_geocoding">Geocodifica</string>
+    <string name="settings_section_route_planner">Pianificatore di percorsi</string>
+    <string name="settings_enable_route_planner">Mostra il pulsante del pianificatore</string>
+    <string name="settings_section_geocoding_service">Servizio di geocodifica</string>
+    <string name="settings_section_routing_service">Servizio di percorsi</string>
+    <string name="settings_section_default_discipline">Disciplina predefinita</string>
     <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
     <string name="settings_geocoding_url">URL del servizio di geocodifica</string>
     <string name="settings_routing_url">URL del servizio di itinerari</string>
-    <string name="settings_routing_profile">Disciplina degli itinerari</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>

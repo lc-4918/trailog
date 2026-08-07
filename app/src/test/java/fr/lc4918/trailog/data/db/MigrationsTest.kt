@@ -238,6 +238,19 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 27 -> 28 : planificateur d'itineraire ----------
+
+    /** Le planificateur arrive desactive sur une base deja en place, comme le geocodage avant lui : il
+     *  interroge des services tiers, et ne doit pas s'imposer a qui ne l'a pas demande. */
+    @Test fun `27 vers 28 ajoute le planificateur desactive et sa bande sur le theme systeme`() {
+        val db = freshDb("m2728"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTE_PLANNER_ENABLED)
+        db.execSQL(MigrationSql.ADD_PLANNER_BAND_THEME)
+        assertEquals(0, scalar(db, "SELECT routePlannerEnabled FROM settings") { it.getInt(0) })
+        assertEquals("system", scalar(db, "SELECT plannerBandTheme FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -248,7 +261,8 @@ class MigrationsTest {
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
-            "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile")
+            "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
+            "routePlannerEnabled", "plannerBandTheme")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

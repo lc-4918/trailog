@@ -111,14 +111,14 @@
     <string name="dialog_edit_bubble_title">Editar la burbuja informativa</string>
 
     <!-- Menú lateral -->
-    <string name="drawer_default_title">Rutas</string>
+    <string name="drawer_default_title">Biblioteca</string>
     <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
     <string name="demo_folder_name">Demo</string>
 
     <!-- Ajustes: pestañas -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_profile">Perfil</string>
+    <string name="settings_tab_routes">Rutas</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Teselas</string>
 
@@ -193,10 +193,14 @@
     <string name="settings_section_gps_position">Posición GPS</string>
     <string name="settings_show_gps_button">Mostrar el botón de localización GPS</string>
     <string name="settings_section_geocoding">Geocodificación</string>
+    <string name="settings_section_route_planner">Planificador de rutas</string>
+    <string name="settings_enable_route_planner">Mostrar el botón del planificador</string>
+    <string name="settings_section_geocoding_service">Servicio de geocodificación</string>
+    <string name="settings_section_routing_service">Servicio de rutas</string>
+    <string name="settings_section_default_discipline">Disciplina por defecto</string>
     <string name="settings_enable_geocoding">Activar la búsqueda de lugares y direcciones</string>
     <string name="settings_geocoding_url">URL del servicio de geocodificación</string>
     <string name="settings_routing_url">URL del servicio de itinerarios</string>
-    <string name="settings_routing_profile">Disciplina de los itinerarios</string>
     <string name="settings_section_markers">Marcadores (mapa)</string>
     <string name="settings_marker_size">Tamaño de los marcadores (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial de importaciones</string>

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.PedalBike
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -178,7 +179,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     val tabs = listOf(
         stringResource(R.string.settings_tab_map) to Icons.Filled.Map,
         stringResource(R.string.settings_tab_tiles) to Icons.Filled.Layers,
-        stringResource(R.string.settings_tab_profile) to Icons.AutoMirrored.Filled.ShowChart,
+        stringResource(R.string.settings_tab_routes) to Icons.Filled.Route,
         stringResource(R.string.settings_tab_general) to Icons.Filled.Tune,
     )
 
@@ -214,7 +215,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                     when (currentTab) {
                         0 -> MapTab(cur, vm)
                         1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") })
-                        2 -> ProfileTab(cur, vm)
+                        2 -> RoutesTab(cur, vm)
                         else -> SystemTab(cur, vm,
                             onPickImportDir = { importDirPicker.launch(null) },
                             onPickMbtilesFolder = { treePicker.launch(null) },
@@ -232,24 +233,14 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
     Section(stringResource(R.string.settings_section_gps_position))
     SwitchRow(stringResource(R.string.settings_show_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
+    // Les deux rubriques qui suivent ne portent qu'un interrupteur chacune : elles disent seulement quel
+    // bouton apparait sur la carte. Leur configuration (URL des services, discipline) vit dans l'onglet
+    // "Itineraires" - cet onglet-ci repond a "qu'est-ce qui s'affiche", l'autre a "comment ca se calcule".
     Section(stringResource(R.string.settings_section_geocoding))
     SwitchRow(stringResource(R.string.settings_enable_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
-    if (cur.geocodingEnabled) {
-        CompactOutlinedTextField(
-            value = cur.geocodingUrl, onValueChange = { vm.save(cur.copy(geocodingUrl = it.trim())) },
-            singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.settings_geocoding_url)) },
-            placeholder = { Text(Photon.DEFAULT_URL) },
-        )
-        CompactOutlinedTextField(
-            value = cur.routingUrl, onValueChange = { vm.save(cur.copy(routingUrl = it.trim())) },
-            singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            label = { Text(stringResource(R.string.settings_routing_url)) },
-            placeholder = { Text(Valhalla.DEFAULT_URL) },
-        )
-        Text(stringResource(R.string.settings_routing_profile), style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp))
-        RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
+    Section(stringResource(R.string.settings_section_route_planner))
+    SwitchRow(stringResource(R.string.settings_enable_route_planner), cur.routePlannerEnabled) {
+        vm.save(cur.copy(routePlannerEnabled = it))
     }
     Section(stringResource(R.string.settings_section_basemap_control))
     SwitchRow(stringResource(R.string.settings_show_basemap_control_button), cur.showBasemapControlButton) {
@@ -278,6 +269,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     Text(stringResource(R.string.settings_bubble_opacity, cur.bubbleOpacityPct), style = MaterialTheme.typography.bodyMedium)
     CompactSlider(value = cur.bubbleOpacityPct.toFloat(), valueRange = 30f..100f,
         onValueChange = { vm.save(cur.copy(bubbleOpacityPct = it.toInt())) })
+    // L'apparence du profil altimetrique termine cet onglet : elle decrit, elle aussi, ce qui s'affiche
+    // par-dessus la carte. Elle avait son propre onglet, rendu au calcul d'itineraire.
+    ProfileSettings(cur, vm)
 }
 
 /** Libellé traduit d'une discipline d'itinéraire. */
@@ -539,7 +533,12 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     }
 }
 
-@Composable private fun ProfileTab(cur: SettingsEntity, vm: SettingsViewModel) {
+/**
+ * Reglages d'apparence du profil altimetrique, communs au profil d'une trace et a celui d'un itineraire
+ * planifie. Composable a part, et non un onglet : ils tiennent desormais a la fin de l'onglet "Carte",
+ * l'onglet qu'ils occupaient etant rendu au calcul d'itineraire.
+ */
+@Composable private fun ProfileSettings(cur: SettingsEntity, vm: SettingsViewModel) {
     Section(stringResource(R.string.settings_section_display))
     SwitchRow(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
     SwitchRow(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
@@ -571,6 +570,12 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         onValueChange = { vm.save(cur.copy(profileVerticalScaleMPerCm = vsValues[(it + 0.5f).toInt().coerceIn(0, vsValues.lastIndex)])) })
     Text(stringResource(R.string.settings_vertical_scale_hint),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas a
+    // l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre trace.
+    // Les autres reglages du profil (grille, pentes, polices) se jugent immediatement et se defont seuls.
+    TextButton(onClick = { vm.save(cur.copy(profileSmoothingM = 5, profileVerticalScaleMPerCm = 0)) }) {
+        Text(stringResource(R.string.action_reset_defaults))
+    }
     Section(stringResource(R.string.settings_section_title_line_info))
     InfoChips(listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent), "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration), "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
         cur.titleInfos) { vm.save(cur.copy(titleInfos = it)) }
@@ -583,6 +588,32 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     FontStepper(stringResource(R.string.font_title_bar_info), cur.profBarFont, bold = cur.profBarBold, onBold = { vm.save(cur.copy(profBarBold = it)) }) { vm.save(cur.copy(profBarFont = it)) }
     FontStepper(stringResource(R.string.settings_profile_slope_legend), cur.profLegendFont, bold = cur.profLegendBold, onBold = { vm.save(cur.copy(profLegendBold = it)) }) { vm.save(cur.copy(profLegendFont = it)) }
     FontStepper(stringResource(R.string.font_cursor_point), cur.profCursorFont, bold = cur.profCursorBold, onBold = { vm.save(cur.copy(profCursorBold = it)) }) { vm.save(cur.copy(profCursorFont = it)) }
+}
+
+/**
+ * Onglet "Itineraires" : comment le calcul se fait, non ce qui s'affiche.
+ *
+ * Les deux services y figurent separement bien que le geocodage ne soit pas du calcul d'itineraire :
+ * chercher un lieu est le premier geste de la planification, et les deux URL se reglent ensemble. Les
+ * interrupteurs qui montrent leurs boutons sur la carte, eux, restent dans l'onglet "Carte".
+ */
+@Composable private fun RoutesTab(cur: SettingsEntity, vm: SettingsViewModel) {
+    Section(stringResource(R.string.settings_section_geocoding_service))
+    CompactOutlinedTextField(
+        value = cur.geocodingUrl, onValueChange = { vm.save(cur.copy(geocodingUrl = it.trim())) },
+        singleLine = true, modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.settings_geocoding_url)) },
+        placeholder = { Text(Photon.DEFAULT_URL) },
+    )
+    Section(stringResource(R.string.settings_section_routing_service))
+    CompactOutlinedTextField(
+        value = cur.routingUrl, onValueChange = { vm.save(cur.copy(routingUrl = it.trim())) },
+        singleLine = true, modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.settings_routing_url)) },
+        placeholder = { Text(Valhalla.DEFAULT_URL) },
+    )
+    Section(stringResource(R.string.settings_section_default_discipline))
+    RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
 }
 
 /**

@@ -111,14 +111,14 @@
     <string name="dialog_edit_bubble_title">Edita la bombolla informativa</string>
 
     <!-- Menú lateral -->
-    <string name="drawer_default_title">Itineraris</string>
+    <string name="drawer_default_title">Biblioteca</string>
     <!-- Nom du dossier du jeu de demonstration seme au premier lancement -->
     <string name="demo_folder_name">Demo</string>
 
     <!-- Configuració: pestanyes -->
     <string name="settings_title">Configuració</string>
     <string name="settings_tab_general">Sistema</string>
-    <string name="settings_tab_profile">Perfil</string>
+    <string name="settings_tab_routes">Itineraris</string>
     <string name="settings_tab_map">Mapa</string>
     <string name="settings_tab_tiles">Tessel·les</string>
 
@@ -193,10 +193,14 @@
     <string name="settings_section_gps_position">Posició GPS</string>
     <string name="settings_show_gps_button">Mostra el botó de localització GPS</string>
     <string name="settings_section_geocoding">Geocodificació</string>
+    <string name="settings_section_route_planner">Planificador d\'itineraris</string>
+    <string name="settings_enable_route_planner">Mostra el botó del planificador</string>
+    <string name="settings_section_geocoding_service">Servei de geocodificació</string>
+    <string name="settings_section_routing_service">Servei d\'itineraris</string>
+    <string name="settings_section_default_discipline">Disciplina per defecte</string>
     <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
     <string name="settings_geocoding_url">URL del servei de geocodificació</string>
     <string name="settings_routing_url">URL del servei d\'itineraris</string>
-    <string name="settings_routing_profile">Disciplina dels itineraris</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>
     <string name="settings_marker_size">Mida dels marcadors (dp)</string>
     <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>
