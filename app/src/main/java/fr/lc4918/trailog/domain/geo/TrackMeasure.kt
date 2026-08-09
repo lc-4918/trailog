@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.domain.geo
 
 import fr.lc4918.trailog.domain.model.Sample
+import kotlin.math.ceil
 import kotlin.math.cos
 
 /**
@@ -60,22 +61,43 @@ object TrackMeasure {
         return best
     }
 
-    /** Point de la trace situe au kilometrage [alongM] : sert a poser l'infobulle au milieu de la mesure. */
-    fun pointAt(samples: List<Sample>, alongM: Double): Pair<Double, Double>? {
-        if (samples.isEmpty()) return null
-        val first = samples.first()
-        if (alongM <= first.x) return first.lon to first.lat
-        val last = samples.last()
-        if (alongM >= last.x) return last.lon to last.lat
-        for (i in 0 until samples.size - 1) {
+    /** Pas d'echantillonnage du parcours mesure (m), et nombre de points au-dela duquel on l'etire. */
+    private const val PortionStepM = 25.0
+    private const val PortionMaxSteps = 800
+
+    /**
+     * Parcours mesure echantillonne a pas constant, du kilometrage [fromM] a [toM] : les ancres possibles
+     * de l'infobulle, du milieu vers les bords.
+     *
+     * Le nombre de points est toujours IMPAIR, si bien que l'element central est exactement le milieu du
+     * parcours - la ou l'infobulle pointe tant qu'il est a l'ecran. Les autres sont ses replis : le milieu
+     * sorti de l'emprise, l'ancre glisse dans cette liste jusqu'au premier point encore visible, et comme
+     * le pas est constant, s'ecarter d'un index c'est s'ecarter d'autant de parcours (cf. MeasureAnchor).
+     *
+     * Le pas vise 25 m - assez fin pour qu'un bout de trace visible au zoom le plus serre contienne
+     * toujours une ancre - mais s'etire au-dela de 800 intervalles : sur une mesure de plusieurs dizaines
+     * de kilometres, projeter la liste entiere couterait plus que la finesse ne rapporte.
+     */
+    fun portion(samples: List<Sample>, fromM: Double, toM: Double): List<Pair<Double, Double>> {
+        if (samples.isEmpty()) return emptyList()
+        if (samples.size == 1) return listOf(samples[0].lon to samples[0].lat)
+        val from = minOf(fromM, toM)
+        val to = maxOf(fromM, toM)
+        var steps = ceil((to - from) / PortionStepM).toInt().coerceIn(2, PortionMaxSteps)
+        if (steps % 2 != 0) steps++      // nombre d'intervalles pair -> nombre de points impair
+        val step = (to - from) / steps
+        val out = ArrayList<Pair<Double, Double>>(steps + 1)
+        // Un seul balayage des samples : les kilometrages demandes croissent, l'index ne recule jamais.
+        var i = 0
+        for (k in 0..steps) {
+            val alongM = from + k * step
+            while (i < samples.size - 2 && samples[i + 1].x < alongM) i++
             val a = samples[i]
             val b = samples[i + 1]
-            if (alongM <= b.x) {
-                val span = b.x - a.x
-                val t = if (span <= 0.0) 0.0 else (alongM - a.x) / span
-                return (a.lon + (b.lon - a.lon) * t) to (a.lat + (b.lat - a.lat) * t)
-            }
+            val span = b.x - a.x
+            val t = if (span <= 0.0) 0.0 else ((alongM - a.x) / span).coerceIn(0.0, 1.0)
+            out += (a.lon + (b.lon - a.lon) * t) to (a.lat + (b.lat - a.lat) * t)
         }
-        return last.lon to last.lat
+        return out
     }
 }

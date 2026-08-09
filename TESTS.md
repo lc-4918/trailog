@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**315 tests, 36 fichiers**, tous verts.
+**325 tests, 37 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -80,6 +80,12 @@ test unitaire.
 |---|---|---|
 | `TrackMathTest` | 3 | distance, denivele positif et negatif, pente |
 | `FormatTest` | 14 | formatage des durees, distances et altitudes affichees dans le profil et sur les mesures de geocodage |
+| `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, echantillonnage du parcours mesure |
+
+`TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas a viser la ligne
+au pixel (projete orthogonal, borne aux extremites), et le parcours mesure est rendu a pas constant en
+un nombre impair de points - c'est ce qui fait de son element central le milieu exact de la mesure, ou
+l'infobulle vient s'ancrer.
 
 `FormatTest` couvre notamment les deux reports d'arrondi : 59 min 59 s doit donner "2 h" et non
 "1 h 60 min", et le meme cas une case au-dessus pour les jours.
@@ -206,6 +212,7 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 | `GeocodeSearchStateTest` | 5 | transitions de la recherche de lieu (barre de saisie, lieu retenu) |
 | `MapPointStateTest` | 9 | transitions du point designe par un appui long (adresse, mesures, mode de saisie) |
 | `LayersUnderTest` | 4 | ce sur quoi porte une action de dossier : ses couches, sous-dossiers compris |
+| `MeasureAnchorTest` | 5 | ancrage de l'infobulle de mesure : le milieu s'il est visible, sinon le point visible le plus proche |
 
 Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
 gestionnaire n'etait pas couvert du tout.
@@ -216,6 +223,11 @@ oubliee au changement de point affiche une distance calculee vers un autre endro
 survit a son infobulle ne se retire plus par aucun geste. `MapPointStateTest` verrouille aussi le figeage
 de l'origine de la mesure depuis la position : la suivre ferait partir une requete d'itineraire a chaque
 point GPS, soit une toutes les deux secondes.
+
+`MeasureAnchorTest` verrouille une recherche qu'on ne voit jamais echouer a moitie : elle s'ecarte du
+milieu des deux cotes a la fois, donc le premier point retenu est bien le plus proche du milieu, et
+elle n'interroge qu'un seul point quand le milieu est deja visible - le cas courant, sur lequel on ne
+veut pas projeter des centaines de points a chaque mouvement de carte.
 
 `LayersUnderTest` verrouille une decision, pas un calcul : une action de dossier - l'oeil, la couleur
 commune, le cadrage - porte aussi sur ses sous-dossiers. S'arreter aux couches directes ne casse rien

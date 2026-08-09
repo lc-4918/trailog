@@ -115,6 +115,7 @@ import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.mappoint.MeasureState
+import fr.lc4918.trailog.ui.measure.MeasureAnchor
 import fr.lc4918.trailog.ui.measure.MeasureBubble
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
@@ -669,7 +670,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 if (started == null) {
                     vm.pickMeasureStart(lon, lat) { p -> if (p != null && measure.picking) measure.chooseStart(p) }
                 } else {
-                    vm.pickMeasureEnd(started, lon, lat) { p, mid -> if (measure.picking) measure.chooseEnd(p, mid) }
+                    vm.pickMeasureEnd(started, lon, lat) { p, path -> if (measure.picking) measure.chooseEnd(p, path) }
                 }
             }
             mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
@@ -1270,21 +1271,50 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { pointBarHeightPx = it.size.height },
                     )
                 }
-                // Infobulle de la mesure : pointe posée sur le milieu du parcours mesuré, qui suit la carte
-                // au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu).
-                val measureMid = measure.mid
+                // Infobulle de la mesure : ancrée sur le parcours mesuré au plus près de son milieu, et
+                // suivant la carte au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu). Le zoom
+                // posé pour viser le second point laisse souvent le milieu hors de l'écran ; l'ancre glisse
+                // alors le long du parcours jusqu'au premier point visible (cf. MeasureAnchor).
+                val measurePath = measure.path
                 val measureMeters = measure.meters
-                if (measureMid != null && measureMeters != null) {
-                    val midOff = remember(measureMid, idleTick) {
-                        controller.screenOf(measureMid.first, measureMid.second)
-                            ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+                if (measurePath.isNotEmpty() && measureMeters != null) {
+                    val topInset = WindowInsets.statusBars.getTop(density)
+                    val margin = with(density) { 8.dp.roundToPx() }
+                    // Emprise où la pointe a le droit de se poser : la carte, moins une marge de confort
+                    // (jamais collée au bord) et moins ce qui la recouvre en bas : le profil quand il est
+                    // ouvert, la barre de navigation sinon. Rien à réserver pour la hauteur de la bulle :
+                    // elle bascule au-dessus ou en dessous de sa pointe selon la place (cf. MeasureBubble).
+                    val inset = with(density) { 24.dp.roundToPx() }
+                    val bottomCover = if (activeLayerId != null) profileBarHeightPx
+                        else WindowInsets.navigationBars.getBottom(density)
+                    val left = inset
+                    val right = (constraints.maxWidth - inset).coerceAtLeast(left)
+                    val top = topInset + inset
+                    val bottom = (constraints.maxHeight - bottomCover - inset).coerceAtLeast(top)
+                    val tip = remember(measurePath, idleTick, left, right, top, bottom) {
+                        var found: IntOffset? = null
+                        MeasureAnchor.pick(measurePath.size) { i ->
+                            val (lon, lat) = measurePath[i]
+                            val p = controller.screenOf(lon, lat) ?: return@pick false
+                            val inside = p.x >= left && p.x <= right && p.y >= top && p.y <= bottom
+                            if (inside) found = IntOffset(p.x.toInt(), p.y.toInt())
+                            inside
+                        }
+                        // Parcours entièrement hors de l'écran (la carte est partie ailleurs) : la bulle se
+                        // range du côté où il se trouve plutôt que de disparaître avec sa croix, seul moyen
+                        // à l'écran de refermer la mesure.
+                        found ?: measure.mid?.let { (lon, lat) ->
+                            controller.screenOf(lon, lat)?.let { p ->
+                                IntOffset(p.x.toInt().coerceIn(left, right), p.y.toInt().coerceIn(top, bottom))
+                            }
+                        }
                     }
-                    if (midOff != null) {
+                    if (tip != null) {
                         MeasureBubble(
                             text = Format.shortDistance(measureMeters, imperialUnits),
-                            tipX = midOff.x, tipY = midOff.y,
-                            topInset = WindowInsets.statusBars.getTop(density),
-                            margin = with(density) { 8.dp.roundToPx() },
+                            tipX = tip.x, tipY = tip.y,
+                            topInset = topInset,
+                            margin = margin,
                             onClose = { measure.clear() },
                             fontSp = settings?.bubbleFont ?: 14,
                             backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,

@@ -39,8 +39,9 @@ private val BubbleCorner = 16.dp
 /**
  * Infobulle de la mesure : la longueur parcourue entre les deux points, et de quoi tout refermer.
  *
- * Sa pointe touche le milieu du parcours mesure ([tipX], [tipY], en px ecran) : c'est ce qui la relie a ce
- * qu'elle chiffre, deux marqueurs noirs pouvant etre distants de plusieurs ecrans de zoom.
+ * Sa pointe touche le parcours mesure ([tipX], [tipY], en px ecran), au plus pres de son milieu (cf.
+ * [MeasureAnchor]) : c'est ce qui la relie a ce qu'elle chiffre, deux marqueurs noirs pouvant etre
+ * distants de plusieurs ecrans de zoom.
  *
  * Le placement se fait en une seule passe de layout, avec les DEUX pointes composees et une seule posee :
  * la bulle va au-dessus du point quand la place le permet, sinon en dessous, et l'on ne sait de quel cote

@@ -58,16 +58,54 @@ class TrackMeasureTest {
         assertNull(TrackMeasure.project(emptyList(), 6.0, 45.0))
     }
 
-    @Test fun pointAt_middleOfTheTrack_isInterpolated() {
+    @Test fun portion_hasAnOddCount_soItsCenterIsTheMiddleOfTheMeasure() {
         val s = track()
-        val mid = TrackMeasure.pointAt(s, s.last().x / 2)!!
-        assertEquals(6.002, mid.first, 1e-5)
-        assertEquals(45.0, mid.second, 1e-9)
+        val p = TrackMeasure.portion(s, 0.0, s.last().x)
+        assertTrue(p.size % 2 == 1)
+        assertEquals(s.first().lon, p.first().first, 1e-9)
+        assertEquals(s.last().lon, p.last().first, 1e-9)
+        assertEquals(6.002, p[p.size / 2].first, 1e-5)     // milieu des ~315 m parcourus
+        assertEquals(45.0, p[p.size / 2].second, 1e-9)
     }
 
-    @Test fun pointAt_outsideTheTrack_isClampedToItsEnds() {
+    @Test fun portion_ofASubRange_staysWithinIt() {
         val s = track()
-        assertEquals(s.first().lon, TrackMeasure.pointAt(s, -100.0)!!.first, 1e-9)
-        assertEquals(s.last().lon, TrackMeasure.pointAt(s, s.last().x + 100.0)!!.first, 1e-9)
+        val p = TrackMeasure.portion(s, s[1].x, s[3].x)
+        assertEquals(6.001, p.first().first, 1e-6)
+        assertEquals(6.003, p.last().first, 1e-6)
+        assertEquals(6.002, p[p.size / 2].first, 1e-6)
+    }
+
+    @Test fun portion_pointsAreEvenlySpacedAlongTheTrack() {
+        val s = track()
+        val p = TrackMeasure.portion(s, 0.0, s.last().x)
+        val step = TrackMath.haversine(p[0].first, p[0].second, p[1].first, p[1].second)
+        for (i in 1 until p.size - 1) {
+            val d = TrackMath.haversine(p[i].first, p[i].second, p[i + 1].first, p[i + 1].second)
+            assertEquals(step, d, 0.5)
+        }
+        assertTrue(step <= 25.0)
+    }
+
+    @Test fun portion_takenBackwards_isTheSameAsForwards() {
+        val s = track()
+        assertEquals(TrackMeasure.portion(s, s[1].x, s[3].x), TrackMeasure.portion(s, s[3].x, s[1].x))
+    }
+
+    @Test fun portion_beyondTheTrack_isClampedToItsEnds() {
+        val s = track()
+        val p = TrackMeasure.portion(s, -100.0, s.last().x + 100.0)
+        assertEquals(s.first().lon, p.first().first, 1e-9)
+        assertEquals(s.last().lon, p.last().first, 1e-9)
+    }
+
+    @Test fun portion_ofALongMeasure_staysBounded() {
+        // 5000 points de ~78,7 m : le pas de 25 m donnerait plus de 15 000 points, la liste s'etire.
+        val p = TrackMeasure.portion(track(n = 5000), 0.0, 393_000.0)
+        assertEquals(801, p.size)
+    }
+
+    @Test fun portion_ofAnEmptyTrack_isEmpty() {
+        assertTrue(TrackMeasure.portion(emptyList(), 0.0, 100.0).isEmpty())
     }
 }

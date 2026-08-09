@@ -40,9 +40,16 @@ class TrackMeasureState {
     var end by mutableStateOf<MeasurePoint?>(null)
         private set
 
-    /** Milieu du parcours mesure : l'infobulle y pointe sa pointe. */
-    var mid by mutableStateOf<Pair<Double, Double>?>(null)
+    /**
+     * Parcours mesure echantillonne a pas constant (cf. TrackMeasure.portion) : les ancres possibles de
+     * l'infobulle, du milieu vers les bords, celle retenue dependant de l'emprise de la carte.
+     */
+    var path by mutableStateOf<List<Pair<Double, Double>>>(emptyList())
         private set
+
+    /** Milieu du parcours mesure : l'element central du parcours, de pas constant. */
+    val mid: Pair<Double, Double>?
+        get() = path.getOrNull(path.size / 2)
 
     /** Marqueurs noirs a poser sur la carte : le point de depart, puis celui de fin. */
     val markers: List<Pair<Double, Double>>
@@ -65,9 +72,9 @@ class TrackMeasureState {
     fun chooseStart(p: MeasurePoint) { start = p }
 
     /** Second point pose : la mesure est faite, la bande n'a plus rien a demander. */
-    fun chooseEnd(p: MeasurePoint, middle: Pair<Double, Double>?) {
+    fun chooseEnd(p: MeasurePoint, measured: List<Pair<Double, Double>>) {
         end = p
-        mid = middle
+        path = measured
         picking = false
     }
 
@@ -79,7 +86,7 @@ class TrackMeasureState {
      */
     fun closeBand() {
         picking = false
-        if (end == null) { start = null; mid = null }
+        if (end == null) { start = null; path = emptyList() }
     }
 
     /** Croix de l'infobulle, ou abandon complet : ne laisse ni bande, ni marqueur, ni resultat. */
@@ -87,6 +94,6 @@ class TrackMeasureState {
         picking = false
         start = null
         end = null
-        mid = null
+        path = emptyList()
     }
 }

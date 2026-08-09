@@ -243,22 +243,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * Second point, contraint au segment du premier : mesurer suppose un parcours commun, et deux traces
      * distinctes n'en offrent aucun. Le tap est donc rabattu sur CETTE trace, où qu'il tombe.
      *
-     * Rend aussi le milieu du parcours mesuré, calculé sur les mêmes samples : c'est là que l'infobulle
-     * vient pointer, et le demander ailleurs relirait la couche pour la même réponse.
+     * Rend aussi le parcours mesuré échantillonné, calculé sur les mêmes samples : c'est là-dessus que
+     * l'infobulle s'ancre (cf. MeasureAnchor), et le demander ailleurs relirait la couche pour la même
+     * réponse.
      */
     fun pickMeasureEnd(
         start: MeasurePoint, lon: Double, lat: Double,
-        onResult: (MeasurePoint, Pair<Double, Double>?) -> Unit,
+        onResult: (MeasurePoint, List<Pair<Double, Double>>) -> Unit,
     ) = viewModelScope.launch {
         val layer = layers.value.firstOrNull { it.id == start.layerId } ?: return@launch
         val samples = repo.loadProfiles(layer).getOrNull(start.trackIndex)?.samples ?: return@launch
         val computed = withContext(Dispatchers.Default) {
             TrackMeasure.project(samples, lon, lat)?.let { p ->
-                p to TrackMeasure.pointAt(samples, (start.alongM + p.alongM) / 2)
+                p to TrackMeasure.portion(samples, start.alongM, p.alongM)
             }
         } ?: return@launch
-        val (p, mid) = computed
-        onResult(start.copy(lon = p.lon, lat = p.lat, alongM = p.alongM), mid)
+        val (p, path) = computed
+        onResult(start.copy(lon = p.lon, lat = p.lat, alongM = p.alongM), path)
     }
 
     fun closeProfile() {
