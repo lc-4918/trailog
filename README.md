@@ -1,191 +1,191 @@
 # Trailog
 
-**Cartographie et itinéraires hors-ligne pour Android.**
+[<img src="app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français](README.fr.md) | <img src="app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English
+
+**Offline mapping and routes for Android.**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
 
-Trailog est une application Android native pour consulter, importer et organiser des
-traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,
-avec un fonctionnement pensé pour le hors-ligne.
+Trailog is a native Android application for viewing, importing and organising GPS tracks
+(hiking, cycling, mountain biking, exploring), on customisable basemaps, and built for
+offline use.
 
-> *Captures d'écran à venir.*
+> *Screenshots to come.*
+
+> The project's working documents (specification, design notes, tests) are written in French.
+> This README is their English counterpart.
 
 ---
 
-## Table des matières
+## Table of contents
 
-- [Qu'est-ce que Trailog ?](#quest-ce-que-trailog-)
-- [Caractéristiques principales](#caractéristiques-principales)
+- [What is Trailog?](#what-is-trailog)
+- [Main features](#main-features)
 - [Installation](#installation)
-- [Guide de démarrage rapide](#guide-de-démarrage-rapide)
-- [Utilisation avancée](#utilisation-avancée)
-- [Données & Confidentialité](#données--confidentialité)
-- [Contribution & Développement](#contribution--développement)
+- [Quick start](#quick-start)
+- [Going further](#going-further)
+- [Data & Privacy](#data--privacy)
+- [Contributing & Development](#contributing--development)
 - [Licence](#licence)
 - [Contact](#contact)
 
 ---
 
-## Qu'est-ce que Trailog ?
+## What is Trailog?
 
-Trailog permet de garder ses traces et points d'intérêt organisés localement sur son
-téléphone, et de les visualiser sur une carte avec un profil altimétrique synchronisé,
-sans dépendre d'un service en ligne.
+Trailog keeps your tracks and points of interest organised locally on your phone, and shows
+them on a map with a synchronised elevation profile, without depending on any online service.
 
-**Cas d'usage typiques :**
-- Randonnée, vélo, VTT : consulter un itinéraire préparé à l'avance, hors-ligne sur le terrain.
-- Archivage de traces personnelles, classées en dossiers.
-- Exploration de fonds de carte spécialisés (IGN, relief, pistes cyclables...).
+**Typical uses:**
+- Hiking, cycling, mountain biking: follow a route prepared in advance, offline in the field.
+- Archiving personal tracks, sorted into folders.
+- Exploring specialised basemaps (national mapping agencies, hillshade, cycle routes...).
 
-## Caractéristiques principales
+## Main features
 
-- **Carte native** (MapLibre) avec de nombreux fonds de carte configurables (OpenStreetMap,
-  IGN, relief, pistes cyclables, fonds composites associant un fond et une surcouche).
-- **Import de traces** au format **GPX**, **GeoJSON** et **KML/KMZ**, avec calcul automatique
-  des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement).
-- **Profil altimétrique** natif, synchronisé avec un curseur sur la carte, avec zoom sur une
-  portion du parcours et échelle verticale réglable.
-- **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires,
-  et donner d'un coup la même couleur à toutes les traces d'un dossier.
-- **Points d'intérêt** : marqueurs avec infobulles que vous pouvez modifier (titre, texte,
-  liens, photos), y compris les photos des waypoints GPX de votre téléphone.
-- **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
-  propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
-- **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
-  sur la carte, avec son adresse.
-- **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
-  l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
-  ou depuis un second point que vous désignez.
-- **Mesure sur une trace** (à activer dans les réglages) : deux points posés du doigt sur une trace
-  affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
-- **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
-- **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
-  catalan, basque, italien et portugais.
-- Réglages personnalisables : unités, tolérance de sélection tactile, avatar, position des
-  infobulles, taille des textes.
+- **Native map** (MapLibre) with many configurable basemaps (OpenStreetMap, national mapping
+  agencies, hillshade, cycle routes, composite basemaps pairing a base with an overlay).
+- **Track import** in **GPX**, **GeoJSON** and **KML/KMZ**, with statistics computed on the fly
+  (distance, ascent and descent, gradient, moving time).
+- **Native elevation profile**, synchronised with a cursor on the map, with zoom on a section of
+  the route and an adjustable vertical scale.
+- **Folder organisation**: create, rename, move and delete folders and routes, and colour every
+  track in a folder in one go.
+- **Points of interest**: markers with info bubbles you can edit (title, text, links, photos),
+  including photos carried by GPX waypoints on your phone.
+- **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
+  basemaps, and tiles already viewed stay in cache.
+- **Place and address search** (to be enabled in settings): the place found is pinned on the map,
+  with its address.
+- **Long press on the map**: anywhere off a track, an info bubble gives the address of the spot
+  touched, and measures the distance and time to reach it - from your GPS position, or from a
+  second point you pick.
+- **Measuring along a track** (to be enabled in settings): put two points on a displayed track and
+  Trailog gives the distance between them **along the route**, with no network.
+- **Built-in updates**: the app tells you about a new version and installs it for you.
+- **Multilingual**: interface available in French, English, German, Spanish, Catalan, Basque,
+  Italian and Portuguese.
+- Customisable settings: units, touch selection tolerance, avatar, info bubble position, text sizes.
 
 ## Installation
 
-**Prérequis :** Android 7.0 (API 24) ou supérieur.
+**Requirements:** Android 7.0 (API 24) or later.
 
-### Depuis GitHub Releases (recommandé)
+### From GitHub Releases (recommended)
 
-1. Ouvrir la page [Releases](https://github.com/lc-4918/trailog/releases) du dépôt.
-2. Télécharger le fichier `.apk` de la dernière version.
-3. Ouvrir le fichier téléchargé sur votre téléphone (autoriser l'installation depuis une
-   source inconnue si demandé par Android).
-4. Confirmer l'installation.
+1. Open the repository's [Releases](https://github.com/lc-4918/trailog/releases) page.
+2. Download the `.apk` file of the latest version.
+3. Open the downloaded file on your phone (allow installation from an unknown source if Android
+   asks for it).
+4. Confirm the installation.
 
-> Trailog n'est pas distribué sur le Play Store : GitHub Releases sert de plateforme de
-> distribution. Voir la section [Contribution & Développement](#contribution--développement)
-> pour le détail du fonctionnement de ce "store".
+> Trailog is not distributed on the Play Store: GitHub Releases serves as the distribution
+> platform. See [Contributing & Development](#contributing--development) for how this "store"
+> works.
 
-### Mises à jour
+### Updates
 
-Cette première installation faite, vous n'aurez plus à revenir ici : Trailog vérifie
-lui-même s'il existe une version plus récente et vous propose de l'installer.
+Once that first installation is done, you will not have to come back here: Trailog checks for
+itself whether a newer version exists and offers to install it.
 
-- Par défaut, la vérification a lieu **au démarrage** de l'application.
-- Vous pouvez la passer en **manuel** dans **Réglages -> Système -> Mises à jour**, où un bouton
-  permet alors de vérifier quand vous le souhaitez.
-- Quand vous acceptez, Trailog télécharge la nouvelle version et lance l'installation. Android
-  vous demandera une fois l'autorisation d'installer des applications depuis Trailog : c'est
-  normal pour une application distribuée hors magasin, et vous pouvez la retirer à tout moment
-  dans les réglages Android.
-- Vos traces, dossiers et réglages sont conservés.
+- By default, the check happens **at startup**.
+- You can switch it to **manual** under **Settings -> System -> Updates**, where a button then lets
+  you check whenever you want.
+- When you accept, Trailog downloads the new version and starts the installation. Android will ask
+  you once for permission to install applications from Trailog: this is normal for an application
+  distributed outside a store, and you can withdraw it at any time in the Android settings.
+- Your tracks, folders and settings are kept.
 
-## Guide de démarrage rapide
+## Quick start
 
-1. **Importer une trace** : bouton *Importer* -> choisir un fichier GPX, GeoJSON ou KML/KMZ
-   -> l'app calcule automatiquement les statistiques et propose un aperçu.
-2. **Choisir la destination** : dossier existant ou nouveau (dossier ou sous-dossier).
-3. **Visualiser** : tap sur l'itinéraire dans le menu latéral -> affichage sur la carte et du
-   profil altimétrique. Un tap sur la carte ou sur le profil positionne le curseur au point
-   correspondant sur l'autre vue.
-4. **Ajouter des points d'intérêt** : importer une couche de points (GeoJSON/GPX/KML), tap
-   sur un marqueur pour voir son infobulle. Le crayon permet de la modifier.
+1. **Import a track**: *Import* button -> pick a GPX, GeoJSON or KML/KMZ file -> the app computes
+   the statistics and shows a preview.
+2. **Choose the destination**: an existing folder, or a new one (folder or subfolder).
+3. **View it**: tap the route in the side menu -> it appears on the map, with its elevation
+   profile. Tapping the map or the profile puts the cursor on the matching point in the other view.
+4. **Add points of interest**: import a point layer (GeoJSON/GPX/KML), tap a marker to see its info
+   bubble. The pencil opens it for editing.
 
-## Utilisation avancée
+## Going further
 
-- **Import/export** : GeoJSON, GPX et KML/KMZ en import ; export GeoJSON des traces. Les
-  photos référencées par les waypoints GPX (OruxMaps, OsmAnd, Locus, Garmin) sont récupérées
-  et rangées dans l'application.
-- **Modifier une infobulle** : le crayon ouvre un formulaire où vous pouvez changer le titre,
-  corriger un champ, ajouter du texte, un lien ou une photo, choisir la photo mise en avant,
-  ou supprimer le point.
-- **Emporter une carte hors-ligne** : délimitez une zone sur la carte, choisissez la plage de
-  zoom, et Trailog télécharge les tuiles dans une couche réutilisable sans réseau.
-- **Fonds de carte** : gérer la liste des fournisseurs de tuiles dans les réglages
-  (URL, clé API, activation), créer des **fonds composites** (un fond opaque plus une
-  surcouche, par exemple OpenStreetMap avec les tracés VTT).
-- **Fonds hors-ligne locaux** : importer un fichier `.mbtiles` pour disposer d'un fond
-  utilisable sans connexion.
-- **Légende d'un fond** : certains fonds, comme les voies cyclables AF3V, affichent un bouton
-  d'information sur la carte qui déplie leur légende.
-- **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
-  recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
-  en donne l'adresse. Les propositions sont classées par importance du lieu, une ville passant donc
-  avant un hameau du même nom.
-- **Interroger un point de la carte** : un appui long n'importe où, hors d'une trace et d'un
-  marqueur, y pose une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet
-  endroit, puis propose deux mesures : la distance depuis votre position GPS (si elle est active),
-  et la distance depuis un second point, que vous désignez ensuite d'un tap sur la carte.
-- **Distance et durée jusqu'au point** : ce ne sont pas des distances à vol d'oiseau mais celles de
-  l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Trajets* :
-  vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle.
-  L'itinéraire lui-même se dessine sur la carte, teinté selon la pente. Les services
-  interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
-  leur substituer vos propres instances en renseignant leurs URL dans les réglages.
-- **Mesurer une portion de trace** : une fois *Afficher le bouton de mesure* activé dans
-  **Réglages / Carte**, un bouton en forme de règle apparaît sous le menu. Une bande vous demande
-  alors deux points : tapez le départ sur une trace affichée, puis l'arrivée sur la même trace, et
-  la distance qui les sépare le long du parcours s'affiche entre les deux marqueurs. Inutile de
-  viser la ligne au pixel près : chaque tap est ramené sur la trace la plus proche, et un tap
-  au-delà d'un bout de trace se pose sur ce bout. Vous pouvez déplacer et zoomer la carte entre les
-  deux points, l'infobulle reste visible et se cale au plus près du milieu de la portion mesurée.
-  Sa croix efface la mesure.
-- **Relief** : activer l'ombrage de relief dans les réglages carte.
-- **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
-  (jusqu'à trois niveaux), régler le lissage et l'échelle verticale (par exemple 1 cm = 100 m,
-  pour que la même pente occupe toujours la même hauteur).
-- **Personnalisation** : avatar, unités (métrique/impérial), mode d'ouverture du menu
-  (bouton ou balayage), tolérance de sélection tactile, position des infobulles.
+- **Import/export**: GeoJSON, GPX and KML/KMZ on import; GeoJSON export of tracks. Photos
+  referenced by GPX waypoints (OruxMaps, OsmAnd, Locus, Garmin) are collected and stored in the
+  application.
+- **Editing an info bubble**: the pencil opens a form where you can change the title, fix a field,
+  add text, a link or a photo, choose the featured photo, or delete the point.
+- **Taking a map offline**: draw an area on the map, choose the zoom range, and Trailog downloads
+  the tiles into a layer usable with no network.
+- **Basemaps**: manage the list of tile providers in the settings (URL, API key, activation),
+  create **composite basemaps** (an opaque base plus an overlay, for instance OpenStreetMap with
+  mountain bike routes).
+- **Local offline basemaps**: import an `.mbtiles` file for a basemap usable without a connection.
+- **Basemap legend**: some basemaps, such as the AF3V cycle routes, show an information button on
+  the map that unfolds their legend.
+- **Searching for a place**: once geocoding is enabled in **Settings / Map**, a search button
+  appears below the menu. The chosen place is pinned in black on the map, and its info bubble gives
+  the address. Suggestions are ranked by the importance of the place, so a town comes before a
+  hamlet of the same name.
+- **Querying a point on the map**: a long press anywhere, off a track and off a marker, drops a pin
+  there and opens its info bubble. It first looks up the address of that spot, then offers two
+  measurements: the distance from your GPS position (if it is on), and the distance from a second
+  point, which you then pick with a tap on the map.
+- **Distance and time to the point**: these are not straight-line distances but those of the
+  recommended route, computed for the **discipline** set in *Settings / Routes*: road bike, gravel,
+  hybrid, mountain bike or on foot. The small "i" next to the value is the reminder. The route
+  itself is drawn on the map, tinted by gradient. The services queried are **Photon** (addresses)
+  and **Valhalla** (routes), with no account and no key; you can point them at your own instances
+  by entering their URLs in the settings.
+- **Measuring a section of a track**: once *Show the measure button* is enabled in
+  **Settings / Map**, a ruler button appears below the menu. A band then asks for two points: tap
+  the start on a displayed track, then the end on the same track, and the distance between them
+  along the route appears between the two markers. No need to aim at the line pixel by pixel: each
+  tap is snapped to the nearest track, and a tap beyond the end of a track lands on that end. You
+  can pan and zoom the map between the two points, the info bubble stays visible and settles as
+  close as it can to the middle of the measured section. Its cross clears the measurement.
+- **Hillshade**: enable relief shading in the map settings.
+- **Elevation profile**: zoom on a section by choosing a start and an end (up to three levels),
+  adjust the smoothing and the vertical scale (for instance 1 cm = 100 m, so that the same gradient
+  always takes up the same height).
+- **Personalisation**: avatar, units (metric/imperial), how the menu opens (button or swipe), touch
+  selection tolerance, info bubble position.
 
-## Données & Confidentialité
+## Data & Privacy
 
-- Aucun suivi en ligne, aucune télémétrie, aucun compte.
-- Toutes les traces, points et réglages sont stockés **localement** sur l'appareil.
-- Les requêtes réseau se limitent au chargement des tuiles auprès des fournisseurs que vous
-  avez configurés, et à la vérification des mises à jour auprès de GitHub. Cette dernière ne
-  transmet rien sur vous : elle lit un fichier public indiquant la dernière version publiée.
-  Vous pouvez la passer en manuel dans les réglages.
-- La **recherche d'un lieu**, l'**adresse d'un point** et les **mesures de distance** sont les seules
-  fonctions qui interrogent un service tiers pendant que vous vous en servez. Une recherche envoie le
-  texte tapé, et rien d'autre — ni votre position, ni l'endroit que vous regardez. L'adresse d'un point
-  envoie ce point, celui que vous venez de désigner du doigt. Une mesure de distance envoie les deux
-  points concernés (dont votre position GPS si vous la demandez depuis celle-ci) au service
-  d'itinéraire. La recherche par le nom est **désactivée par défaut**, et les deux services visés sont
-  configurables : vous pouvez héberger les vôtres.
-- La **mesure sur une trace**, elle, ne sort pas du téléphone : elle se lit sur la trace que vous avez
-  importée, et n'interroge aucun service.
+- No online tracking, no telemetry, no account.
+- All tracks, points and settings are stored **locally** on the device.
+- Network requests are limited to loading tiles from the providers you have configured, and to
+  checking for updates on GitHub. The latter transmits nothing about you: it reads a public file
+  stating the latest published version. You can switch it to manual in the settings.
+- **Place search**, **the address of a point** and **distance measurements** are the only functions
+  that query a third-party service while you use them. A search sends the text you typed, and
+  nothing else - neither your position, nor the area you are looking at. The address of a point
+  sends that point, the one you have just picked. A distance measurement sends the two points
+  concerned (including your GPS position if you ask for the distance from it) to the routing
+  service. Search by name is **disabled by default**, and both services are configurable: you can
+  host your own.
+- **Measuring along a track**, on the other hand, never leaves the phone: it is read from the track
+  you imported, and queries no service.
 
-## Contribution & Développement
+## Contributing & Development
 
-Le développement se fait ouvertement sur GitHub :
-- Guide technique complet (installation, architecture, build) : voir [`DEVELOPER.md`](DEVELOPER.md).
-- Ce que fait l'application, en détail : voir [`SPEC.md`](SPEC.md) ; les fonds de carte et leurs règles :
-  voir [`BASEMAPS.md`](BASEMAPS.md).
-- Fonctionnement du CI/CD et des releases : voir [`WORKFLOW.md`](WORKFLOW.md).
-- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/trailog/issues).
+Development happens in the open on GitHub. The working documents are in French:
+
+- Full technical guide (setup, architecture, build): see [`DEVELOPER.md`](DEVELOPER.md).
+- What the application does, in detail: see [`SPEC.md`](SPEC.md); basemaps and the rules that
+  govern them: see [`BASEMAPS.md`](BASEMAPS.md).
+- Why it is built this way: see [`CONTEXT.md`](CONTEXT.md); what the tests lock down: see
+  [`TESTS.md`](TESTS.md).
+- How CI/CD and releases work: see [`WORKFLOW.md`](WORKFLOW.md).
+- Report a bug or suggest a feature: [GitHub Issues](https://github.com/lc-4918/trailog/issues).
 
 ## Licence
 
-Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](LICENSE).
+Trailog is distributed under the **GPL v3** licence. See the [`LICENSE`](LICENSE) file.
 
 ## Contact
 
-Pour toute question, ouvrez une [discussion ou une issue](https://github.com/lc-4918/trailog/issues)
-sur le dépôt GitHub.
+For any question, open a [discussion or an issue](https://github.com/lc-4918/trailog/issues) on the
+GitHub repository.
