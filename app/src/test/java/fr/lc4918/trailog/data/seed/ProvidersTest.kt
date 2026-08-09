@@ -97,9 +97,9 @@ class ProvidersTest {
 
     /** Le Basemap Control ne liste que les fonds actifs : la liste ci-dessous est ce que voit un nouvel
      *  utilisateur. Un "enabled = false" oublie sur un fond ajoute la rallongerait sans qu'on le remarque. */
-    @Test fun `seuls six fonds sont actifs d entree`() {
+    @Test fun `seuls sept fonds sont actifs d entree`() {
         assertEquals(
-            listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief", "ign_fr"),
+            listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief", "ign_fr", "ign_es"),
             all.filter { it.enabled }.map { it.id },
         )
     }

@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**325 tests, 37 fichiers**, tous verts.
+**340 tests, 37 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -138,7 +138,7 @@ disque, et que l'amorcage ne ressuscite pas un fond que l'utilisateur a supprime
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `MigrationsTest` | 16 | les 11 migrations, rejouees sur un vrai SQLite |
+| `MigrationsTest` | 23 | les 17 migrations, rejouees sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 detruit les couches importees de l'utilisateur, en silence, au premier lancement.
@@ -155,6 +155,10 @@ Points verifies :
 - **20 vers 21** convertit la transparence du panneau en opacite. Sans conversion, un panneau regle a
   20 serait relu comme 20 % d'opacite et deviendrait quasi invisible. Le test balaie les 101 valeurs
   possibles pour verifier qu'aucune ne sort de la plage 30-100 du slider.
+- **30 vers 31** affiche d'office les trois commandes de carte (bouton GPS, planificateur, fond des
+  boutons) et donne aux fonds leur force de rendu. Le test verrouille que les TROIS reglages y passent :
+  en oublier un ne casserait rien de visible, et personne ne le remarquerait avant de chercher le bouton
+  manquant.
 
 ### `data` - preferences
 
@@ -207,7 +211,7 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `BubblePlacementTest` | 9 | placement de l'infobulle autour du marqueur, bornes d'ecran |
+| `BubblePlacementTest` | 17 | placement de l'infobulle autour du marqueur, bornes d'ecran, choix du coin pour le geocodage |
 | `BasemapHoverTargetTest` | 5 | cible de depot du drag & drop du gestionnaire de fonds |
 | `GeocodeSearchStateTest` | 5 | transitions de la recherche de lieu (barre de saisie, lieu retenu) |
 | `MapPointStateTest` | 9 | transitions du point designe par un appui long (adresse, mesures, mode de saisie) |
@@ -216,6 +220,16 @@ par le telechargement et les miniatures ; son test verifie notamment que le gaba
 
 Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
 gestionnaire n'etait pas couvert du tout.
+
+`BubblePlacementTest` couvre deux regles distinctes. Celle d'un marqueur : la position reglee est
+respectee, et la carte se decale de ce qu'il faut quand elle ne tient pas. Celle du geocodage (lieu
+cherche, point designe du doigt) : des quatre coins possibles, on retient celui qui deplace le moins la
+carte - donc aucun deplacement des qu'un coin tient, ce qui est le cas ordinaire.
+
+Ce que le geocodage doit faire tenir a l'ecran, c'est l'epingle **et** la bulle : l'epingle monte de sa
+hauteur au-dessus du point, et un appui long contre le bord haut la laissait coupee en deux. Deux cas
+n'ont pas de "plus petit decalage" qui vaille et sont donc centres : le point hors de la carte (un lieu
+trouve loin de la vue courante, qui finirait colle a un bord) et l'ensemble trop grand pour l'ecran.
 
 Ces deux etats portent sur les transitions, pas sur les valeurs : ce sont elles qui se trompent sans
 rien casser. Une infobulle laissee affichee recouvre la carte au moment de choisir un point ; une mesure
@@ -238,7 +252,7 @@ des sous-dossiers d'une autre couleur.
 
 | Fichier | Tests | Ce qui est verrouille |
 |---|---|---|
-| `PhotonTest` | 18 | construction des requetes (recherche et inverse) et lecture de la reponse du geocodeur |
+| `PhotonTest` | 21 | construction des requetes (recherche et inverse), lecture de la reponse du geocodeur et decoupage de l'adresse en morceaux |
 | `ValhallaTest` | 20 | construction de la requete et lecture de la reponse du moteur d'itineraire |
 | `PolylineTest` | 5 | decodage des polylignes encodees, dont la precision propre a Valhalla |
 

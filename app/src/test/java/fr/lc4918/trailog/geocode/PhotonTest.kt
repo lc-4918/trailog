@@ -114,6 +114,36 @@ class PhotonTest {
         assertTrue(Photon.parse("""{"features":"pas une liste"}""").isEmpty())
     }
 
+    /**
+     * L'adresse est aussi rendue en morceaux - intitule, voie, commune : ce sont les seules coupures que
+     * l'infobulle s'autorise quand l'adresse ne tient pas sur une ligne. Coupee ailleurs - a la derniere
+     * espace qui rentre - elle separerait un code postal de sa ville, ou un nom de voie en deux.
+     */
+    @Test fun `l'adresse se rend aussi en morceaux, intitule puis voie puis commune`() {
+        val r = Photon.parse(fc(feature(
+            """"name":"Vitesco Technologies","street":"Avenue du Général de Croutte","postcode":"31100","city":"Toulouse","country":"France"""")))
+        assertEquals(
+            listOf("Vitesco Technologies", "Avenue du Général de Croutte", "31100 Toulouse, France"),
+            r[0].lines,
+        )
+        assertEquals("Vitesco Technologies, Avenue du Général de Croutte, 31100 Toulouse, France", r[0].label)
+    }
+
+    /** Le numero reste colle a sa voie : ils ne se separent jamais, et ne comptent que pour un morceau. */
+    @Test fun `le numero fait partie de la voie`() {
+        val r = Photon.parse(fc(feature(
+            """"housenumber":"12","street":"Rue Carnot","postcode":"38000","city":"Grenoble","country":"France"""")))
+        assertEquals(listOf("12 Rue Carnot", "38000 Grenoble, France"), r[0].lines)
+    }
+
+    /** Une entree qui n'est qu'une commune n'a rien a couper : un seul morceau, et le libelle d'un seul
+     *  tenant ne s'en trouve pas ampute d'une virgule. */
+    @Test fun `une commune seule ne fait qu'un morceau`() {
+        val r = Photon.parse(fc(feature(""""name":"Grenoble","postcode":"38000","city":"Grenoble","country":"France"""")))
+        assertEquals(listOf("38000 Grenoble, France"), r[0].lines)
+        assertEquals("38000 Grenoble, France", r[0].label)
+    }
+
     /** Photon ajoute des champs au fil de ses versions : les ignorer, plutot que d'echouer dessus. */
     @Test fun `les champs inconnus n'empechent pas la lecture`() {
         val r = Photon.parse(fc(feature(""""name":"Gap","osm_id":1234,"extent":[1,2,3,4],"country":"France"""")))

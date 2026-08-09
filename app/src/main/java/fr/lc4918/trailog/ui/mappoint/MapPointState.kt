@@ -14,7 +14,19 @@ sealed interface AddressState {
      *  appellerait un "reessayez" que ce cas-ci ne merite pas. */
     data object NotFound : AddressState
     data object Failed : AddressState
-    data class Done(val label: String) : AddressState
+
+    /**
+     * L'adresse trouvee, en morceaux : l'intitule, la voie, la commune (cf. Photon.labelParts). Le
+     * decoupage vient du geocodeur et sert a l'infobulle : trop longue pour une ligne, l'adresse se coupe
+     * la et pas ailleurs.
+     */
+    data class Done(val lines: List<String>) : AddressState {
+        /** Une adresse d'un seul tenant, dont on ne connait pas le decoupage. */
+        constructor(label: String) : this(listOf(label))
+
+        /** L'adresse d'un seul tenant, quand elle tient sur une ligne. */
+        val label: String get() = lines.joinToString(", ")
+    }
 }
 
 /** Ou en est une mesure de distance. Null = jamais demandee : le bouton est alors seul, sans rien a droite. */

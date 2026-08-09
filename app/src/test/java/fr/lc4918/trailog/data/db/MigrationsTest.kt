@@ -272,6 +272,60 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 30 -> 31 : opacite du relief, et boutons de carte affiches ----------
+
+    /** Le relief recoit sa force d'ombrage, la meme pour tous les fonds : c'est un rendu, pas un choix
+     *  deja fait quelque part. 40 % et non les 50 % figes jusque-la, qui ecrasaient le fond. */
+    @Test fun `30 vers 31 ajoute l'opacite des fonds a 40 pourcent`() {
+        val db = freshDb("m3031a"); providersV18(db)
+        db.execSQL(MigrationSql.ADD_PROVIDER_OPACITY)
+        assertTrue("opacityPct" in columns(db, "providers"))
+        assertEquals(DefaultDemOpacityPct, scalar(db, "SELECT opacityPct FROM providers WHERE id = 'osm'") { it.getInt(0) })
+        db.close()
+    }
+
+    /**
+     * Trois reglages d'affichage passent a "actif", sans condition : un booleen ne dit pas s'il vaut faux
+     * par choix ou par defaut, et aucune version en circulation n'a d'utilisateur dont le choix serait a
+     * menager. Le test verrouille que les TROIS y passent - en oublier un ne casserait rien de visible.
+     */
+    @Test fun `30 vers 31 affiche les boutons de carte et leur fond`() {
+        val db = freshDb("m3031b"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTE_PLANNER_ENABLED)
+        db.execSQL(MigrationSql.ADD_CONTROL_BUTTONS_BACKGROUND)
+        db.execSQL("ALTER TABLE settings ADD COLUMN showGpsButton INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(MigrationSql.SHOW_MAP_CONTROLS_BY_DEFAULT)
+        assertEquals(1, scalar(db, "SELECT showGpsButton FROM settings") { it.getInt(0) })
+        assertEquals(1, scalar(db, "SELECT routePlannerEnabled FROM settings") { it.getInt(0) })
+        assertEquals(1, scalar(db, "SELECT controlButtonsBackground FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    // ---------- 31 -> 32 : taille des boutons de carte ----------
+
+    @Test fun `31 vers 32 ajoute la taille des boutons a sa valeur par defaut`() {
+        val db = freshDb("m3132"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_MAP_BUTTON_SIZE)
+        assertEquals(DefaultMapButtonSizeDp, scalar(db, "SELECT mapButtonSizeDp FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    // ---------- 32 -> 33 : taille par defaut des boutons portee a 42 ----------
+
+    /** N'ajuste que les bases restees a l'ancienne valeur : une taille choisie expres ne doit pas etre
+     *  ecrasee par un changement de defaut. */
+    @Test fun `32 vers 33 ne remonte que les tailles restees a l'ancien defaut`() {
+        val db = freshDb("m3233"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_MAP_BUTTON_SIZE)
+        db.execSQL("UPDATE settings SET mapButtonSizeDp = $MinMapButtonSizeDp")
+        db.execSQL(MigrationSql.BUMP_MAP_BUTTON_SIZE)
+        assertEquals(DefaultMapButtonSizeDp, scalar(db, "SELECT mapButtonSizeDp FROM settings") { it.getInt(0) })
+        db.execSQL("UPDATE settings SET mapButtonSizeDp = $MaxMapButtonSizeDp")
+        db.execSQL(MigrationSql.BUMP_MAP_BUTTON_SIZE)
+        assertEquals(MaxMapButtonSizeDp, scalar(db, "SELECT mapButtonSizeDp FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -283,12 +337,14 @@ class MigrationsTest {
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
-            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground", "trackMeasureEnabled")
+            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground", "trackMeasureEnabled",
+            "mapButtonSizeDp")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }
         assertTrue("legendAsset" in pcols)
+        assertTrue("opacityPct" in pcols)
     }
 
 }

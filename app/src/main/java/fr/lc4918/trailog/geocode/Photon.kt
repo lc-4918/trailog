@@ -7,8 +7,20 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
 
-/** Un lieu proposé par l'autocomplétion : ce qu'on affiche, et où c'est. */
-data class GeocodePlace(val label: String, val lon: Double, val lat: Double)
+/**
+ * Un lieu proposé par l'autocomplétion : ce qu'on affiche, et où c'est.
+ *
+ * L'adresse arrive en morceaux ([lines], cf. [Photon.labelParts]) : l'intitulé, la voie, la commune. Une
+ * liste de propositions les lit d'un seul tenant ([label]) ; une infobulle trop étroite les rend ligne à
+ * ligne plutôt que de tronquer l'adresse (cf. `ui/geocode/BubbleParts.kt`).
+ */
+data class GeocodePlace(val lines: List<String>, val lon: Double, val lat: Double) {
+    /** Un lieu dont on ne connaît que le libellé, d'un seul tenant. */
+    constructor(label: String, lon: Double, lat: Double) : this(listOf(label), lon, lat)
+
+    /** L'adresse d'un seul tenant, ses morceaux séparés comme le reste : par une virgule. */
+    val label: String get() = lines.joinToString(", ")
+}
 
 /**
  * Client du géocodeur **Photon** (komoot), le seul géocodeur OSM à la fois conçu pour l'autocomplétion au
@@ -93,32 +105,37 @@ object Photon {
             val lon = c[0]; val lat = c[1]
             // Repli sur les coordonnees quand l'entree n'a aucun libelle. Point decimal impose : la virgule
             // d'une locale francaise separerait a la fois les decimales et les deux valeurs ("44,56, 6,08").
-            GeocodePlace(
-                label(f.properties).ifBlank { "%.5f, %.5f".format(java.util.Locale.US, lat, lon) },
-                lon, lat,
-            )
+            val lines = labelParts(f.properties)
+                .ifEmpty { listOf("%.5f, %.5f".format(java.util.Locale.US, lat, lon)) }
+            GeocodePlace(lines, lon, lat)
         }
     }.getOrDefault(emptyList())
 
     /**
-     * Adresse d'une entrée, sur une ligne : intitulé, voie, code postal et commune, pays.
+     * Adresse d'une entrée, en morceaux : l'**intitulé**, la **voie** (numéro compris), puis la
+     * **commune** (code postal, ville, pays). Recollés, ils donnent l'adresse d'une ligne.
+     *
+     * Ce sont les coupures qui gardent un sens des deux côtés, et ce sont donc les seules que l'affichage
+     * s'autorise : un code postal séparé de sa ville, ou un nom de voie coupé en deux, ne disent plus
+     * rien - et c'est précisément là que tomberait un retour à la ligne subi.
      *
      * Le nom est omis quand il répète la commune (une recherche de ville renvoie name = "Grenoble" ET
      * city = "Grenoble", ce qui donnerait "Grenoble, 38000 Grenoble"). À défaut de commune, on retombe sur
      * le département : les lieux-dits et sommets n'en portent pas, et l'entrée se réduirait au seul pays.
      */
-    internal fun label(p: Props?): String {
-        if (p == null) return ""
-        val street = listOfNotNull(p.housenumber, p.street).joinToString(" ").ifBlank { null }
+    internal fun labelParts(p: Props?): List<String> {
+        if (p == null) return emptyList()
         val town = p.city ?: p.county ?: p.state
         val townLine = listOfNotNull(p.postcode, town).joinToString(" ").ifBlank { null }
-        return buildList {
-            p.name?.takeIf { it != town }?.let { add(it) }
-            street?.let { add(it) }
-            townLine?.let { add(it) }
-            p.country?.let { add(it) }
-        }.joinToString(", ")
+        return listOfNotNull(
+            p.name?.takeIf { it != town },
+            listOfNotNull(p.housenumber, p.street).joinToString(" ").ifBlank { null },
+            listOfNotNull(townLine, p.country).joinToString(", ").ifBlank { null },
+        )
     }
+
+    /** L'adresse d'une entrée sur une seule ligne, ses morceaux recollés (cf. [labelParts]). */
+    internal fun label(p: Props?): String = labelParts(p).joinToString(", ")
 
     /**
      * Interroge le service.

@@ -220,6 +220,7 @@
     <string name="settings_group_pois">Puntos de interés</string>
     <string name="settings_group_elevation_profile">Perfil altimétrico</string>
     <string name="settings_control_buttons_background">Fondo detrás de los botones</string>
+    <string name="settings_map_button_size">Tamaño de los botones del mapa: %1$d dp</string>
     <string name="settings_show_gps_button">Mostrar el botón de localización GPS</string>
     <string name="settings_enable_route_planner">Mostrar el botón del planificador</string>
     <string name="settings_enable_track_measure">Mostrar el botón de medición</string>
@@ -247,6 +248,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clave API</string>
     <string name="settings_field_tile_size">Tamaño de tesela (px) - normalmente 256 o 512</string>
+    <string name="settings_field_relief_opacity">Opacidad del relieve: %1$d%%</string>
     <string name="settings_field_zoom_levels">Niveles de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicación: %1$s</string>
     <string name="offline_thumb_location_title">Ubicación global</string>

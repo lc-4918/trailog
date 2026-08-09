@@ -220,6 +220,7 @@
     <string name="settings_group_pois">Points of interest</string>
     <string name="settings_group_elevation_profile">Elevation profile</string>
     <string name="settings_control_buttons_background">Background behind buttons</string>
+    <string name="settings_map_button_size">Map button size: %1$d dp</string>
     <string name="settings_show_gps_button">Show GPS location button</string>
     <string name="settings_enable_route_planner">Show planner button</string>
     <string name="settings_enable_track_measure">Show measure button</string>
@@ -247,6 +248,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
     <string name="settings_field_tile_size">Tile size (px) - usually 256 or 512</string>
+    <string name="settings_field_relief_opacity">Relief opacity: %1$d%%</string>
     <string name="settings_field_zoom_levels">Zoom levels: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Location: %1$s</string>
     <string name="offline_thumb_location_title">Global location</string>

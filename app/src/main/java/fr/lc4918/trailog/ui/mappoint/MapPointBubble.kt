@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.mappoint
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -31,7 +31,11 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -43,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.ui.geocode.AddressText
+import fr.lc4918.trailog.ui.geocode.CloseCorner
 import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import kotlinx.coroutines.launch
 
@@ -86,21 +92,21 @@ fun MapPointBubble(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
             contentColor = MaterialTheme.colorScheme.onSurface),
     ) {
-        Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AddressLine(address, fontSp, Modifier.weight(1f).padding(top = 8.dp, bottom = 8.dp, end = 4.dp))
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
-                    }
+        // Croix plaquee dans l'angle haut-droit, PAR-DESSUS le contenu et sans lui prendre de place :
+        // posee dans la rangee de l'adresse, elle se centrait sur sa hauteur et descendait avec elle des
+        // que l'adresse passait sur deux lignes ; en lui reservant sa largeur, elle tronquait des
+        // adresses qui tenaient. Ce qu'elle recouvre, l'appui long le redit en entier.
+        Box {
+            Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 12.dp)) {
+                AddressLine(address, fontSp, Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp))
+                if (showPositionRow) {
+                    MeasureRow(stringResource(R.string.geocode_distance_from_position), positionMeasure,
+                        profileLabel, imperial, fontSp, onDistanceFromPosition)
                 }
+                MeasureRow(stringResource(R.string.geocode_distance_from_point), pointMeasure,
+                    profileLabel, imperial, fontSp, onDistanceFromPoint)
             }
-            if (showPositionRow) {
-                MeasureRow(stringResource(R.string.geocode_distance_from_position), positionMeasure,
-                    profileLabel, imperial, fontSp, onDistanceFromPosition)
-            }
-            MeasureRow(stringResource(R.string.geocode_distance_from_point), pointMeasure,
-                profileLabel, imperial, fontSp, onDistanceFromPoint)
+            CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp))
         }
     }
 }
@@ -108,9 +114,8 @@ fun MapPointBubble(
 /**
  * L'adresse du point, ou ce qui en tient lieu tant qu'elle n'est pas connue.
  *
- * Elle tient sur une seule ligne, tronquee au besoin : la bulle garde ainsi une hauteur constante, quelle
- * que soit la longueur du libelle rendu par le geocodeur. Les deux echecs sont dits differemment et en
- * italique : "aucune adresse ici" est une reponse, "adresse indisponible" un service muet.
+ * Les deux echecs sont dits differemment et en italique : "aucune adresse ici" est une reponse, "adresse
+ * indisponible" un service muet.
  */
 @Composable
 private fun AddressLine(address: AddressState, fontSp: Int, modifier: Modifier) {
@@ -118,8 +123,7 @@ private fun AddressLine(address: AddressState, fontSp: Int, modifier: Modifier) 
         AddressState.Loading -> Row(modifier, verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
         }
-        is AddressState.Done -> Text(address.label, fontSize = fontSp.sp, fontWeight = FontWeight.SemiBold,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
+        is AddressState.Done -> AddressText(address.lines, fontSp, modifier)
         else -> Text(
             stringResource(
                 if (address == AddressState.NotFound) R.string.mappoint_address_none

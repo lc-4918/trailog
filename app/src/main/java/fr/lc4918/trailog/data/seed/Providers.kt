@@ -8,7 +8,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
  * Tous éditables ensuite (URL + clé) dans les réglages.
  * {KEY} est remplacé par apiKey ; {s} est étendu selon subdomains.
  *
- * Seuls six sont cochés d'entrée (OSM, Mapbox Outdoors, les trois Google, IGN Scan) : le Basemap Control
+ * Seuls sept sont cochés d'entrée (OSM, Mapbox Outdoors, les trois Google, IGN Scan, IGN MTN) : le Basemap Control
  * ne montre que les fonds activés, une liste de trente entrées y serait illisible. Les autres restent
  * semés, donc activables d'un toggle dans les réglages, sans avoir à ressaisir leur URL. Ce choix pilote
  * aussi la remise à zéro des réglages (cf. SettingsViewModel.resetAllSettings).
@@ -83,7 +83,7 @@ object Providers {
                 apiKey = "ign_scan_ws", maxZoom = 17, sortOrder = n()),
             ProviderEntity("ign_es", "Espagne - IGN MTN", "Pays", "WMS",
                 "https://www.ign.es/wms-inspire/mapa-raster?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=mtn_rasterizado&STYLES=&FORMAT=image/png&TRANSPARENT=true&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}",
-                maxZoom = 20, enabled = false, sortOrder = n()),
+                maxZoom = 20, sortOrder = n()),
             ProviderEntity("hu", "Hongrie - Turistautak", "Pays", "XYZ",
                 "https://terkep.turistautak.hu/tiles/turistautak-domborzattal/{z}/{x}/{y}.png",
                 maxZoom = 17, enabled = false, sortOrder = n()),

@@ -220,6 +220,7 @@
     <string name="settings_group_pois">Punti di interesse</string>
     <string name="settings_group_elevation_profile">Profilo altimetrico</string>
     <string name="settings_control_buttons_background">Sfondo dietro i pulsanti</string>
+    <string name="settings_map_button_size">Dimensione dei pulsanti della mappa: %1$d dp</string>
     <string name="settings_show_gps_button">Mostra il pulsante di localizzazione GPS</string>
     <string name="settings_enable_route_planner">Mostra il pulsante del pianificatore</string>
     <string name="settings_enable_track_measure">Mostra il pulsante di misura</string>
@@ -247,6 +248,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chiave API</string>
     <string name="settings_field_tile_size">Dimensione tile (px) - solitamente 256 o 512</string>
+    <string name="settings_field_relief_opacity">Opacità del rilievo: %1$d%%</string>
     <string name="settings_field_zoom_levels">Livelli di zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Posizione: %1$s</string>
     <string name="offline_thumb_location_title">Posizione globale</string>

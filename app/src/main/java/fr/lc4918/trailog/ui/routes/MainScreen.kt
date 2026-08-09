@@ -26,6 +26,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,11 +92,13 @@ import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.net.ServiceUrl
@@ -130,6 +133,7 @@ import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
+import fr.lc4918.trailog.ui.points.computeGeocodePlacement
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Valhalla
@@ -147,6 +151,7 @@ import kotlinx.coroutines.withContext
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -389,7 +394,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         mapPoint.publishAddress(when {
             r == null -> AddressState.Failed
             r.isEmpty() -> AddressState.NotFound
-            else -> AddressState.Done(r.first().label)
+            else -> AddressState.Done(r.first().lines)
         })
     }
 
@@ -450,15 +455,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     /**
      * Fond des boutons poses sur la carte, quand le reglage le demande.
      *
-     * Blanc a la meme opacite que l'echelle graphique (cf. ScaleBar) : les deux flottent au-dessus du meme
-     * fond de carte et doivent s'y detacher de la meme facon, sans quoi l'ecran porterait deux conventions
-     * de lisibilite differentes.
+     * Sa taille est reglee (cf. SettingsEntity.mapButtonSizeDp) et ne touche QUE le carre dessine : la zone
+     * tactile reste aux 48 dp de Material, quel que soit le curseur.
      *
      * Le bouton GPS actif en est exclu par son appelant : il porte deja un fond bleu, qui dit qu'il est
      * allume - un fond blanc par-dessus lui oterait sa seule marque d'etat.
      */
+    val mapButtonSize = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
     val controlBg: Modifier = if (settings?.controlButtonsBackground != true) Modifier
-        else Modifier.mapButtonBackground(Color.White.copy(alpha = ControlButtonBgAlpha))
+        else Modifier.mapButtonBackground(Color.White.copy(alpha = ControlButtonBgAlpha), mapButtonSize)
     // Hauteur reelle de la bande, mesuree : le cadrage du parcours doit degager ce qu'elle recouvre, et
     // elle varie avec le nombre d'etapes et la presence du profil.
     var plannerBandHeightPx by remember { mutableIntStateOf(0) }
@@ -640,9 +645,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             (view.context as android.app.Activity).window, view).isAppearanceLightStatusBars = light
     }
 
-    var bearingTick by remember { mutableIntStateOf(0) }
+    // Compteur de mouvement de camera : incremente a CHAQUE image d'un deplacement, la ou idleTick
+    // n'attend que l'immobilisation. Ce qui doit rester colle a son point de carte le suit (l'orientation
+    // de la boussole, les infobulles du geocodage) ; le reste s'en passe et se recalcule a l'arret.
+    var moveTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(controller) {
-        controller.onCameraMove = { bearingTick++ }
+        controller.onCameraMove = { moveTick++ }
         controller.onUserMoveBegin = {
             if (gpsActive) gpsButtonDimmed = true
             autoFramed = false
@@ -685,7 +693,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             }
         }
     }
-    val bearing = remember(bearingTick) { controller.bearing() }
+    val bearing = remember(moveTick) { controller.bearing() }
     // cadrage sur les couches récemment importées à la fermeture du menu
     LaunchedEffect(drawerState.currentValue) {
         if (drawerState.currentValue == DrawerValue.Closed) {
@@ -921,9 +929,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 Column(
                     Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
                         .onGloballyPositioned { topControlsHeightPx = it.size.height },
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(MapControlSpacing)) {
                         if (mode != "swipe") {
                             IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = controlBg) {
                                 Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
@@ -939,7 +947,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 // large que les autres fonds et le faisait cohabiter avec l'ondulation de
                                 // l'IconButton, d'ou un aplat inegal.
                                 modifier = (
-                                    if (gpsActive) Modifier.mapButtonBackground(MaterialTheme.colorScheme.primary)
+                                    if (gpsActive) Modifier.mapButtonBackground(MaterialTheme.colorScheme.primary, mapButtonSize)
                                     else controlBg
                                 ).alpha(if (gpsButtonDimmed) 0.6f else 1f),
                             ) {
@@ -950,13 +958,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                         color = if (gpsActive) Color.White else LocalContentColor.current)
                                 }
                             }
-                            // recentre la carte sur la position GPS courante ; même style que le bouton menu
-                            // (couleur, taille, transparence par défaut d'un IconButton)
-                            if (gpsActive) {
-                                IconButton(onClick = { recenterOnGps() }, modifier = controlBg) {
-                                    Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
-                                }
-                            }
                         }
                         // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
                         // GPS, dans la même barre (donc même espacement latéral de 4.dp).
@@ -964,29 +965,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
                         }
                     }
+                    // La recherche de lieu ouvre sa barre de saisie juste dessous : elle reste donc dans la
+                    // colonne du haut, là où la barre a la place de se déplier.
                     if (settings?.geocodingEnabled == true) {
                         IconButton(onClick = { onGeocodeButtonTap() }, modifier = controlBg) {
                             Icon(Icons.Filled.LocationSearching, stringResource(R.string.content_desc_geocode_search))
                         }
                     }
-                    // Sous le bouton du géocodeur, et à sa place quand celui-ci est masqué : les deux
-                    // occupent la même colonne, le planificateur ne doit pas laisser un trou au-dessus de
-                    // lui. Masqué tant que la bande est ouverte, qu'il ne servirait qu'à rouvrir.
-                    if (settings?.routePlannerEnabled == true && !planner.open) {
-                        IconButton(onClick = {
-                            if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
-                                showNoConnectionDialog = true
-                            } else {
-                                vm.closeProfile()          // les deux occupent le bas de l'écran
-                                planner.openPlanner()
-                                planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
-                            }
-                        }, modifier = controlBg) {
-                            Icon(Icons.Filled.Route, stringResource(R.string.planner_title))
-                        }
-                    }
-                    // Sous le planificateur, et à sa place quand lui ou le géocodeur sont masqués : la
-                    // colonne se resserre d'elle-même, aucun des trois boutons ne réserve son rang.
+                    // Sous la recherche, et à sa place quand elle est masquée : la colonne se resserre
+                    // d'elle-même, aucun des deux boutons ne réserve son rang.
                     // Masqué pendant le choix des points, que sa bande porte déjà entièrement.
                     if (settings?.trackMeasureEnabled == true && !measure.picking) {
                         IconButton(onClick = {
@@ -1013,7 +1000,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
                 // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
                 Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    horizontalArrangement = Arrangement.spacedBy(MapControlSpacing)) {
                     if (kotlin.math.abs(bearing) > 0.5) {
                         IconButton(onClick = { controller.resetNorth() }, modifier = controlBg) {
                             Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
@@ -1042,6 +1029,33 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control))
                         }
                     }
+                }
+                // échelle graphique, dans le coin bas-gauche (uniquement quand ni le profil ni la bande du
+                // planificateur déployée n'occupent le bas de l'écran) : décalée au-dessus de la barre de
+                // consigne du moment tant qu'elle est affichée, pour ne pas être recouverte. Réduit, le
+                // planificateur la laisse revenir : il ne prend plus qu'un bouton de coin, et la carte
+                // redevient l'objet du regard.
+                //
+                // Elle se décale, là où les boutons du coin bas-droit restent fixes : une échelle est une
+                // lecture, elle doit rester lisible ; un bouton est une cible, il doit rester où la main
+                // l'a laissé.
+                //
+                // Posée AVANT les infobulles, donc dessous : une infobulle dit ce qu'on vient de demander,
+                // l'échelle est là en permanence. C'est à elle de passer derrière.
+                val plannerExpanded = planner.open && !planner.collapsed
+                if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
+                    // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
+                    // navigationBarsPadding quand il n'y en a aucune.
+                    val bottomBarPx = when {
+                        offlineDrawingActive -> offlineBarHeightPx
+                        measure.picking -> measureBarHeightPx
+                        mapPoint.pickingPoint -> pointBarHeightPx
+                        else -> 0
+                    }
+                    val base = Modifier.align(Alignment.BottomStart)
+                    ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f,
+                        modifier = (if (bottomBarPx > 0) base.padding(bottom = with(density) { bottomBarPx.toDp() } + 8.dp)
+                            else base.padding(bottom = 8.dp).navigationBarsPadding()).padding(start = 16.dp))
                 }
                 BasemapLegend(
                     legends = activeLegends,
@@ -1119,22 +1133,25 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         pannedFor = selectedMarkerId
                     }
                 }
-                // Infobulle du lieu trouvé : même placement que celle d'un marqueur (réglage Carte /
-                // Infobulles), calculé une fois la bulle mesurée. Elle ne recentre jamais la carte : la
-                // sélection vient de le faire, sur le lieu lui-même.
+                // Infobulle du lieu trouvé : posée dans celui des quatre coins du lieu qui déplace le moins
+                // la carte (cf. computeGeocodePlacement), et non à la position réglée pour les marqueurs.
                 val gPlace = geo.place
                 if (gPlace != null) {
-                    val gOff = remember(gPlace, idleTick) {
+                    // Recalculee a chaque image du deplacement (moveTick) et non a la seule immobilisation :
+                    // l'infobulle reste ainsi collee a son epingle pendant tout le geste, au lieu de rester
+                    // sur place puis de la rejoindre d'un saut. Seul son coin change en cours de route.
+                    val gOff = remember(gPlace, idleTick, moveTick) {
                         controller.screenOf(gPlace.lon, gPlace.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
                     if (gOff != null) {
                         val topInset = WindowInsets.statusBars.getTop(density)
                         val margin = with(density) { 8.dp.roundToPx() }
                         val gap = with(density) { 10.dp.roundToPx() }
+                        var placement by remember(gPlace) { mutableStateOf<BubblePlacement?>(null) }
                         Layout(
                             content = {
                                 GeocodeBubble(
-                                    address = gPlace.label,
+                                    lines = gPlace.lines,
                                     onClose = { geo.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
@@ -1142,23 +1159,42 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             },
                         ) { measurables, cs ->
                             val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
-                            val pl = computeBubblePlacement(
-                                pos = BubblePosition.of(settings?.bubblePosition),
+                            val pl = computeGeocodePlacement(
                                 markerX = gOff.x, markerY = gOff.y,
                                 bubbleW = p.width, bubbleH = p.height,
                                 viewW = cs.maxWidth, viewH = cs.maxHeight,
                                 topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
                             )
+                            if (placement != pl) placement = pl
                             layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                        }
+                        // Décalage de carte pour que l'épingle ET la bulle tiennent à l'écran ; le lieu
+                        // hors de la vue courante ramène l'ensemble au centre (cf. computeGeocodePlacement).
+                        //
+                        // Attendu que la caméra soit arrêtée : retenir un lieu la lance vers lui
+                        // (centerOnAtLeast), et tant qu'elle vole, la projection lue est celle d'AVANT le
+                        // vol - un décalage calculé dessus s'ajouterait au mouvement en cours au lieu de le
+                        // corriger, et posait le lieu hors de la carte. Son immobilisation incrémente
+                        // idleTick, d'où la comparaison au tick du moment où le lieu a été retenu.
+                        //
+                        // Une seule fois par lieu, comme pour un marqueur : sans ce garde-fou, un
+                        // déplacement fait à la main serait aussitôt défait.
+                        val pickedAtTick = remember(gPlace) { idleTick }
+                        var pannedFor by remember { mutableStateOf<GeocodePlace?>(null) }
+                        LaunchedEffect(gPlace, placement, idleTick) {
+                            val pl = placement ?: return@LaunchedEffect
+                            if (idleTick == pickedAtTick || pannedFor == gPlace) return@LaunchedEffect
+                            if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+                            pannedFor = gPlace
                         }
                     }
                 }
-                // Infobulle du point désigné par un appui long : même placement que celle d'un marqueur
-                // (réglage Carte / Infobulles). Elle ne recentre jamais la carte : le point est là où le
-                // doigt s'est posé, et déplacer la carte sous lui déferait le geste.
+                // Infobulle du point désigné par un appui long : même placement que celle d'un lieu trouvé,
+                // dans celui des quatre coins du point qui déplace le moins la carte.
                 val mPoint = mapPoint.point
                 if (mPoint != null && mapPoint.bubbleVisible) {
-                    val mOff = remember(mPoint, idleTick) {
+                    // Suit l'epingle image par image, comme celle d'un lieu trouve (cf. gOff).
+                    val mOff = remember(mPoint, idleTick, moveTick) {
                         controller.screenOf(mPoint.first, mPoint.second)
                             ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
@@ -1166,6 +1202,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         val topInset = WindowInsets.statusBars.getTop(density)
                         val margin = with(density) { 8.dp.roundToPx() }
                         val gap = with(density) { 10.dp.roundToPx() }
+                        // Dernier placement calculé au layout : sert au recentrage de carte. Publié une
+                        // fois l'adresse arrivée : mesurée au spinner, la bulle est plus courte que la
+                        // bulle réelle, et le recentrage - à usage unique - serait consommé sur une
+                        // hauteur qui n'est pas la sienne.
+                        var placement by remember(mPoint) { mutableStateOf<BubblePlacement?>(null) }
+                        val addressReady = mapPoint.address != AddressState.Loading
                         Layout(
                             content = {
                                 MapPointBubble(
@@ -1188,14 +1230,95 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             },
                         ) { measurables, cs ->
                             val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
-                            val pl = computeBubblePlacement(
-                                pos = BubblePosition.of(settings?.bubblePosition),
+                            val pl = computeGeocodePlacement(
                                 markerX = mOff.x, markerY = mOff.y,
                                 bubbleW = p.width, bubbleH = p.height,
                                 viewW = cs.maxWidth, viewH = cs.maxHeight,
                                 topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
                             )
+                            if (addressReady && placement != pl) placement = pl
                             layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                        }
+                        // Décalage de carte seulement si aucun des quatre coins ne tenait : le point désigné
+                        // est en plein écran dans le cas ordinaire, et rien ne bouge. L'épingle, elle, ne
+                        // bouge jamais d'un pouce : elle reste sur le point, c'est la carte qui glisse.
+                        //
+                        // Une seule fois par point, comme pour un marqueur : la carte bouge -> le point
+                        // bouge à l'écran -> nouveau placement, qui tient cette fois. Sans ce garde-fou, un
+                        // déplacement fait à la main serait aussitôt défait.
+                        var pannedFor by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+                        LaunchedEffect(mPoint, placement) {
+                            val pl = placement ?: return@LaunchedEffect
+                            if (pannedFor == mPoint) return@LaunchedEffect
+                            if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+                            pannedFor = mPoint
+                        }
+                    }
+                }
+                // Position hors du centre de la carte : c'est ce qui fait apparaître le bouton de
+                // recentrage, et rien d'autre.
+                //
+                // Mesuré à l'écran plutôt que sur les coordonnées : la question est "la position est-elle
+                // au milieu de ce que je vois", et sa réponse doit valoir à tout zoom. Suivie à chaque
+                // image du déplacement (moveTick), comme les infobulles.
+                val centerTolPx = with(density) { 16.dp.toPx() }
+                val viewCenterX = constraints.maxWidth / 2f
+                val viewCenterY = constraints.maxHeight / 2f
+                val positionOffCenter = remember(lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
+                    lastUserLocation?.let { (la, lo) -> controller.screenOf(lo, la) }?.let { p ->
+                        hypot(p.x - viewCenterX, p.y - viewCenterY) > centerTolPx
+                    } ?: false
+                }
+                // Commandes du coin bas-droit, à portée du pouce : le recentrage sur la position, puis le
+                // planificateur au plus près du coin - c'est celui qui reste, l'autre n'apparaissant que le
+                // capteur allumé, et un bouton qui change de place au gré du GPS se chercherait à chaque fois.
+                //
+                // Position FIXE, à la seule barre de navigation près : elles ne se rangent pas au-dessus de
+                // ce qui occupe le bas (profil, bande du planificateur), contrairement à l'échelle. Un
+                // bouton qui saute de trois cents pixels à l'ouverture d'un panneau se cherche à chaque
+                // fois ; il vaut mieux qu'il attende sous lui, là où la main l'a laissé.
+                //
+                // Posées AVANT tout ce qui occupe le bas, donc DESSOUS : la bande du planificateur, les
+                // consignes de saisie et le profil les recouvrent au lieu de les pousser. Elles restent
+                // au-dessus des infobulles, elles, qui ne doivent pas rendre un bouton intouchable.
+                // Meme ecart sous le dernier bouton qu'entre les deux : la colonne se lit alors d'un
+                // bloc, sans que le bas de l'ecran serre plus que ses propres intervalles. La barre de
+                // navigation l'emporte si elle est plus haute - un bouton ne se glisse pas dessous.
+                val navBottomDp = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+                Column(
+                    Modifier.align(Alignment.BottomEnd)
+                        .padding(end = 8.dp, bottom = maxOf(MapControlSpacing, navBottomDp)),
+                    verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // Affiche seulement quand il a quelque chose a faire : la position centree, le bouton
+                    // disparait plutot que de proposer un geste sans effet. Il s'efface donc de lui-meme au
+                    // bout du recentrage qu'on vient de lui demander.
+                    //
+                    // Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et
+                    // c'est ce bouton-ci qui s'ajoute ou se retire par le haut.
+                    if (gpsActive && positionOffCenter) {
+                        IconButton(onClick = { recenterOnGps() }, modifier = controlBg) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
+                                // Disque central au bleu du point de position : le bouton n'existant que
+                                // hors centre, c'est sa seule teinte.
+                                Canvas(Modifier.size(MyLocationDotSize)) { drawCircle(color = RecenterDotColor) }
+                            }
+                        }
+                    }
+                    // Masqué tant que sa bande est ouverte, qu'il ne servirait qu'à rouvrir.
+                    if (settings?.routePlannerEnabled == true && !planner.open) {
+                        IconButton(onClick = {
+                            if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
+                                showNoConnectionDialog = true
+                            } else {
+                                vm.closeProfile()          // les deux occupent le bas de l'écran
+                                planner.openPlanner()
+                                planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+                            }
+                        }, modifier = controlBg) {
+                            Icon(Icons.Filled.Directions, stringResource(R.string.planner_title))
                         }
                     }
                 }
@@ -1339,29 +1462,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
-                }
-                // échelle graphique (uniquement quand ni le profil ni la bande du planificateur déployée
-                // n'occupent le bas de l'écran) : décalée au-dessus de la barre de tracé bbox tant qu'elle
-                // est affichée, pour ne pas être recouverte. Réduit, le planificateur la laisse revenir :
-                // il ne prend plus qu'un bouton de coin, et la carte redevient l'objet du regard.
-                val plannerExpanded = planner.open && !planner.collapsed
-                if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
-                    // Barre du bas actuellement posée (tracé de bbox, ou l'une des deux consignes de choix
-                    // d'un point) : l'échelle se range au-dessus d'elle. Toutes portent déjà leur propre
-                    // marge de barre de navigation.
-                    val bottomBarPx = when {
-                        offlineDrawingActive -> offlineBarHeightPx
-                        measure.picking -> measureBarHeightPx
-                        mapPoint.pickingPoint -> pointBarHeightPx
-                        else -> 0
-                    }
-                    val scaleBarModifier = if (bottomBarPx > 0) {
-                        val barHeightDp = with(density) { bottomBarPx.toDp() }
-                        Modifier.align(Alignment.BottomEnd).padding(bottom = barHeightDp + 8.dp, end = 16.dp)
-                    } else {
-                        Modifier.align(Alignment.BottomEnd).padding(bottom = 8.dp, end = 16.dp).navigationBarsPadding()
-                    }
-                    ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f, modifier = scaleBarModifier)
                 }
                 // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit de l'écran. On
                 // calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et non le rayon plein, qui n'est
@@ -2174,9 +2274,10 @@ private const val BubbleMaxHeightRatio = 0.6f
  *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
 private const val GeocodeResultLimit = 10
 
-/** Opacite du fond des boutons de controle. Egale a celle de l'echelle graphique (cf. ScaleBar), les deux
- *  devant se detacher du fond de carte de la meme facon. */
-private const val ControlButtonBgAlpha = 0.7f
+/** Opacite du fond des boutons de controle. Deux crans au-dessus de l'echelle graphique (0,7) : elle ne
+ *  porte qu'un trait et deux chiffres, la ou un bouton doit rester franchement lisible sur une orthophoto
+ *  ou un fond satellite. */
+private const val ControlButtonBgAlpha = 0.9f
 
 /**
  * Fond d'un bouton pose sur la carte : un carre a peine adouci, resserre autour de l'icone.
@@ -2185,22 +2286,44 @@ private const val ControlButtonBgAlpha = 0.7f
  * tactile, l'icone n'en occupe que 24. Un fond plein donnerait une pastille deux fois plus large que ce
  * qu'elle habille, et se superposerait a l'ondulation que l'IconButton peint lui-meme.
  */
-private fun Modifier.mapButtonBackground(color: Color): Modifier = drawBehind {
-    val inset = ControlButtonInset.toPx()
-    val r = ControlButtonRadius.toPx()
+private fun Modifier.mapButtonBackground(color: Color, square: Dp): Modifier = drawBehind {
+    // Le carre est CENTRE dans le bouton, et borne a sa taille : la zone tactile ne bouge pas, seul le
+    // fond grandit ou se resserre en son milieu (cf. SettingsEntity.mapButtonSizeDp).
+    val side = square.toPx().coerceAtMost(minOf(size.width, size.height))
+    val r = ControlButtonRadius.toPx().coerceAtMost(side / 2)
     drawRoundRect(
         color = color,
-        topLeft = Offset(inset, inset),
-        size = Size(size.width - 2 * inset, size.height - 2 * inset),
+        topLeft = Offset((size.width - side) / 2, (size.height - side) / 2),
+        size = Size(side, side),
         cornerRadius = CornerRadius(r, r),
     )
 }
 
-/** Retrait du fond par rapport aux bords du bouton : ramene le carre a la taille de l'icone. */
-private val ControlButtonInset = 6.dp
+/** Angles du fond : ceux du bouton d'itineraire de Google Maps, borne a la moitie du cote pour qu'un
+ *  petit bouton s'arrondisse sans jamais depasser le cercle. */
+private val ControlButtonRadius = 16.dp
 
-/** Angles du fond : un carre franc, a peine adouci pour ne pas jurer avec le reste de l'interface. */
-private val ControlButtonRadius = 6.dp
+/** Ecart entre deux boutons poses sur la carte. Le triple de ce qu'il etait : les fonds arrondis se
+ *  touchaient presque, et la colonne se lisait comme un seul bloc. */
+private val MapControlSpacing = 24.dp
+
+/**
+ * Bleu du disque de recentrage quand la position n'est plus au centre.
+ *
+ * Exactement celui du point de position pose sur la carte (cf. MapController.setUserLocation) : le bouton
+ * reprend la teinte de ce qu'il vise, et les deux se repondent d'un bout a l'autre de l'ecran. Fixe et non
+ * pris au theme, comme le point qu'il rappelle.
+ */
+private val RecenterDotColor = Color(0xFF4285F4)
+
+/**
+ * Diametre du disque repeint au centre de l'icone "centrer sur ma position".
+ *
+ * Le trace Material `my_location` porte ce disque a un rayon de 4 sur une grille de 24, soit 8 dp pour
+ * une icone de 24 : un poil plus large pour couvrir son bord lisse, et toujours en deca de l'anneau qui
+ * l'entoure (rayon 5, soit 10 dp).
+ */
+private val MyLocationDotSize = 9.dp
 
 /** Part de la hauteur d'ecran que la bande du planificateur ne depasse jamais. */
 private const val PlannerMaxHeightRatio = 0.6f

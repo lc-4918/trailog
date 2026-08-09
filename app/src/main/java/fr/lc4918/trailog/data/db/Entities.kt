@@ -74,7 +74,14 @@ data class ProviderEntity(
     // Non nul : un bouton "info" apparait sur la carte des que ce fond est affiche, seul ou comme couche
     // d'un composite, et montre l'image par-dessus la carte (cf. legendAssetModel, MainViewModel.activeLegends).
     val legendAsset: String? = null,
+    // Force du rendu, en %. Ne concerne aujourd'hui que le RELIEF : c'est l'exageration de son ombrage
+    // (cf. StyleBuilder), le seul reglage qu'un fond DEM expose. Les autres types l'ignorent, leur
+    // opacite se reglant la ou elle a un sens - sur le composite, pour une couche de premier plan.
+    val opacityPct: Int = DefaultDemOpacityPct,
 )
+
+/** Force par defaut de l'ombrage du relief (%). Le bouton de remise a zero de son reglage y revient. */
+const val DefaultDemOpacityPct = 40
 
 /** Fond composite = couche arrière-plan (opaque) + couche premier plan (avec transparence réglable). */
 @Entity(tableName = "composites")
@@ -122,7 +129,7 @@ data class SettingsEntity(
     val hasCamera: Boolean = false,                 // true dès qu'une caméra a été enregistrée
     val showScale: Boolean = true,                  // échelle graphique sur la carte
     val rotateGesturesEnabled: Boolean = false,     // rotation de la carte (geste à 2 doigts)
-    val showGpsButton: Boolean = false,             // bouton de localisation GPS sur la carte
+    val showGpsButton: Boolean = true,              // bouton de localisation GPS sur la carte
     val bubbleBold: Boolean = false,
     val profAxisBold: Boolean = false,
     val profTitleBold: Boolean = true,
@@ -171,18 +178,31 @@ data class SettingsEntity(
     val routingUrl: String = "",
     // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",
-    // Bouton du planificateur d'itineraire sur la carte. Desactive par defaut, comme le geocodage :
-    // le planificateur interroge lui aussi des services tiers en cours d'usage.
-    val routePlannerEnabled: Boolean = false,
+    // Bouton du planificateur d'itineraire sur la carte. Affiche par defaut : preparer un trajet est
+    // l'une des raisons d'ouvrir l'application, et le bouton ne lance rien tout seul - ce sont les
+    // etapes saisies qui font partir une requete, geste explicite s'il en est.
+    val routePlannerEnabled: Boolean = true,
     // Theme de la seule bande du planificateur : "system" suit le theme de l'application, "light" et
     // "dark" l'imposent. Trois valeurs et non un booleen : tant que l'utilisateur n'a pas touche au
     // bouton soleil/lune, la bande doit continuer de suivre l'application, y compris si celle-ci change.
     val plannerBandTheme: String = "system",
-    // Fond blanc translucide derriere les boutons poses sur la carte. Desactive par defaut : sans lui les
-    // boutons flottent nus au-dessus du fond, ce qui est plus leger mais devient illisible sur une
-    // orthophoto ou un relief clair.
-    val controlButtonsBackground: Boolean = false,
+    // Fond blanc translucide derriere les boutons poses sur la carte. Actif par defaut : sans lui les
+    // boutons flottent nus au-dessus de la carte, ce qui est plus leger mais devient illisible sur une
+    // orthophoto ou un relief clair - et l'on ne choisit pas son fond de carte pour ses boutons.
+    val controlButtonsBackground: Boolean = true,
     // Bouton de mesure sur trace. Desactive par defaut comme les deux boutons voisins, mais pour une autre
     // raison : il n'interroge aucun service, il ne sert simplement qu'a qui mesure ses parcours.
     val trackMeasureEnabled: Boolean = false,
+    // Cote du carre dessine derriere un bouton de carte (dp). La zone tactile, elle, ne bouge pas : elle
+    // reste aux 48 dp que Material impose, quelle que soit la taille choisie. Les bornes vont donc du plus
+    // discret (le carre ne fait alors que la taille de l'icone) au bouton Material plein, qui occupe toute
+    // sa zone tactile.
+    val mapButtonSizeDp: Int = DefaultMapButtonSizeDp,
 )
+
+/** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */
+const val MinMapButtonSizeDp = 36
+const val MaxMapButtonSizeDp = 48
+
+/** Taille par defaut : entre les deux bornes, assez large pour se voir sans etaler un aplat de 48 dp. */
+const val DefaultMapButtonSizeDp = 42

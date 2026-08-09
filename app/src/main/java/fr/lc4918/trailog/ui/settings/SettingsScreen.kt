@@ -92,6 +92,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,6 +122,9 @@ import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.db.CompositeEntity
+import fr.lc4918.trailog.data.db.DefaultDemOpacityPct
+import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
+import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
@@ -257,6 +261,16 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     SwitchRow(stringResource(R.string.settings_control_buttons_background), cur.controlButtonsBackground) {
         vm.save(cur.copy(controlButtonsBackground = it))
     }
+    // Taille des boutons posés sur la carte. Le curseur ne va pas au-delà du bouton Material plein : plus
+    // grand, il ne dépasserait pas sa zone tactile, il déborderait dessus.
+    Text(stringResource(R.string.settings_map_button_size, cur.mapButtonSizeDp),
+        style = MaterialTheme.typography.bodyMedium)
+    CompactSlider(
+        value = cur.mapButtonSizeDp.toFloat(),
+        valueRange = MinMapButtonSizeDp.toFloat()..MaxMapButtonSizeDp.toFloat(),
+        steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
+        onValueChange = { vm.save(cur.copy(mapButtonSizeDp = it.toInt())) },
+    )
     // Seule rubrique titree du groupe, et placee en dernier : c'est la seule qui porte plus qu'un
     // interrupteur - deux reglages de panneau et leur remise a zero, qu'il faut bien rattacher a quelque
     // chose. La poser au milieu aurait coupe la suite d'interrupteurs en deux.
@@ -1081,6 +1095,22 @@ private val CompactChipHeight = 28.dp
             if (!isMbtiles) CompactOutlinedTextField(tile, { tile = it.filter { ch -> ch.isDigit() } },
                 label = { Text(stringResource(R.string.settings_field_tile_size)) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
+            // Force de l'ombrage, propre au relief : c'est le seul rendu qu'un fond DEM expose, ses tuiles
+            // brutes n'étant pas des images à regarder. Enregistrée au relâché du curseur plutôt qu'à
+            // chaque pixel : chaque valeur reconstruit le style de la carte.
+            if (p.type == "DEM") {
+                Text(stringResource(R.string.settings_field_relief_opacity, p.opacityPct),
+                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
+                var opacity by remember(p.id, p.opacityPct) { mutableFloatStateOf(p.opacityPct.toFloat()) }
+                CompactSlider(value = opacity, valueRange = 0f..100f,
+                    onValueChange = { opacity = it },
+                    onValueChangeFinished = { onSave(p.copy(opacityPct = opacity.toInt())) })
+                if (p.opacityPct != DefaultDemOpacityPct) {
+                    TextButton(onClick = { onSave(p.copy(opacityPct = DefaultDemOpacityPct)) }) {
+                        Text(stringResource(R.string.action_reset_defaults))
+                    }
+                }
+            }
             // Plage de zoom réellement contenue dans le MBTiles (fixée au téléchargement/import) : en
             // lecture seule, l'éditer ne changerait pas les tuiles présentes.
             if (isMbtiles) {

@@ -48,9 +48,12 @@ object StyleBuilder {
 
         if (dem != null) {
             sources.put("dem", demSource(dem))
+            // Force de l'ombrage : reglee sur le fond DEM lui-meme (cf. ProviderEntity.opacityPct), et
+            // bornee ici plutot que la-bas - une valeur hors [0, 1] ne serait pas refusee par MapLibre,
+            // elle rendrait un relief noir ou plat sans rien dire.
             layers.put(
                 JSONObject().put("id", "hillshade").put("type", "hillshade").put("source", "dem")
-                    .put("paint", JSONObject().put("hillshade-exaggeration", 0.5))
+                    .put("paint", JSONObject().put("hillshade-exaggeration", dem.opacityPct.coerceIn(0, 100) / 100.0))
             )
         }
 

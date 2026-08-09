@@ -73,6 +73,22 @@ internal object MigrationSql {
         "ALTER TABLE settings ADD COLUMN controlButtonsBackground INTEGER NOT NULL DEFAULT 0"
     const val ADD_TRACK_MEASURE_ENABLED =
         "ALTER TABLE settings ADD COLUMN trackMeasureEnabled INTEGER NOT NULL DEFAULT 0"
+    // Force de l'ombrage du relief, reglable depuis la fiche du fond DEM. Defaut 40 % : l'ombrage etait
+    // fige a 50 % et ecrasait le fond sous lui.
+    const val ADD_PROVIDER_OPACITY =
+        "ALTER TABLE providers ADD COLUMN opacityPct INTEGER NOT NULL DEFAULT $DefaultDemOpacityPct"
+    // Trois reglages d'affichage passent a "actif" par defaut. Applique sans condition, contrairement aux
+    // ajustements de defaut precedents (cf. BUMP_BUBBLE_TITLE_FONT) : un booleen ne dit pas s'il vaut faux
+    // par choix ou par defaut, et aucune version en circulation n'a d'utilisateur dont le choix serait a
+    // menager. Les trois se redecochent d'un tap dans les reglages.
+    const val SHOW_MAP_CONTROLS_BY_DEFAULT =
+        "UPDATE settings SET showGpsButton = 1, routePlannerEnabled = 1, controlButtonsBackground = 1"
+    const val ADD_MAP_BUTTON_SIZE =
+        "ALTER TABLE settings ADD COLUMN mapButtonSizeDp INTEGER NOT NULL DEFAULT $DefaultMapButtonSizeDp"
+    // La taille par defaut passe de la borne basse a 42 : n'ajuste que les bases restees a l'ancienne
+    // valeur, comme le report de la taille du titre d'infobulle, pour ne pas ecraser un choix delibere.
+    const val BUMP_MAP_BUTTON_SIZE =
+        "UPDATE settings SET mapButtonSizeDp = $DefaultMapButtonSizeDp WHERE mapButtonSizeDp = $MinMapButtonSizeDp"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -87,7 +103,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 30,
+    version = 33,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -213,11 +229,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_PROVIDER_OPACITY)
+                db.execSQL(MigrationSql.SHOW_MAP_CONTROLS_BY_DEFAULT)
+            }
+        }
+
+        private val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_MAP_BUTTON_SIZE)
+            }
+        }
+
+        private val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.BUMP_MAP_BUTTON_SIZE)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

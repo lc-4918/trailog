@@ -220,6 +220,7 @@
     <string name="settings_group_pois">Punts d\'interès</string>
     <string name="settings_group_elevation_profile">Perfil altimètric</string>
     <string name="settings_control_buttons_background">Fons darrere dels botons</string>
+    <string name="settings_map_button_size">Mida dels botons del mapa: %1$d dp</string>
     <string name="settings_show_gps_button">Mostra el botó de localització GPS</string>
     <string name="settings_enable_route_planner">Mostra el botó del planificador</string>
     <string name="settings_enable_track_measure">Mostra el botó de mesura</string>
@@ -247,6 +248,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clau API</string>
     <string name="settings_field_tile_size">Mida de tessel·la (px) - sovint 256 o 512</string>
+    <string name="settings_field_relief_opacity">Opacitat del relleu: %1$d%%</string>
     <string name="settings_field_zoom_levels">Nivells de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicació: %1$s</string>
     <string name="offline_thumb_location_title">Localització global</string>

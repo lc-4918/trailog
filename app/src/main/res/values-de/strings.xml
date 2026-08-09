@@ -220,6 +220,7 @@
     <string name="settings_group_pois">Points of Interest</string>
     <string name="settings_group_elevation_profile">Höhenprofil</string>
     <string name="settings_control_buttons_background">Hintergrund hinter den Schaltflächen</string>
+    <string name="settings_map_button_size">Größe der Kartenschaltflächen: %1$d dp</string>
     <string name="settings_show_gps_button">GPS-Standort-Button anzeigen</string>
     <string name="settings_enable_route_planner">Planer-Schaltfläche anzeigen</string>
     <string name="settings_enable_track_measure">Mess-Schaltfläche anzeigen</string>
@@ -247,6 +248,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API-Schlüssel</string>
     <string name="settings_field_tile_size">Kachelgröße (px) - meist 256 oder 512</string>
+    <string name="settings_field_relief_opacity">Deckkraft des Reliefs: %1$d%%</string>
     <string name="settings_field_zoom_levels">Zoomstufen: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Speicherort: %1$s</string>
     <string name="offline_thumb_location_title">Globale Lage</string>
