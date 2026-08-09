@@ -61,7 +61,8 @@ app/src/main/java/fr/lc4918/trailog/
    └─ nav/                       AppRoot.kt
 ```
 
-Voir [`SPEC.md`](SPEC.md) pour la spécification fonctionnelle détaillée.
+Voir [`SPEC.md`](SPEC.md) pour la spécification fonctionnelle, [`BASEMAPS.md`](BASEMAPS.md) pour le
+catalogue des fonds de carte et les règles qui le gouvernent.
 
 ## 4. Build & Run
 

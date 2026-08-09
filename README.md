@@ -59,6 +59,8 @@ sans dépendre d'un service en ligne.
 - **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
   l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
   ou depuis un second point que vous désignez.
+- **Mesure sur une trace** (à activer dans les réglages) : deux points posés du doigt sur une trace
+  affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.
@@ -137,6 +139,14 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   L'itinéraire lui-même se dessine sur la carte, teinté selon la pente. Les services
   interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
   leur substituer vos propres instances en renseignant leurs URL dans les réglages.
+- **Mesurer une portion de trace** : une fois *Afficher le bouton de mesure* activé dans
+  **Réglages / Carte**, un bouton en forme de règle apparaît sous le menu. Une bande vous demande
+  alors deux points : tapez le départ sur une trace affichée, puis l'arrivée sur la même trace, et
+  la distance qui les sépare le long du parcours s'affiche entre les deux marqueurs. Inutile de
+  viser la ligne au pixel près : chaque tap est ramené sur la trace la plus proche, et un tap
+  au-delà d'un bout de trace se pose sur ce bout. Vous pouvez déplacer et zoomer la carte entre les
+  deux points, l'infobulle reste visible et se cale au plus près du milieu de la portion mesurée.
+  Sa croix efface la mesure.
 - **Relief** : activer l'ombrage de relief dans les réglages carte.
 - **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
   (jusqu'à trois niveaux), régler le lissage et l'échelle verticale (par exemple 1 cm = 100 m,
@@ -159,11 +169,15 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   points concernés (dont votre position GPS si vous la demandez depuis celle-ci) au service
   d'itinéraire. La recherche par le nom est **désactivée par défaut**, et les deux services visés sont
   configurables : vous pouvez héberger les vôtres.
+- La **mesure sur une trace**, elle, ne sort pas du téléphone : elle se lit sur la trace que vous avez
+  importée, et n'interroge aucun service.
 
 ## Contribution & Développement
 
 Le développement se fait ouvertement sur GitHub :
 - Guide technique complet (installation, architecture, build) : voir [`DEVELOPER.md`](DEVELOPER.md).
+- Ce que fait l'application, en détail : voir [`SPEC.md`](SPEC.md) ; les fonds de carte et leurs règles :
+  voir [`BASEMAPS.md`](BASEMAPS.md).
 - Fonctionnement du CI/CD et des releases : voir [`WORKFLOW.md`](WORKFLOW.md).
 - Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/trailog/issues).
 

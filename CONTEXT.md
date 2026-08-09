@@ -2,9 +2,9 @@
 
 Ce document explique **pourquoi** l'application est faite ainsi. Les autres documents disent autre
 chose : [`README.md`](README.md) ce qu'elle fait pour l'utilisateur, [`DEVELOPER.md`](DEVELOPER.md)
-comment la compiler et s'y reperer, [`SPEC.md`](SPEC.md) les intentions d'origine,
-[`WORKFLOW.md`](WORKFLOW.md) comment elle est distribuee, [`TESTS.md`](TESTS.md) comment elle est
-verifiee.
+comment la compiler et s'y reperer, [`SPEC.md`](SPEC.md) ce qu'elle fait en detail,
+[`BASEMAPS.md`](BASEMAPS.md) ses fonds de carte, [`WORKFLOW.md`](WORKFLOW.md) comment elle est
+distribuee, [`TESTS.md`](TESTS.md) comment elle est verifiee.
 
 Il s'adresse a qui reprend le code et se demande pourquoi tel choix a ete fait plutot qu'un autre.
 
@@ -33,8 +33,8 @@ hors ligne.
 **N'est pas** : un enregistreur GPS, un editeur de traces, un service en ligne. Il n'y a ni compte, ni
 synchronisation, ni telemetrie. Tout vit sur l'appareil.
 
-Le dessin a la main et le suivi GPS temps reel etaient explicitement hors perimetre v1
-(cf. [`SPEC.md`](SPEC.md) section 1) et le restent.
+Le dessin a la main et le suivi GPS temps reel etaient explicitement hors perimetre au demarrage
+(cf. [`SPEC.md`](SPEC.md#1-périmètre)) et le restent.
 
 ## Les contraintes qui expliquent tout le reste
 
