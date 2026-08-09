@@ -6,7 +6,7 @@
 
 | Pour | Lire |
 |---|---|
-| se servir de l'application | [`README.md`](README.md) |
+| se servir de l'application | [`README.fr.md`](README.fr.md) |
 | la compiler, s'y repérer | [`DEVELOPER.md`](DEVELOPER.md) |
 | comprendre **pourquoi** c'est ainsi | [`CONTEXT.md`](CONTEXT.md) |
 | les fonds de carte en détail | [`BASEMAPS.md`](BASEMAPS.md) |
@@ -63,8 +63,10 @@ l'édition), un GeoJSON allégé pour le rendu, un profil précalculé pour le g
 Registre éditable : URL, clé, activation, dossiers, composites, sources locales. Voir
 [`BASEMAPS.md`](BASEMAPS.md).
 
-Le **relief** est un fond comme les autres (un DEM converti en ombrage), et non une option à part : c'est
-son interrupteur dans le gestionnaire qui l'allume. La force de son ombrage se règle dans sa fiche.
+Le **relief** est un fond comme les autres (un DEM converti en ombrage), et non une option à part : il
+figure dans le gestionnaire s'il est coché dans les réglages, comme n'importe quel fond, et un tap sur lui
+allume ou éteint son ombrage. Ces deux états sont distincts (cf. [`CONTEXT.md`](CONTEXT.md#le-relief-nest-pas-un-fond)).
+La force de l'ombrage se règle dans sa fiche.
 
 ## 5. Cartes hors ligne
 

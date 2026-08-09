@@ -65,7 +65,7 @@ prise ailleurs - une faute qu'aucune erreur ne signale.
 
 ## Le catalogue livré
 
-Une trentaine de fonds sont semés. **Sept seulement sont cochés d'entrée** : le gestionnaire ne montre que
+Une trentaine de fonds sont semés. **Huit seulement sont cochés d'entrée** : le gestionnaire ne montre que
 les fonds activés, et une liste de trente entrées y serait illisible. Les autres attendent un interrupteur
 dans les réglages, sans qu'il faille ressaisir leur URL.
 
@@ -74,7 +74,7 @@ dans les réglages, sans qu'il faille ressaisir leur URL.
 | Monde | OpenStreetMap (défaut), Mapbox Outdoors, Google Street / Satellite / Relief | oui |
 | Monde | Thunderforest Cycle et Outdoors, OpenFreeMap Liberty, MapTiler Outdoor, Freemap Outdoor | non |
 | Overlays | Waymarked Trails VTT et Cycle, AF3V voies cyclables | non |
-| Relief | DEM terrarium | non |
+| Relief | DEM terrarium | oui (listé ; son ombrage, lui, est éteint) |
 | Pays | France (IGN Scan), Espagne (IGN MTN) | oui |
 | Pays | Hongrie, Slovaquie, Autriche, Norvège, Belgique, Suède, Croatie, Suisse, Allemagne, Finlande, Slovénie, Tchéquie, Royaume-Uni, Pologne, Portugal | non |
 
@@ -97,11 +97,14 @@ retenue, variantes disponibles, plage de zoom utile, et ce qui a été essayé a
 
 ## Le relief
 
-Le relief est un fond comme un autre : un DEM que MapLibre convertit en ombrage, allumé par son
-interrupteur dans le gestionnaire, et non une option à part. Ses tuiles brutes ne sont pas des images à
-regarder - elles codent des altitudes - ce qui lui vaut son seul réglage propre : la **force de son
-ombrage** (`opacityPct`), réglable dans sa fiche, sous *Réglages / Tuiles / Fournisseurs*, avec un retour
-à la valeur par défaut. 40 % : au-delà, l'ombre mange le fond posé dessous.
+Le relief est un fond comme un autre : un DEM que MapLibre convertit en ombrage, et non une option à
+part. Il figure dans le gestionnaire s'il est coché dans les réglages, comme tout fond, et un tap sur lui
+y allume ou éteint son ombrage - deux états distincts, le second dans `settings.hillshadeOn`.
+
+Ses tuiles brutes ne sont pas des images à regarder - elles codent des altitudes - ce qui lui vaut son
+seul réglage propre : la **force de son ombrage** (`opacityPct`), réglable dans sa fiche, sous
+*Réglages / Tuiles / Fournisseurs*, avec un retour à la valeur par défaut. 40 % : au-delà, l'ombre mange
+le fond posé dessous.
 
 ## Composites
 

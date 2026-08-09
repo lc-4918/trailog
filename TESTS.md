@@ -1,44 +1,44 @@
 # Tests - Trailog
 
 Ce document recense les tests de l'application : ce qu'ils couvrent, ce qu'ils ne couvrent pas, et
-pourquoi. Il s'adresse a qui doit ajouter un test ou comprendre pourquoi la couverture affiche le
+pourquoi. Il s'adresse à qui doit ajouter un test ou comprendre pourquoi la couverture affiche le
 chiffre qu'elle affiche.
 
 - [Comment lancer les tests](#comment-lancer-les-tests)
 - [Ce que couvre chaque niveau](#ce-que-couvre-chaque-niveau)
-- [Couverture mesuree](#couverture-mesuree)
+- [Couverture mesurée](#couverture-mesurée)
 - [Tests unitaires](#tests-unitaires)
-- [Ce que les tests ont revele](#ce-que-les-tests-ont-revele)
-- [Pieges de l'infrastructure](#pieges-de-linfrastructure)
+- [Ce que les tests ont révélé](#ce-que-les-tests-ont-révélé)
+- [Pièges de l'infrastructure](#pièges-de-linfrastructure)
 
 ## Comment lancer les tests
 
 ```bash
 ./gradlew :app:testDebugUnitTest      # tests unitaires (JVM + Robolectric), aucun appareil requis
-./gradlew :app:jacocoTestReport       # couverture reelle -> app/build/reports/jacoco/html/index.html
-./gradlew :app:connectedDebugAndroidTest   # instrumentation et e2e (appareil ou emulateur requis)
+./gradlew :app:jacocoTestReport       # couverture réelle -> app/build/reports/jacoco/html/index.html
+./gradlew :app:connectedDebugAndroidTest   # instrumentation et e2e (appareil ou émulateur requis)
 ```
 
 ## Ce que couvre chaque niveau
 
 L'application fait 9100 lignes, dont **5293 (58 %) dans des fichiers `@Composable`**. Ces lignes sont
-hors d'atteinte d'un test unitaire JVM par construction : elles n'existent qu'a l'execution, dans un
-arbre de composition. Viser 90 % avec des tests unitaires est donc arithmetiquement impossible. La
-repartition est la suivante.
+hors d'atteinte d'un test unitaire JVM par construction : elles n'existent qu'à l'exécution, dans un
+arbre de composition. Viser 90 % avec des tests unitaires est donc arithmétiquement impossible. La
+répartition est la suivante.
 
-| Niveau | Perimetre | Ou |
+| Niveau | Périmètre | Où |
 |---|---|---|
-| **Unitaire** | logique pure et logique dependante d'Android (parsing, base, style, calculs) | `app/src/test/` |
-| **Instrumentation** | composants Compose isoles, base sur un vrai SQLite | `app/src/androidTest/` |
-| **e2e** | parcours utilisateur complets, application reelle | `app/src/androidTest/` |
+| **Unitaire** | logique pure et logique dépendante d'Android (parsing, base, style, calculs) | `app/src/test/` |
+| **Instrumentation** | composants Compose isolés, base sur un vrai SQLite | `app/src/androidTest/` |
+| **e2e** | parcours utilisateur complets, application réelle | `app/src/androidTest/` |
 
 Les tests unitaires tournent sur la JVM. Ceux qui touchent au framework Android (`android.util.Xml`,
-`org.json`, Room, `SharedPreferences`) passent par **Robolectric**, qui en fournit une implementation
+`org.json`, Room, `SharedPreferences`) passent par **Robolectric**, qui en fournit une implémentation
 sur la JVM. Ceux qui n'en ont pas besoin s'en passent : ils sont plus rapides.
 
-## Couverture mesuree
+## Couverture mesurée
 
-Chiffres reels, produits par Jacoco, non estimes.
+Chiffres réels, produits par Jacoco, non estimés.
 
 | Paquet | Lignes couvertes | % |
 |---|---|---|
@@ -63,288 +63,292 @@ Chiffres reels, produits par Jacoco, non estimes.
 | UI Compose (cible de l'instrumentation) | 60/3645 | 1,6 % |
 | **Total du code source** | 967/5188 | **18,6 %** |
 
-Le chiffre a retenir est **58,8 %**, celui du code que les tests unitaires peuvent atteindre. Le total
-de 18,6 % ne dit rien de la qualite des tests : il mesure surtout la part de Compose dans l'app.
+Le chiffre à retenir est **58,8 %**, celui du code que les tests unitaires peuvent atteindre. Le total
+de 18,6 % ne dit rien de la qualité des tests : il mesure surtout la part de Compose dans l'app.
 
-Les paquets encore bas sont `map/offline` (le moteur de telechargement, qui parle reseau et SQLite) et
-`update` (DownloadManager et installateur systeme). Les deux relevent de l'instrumentation plus que du
+Les paquets encore bas sont `map/offline` (le moteur de téléchargement, qui parle réseau et SQLite) et
+`update` (DownloadManager et installateur système). Les deux relèvent de l'instrumentation plus que du
 test unitaire.
 
 ## Tests unitaires
 
-**340 tests, 37 fichiers**, tous verts.
+**342 tests, 37 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `TrackMathTest` | 3 | distance, denivele positif et negatif, pente |
-| `FormatTest` | 14 | formatage des durees, distances et altitudes affichees dans le profil et sur les mesures de geocodage |
-| `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, echantillonnage du parcours mesure |
+| `TrackMathTest` | 3 | distance, dénivelé positif et négatif, pente |
+| `FormatTest` | 14 | formatage des durées, distances et altitudes affichées dans le profil et sur les mesures de géocodage |
+| `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, échantillonnage du parcours mesuré |
 
-`TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas a viser la ligne
-au pixel (projete orthogonal, borne aux extremites), et le parcours mesure est rendu a pas constant en
-un nombre impair de points - c'est ce qui fait de son element central le milieu exact de la mesure, ou
+`TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas à viser la ligne
+au pixel (projeté orthogonal, borné aux extrémités), et le parcours mesuré est rendu à pas constant en
+un nombre impair de points - c'est ce qui fait de son élément central le milieu exact de la mesure, où
 l'infobulle vient s'ancrer.
 
 `FormatTest` couvre notamment les deux reports d'arrondi : 59 min 59 s doit donner "2 h" et non
-"1 h 60 min", et le meme cas une case au-dessus pour les jours.
+"1 h 60 min", et le même cas une case au-dessus pour les jours.
 
-### `domain/model` - modele
+### `domain/model` - modèle
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `BubblePositionTest` | 3 | cles stables des 10 positions, repli sur AUTO si la cle est inconnue |
+| `BubblePositionTest` | 3 | clés stables des 10 positions, repli sur AUTO si la clé est inconnue |
 
-Les cles sont persistees en base (`settings.bubblePosition`) : les changer casserait les reglages
-existants. Une valeur inconnue doit retomber sur AUTO plutot que de planter.
+Les clés sont persistées en base (`settings.bubblePosition`) : les changer casserait les réglages
+existants. Une valeur inconnue doit retomber sur AUTO plutôt que de planter.
 
 ### `data/imp` - import de fichiers
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `LayerImporterTest` | 19 | parsing GPX, KML, KMZ et GeoJSON ; fichiers refuses ; fichiers vides |
-| `PropertyDetectorTest` | 11 | detection texte / lien / image des proprietes importees |
+| `LayerImporterTest` | 19 | parsing GPX, KML, KMZ et GeoJSON ; fichiers refusés ; fichiers vides |
+| `PropertyDetectorTest` | 11 | détection texte / lien / image des propriétés importées |
 
-`LayerImporterTest` s'appuie sur de **vrais exports** places dans `app/src/test/resources/fichiers/`
-(Wikiloc, OruxMaps, Locus, Google Earth), et non sur des extraits fabriques : c'est la seule facon
-d'attraper les particularites de chaque producteur. Les assertions portent sur le contenu reel de ces
-fichiers (nombre de points, presence d'altitude et d'horodatage, plage de coordonnees).
+`LayerImporterTest` s'appuie sur de **vrais exports** placés dans `app/src/test/resources/fichiers/`
+(Wikiloc, OruxMaps, Locus, Google Earth), et non sur des extraits fabriqués : c'est la seule façon
+d'attraper les particularités de chaque producteur. Les assertions portent sur le contenu réel de ces
+fichiers (nombre de points, présence d'altitude et d'horodatage, plage de coordonnées).
 
 Cas notables :
 
 - `test_locus.gpx` n'a **aucune** balise `<ele>`. C'est le cas 2D : il doit s'importer sans altitude,
-  et c'est lui qui declenche la banniere "Parcours sans altimetrie" a l'affichage du profil.
-- Le KMZ doit produire exactement la meme couche que le KML qu'il contient.
-- Un fichier **vide** (lisible, sans geometrie) et un fichier **mal forme** sont deux cas distincts :
-  l'utilisateur n'a rien a corriger dans le premier.
+  et c'est lui qui déclenche la bannière "Parcours sans altimétrie" à l'affichage du profil.
+- Le KMZ doit produire exactement la même couche que le KML qu'il contient.
+- Un fichier **vide** (lisible, sans géométrie) et un fichier **mal formé** sont deux cas distincts :
+  l'utilisateur n'a rien à corriger dans le premier.
 
 ### `data/repo` - persistance
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `LayerGeoJsonTest` | 13 | aller-retour du format de stockage des couches |
-| `TrailogRepositoryTest` | 9 | import bout en bout, refus, amorcage |
+| `TrailogRepositoryTest` | 9 | import bout en bout, refus, amorçage |
 
-`LayerGeoJsonTest` protege le format de persistance : une regression y rendrait illisibles des traces
-deja importees. Il verifie l'aller-retour des trois types de propriete, l'ordre des cles, l'image de
-garde epinglee, et que la simplification du fichier de rendu allege la geometrie **sans deplacer les
-extremites** de la trace.
+`LayerGeoJsonTest` protège le format de persistance : une régression y rendrait illisibles des traces
+déjà importées. Il vérifie l'aller-retour des trois types de propriété, l'ordre des clés, l'image de
+garde épinglée, et que la simplification du fichier de rendu allège la géométrie **sans déplacer les
+extrémités** de la trace.
 
-`TrailogRepositoryTest` verifie qu'un fichier refuse ne laisse **aucune** trace en base ni sur le
-disque, et que l'amorcage ne ressuscite pas un fond que l'utilisateur a supprime.
+`TrailogRepositoryTest` vérifie qu'un fichier refusé ne laisse **aucune** trace en base ni sur le
+disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprimé.
 
-### `data/db` - base de donnees
+### `data/db` - base de données
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 23 | les 17 migrations, rejouees sur un vrai SQLite |
+| `MigrationsTest` | 25 | les 18 migrations, rejouées sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
-detruit les couches importees de l'utilisateur, en silence, au premier lancement.
+détruit les couches importées de l'utilisateur, en silence, au premier lancement.
 
-Le SQL n'est pas recopie dans les tests. Il vit dans `MigrationSql` (`data/db/AppDatabase.kt`), que
+Le SQL n'est pas recopié dans les tests. Il vit dans `MigrationSql` (`data/db/AppDatabase.kt`), que
 les migrations et les tests lisent tous deux : une copie dans le test validerait une version qui n'est
 plus celle du code.
 
-Points verifies :
+Points vérifiés :
 
-- **18 vers 19** insere le fond AF3V. Sans cet INSERT, il n'existerait que sur une installation neuve,
-  la table n'etant semee qu'a vide. Son `sortOrder` doit se placer apres les existants sans les
+- **18 vers 19** insère le fond AF3V. Sans cet INSERT, il n'existerait que sur une installation neuve,
+  la table n'étant semée qu'à vide. Son `sortOrder` doit se placer après les existants sans les
   heurter, et un rejeu ne doit pas le dupliquer.
-- **20 vers 21** convertit la transparence du panneau en opacite. Sans conversion, un panneau regle a
-  20 serait relu comme 20 % d'opacite et deviendrait quasi invisible. Le test balaie les 101 valeurs
-  possibles pour verifier qu'aucune ne sort de la plage 30-100 du slider.
+- **20 vers 21** convertit la transparence du panneau en opacité. Sans conversion, un panneau réglé à
+  20 serait relu comme 20 % d'opacité et deviendrait quasi invisible. Le test balaie les 101 valeurs
+  possibles pour vérifier qu'aucune ne sort de la plage 30-100 du slider.
+- **33 vers 34** sort l'ombrage du relief du `enabled` de son fond DEM, qui ne dit plus que sa présence
+  dans le gestionnaire. L'ordre des trois requêtes compte : la reprise de l'état lit le `enabled` que la
+  suivante écrase. Le test rejoue les deux états de départ, et le cas d'une base sans fond DEM - un
+  `SELECT` sans résultat y laisserait un NULL dans une colonne `NOT NULL`.
 - **30 vers 31** affiche d'office les trois commandes de carte (bouton GPS, planificateur, fond des
-  boutons) et donne aux fonds leur force de rendu. Le test verrouille que les TROIS reglages y passent :
+  boutons) et donne aux fonds leur force de rendu. Le test verrouille que les TROIS réglages y passent :
   en oublier un ne casserait rien de visible, et personne ne le remarquerait avant de chercher le bouton
   manquant.
 
-### `data` - preferences
+### `data` - préférences
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `LocalePrefsTest` | 8 | langue de l'interface, repli, noms natifs et drapeaux |
 
-La langue est lue avant la creation de la base, d'ou son stockage a part en `SharedPreferences`.
+La langue est lue avant la création de la base, d'où son stockage à part en `SharedPreferences`.
 
 ### `data/seed` - catalogue de fonds
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `ProvidersTest` | 14 | integrite du catalogue livre avec l'app |
+| `ProvidersTest` | 14 | intégrité du catalogue livré avec l'app |
 
-Une faute ici ne se voit qu'a l'execution, sur une installation neuve, sous forme de carte grise. Le
-test verifie l'unicite des identifiants et des ordres de tri, que toutes les URL sont en **https**
-(Android bloque le trafic en clair), que chaque gabarit est developpable par `TileUrl`, qu'un jeton
-`{s}` s'accompagne de sous-domaines et un `{KEY}` d'un champ de cle, et que le fond par defaut existe.
+Une faute ici ne se voit qu'à l'exécution, sur une installation neuve, sous forme de carte grise. Le
+test vérifie l'unicité des identifiants et des ordres de tri, que toutes les URL sont en **https**
+(Android bloque le trafic en clair), que chaque gabarit est développable par `TileUrl`, qu'un jeton
+`{s}` s'accompagne de sous-domaines et un `{KEY}` d'un champ de clé, et que le fond par défaut existe.
 
-### `map` - style et icones
+### `map` - style et icônes
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `StyleBuilderTest` | 11 | construction du style MapLibre |
 | `BasemapIconsTest` | 4 | drapeaux des fonds nationaux, chemins des assets |
 | `CompositeBasemapsTest` | 3 | aller-retour des identifiants de composite |
 
-Une faute dans `StyleBuilder` donne une carte grise, sans message d'erreur. Le test verifie l'ordre
-d'empilement (fond, surcouches, puis relief en dernier), que l'opacite d'une surcouche se retrouve
-bien dans le style, et qu'un vectoriel seul est delegue par URL alors qu'avec une surcouche il faut
+Une faute dans `StyleBuilder` donne une carte grise, sans message d'erreur. Le test vérifie l'ordre
+d'empilement (fond, surcouches, puis relief en dernier), que l'opacité d'une surcouche se retrouve
+bien dans le style, et qu'un vectoriel seul est délégué par URL alors qu'avec une surcouche il faut
 construire un style.
 
-`BasemapIconsTest` verifie que **chaque** fond du groupe "Pays" a son drapeau : la table est tenue a
-la main, un fond ajoute sans son entree passerait silencieusement au globe generique.
+`BasemapIconsTest` vérifie que **chaque** fond du groupe "Pays" a son drapeau : la table est tenue à
+la main, un fond ajouté sans son entrée passerait silencieusement au globe générique.
 
 ### `map/offline` - hors-ligne
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `TileMathTest` | 11 | pavage des tuiles, estimation de taille |
-| `TileUrlTest` | 8 | developpement des gabarits d'URL |
-| `OfflineDownloadStateTest` | 2 | modele de la demande de telechargement |
+| `TileUrlTest` | 8 | développement des gabarits d'URL |
+| `OfflineDownloadStateTest` | 2 | modèle de la demande de téléchargement |
 
-`TileMath` annonce a l'utilisateur combien de tuiles et de Mo il va telecharger. `TileUrl` est partage
-par le telechargement et les miniatures ; son test verifie notamment que le gabarit
-`{bbox-epsg-3857}` se developpe dans l'ordre `minx,miny,maxx,maxy` qu'impose WMS 1.3.0.
+`TileMath` annonce à l'utilisateur combien de tuiles et de Mo il va télécharger. `TileUrl` est partagé
+par le téléchargement et les miniatures ; son test vérifie notamment que le gabarit
+`{bbox-epsg-3857}` se développe dans l'ordre `minx,miny,maxx,maxy` qu'impose WMS 1.3.0.
 
 ### `ui` - logique extraite des composables
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `BubblePlacementTest` | 17 | placement de l'infobulle autour du marqueur, bornes d'ecran, choix du coin pour le geocodage |
-| `BasemapHoverTargetTest` | 5 | cible de depot du drag & drop du gestionnaire de fonds |
+| `BubblePlacementTest` | 17 | placement de l'infobulle autour du marqueur, bornes d'écran, choix du coin pour le géocodage |
+| `BasemapHoverTargetTest` | 5 | cible de dépôt du drag & drop du gestionnaire de fonds |
 | `GeocodeSearchStateTest` | 5 | transitions de la recherche de lieu (barre de saisie, lieu retenu) |
-| `MapPointStateTest` | 9 | transitions du point designe par un appui long (adresse, mesures, mode de saisie) |
+| `MapPointStateTest` | 9 | transitions du point désigné par un appui long (adresse, mesures, mode de saisie) |
 | `LayersUnderTest` | 4 | ce sur quoi porte une action de dossier : ses couches, sous-dossiers compris |
 | `MeasureAnchorTest` | 5 | ancrage de l'infobulle de mesure : le milieu s'il est visible, sinon le point visible le plus proche |
 
-Ces logiques ont ete **extraites** de leur composable pour devenir testables. Le drag & drop du
-gestionnaire n'etait pas couvert du tout.
+Ces logiques ont été **extraites** de leur composable pour devenir testables. Le drag & drop du
+gestionnaire n'était pas couvert du tout.
 
-`BubblePlacementTest` couvre deux regles distinctes. Celle d'un marqueur : la position reglee est
-respectee, et la carte se decale de ce qu'il faut quand elle ne tient pas. Celle du geocodage (lieu
-cherche, point designe du doigt) : des quatre coins possibles, on retient celui qui deplace le moins la
-carte - donc aucun deplacement des qu'un coin tient, ce qui est le cas ordinaire.
+`BubblePlacementTest` couvre deux règles distinctes. Celle d'un marqueur : la position réglée est
+respectée, et la carte se décale de ce qu'il faut quand elle ne tient pas. Celle du géocodage (lieu
+cherché, point désigné du doigt) : des quatre coins possibles, on retient celui qui déplace le moins la
+carte - donc aucun déplacement dès qu'un coin tient, ce qui est le cas ordinaire.
 
-Ce que le geocodage doit faire tenir a l'ecran, c'est l'epingle **et** la bulle : l'epingle monte de sa
-hauteur au-dessus du point, et un appui long contre le bord haut la laissait coupee en deux. Deux cas
-n'ont pas de "plus petit decalage" qui vaille et sont donc centres : le point hors de la carte (un lieu
-trouve loin de la vue courante, qui finirait colle a un bord) et l'ensemble trop grand pour l'ecran.
+Ce que le géocodage doit faire tenir à l'écran, c'est l'épingle **et** la bulle : l'épingle monte de sa
+hauteur au-dessus du point, et un appui long contre le bord haut la laissait coupée en deux. Deux cas
+n'ont pas de "plus petit décalage" qui vaille et sont donc centrés : le point hors de la carte (un lieu
+trouvé loin de la vue courante, qui finirait collé à un bord) et l'ensemble trop grand pour l'écran.
 
-Ces deux etats portent sur les transitions, pas sur les valeurs : ce sont elles qui se trompent sans
-rien casser. Une infobulle laissee affichee recouvre la carte au moment de choisir un point ; une mesure
-oubliee au changement de point affiche une distance calculee vers un autre endroit ; une epingle qui
-survit a son infobulle ne se retire plus par aucun geste. `MapPointStateTest` verrouille aussi le figeage
-de l'origine de la mesure depuis la position : la suivre ferait partir une requete d'itineraire a chaque
+Ces deux états portent sur les transitions, pas sur les valeurs : ce sont elles qui se trompent sans
+rien casser. Une infobulle laissée affichée recouvre la carte au moment de choisir un point ; une mesure
+oubliée au changement de point affiche une distance calculée vers un autre endroit ; une épingle qui
+survit à son infobulle ne se retire plus par aucun geste. `MapPointStateTest` verrouille aussi le figeage
+de l'origine de la mesure depuis la position : la suivre ferait partir une requête d'itinéraire à chaque
 point GPS, soit une toutes les deux secondes.
 
-`MeasureAnchorTest` verrouille une recherche qu'on ne voit jamais echouer a moitie : elle s'ecarte du
-milieu des deux cotes a la fois, donc le premier point retenu est bien le plus proche du milieu, et
-elle n'interroge qu'un seul point quand le milieu est deja visible - le cas courant, sur lequel on ne
-veut pas projeter des centaines de points a chaque mouvement de carte.
+`MeasureAnchorTest` verrouille une recherche qu'on ne voit jamais échouer à moitié : elle s'écarte du
+milieu des deux côtés à la fois, donc le premier point retenu est bien le plus proche du milieu, et
+elle n'interroge qu'un seul point quand le milieu est déjà visible - le cas courant, sur lequel on ne
+veut pas projeter des centaines de points à chaque mouvement de carte.
 
-`LayersUnderTest` verrouille une decision, pas un calcul : une action de dossier - l'oeil, la couleur
-commune, le cadrage - porte aussi sur ses sous-dossiers. S'arreter aux couches directes ne casse rien
+`LayersUnderTest` verrouille une décision, pas un calcul : une action de dossier - l'oeil, la couleur
+commune, le cadrage - porte aussi sur ses sous-dossiers. S'arrêter aux couches directes ne casse rien
 et ne se voit pas en test : cela laisse seulement, sous un dossier qu'on vient de colorer d'un bloc,
 des sous-dossiers d'une autre couleur.
 
 ### `geocode` - recherche de lieu
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `PhotonTest` | 21 | construction des requetes (recherche et inverse), lecture de la reponse du geocodeur et decoupage de l'adresse en morceaux |
-| `ValhallaTest` | 20 | construction de la requete et lecture de la reponse du moteur d'itineraire |
-| `PolylineTest` | 5 | decodage des polylignes encodees, dont la precision propre a Valhalla |
+| `PhotonTest` | 21 | construction des requêtes (recherche et inverse), lecture de la réponse du géocodeur et découpage de l'adresse en morceaux |
+| `ValhallaTest` | 20 | construction de la requête et lecture de la réponse du moteur d'itinéraire |
+| `PolylineTest` | 5 | décodage des polylignes encodées, dont la précision propre à Valhalla |
 
-Les deux seuls endroits ou une faute serait **muette** : une URL mal formee ou un champ mal lu ne leve
+Les deux seuls endroits où une faute serait **muette** : une URL mal formée ou un champ mal lu ne lève
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
-Le test verifie l'encodage du texte cherche, qu'une URL de base deja parametree (instance derriere un
-proxy) recoit bien un `&` et non un `?`, qu'une langue que Photon ne sert pas retombe sur l'anglais
-(il repond 400 au lieu de l'ignorer, ce qui rendrait la recherche entierement muette), et qu'une
-reponse illisible donne une liste vide plutot qu'une exception.
+Le test vérifie l'encodage du texte cherché, qu'une URL de base déjà paramétrée (instance derrière un
+proxy) reçoit bien un `&` et non un `?`, qu'une langue que Photon ne sert pas retombe sur l'anglais
+(il répond 400 au lieu de l'ignorer, ce qui rendrait la recherche entièrement muette), et qu'une
+réponse illisible donne une liste vide plutôt qu'une exception.
 
-Le geocodage **inverse** y ajoute ses propres pieges, tous muets : il n'est pas servi par le meme chemin
-que la recherche (`/reverse` la ou celle-ci est `/api`), et ses coordonnees ne doivent pas suivre la
-locale de l'appareil - une virgule decimale francaise separerait a la fois les decimales et les deux
+Le géocodage **inverse** y ajoute ses propres pièges, tous muets : il n'est pas servi par le même chemin
+que la recherche (`/reverse` là où celle-ci est `/api`), et ses coordonnées ne doivent pas suivre la
+locale de l'appareil - une virgule décimale française séparerait à la fois les décimales et les deux
 valeurs, et le service lirait tout autre chose.
 
-Il verrouille surtout l'**absence** des parametres `lat`/`lon`, que Photon accepte pourtant : ils
-reordonnent les resultats par proximite, si bien qu'un hameau voisin passerait devant la ville du meme
-nom. Les rajouter parait une amelioration ; c'en est le contraire.
+Il verrouille surtout l'**absence** des paramètres `lat`/`lon`, que Photon accepte pourtant : ils
+réordonnent les résultats par proximité, si bien qu'un hameau voisin passerait devant la ville du même
+nom. Les rajouter paraît une amélioration ; c'en est le contraire.
 
-`ValhallaTest` couvre la meme surface pour les itineraires, et deux pieges qui lui sont propres : les
-coordonnees passent par `toString()` et non `format()`, faute de quoi une locale francaise ecrirait
+`ValhallaTest` couvre la même surface pour les itinéraires, et deux pièges qui lui sont propres : les
+coordonnées passent par `toString()` et non `format()`, faute de quoi une locale française écrirait
 `44,56` et rendrait le JSON invalide - une faute qu'un poste anglophone ne verrait jamais ; et un total
-incomplet (longueur sans duree, ou l'inverse) doit valoir "aucun itineraire" plutot qu'une distance de
-zero. Il verrouille aussi la correspondance des cinq disciplines avec les modeles de cout, seul endroit
+incomplet (longueur sans durée, ou l'inverse) doit valoir "aucun itinéraire" plutôt qu'une distance de
+zéro. Il verrouille aussi la correspondance des cinq disciplines avec les modèles de coût, seul endroit
 du code qui parle le vocabulaire du moteur.
 
-`PolylineTest` garde la geometrie affichee sur la carte. Sa faute possible est entierement muette :
-Valhalla encode au **millionieme** de degre la ou l'algorithme d'origine travaille au cent-millieme, et
-decoder au mauvais facteur ne leve rien - le trace s'affiche, dix fois trop loin de l'equateur. Le test
-decode l'exemple canonique de la documentation Google en precision 5, puis verifie que le defaut du code
+`PolylineTest` garde la géométrie affichée sur la carte. Sa faute possible est entièrement muette :
+Valhalla encode au **millionième** de degré là où l'algorithme d'origine travaille au cent-millième, et
+décoder au mauvais facteur ne lève rien - le tracé s'affiche, dix fois trop loin de l'équateur. Le test
+décode l'exemple canonique de la documentation Google en précision 5, puis vérifie que le défaut du code
 vaut bien dix fois cela.
 
-### `net` - portee des services
+### `net` - portée des services
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `ServiceUrlTest` | 4 | reseau local ou service externe, pour l'avertissement d'absence de connexion |
+| `ServiceUrlTest` | 4 | réseau local ou service externe, pour l'avertissement d'absence de connexion |
 
-`needsInternet` decide si l'absence de connexion doit etre signalee avant d'ouvrir une recherche ou de
-lancer une mesure. Son test balaie les plages privees (10/8, 172.16/12 et ses deux bornes, 192.168/16,
+`needsInternet` décide si l'absence de connexion doit être signalée avant d'ouvrir une recherche ou de
+lancer une mesure. Son test balaie les plages privées (10/8, 172.16/12 et ses deux bornes, 192.168/16,
 boucle locale, lien-local, `.local`, nom de machine seul) : les compter comme externes priverait de la
-fonction celui qui heberge ses propres services et se trouve en wifi sans sortie Internet, c'est-a-dire
-exactement le cas que l'auto-hebergement sert a couvrir.
+fonction celui qui héberge ses propres services et se trouve en wifi sans sortie Internet, c'est-à-dire
+exactement le cas que l'auto-hébergement sert à couvrir.
 
-### `update` - mises a jour
+### `update` - mises à jour
 
-| Fichier | Tests | Ce qui est verrouille |
+| Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `ReleaseInfoTest` | 3 | forme du manifeste ecrit par la CI, calcul du versionCode |
+| `ReleaseInfoTest` | 3 | forme du manifeste écrit par la CI, calcul du versionCode |
 | `UpdateCheckTest` | 2 | inertie en debug, distinction des trois issues |
 
 `ReleaseInfoTest` garde un contrat entre **deux fichiers qui ne se compilent pas ensemble** : le `jq`
 du workflow et le parseur Kotlin. Une divergence n'y produirait aucune erreur visible, seulement des
-mises a jour qui cesseraient d'etre proposees. Il verifie aussi qu'un champ ajoute plus tard au
-manifeste est ignore plutot que fatal, et que l'ordre des `versionCode` est correct.
+mises à jour qui cesseraient d'être proposées. Il vérifie aussi qu'un champ ajouté plus tard au
+manifeste est ignoré plutôt que fatal, et que l'ordre des `versionCode` est correct.
 
-## Ce que les tests ont revele
+## Ce que les tests ont révélé
 
-Ecrire ces tests a mis au jour trois choses.
+Écrire ces tests a mis au jour trois choses.
 
-**La mesure de couverture etait fausse.** Jacoco annoncait `LayerImporter` a 0 % alors que ses 19 tests
+**La mesure de couverture était fausse.** Jacoco annonçait `LayerImporter` à 0 % alors que ses 19 tests
 passaient. Robolectric charge les classes par son propre chargeur, sans emplacement source, et l'agent
-Jacoco les ignorait. Sans `isIncludeNoLocationClasses`, le rapport aurait ete un mensonge, plus
-nuisible qu'une absence de mesure. Corrige, `LayerImporter` passe a 89,8 %.
+Jacoco les ignorait. Sans `isIncludeNoLocationClasses`, le rapport aurait été un mensonge, plus
+nuisible qu'une absence de mesure. Corrigé, `LayerImporter` passe à 89,8 %.
 
-**Un KML tronque ne leve pas d'exception.** Il rend une couche vide, et l'utilisateur lit "le fichier
-est vide" la ou la specification demande "invalide". Le parseur XML atteint la fin du flux sans se
-plaindre des balises non fermees. Un GPX tronque, lui, leve : sa coupure tombe en general en plein
-attribut. Le comportement reel est verrouille par le test
-`kml tronque rend une couche vide au lieu de lever`, pour qu'il ne derive pas en silence. Corriger
-demanderait de verifier que la racine s'est refermee.
+**Un KML tronqué ne lève pas d'exception.** Il rend une couche vide, et l'utilisateur lit "le fichier
+est vide" là où la spécification demande "invalide". Le parseur XML atteint la fin du flux sans se
+plaindre des balises non fermées. Un GPX tronqué, lui, lève : sa coupure tombe en général en plein
+attribut. Le comportement réel est verrouillé par le test
+`kml tronque rend une couche vide au lieu de lever`, pour qu'il ne dérive pas en silence. Corriger
+demanderait de vérifier que la racine s'est refermée.
 
-**Le drag & drop du gestionnaire de fonds est correct.** Sa logique a ete extraite et testee lors de
-la recherche d'un bug de deplacement de dossier signale par l'utilisateur. Les tests montrent que le
-calcul de la cible de depot est juste, y compris pour un dossier imbrique deplace vers un autre
-dossier. Le bug est donc ailleurs (geste, defilement, ou visibilite de la cible a l'ecran).
+**Le drag & drop du gestionnaire de fonds est correct.** Sa logique a été extraite et testée lors de
+la recherche d'un bug de déplacement de dossier signalé par l'utilisateur. Les tests montrent que le
+calcul de la cible de dépôt est juste, y compris pour un dossier imbriqué déplacé vers un autre
+dossier. Le bug est donc ailleurs (geste, défilement, ou visibilité de la cible à l'écran).
 
-## Pieges de l'infrastructure
+## Pièges de l'infrastructure
 
-Trois reglages, sans lesquels rien ne fonctionne.
+Trois réglages, sans lesquels rien ne fonctionne.
 
 **`robolectric.properties`** (`app/src/test/resources/`) impose une `Application` neutre. La vraie
-(`TrailogApp`) initialise MapLibre au demarrage, dont les bibliotheques natives ne se chargent pas sur
-la JVM : tous les tests Robolectric echouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
+(`TrailogApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas sur
+la JVM : tous les tests Robolectric échouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
 besoin de la carte.
 
-**`isIncludeNoLocationClasses`** (`app/build.gradle.kts`) rend visibles a Jacoco les classes chargees
+**`isIncludeNoLocationClasses`** (`app/build.gradle.kts`) rend visibles à Jacoco les classes chargées
 par Robolectric. Sans lui, le rapport annonce 0 % sur du code pourtant couvert.
 
-**`isIncludeAndroidResources`** donne aux tests l'acces au manifeste, aux ressources et aux assets
-reels de l'app. Sans lui, aucun test ne peut lire une chaine ou un asset.
+**`isIncludeAndroidResources`** donne aux tests l'accès au manifeste, aux ressources et aux assets
+réels de l'app. Sans lui, aucun test ne peut lire une chaîne ou un asset.
 
-Enfin, la base est un **singleton** : les methodes d'une meme classe de test la partagent. Un test qui
-suppose un ordre de liste devient dependant des autres. `TrailogRepositoryTest` vise donc explicitement
-la derniere couche inseree par son identifiant.
+Enfin, la base est un **singleton** : les méthodes d'une même classe de test la partagent. Un test qui
+suppose un ordre de liste devient dépendant des autres. `TrailogRepositoryTest` vise donc explicitement
+la dernière couche insérée par son identifiant.
