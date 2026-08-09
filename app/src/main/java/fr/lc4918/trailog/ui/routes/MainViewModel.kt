@@ -31,6 +31,8 @@ import fr.lc4918.trailog.ui.profile.ProfileZoom
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -213,30 +215,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- mesure sur trace ----------
     /**
-     * Premier point d'une mesure : le tap est rabattu sur la trace VISIBLE la plus proche, toutes couches
-     * confondues (cf. TrackMeasure.project). Null si aucune trace n'est affichée - il n'y a alors rien à
-     * mesurer, et le tap reste sans effet.
+     * Premier point d'une mesure : le tap est rabattu sur la plus proche des traces passant sous le doigt
+     * (cf. TrackMeasure.project). Null si aucune n'y passe - il n'y a alors rien à mesurer, et le tap
+     * reste sans effet.
+     *
+     * [keys] sont les couches dessinées autour du doigt, désignées par l'index de rendu de la carte
+     * (cf. MapController.lineKeysNear) : elles seules sont lues. Passer toutes les couches visibles en
+     * revue demandait un fichier de profil par couche, soit plusieurs secondes d'attente avant le premier
+     * marqueur sur une carte qui en porte beaucoup - alors que la réponse ne pouvait venir que d'une trace
+     * effectivement visible sous le doigt.
+     *
+     * Les couches retenues sont lues **en parallèle** : elles sont peu nombreuses, mais un paquet de
+     * traces superposées les ferait sinon attendre l'une après l'autre.
      *
      * Les profils sont lus par le dépôt, donc servis par son cache dès la première fois : le kilométrage
      * cumulé qu'ils portent est calculé sur la géométrie complète, avant décimation, et la mesure suit
      * donc le parcours réel et non la ligne allégée du rendu.
      */
-    fun pickMeasureStart(lon: Double, lat: Double, onResult: (MeasurePoint?) -> Unit) = viewModelScope.launch {
-        var best: MeasurePoint? = null
-        var bestAway = Double.MAX_VALUE
-        layers.value.filter { it.visible && it.hasLine }.forEach { ly ->
-            val profiles = repo.loadProfiles(ly)
-            val nearest = withContext(Dispatchers.Default) {
-                profiles.mapIndexedNotNull { i, ct -> TrackMeasure.project(ct.samples, lon, lat)?.let { i to it } }
-                    .minByOrNull { it.second.awayM }
-            } ?: return@forEach
-            val (index, p) = nearest
-            if (p.awayM < bestAway) {
-                bestAway = p.awayM
-                best = MeasurePoint(ly.id, ly.name, index, p.lon, p.lat, p.alongM)
+    fun pickMeasureStart(
+        lon: Double, lat: Double, keys: List<String>, onResult: (MeasurePoint?) -> Unit,
+    ) = viewModelScope.launch {
+        val ids = keys.mapNotNull { it.removePrefix("ly").toLongOrNull() }.toSet()
+        val candidates = layers.value.filter { it.visible && it.hasLine && it.id in ids }
+        if (candidates.isEmpty()) { onResult(null); return@launch }
+        val best = candidates.map { ly ->
+            async {
+                val profiles = repo.loadProfiles(ly)
+                withContext(Dispatchers.Default) {
+                    profiles.mapIndexedNotNull { i, ct -> TrackMeasure.project(ct.samples, lon, lat)?.let { i to it } }
+                        .minByOrNull { it.second.awayM }
+                }?.let { (index, p) -> MeasurePoint(ly.id, ly.name, index, p.lon, p.lat, p.alongM) to p.awayM }
             }
-        }
-        onResult(best)
+        }.awaitAll().filterNotNull().minByOrNull { it.second }
+        onResult(best?.first)
     }
 
     /**

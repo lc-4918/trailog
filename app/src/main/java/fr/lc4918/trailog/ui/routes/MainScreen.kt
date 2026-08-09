@@ -668,7 +668,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             measure.picking -> controller.onRawTap = { lon, lat ->
                 val started = measure.start
                 if (started == null) {
-                    vm.pickMeasureStart(lon, lat) { p -> if (p != null && measure.picking) measure.chooseStart(p) }
+                    // Couches candidates demandées d'abord à l'index de rendu de la carte : lui seul sait
+                    // dire, sans rien lire, quelles traces passent vraiment sous le doigt.
+                    val keys = controller.lineKeysNear(lon, lat)
+                    vm.pickMeasureStart(lon, lat, keys) { p -> if (p != null && measure.picking) measure.chooseStart(p) }
                 } else {
                     vm.pickMeasureEnd(started, lon, lat) { p, path -> if (measure.picking) measure.chooseEnd(p, path) }
                 }

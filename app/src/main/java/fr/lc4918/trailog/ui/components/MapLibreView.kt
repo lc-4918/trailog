@@ -47,6 +47,10 @@ import kotlin.math.pow
 
 data class RenderLayer(val key: String, val uri: String, val revision: Long, val color: String)
 
+/** Elargissements successifs de la fenetre de recherche d'une trace autour du doigt (cf. lineKeysNear) :
+ *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
+private val LineSearchFactors = listOf(1f, 4f, 12f)
+
 class MapController {
     var map: MapLibreMap? = null
     var style: Style? = null
@@ -160,6 +164,30 @@ class MapController {
         val tol = lineTapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
         return layerKeys.firstOrNull { m.queryRenderedFeatures(rect, lineLayerId(it)).isNotEmpty() }
+    }
+
+    /**
+     * Cles des couches dont une ligne passe pres de (lon, lat) : les candidates a un point de mesure.
+     *
+     * Rabattre un tap sur une trace demande le profil precalcule de la couche, soit un fichier lu et
+     * decode : les passer TOUTES en revue coutait plusieurs secondes des qu'une carte en portait beaucoup.
+     * L'index de rendu de MapLibre repond, lui, dans l'instant, et n'interroge que ce qui est reellement
+     * dessine autour du doigt.
+     *
+     * La fenetre s'elargit tant qu'elle ne trouve rien : un tap dans le vide continue de se poser sur la
+     * trace d'a cote, comme un tap qui depasse un bout de trace se pose sur ce bout. Elle finit par
+     * renoncer - loin de toute trace, il n'y a rien a mesurer, et le tap reste sans effet.
+     */
+    fun lineKeysNear(lon: Double, lat: Double): List<String> {
+        val m = map ?: return emptyList()
+        val screen = m.projection.toScreenLocation(LatLng(lat, lon))
+        for (factor in LineSearchFactors) {
+            val tol = lineTapToleranceDp * density * factor
+            val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+            val keys = layerKeys.filter { m.queryRenderedFeatures(rect, lineLayerId(it)).isNotEmpty() }
+            if (keys.isNotEmpty()) return keys
+        }
+        return emptyList()
     }
 
     /** Action de selection d'un marqueur interroge, ou null si la feature n'est pas exploitable. */
