@@ -326,6 +326,38 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 33 -> 34 : l'ombrage du relief quitte le fond DEM ----------
+
+    /**
+     * L'ecran ne doit pas changer : ce que le fond DEM affichait devient l'etat de l'ombrage, et le fond
+     * reste liste dans le gestionnaire comme il l'etait toujours. L'ordre compte - la reprise lit le
+     * `enabled` que la seconde requete ecrase.
+     */
+    @Test fun `33 vers 34 reprend l'etat du relief et laisse le fond liste`() {
+        for (avant in listOf(0, 1)) {
+            val db = freshDb("m3334-$avant"); settingsV16(db); providersV18(db)
+            db.execSQL("INSERT INTO providers VALUES ('dem','Relief','Relief','DEM','u',NULL,NULL,0,15,256,NULL,0,$avant,1,9,NULL)")
+            db.execSQL(MigrationSql.ADD_HILLSHADE_ON)
+            db.execSQL(MigrationSql.HILLSHADE_FROM_DEM_ENABLED)
+            db.execSQL(MigrationSql.LIST_DEM_IN_CONTROL)
+            assertEquals("ombrage repris de l'ancien enabled", avant,
+                scalar(db, "SELECT hillshadeOn FROM settings") { it.getInt(0) })
+            assertEquals("le fond DEM reste liste", 1,
+                scalar(db, "SELECT enabled FROM providers WHERE type = 'DEM'") { it.getInt(0) })
+            db.close()
+        }
+    }
+
+    /** Aucun fond DEM en base (installation exotique) : la reprise ne doit pas laisser un NULL dans une
+     *  colonne NOT NULL, ce que ferait un SELECT sans resultat. */
+    @Test fun `33 vers 34 sans fond DEM laisse l'ombrage eteint`() {
+        val db = freshDb("m3334c"); settingsV16(db); providersV18(db)
+        db.execSQL(MigrationSql.ADD_HILLSHADE_ON)
+        db.execSQL(MigrationSql.HILLSHADE_FROM_DEM_ENABLED)
+        assertEquals(0, scalar(db, "SELECT hillshadeOn FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -338,7 +370,7 @@ class MigrationsTest {
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
             "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground", "trackMeasureEnabled",
-            "mapButtonSizeDp")
+            "mapButtonSizeDp", "hillshadeOn")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()

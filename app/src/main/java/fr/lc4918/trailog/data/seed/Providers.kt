@@ -8,7 +8,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
  * Tous éditables ensuite (URL + clé) dans les réglages.
  * {KEY} est remplacé par apiKey ; {s} est étendu selon subdomains.
  *
- * Seuls sept sont cochés d'entrée (OSM, Mapbox Outdoors, les trois Google, IGN Scan, IGN MTN) : le Basemap Control
+ * Seuls huit sont cochés d'entrée (OSM, Mapbox Outdoors, les trois Google, IGN Scan, IGN MTN, relief) : le Basemap Control
  * ne montre que les fonds activés, une liste de trente entrées y serait illisible. Les autres restent
  * semés, donc activables d'un toggle dans les réglages, sans avoir à ressaisir leur URL. Ce choix pilote
  * aussi la remise à zéro des réglages (cf. SettingsViewModel.resetAllSettings).
@@ -73,9 +73,12 @@ object Providers {
                 enabled = false, sortOrder = n()),
 
             // --- Relief (DEM -> hillshade) ---
+            // Coche, contrairement aux autres fonds decoches : son "enabled" ne dit que sa presence dans le
+            // gestionnaire, l'ombrage lui-meme s'allume d'un tap (cf. SettingsEntity.hillshadeOn). Decoche,
+            // le relief serait introuvable pour qui ne pense pas a le chercher dans les reglages.
             ProviderEntity("dem_terrarium", "Relief (DEM terrarium)", "Relief", "DEM",
                 "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-                tileSize = 256, maxZoom = 15, enabled = false, sortOrder = n()),
+                tileSize = 256, maxZoom = 15, sortOrder = n()),
 
             // --- Pays ---
             ProviderEntity("ign_fr", "France - IGN Scan", "Pays", "WMTS",

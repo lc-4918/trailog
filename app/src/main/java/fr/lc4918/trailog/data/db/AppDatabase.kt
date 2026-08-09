@@ -89,6 +89,17 @@ internal object MigrationSql {
     // valeur, comme le report de la taille du titre d'infobulle, pour ne pas ecraser un choix delibere.
     const val BUMP_MAP_BUTTON_SIZE =
         "UPDATE settings SET mapButtonSizeDp = $DefaultMapButtonSizeDp WHERE mapButtonSizeDp = $MinMapButtonSizeDp"
+    // L'ombrage du relief quitte le "enabled" du fond DEM pour son propre reglage : celui-la ne dit plus
+    // que sa presence dans le gestionnaire de couches, comme pour tout autre fond.
+    const val ADD_HILLSHADE_ON =
+        "ALTER TABLE settings ADD COLUMN hillshadeOn INTEGER NOT NULL DEFAULT 0"
+    // L'etat affiche jusqu'ici par le fond DEM devient l'etat de l'ombrage : l'ecran ne change pas.
+    const val HILLSHADE_FROM_DEM_ENABLED =
+        "UPDATE settings SET hillshadeOn = COALESCE((SELECT enabled FROM providers WHERE type = 'DEM' LIMIT 1), 0)"
+    // ... et le fond DEM reste liste, comme il l'etait toujours jusqu'ici. A jouer APRES la reprise
+    // ci-dessus, qui lit ce qu'on ecrase.
+    const val LIST_DEM_IN_CONTROL =
+        "UPDATE providers SET enabled = 1 WHERE type = 'DEM'"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -103,7 +114,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 33,
+    version = 34,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -248,11 +259,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_HILLSHADE_ON)
+                db.execSQL(MigrationSql.HILLSHADE_FROM_DEM_ENABLED)
+                db.execSQL(MigrationSql.LIST_DEM_IN_CONTROL)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

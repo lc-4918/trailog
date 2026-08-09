@@ -583,6 +583,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         db.providers().upsert(p.copy(enabled = !p.enabled))
     }
 
+    /** Tap sur le relief dans le gestionnaire : allume ou éteint son ombrage. Ne touche pas au fond DEM
+     *  lui-même, dont le `enabled` ne dit que sa présence dans la liste (cf. SettingsEntity.hillshadeOn). */
+    fun toggleHillshade() = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        db.settings().upsert(s.copy(hillshadeOn = !s.hillshadeOn))
+    }
+
     /** Réordonnancement unifié du Basemap Control : kind dans {"folder","provider","composite"}, id en String
      *  (id de provider natif, id de dossier/composite converti). Même logique que reorderDrop pour la légende. */
     suspend fun reorderBasemapDrop(kind: String, id: String, targetKind: String, targetId: String, position: DropPosition) {
@@ -727,10 +734,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun buildStyle(s: SettingsEntity, provs: List<ProviderEntity>, comps: List<CompositeEntity>): StyleBuilder.Result? {
         // Le relief n'est jamais un fond visuel en soi (tuiles DEM brutes illisibles telles quelles, cf.
-        // StyleBuilder) : il n'apparaît que s'il est activé directement (bascule via toggleProviderEnabled,
-        // tap dans le gestionnaire de couches) ou si le composite actif l'inclut en overlay.
+        // StyleBuilder) : il n'apparaît que si l'ombrage est allumé (tap dans le gestionnaire de couches)
+        // ou si le composite actif l'inclut en overlay.
+        //
+        // Le `enabled` du fond DEM compte aussi : retiré du gestionnaire, il n'y a plus de quoi éteindre
+        // l'ombrage, et le laisser sur la carte le rendrait indélogeable.
         val demProvider = provs.firstOrNull { it.type == "DEM" }
-        val toggledDem = demProvider?.takeIf { it.enabled }
+        val toggledDem = demProvider?.takeIf { it.enabled && s.hillshadeOn }
         val composite = activeComposite(s, comps)
         if (composite != null) {
             val bg = provs.firstOrNull { it.id == composite.backgroundProviderId }

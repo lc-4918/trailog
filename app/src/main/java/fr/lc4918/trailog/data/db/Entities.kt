@@ -105,6 +105,11 @@ data class SettingsEntity(
     val tapToleranceDp: Int = 10,      // marqueurs
     val lineTapToleranceDp: Int = 16,  // traces
     val terrain3d: Boolean = false,
+    // Ombrage du relief affiche sur la carte. Distinct du "enabled" du fond DEM, qui dit seulement s'il
+    // figure dans le gestionnaire de couches, comme pour tout autre fond : l'un se regle dans les
+    // parametres, l'autre d'un tap sur la carte. Les confondre faisait disparaitre le relief du
+    // gestionnaire au tap qui l'eteignait, sans plus aucun moyen de le rallumer.
+    val hillshadeOn: Boolean = false,
     val ambientCacheMb: Int = 200,
     val defaultBasemapId: String = "osm",
     val mbtilesDir: String = "",           // chemin réel ; vide = dossier privé de l'app

@@ -72,10 +72,10 @@ private fun combinedBasemapChildren(
     parentId: Long?, folders: List<BasemapFolderEntity>, providers: List<ProviderEntity>, composites: List<CompositeEntity>,
 ): List<Any> {
     val f = folders.filter { it.parentId == parentId }
-    // Le relief (DEM) reste toujours visible dans l'arbre, activé ou non : son "enabled" sert désormais de
-    // bascule tap-pour-activer/désactiver (bug relief), pas de filtre de visibilité comme les autres fonds
-    // sinon un tap qui l'éteint le ferait disparaître, sans plus aucun moyen de le rallumer.
-    val p = providers.filter { (it.enabled || it.type == "DEM") && it.folderId == parentId }
+    // Le relief suit la même règle que les autres fonds : présent ici s'il est coché dans les réglages.
+    // Ce n'est plus son "enabled" qui allume son ombrage - le tap le fait, sur un réglage à part
+    // (cf. SettingsEntity.hillshadeOn) - il n'y a donc plus de risque qu'un tap le fasse disparaître.
+    val p = providers.filter { it.enabled && it.folderId == parentId }
     val c = composites.filter { it.enabled && it.folderId == parentId }
     fun order(e: Any) = when (e) { is BasemapFolderEntity -> e.sortOrder; is ProviderEntity -> e.sortOrder; is CompositeEntity -> e.sortOrder; else -> 0 }
     fun typeRank(e: Any) = when (e) { is BasemapFolderEntity -> 0; is ProviderEntity -> 1; else -> 2 }
@@ -232,7 +232,8 @@ fun BasemapControlPanel(
     onSelect: (String) -> Unit,
     onCreateFolder: (String, Long?) -> Unit,
     onReorderDrop: suspend (String, String, String, String, DropPosition) -> Unit,
-    onToggleRelief: (String) -> Unit,
+    reliefOn: Boolean,
+    onToggleRelief: () -> Unit,
     onClose: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -285,7 +286,7 @@ fun BasemapControlPanel(
             HorizontalDivider()
             combinedBasemapChildren(null, folders, providers, composites).forEach { item ->
                 key(basemapNodeKey(item)) {
-                    BasemapNode(item, folders, providers, composites, 0, dctx, currentBasemapId, onSelect, onToggleRelief)
+                    BasemapNode(item, folders, providers, composites, 0, dctx, currentBasemapId, reliefOn, onSelect, onToggleRelief)
                 }
             }
         }
@@ -316,7 +317,8 @@ fun BasemapControlPanel(
 @Composable
 private fun BasemapNode(
     item: Any, allFolders: List<BasemapFolderEntity>, allProviders: List<ProviderEntity>, allComposites: List<CompositeEntity>,
-    depth: Int, dctx: BDragCtx, currentBasemapId: String, onSelect: (String) -> Unit, onToggleRelief: (String) -> Unit,
+    depth: Int, dctx: BDragCtx, currentBasemapId: String, reliefOn: Boolean,
+    onSelect: (String) -> Unit, onToggleRelief: () -> Unit,
 ) {
     when (item) {
         is BasemapFolderEntity -> {
@@ -369,16 +371,17 @@ private fun BasemapNode(
             if (expanded) {
                 combinedBasemapChildren(item.id, allFolders, allProviders, allComposites).forEach { child ->
                     key(basemapNodeKey(child)) {
-                        BasemapNode(child, allFolders, allProviders, allComposites, depth + 1, dctx, currentBasemapId, onSelect, onToggleRelief)
+                        BasemapNode(child, allFolders, allProviders, allComposites, depth + 1, dctx, currentBasemapId, reliefOn,
+                            onSelect, onToggleRelief)
                     }
                 }
             }
         }
-        // Le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes) : le tap bascule son
-        // activation (surbrillance = actif), au lieu de remplacer le fond courant comme les autres fonds.
+        // Le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes) : le tap allume ou
+        // éteint son ombrage (surbrillance = allumé), au lieu de remplacer le fond courant.
         is ProviderEntity -> if (item.type == "DEM") BasemapLeaf(
             kind = "provider", id = item.id, name = item.name, depth = depth,
-            selected = item.enabled, dctx = dctx, onSelect = { onToggleRelief(item.id) },
+            selected = reliefOn, dctx = dctx, onSelect = { onToggleRelief() },
         ) { BasemapIcon(item) } else BasemapLeaf(
             kind = "provider", id = item.id, name = item.name, depth = depth,
             selected = item.id == currentBasemapId, dctx = dctx, onSelect = { onSelect(item.id) },

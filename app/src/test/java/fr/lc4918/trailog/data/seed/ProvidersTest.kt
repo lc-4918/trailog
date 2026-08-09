@@ -70,10 +70,13 @@ class ProvidersTest {
         assertTrue(all.any { it.id == "osm" })
     }
 
-    @Test fun `un seul fond de relief, desactive par defaut`() {
+    /** Un seul fond DEM : tout le code le cherche par son type, pas par son id (cf. buildStyle). Il est
+     *  liste d'entree, contrairement aux autres fonds decoches : son "enabled" ne dit que sa presence dans
+     *  le gestionnaire, et l'ombrage lui-meme s'allume d'un tap (settings.hillshadeOn, faux par defaut). */
+    @Test fun `un seul fond de relief, liste des l'entree`() {
         val dem = all.filter { it.type == "DEM" }
         assertEquals(1, dem.size)
-        assertTrue("le relief ne doit pas etre actif d'office", !dem.first().enabled)
+        assertTrue("le relief doit figurer dans le gestionnaire", dem.first().enabled)
     }
 
     @Test fun `les surcouches sont declarees transparentes`() {
@@ -97,9 +100,10 @@ class ProvidersTest {
 
     /** Le Basemap Control ne liste que les fonds actifs : la liste ci-dessous est ce que voit un nouvel
      *  utilisateur. Un "enabled = false" oublie sur un fond ajoute la rallongerait sans qu'on le remarque. */
-    @Test fun `seuls sept fonds sont actifs d entree`() {
+    @Test fun `seuls huit fonds sont actifs d entree`() {
         assertEquals(
-            listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief", "ign_fr", "ign_es"),
+            listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief",
+                "dem_terrarium", "ign_fr", "ign_es"),
             all.filter { it.enabled }.map { it.id },
         )
     }

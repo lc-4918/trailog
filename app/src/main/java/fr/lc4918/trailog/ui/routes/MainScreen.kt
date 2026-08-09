@@ -1623,7 +1623,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         onSelect = { id -> vm.selectBasemap(id); basemapControlOpen = false },
                         onCreateFolder = { name, parentId -> vm.createBasemapFolder(name, parentId) },
                         onReorderDrop = { k, id, tk, tid, pos -> vm.reorderBasemapDrop(k, id, tk, tid, pos) },
-                        onToggleRelief = { id -> vm.toggleProviderEnabled(id) },
+                        reliefOn = settings?.hillshadeOn == true,
+                        onToggleRelief = { vm.toggleHillshade() },
                         onClose = { basemapControlOpen = false },
                     )
                 }
