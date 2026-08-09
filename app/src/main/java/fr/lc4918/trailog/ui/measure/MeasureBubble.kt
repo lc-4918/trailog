@@ -79,10 +79,14 @@ fun MeasureBubble(
                         modifier = Modifier.padding(start = 14.dp, end = 34.dp, top = 10.dp, bottom = 10.dp))
                 }
                 // Croix hors du padding du contenu : plaquee dans le coin haut-droit de la bulle.
+                // Teinte imposee comme celle du texte : posee HORS de la Card, la croix n'herite pas de sa
+                // couleur de contenu mais du LocalContentColor ambiant - noir sur le fond sombre du theme
+                // sombre, ou elle disparaissait.
                 CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                     IconButton(onClick = onClose,
                         modifier = Modifier.align(Alignment.TopEnd).size(26.dp)) {
-                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(15.dp))
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(15.dp),
+                            tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
