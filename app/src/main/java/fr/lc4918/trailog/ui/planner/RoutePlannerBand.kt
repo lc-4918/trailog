@@ -6,12 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,15 +29,14 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -53,7 +53,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.border
 import androidx.compose.ui.focus.FocusRequester
@@ -69,13 +71,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
-import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.profile.TrackInfoColumns
+import fr.lc4918.trailog.ui.profile.routeInfos
 import fr.lc4918.trailog.ui.settings.RoutingProfilePicker
 import fr.lc4918.trailog.ui.theme.TrailogDark
 import fr.lc4918.trailog.ui.theme.TrailogLight
@@ -90,10 +93,22 @@ private val BandMinHeight = 96.dp
 private const val BandAlpha = 0.94f
 
 /** Gabarit du champ d'une etape, partage entre le champ de saisie et l'affichage replie qui le remplace
- *  au repos : les deux doivent avoir exactement la meme allure, sans quoi la ligne sauterait au focus. */
+ *  au repos : les deux doivent avoir exactement la meme allure, sans quoi la ligne sauterait au focus.
+ *
+ *  La hauteur est IMPOSEE aux deux, et non laissee a leur contenu : le champ de saisie se mesure sur sa
+ *  ligne de texte, l'affichage replie sur sa bordure, et les etapes remplies se collaient les unes aux
+ *  autres la ou les vides gardaient un jour entre elles. */
 private val FieldShape = RoundedCornerShape(4.dp)
-private val FieldHeight = 48.dp
+private val FieldHeight = 40.dp
 private val FieldTextPadding = 16.dp
+
+/** Ce qui separe deux champs, en toute circonstance : pose autour de chacun, donc compte double entre
+ *  deux voisins. */
+private val FieldGap = 3.dp
+
+/** Le bouton d'ajout : sa cible tactile, et le dessin qu'elle porte. */
+private val AddButtonSize = 32.dp
+private val AddIconSize = 20.dp
 
 /** Fond du bouton de reouverture : un peu plus opaque que l'echelle graphique (0,7), qu'il cotoie dans le
  *  meme coin d'ecran et devant laquelle il doit se detacher. */
@@ -157,8 +172,9 @@ fun RoutePlannerBand(
                     )
                     RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
                     StepList(state, onPickCurrentPosition, gpsActive, dark, geocoding,
+                        onImport, onDownload,
                         Modifier.weight(1f, fill = false).padding(top = 10.dp))
-                    ResultsZone(state, imperial, settings, lastLabelInsetPx, onImport, onDownload)
+                    ResultsZone(state, imperial, settings, lastLabelInsetPx)
                 }
             }
         }
@@ -218,10 +234,13 @@ private fun CollapsedButton(onExpand: () -> Unit, modifier: Modifier = Modifier)
 }
 
 /**
- * Les etapes, et le bouton d'ajout sous la derniere.
+ * Les etapes, le bouton d'ajout sous la derniere, et les deux sorties du parcours a l'oppose.
  *
- * Le bouton `+` est aligne dans la marge gauche, a l'aplomb des champs et non dedans : il n'appartient a
- * aucune etape, il en cree une de plus.
+ * Le bouton `+` est aligne dans la marge gauche, a l'aplomb du bord des champs et non dedans : il
+ * n'appartient a aucune etape, il en cree une de plus.
+ *
+ * Enregistrer et telecharger partagent cette ligne parce qu'elle est la seule libre : les mettre sous les
+ * totaux les eloignait de la composition du parcours, alors qu'ils la terminent.
  */
 @Composable
 private fun StepList(
@@ -230,6 +249,8 @@ private fun StepList(
     gpsActive: Boolean,
     dark: Boolean,
     geocoding: GeocodingParams,
+    onImport: () -> Unit,
+    onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.verticalScroll(rememberScrollState())) {
@@ -249,13 +270,37 @@ private fun StepList(
                 geocoding = geocoding,
             )
         }
-        if (state.canAddStep) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                IconButton(onClick = { state.addStep() }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Filled.Add, stringResource(R.string.planner_add_step), Modifier.size(20.dp))
+                if (state.canAddStep) {
+                    // Decale de la moitie de sa marge interne : c'est le DESSIN du plus qui doit tomber
+                    // sur le bord des champs, non la cible tactile qui l'entoure.
+                    IconButton(
+                        onClick = { state.addStep() },
+                        modifier = Modifier.offset(x = -(AddButtonSize - AddIconSize) / 2).size(AddButtonSize),
+                    ) {
+                        Icon(Icons.Filled.Add, stringResource(R.string.planner_add_step),
+                            Modifier.size(AddIconSize))
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                // Les deux sorties n'ont de sens qu'une fois le parcours calcule : avant, elles n'auraient
+                // rien a ecrire. Memes boutons que ceux de l'en-tete du menu lateral, qui font deja ces
+                // gestes-la sur les couches.
+                if (state.route is RouteState.Done) {
+                    BandAction(Icons.Outlined.Save, stringResource(R.string.planner_import_layer), onImport)
+                    BandAction(Icons.Outlined.FileDownload, stringResource(R.string.planner_download_gpx), onDownload)
                 }
             }
         }
+    }
+}
+
+/** Une sortie du parcours : meme gabarit et meme gris que les actions de l'en-tete du menu lateral. */
+@Composable
+private fun BandAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Box(Modifier.size(38.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(icon, label, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -313,13 +358,13 @@ private fun StepRow(
     }
     Column(Modifier.bringIntoViewRequester(bringIntoView)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) {
+            Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
                 if (step.target != null && !focused) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie
                     // ne sait pas abreger - il fait defiler son texte et le coupe net au bord, sans dire
                     // qu'il en reste. Le champ reel reprend sa place des qu'on le touche.
                     Box(
-                        Modifier.fillMaxWidth().heightIn(min = FieldHeight)
+                        Modifier.fillMaxSize()
                             .border(1.dp, MaterialTheme.colorScheme.outline, FieldShape)
                             .clickable { focusRequester.requestFocus() }
                             .padding(horizontal = FieldTextPadding),
@@ -334,7 +379,7 @@ private fun StepRow(
                         onValueChange = { state.type(step, it) },
                         singleLine = true,
                         shape = FieldShape,
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                        modifier = Modifier.fillMaxSize().focusRequester(focusRequester)
                             .onFocusChanged {
                                 focused = it.isFocused
                                 if (it.isFocused) state.focus(step)
@@ -446,7 +491,7 @@ private fun SuggestionRow(label: String, icon: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * Ce que donne le calcul : les totaux, les deux sorties, et le profil.
+ * Ce que donne le calcul : les totaux, et le profil.
  *
  * Rien tant que le parcours n'a pas deux etapes : la zone n'apparait qu'avec quelque chose a dire.
  */
@@ -456,8 +501,6 @@ private fun ResultsZone(
     imperial: Boolean,
     settings: SettingsEntity?,
     lastLabelInsetPx: Float,
-    onImport: () -> Unit,
-    onDownload: () -> Unit,
 ) {
     when (val r = state.route) {
         RouteState.Idle -> Unit
@@ -468,7 +511,6 @@ private fun ResultsZone(
             fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         is RouteState.Done -> {
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
             // Fenetre affichee du profil : la plage zoomee, ou tout le parcours. Le kilometrage n'est
             // jamais remis a zero, seules les stats du bandeau sont recalculees sur la portion visible.
             val zoom = state.zoomRange
@@ -479,38 +521,19 @@ private fun ResultsZone(
             val stats = remember(r.track, zoom, samples) {
                 if (zoom != null) TrackMath.statsOf(samples) else r.track.stats
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Zoome, la duree DISPARAIT : le moteur ne la rend que pour le trajet entier, et rien
-                // n'autorise a la decouper - une portion de meme longueur ne se parcourt pas au meme
-                // rythme selon qu'elle monte ou descend. Mieux vaut ne rien dire que d'inventer.
-                // Zoome, la duree est ESTIMEE au prorata de la distance : le moteur ne la rend que pour
-                // le trajet entier. C'est une approximation - une portion qui monte se parcourt plus
-                // lentement qu'une portion plate de meme longueur - d'ou le "~" qui la precede.
-                val partSeconds = if (r.track.stats.distance > 0)
-                    r.seconds * stats.distance / r.track.stats.distance else 0.0
-                Text(
-                    if (state.zoomed) stringResource(R.string.planner_summary_part,
-                        Format.distance(stats.distance, imperial),
-                        Format.elevation(stats.ascent, imperial),
-                        Format.elevation(stats.descent, imperial),
-                        Format.duration(partSeconds))
-                    else stringResource(R.string.planner_summary,
-                        Format.distance(stats.distance, imperial),
-                        Format.elevation(stats.ascent, imperial),
-                        Format.elevation(stats.descent, imperial),
-                        Format.duration(r.seconds)),
-                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-                )
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    IconButton(onClick = onImport, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Filled.Save, stringResource(R.string.planner_import_layer), Modifier.size(19.dp))
-                    }
-                    IconButton(onClick = onDownload, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Filled.FileDownload, stringResource(R.string.planner_download_gpx), Modifier.size(19.dp))
-                    }
-                }
-            }
+            // Zoome, la duree est ESTIMEE au prorata de la distance : le moteur ne la rend que pour
+            // le trajet entier. C'est une approximation - une portion qui monte se parcourt plus
+            // lentement qu'une portion plate de meme longueur - d'ou le "~" qui la precede.
+            val partSeconds = if (r.track.stats.distance > 0)
+                r.seconds * stats.distance / r.track.stats.distance else 0.0
+            // Memes colonnes, memes tailles et meme reglage que les infos d'une trace sous son profil :
+            // c'est la meme lecture, sur un parcours qu'on vient de calculer plutot que sur un fichier.
+            TrackInfoColumns(
+                routeInfos(stats, if (state.zoomed) partSeconds else r.seconds, state.zoomed, imperial),
+                fontSp = settings?.profBarFont ?: 11,
+                bold = settings?.profBarBold == true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             // Le profil est replie derriere son libelle : il occupe a lui seul la moitie de la hauteur
             // disponible, et il n'a d'interet qu'une fois le trajet compose. La zone resultats se reduit
             // donc a une ligne de totaux et a cette bascule, tant qu'on ne demande pas le relief.

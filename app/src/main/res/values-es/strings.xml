@@ -51,15 +51,15 @@
     <string name="action_load_image_from_phone">Cargar una imagen</string>
     <string name="action_manage_providers">Gestionar proveedores</string>
     <string name="action_offline_download">Mapa sin conexión</string>
+    <string name="offline_bbox_step_label">Selecciona el área a descargar</string>
     <string name="offline_bbox_points_count">%1$d/2 puntos</string>
     <string name="offline_action_cancel_point">Deshacer punto</string>
     <string name="offline_action_back">Volver</string>
     <string name="offline_action_validate">Validar</string>
-    <string name="offline_config_title">Configuración de la descarga</string>
+    <string name="offline_config_title">Descarga de teselas</string>
     <string name="offline_config_zoom_label">Niveles de zoom</string>
-    <string name="offline_config_zoom_range">Zoom %1$d a %2$d</string>
-    <string name="offline_config_stat_tiles">Número de teselas: %1$s</string>
-    <string name="offline_config_stat_size">Tamaño estimado: %1$s</string>
+    <string name="offline_config_label_tiles">Número de teselas</string>
+    <string name="offline_config_label_size">Tamaño estimado</string>
     <string name="offline_config_name_label">Nombre de la capa</string>
     <string name="offline_config_name_placeholder">ej. Mi ruta de julio de 2026</string>
     <string name="offline_config_continue_on_error_label">Continuar en caso de error</string>
@@ -108,8 +108,6 @@
     <string name="planner_remove_step">Eliminar el punto</string>
     <string name="planner_import_layer">Importar como capa</string>
     <string name="planner_download_gpx">Descargar en GPX</string>
-    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
-    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nombre de la capa</string>
     <string name="planner_clear_step">Borrar</string>
@@ -128,6 +126,7 @@
 
     <!-- Diálogos -->
     <string name="dialog_composite_title">Nuevo mapa base compuesto</string>
+    <string name="dialog_composite_edit_title">Editar el fondo compuesto</string>
     <string name="dialog_import_into_title">Importar en...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inactivo</string>
     <string name="dialog_gps_disabled_text">La localización está desactivada. ¿Quieres activarla?</string>
@@ -247,8 +246,8 @@
     <string name="settings_field_name">Nombre</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clave API</string>
-    <string name="settings_field_tile_size">Tamaño de tesela (px) - normalmente 256 o 512</string>
     <string name="settings_field_relief_opacity">Opacidad del relieve: %1$d%%</string>
+    <string name="basemap_relief_active">Activo</string>
     <string name="settings_field_zoom_levels">Niveles de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicación: %1$s</string>
     <string name="offline_thumb_location_title">Ubicación global</string>
@@ -341,4 +340,46 @@
 
     <string name="profile_no_elevation">Recorrido sin altimetría</string>
 
+    <string name="settings_section_map_controls">Botones y gestos</string>
+    <string name="settings_group_storage">Almacenamiento</string>
+    <string name="settings_group_interaction">Interacción</string>
+    <string name="settings_group_appearance">Apariencia</string>
+    <string name="settings_group_application">Aplicación</string>
+    <string name="settings_section_add_basemap">Añadir un fondo</string>
+    <string name="settings_section_installed_basemaps">Fondos instalados</string>
+    <string name="settings_section_services">Servicios</string>
+    <string name="settings_section_profile_calc">Cálculo del perfil</string>
+    <string name="settings_section_personalisation">Personalización</string>
+    <string name="settings_section_tap_tolerance">Tolerancia de toque</string>
+    <string name="settings_section_side_menu_open">Apertura del menú lateral</string>
+    <string name="settings_providers_subtitle">URL, claves de API, niveles de zoom</string>
+    <string name="settings_label_panel_width">Ancho del panel</string>
+    <string name="settings_label_panel_opacity">Opacidad del panel</string>
+    <string name="settings_label_opacity">Opacidad</string>
+    <string name="settings_label_show_button">Mostrar el botón</string>
+    <string name="settings_label_smoothing">Suavizado del perfil</string>
+    <string name="settings_label_vertical_scale">Escala vertical</string>
+    <string name="settings_label_title_line">Línea de título</string>
+    <string name="settings_label_current_point">Punto actual</string>
+    <string name="settings_label_waypoints">Waypoints</string>
+    <string name="settings_label_tracks">Trazas</string>
+    <string name="settings_label_theme">Tema</string>
+    <string name="settings_label_language">Idioma</string>
+    <string name="settings_label_units">Unidades</string>
+    <string name="settings_label_updates">Actualizaciones</string>
+    <string name="settings_label_map_button_size">Tamaño de los botones</string>
+    <string name="settings_label_marker_size">Tamaño de los marcadores</string>
+    <string name="settings_label_bubble_position">Posición</string>
+    <string name="settings_label_avatar">Avatar</string>
+    <string name="settings_label_side_title">Título del menú lateral</string>
+    <string name="settings_sw_gps_button">Botón de ubicación GPS</string>
+    <string name="settings_sw_geocoding">Búsqueda de lugar y dirección</string>
+    <string name="settings_sw_planner">Botón del planificador</string>
+    <string name="settings_sw_measure">Botón de medición</string>
+    <string name="settings_sw_scale">Escala gráfica</string>
+    <string name="settings_sw_rotation">Rotación del mapa</string>
+    <string name="settings_sw_buttons_bg">Fondo detrás de los botones</string>
+    <string name="settings_sw_status_bar_sub">El mapa pasa por debajo</string>
+    <string name="settings_sw_simplify_sub">Visualización más rápida</string>
+    <string name="settings_services_hint">Dejar vacío para usar los servidores públicos predeterminados.</string>
 </resources>

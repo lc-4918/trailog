@@ -358,6 +358,21 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 34 -> 35 : les fonds d'un pays perdent le pays de leur nom ----------
+
+    /** Ne renomme que les fonds restes au nom seme : un nom choisi a la main dans les reglages doit
+     *  survivre a la migration, sans quoi elle effacerait un choix de l'utilisateur. */
+    @Test fun `34 vers 35 renomme les fonds pays sans toucher aux noms personnalises`() {
+        val db = freshDb("m3435"); providersV18(db)
+        db.execSQL("UPDATE providers SET name = 'Croatie - DGU' WHERE id = 'hr'")
+        db.execSQL("INSERT INTO providers VALUES ('gb','Mon fond a moi','Pays','XYZ','u',NULL,NULL,0,16,256,NULL,0,1,1,9,NULL)")
+        db.execSQL(MigrationSql.DROP_COUNTRY_FROM_NAMES)
+        assertEquals("DGU TK25", scalar(db, "SELECT name FROM providers WHERE id = 'hr'") { it.getString(0) })
+        assertEquals("Mon fond a moi", scalar(db, "SELECT name FROM providers WHERE id = 'gb'") { it.getString(0) })
+        assertEquals("OSM", scalar(db, "SELECT name FROM providers WHERE id = 'osm'") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {

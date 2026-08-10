@@ -19,6 +19,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -48,6 +49,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
@@ -81,6 +90,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
@@ -150,6 +160,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.profile.TrackInfoColumns
+import fr.lc4918.trailog.ui.profile.cursorInfos
+import fr.lc4918.trailog.ui.profile.titleInfos
 import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.log10
@@ -462,8 +475,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * allume - un fond blanc par-dessus lui oterait sa seule marque d'etat.
      */
     val mapButtonSize = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
+    // Ornements poses sur la carte : en theme sombre, le fond et le dessin s'echangent (cf. MapChromeBg).
+    val darkChrome = isDarkTheme(settings?.theme)
+    val chromeBg = mapChromeBg(darkChrome)
+    val chromeFg = mapChromeFg(darkChrome)
     val controlBg: Modifier = if (settings?.controlButtonsBackground != true) Modifier
-        else Modifier.mapButtonBackground(Color.White.copy(alpha = ControlButtonBgAlpha), mapButtonSize)
+        else Modifier.mapButtonBackground(chromeBg.copy(alpha = ControlButtonBgAlpha), mapButtonSize)
     // Hauteur reelle de la bande, mesuree : le cadrage du parcours doit degager ce qu'elle recouvre, et
     // elle varie avec le nombre d'etapes et la presence du profil.
     var plannerBandHeightPx by remember { mutableIntStateOf(0) }
@@ -758,8 +775,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
     LaunchedEffect(cursor, computed) {
         val idx = cursor; val s = computed?.samples
-        if (idx != null && s != null && idx in s.indices) controller.setCursor(s[idx].lon, s[idx].lat)
-        else controller.clearCursor()
+        if (idx != null && s != null && idx in s.indices) {
+            val p = s[idx]
+            controller.setCursor(p.lon, p.lat)
+            // Curseur sorti de l'ecran : la carte le rejoint. Deplacer le curseur sur le profil, c'est
+            // demander a voir cet endroit-la ; le laisser hors champ rendrait le geste muet des qu'on
+            // s'eloigne de la portion visible.
+            if (!controller.isOnScreen(p.lon, p.lat)) controller.centerOn(p.lat, p.lon)
+        } else {
+            controller.clearCursor()
+        }
     }
     // Synchronisation carte <-> zoom du profil : on recadre UNIQUEMENT sur l'emprise de la portion zoomée
     // (sélection A/B). Un simple tap sur une trace, sans zoom actif, ne déplace jamais la carte : on garde la
@@ -889,7 +914,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         drawerState = drawerState,
         gesturesEnabled = mode != "burger" && drawerState.isOpen,   // swipe-fermeture uniquement quand ouvert
         drawerContent = {
-            ModalDrawerSheet(Modifier.fillMaxWidth()) {
+            // Fond de la liste : la surface la plus claire du theme. C'est l'en-tete qui porte une teinte
+            // (cf. LegendContent), pas la liste - l'inverse noierait les lignes dans un aplat.
+            ModalDrawerSheet(Modifier.fillMaxWidth(), drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 LegendContent(
                     folders = folders, layers = layers, settings = settings, vm = vm,
                     onSettings = { scope.launch { drawerState.snapTo(DrawerValue.Closed) }; onSettings() },
@@ -934,7 +961,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     Row(horizontalArrangement = Arrangement.spacedBy(MapControlSpacing)) {
                         if (mode != "swipe") {
                             IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = controlBg) {
-                                Icon(Icons.Filled.Menu, stringResource(R.string.action_menu))
+                                Icon(Icons.Filled.Menu, stringResource(R.string.action_menu), tint = chromeFg)
                             }
                         }
                         if (settings?.showGpsButton == true) {
@@ -953,9 +980,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
-                                        tint = if (gpsActive) Color.White else LocalContentColor.current)
+                                        tint = if (gpsActive) Color.White else chromeFg)
                                     Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
-                                        color = if (gpsActive) Color.White else LocalContentColor.current)
+                                        color = if (gpsActive) Color.White else chromeFg)
                                 }
                             }
                         }
@@ -969,7 +996,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // colonne du haut, là où la barre a la place de se déplier.
                     if (settings?.geocodingEnabled == true) {
                         IconButton(onClick = { onGeocodeButtonTap() }, modifier = controlBg) {
-                            Icon(Icons.Filled.LocationSearching, stringResource(R.string.content_desc_geocode_search))
+                            // Loupe posée sur un globe, et non la cible de visée d'avant : celle-ci disait
+                            // "se repérer", quand ce bouton cherche un lieu par son nom. Le globe distingue
+                            // au passage cette recherche-là d'une recherche de texte dans l'application.
+                            Icon(Icons.Filled.Search, stringResource(R.string.content_desc_geocode_search), tint = chromeFg)
                         }
                     }
                     // Sous la recherche, et à sa place quand elle est masquée : la colonne se resserre
@@ -983,7 +1013,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             if (planner.open) planner.collapse(true)
                             measure.open()
                         }, modifier = controlBg) {
-                            Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title))
+                            Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title), tint = chromeFg)
                         }
                     }
                     if (geo.searchOpen) {
@@ -1004,7 +1034,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     if (kotlin.math.abs(bearing) > 0.5) {
                         IconButton(onClick = { controller.resetNorth() }, modifier = controlBg) {
                             Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
-                                modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() })
+                                modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() }, tint = chromeFg)
                         }
                     }
                     // Légende du fond affiché, s'il en fournit une (cf. ProviderEntity.legendAsset) : à
@@ -1019,14 +1049,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 legendAnchor = IntOffset(p.x.roundToInt(), p.y.roundToInt())
                             },
                         ) {
-                            Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend))
+                            Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend), tint = chromeFg)
                         }
                     }
                     if (settings?.showBasemapControlButton == true) {
                         IconButton(onClick = { basemapControlOpen = true }, modifier = controlBg) {
                             // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
                             // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
-                            Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control))
+                            Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control), tint = chromeFg)
                         }
                     }
                 }
@@ -1054,6 +1084,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     }
                     val base = Modifier.align(Alignment.BottomStart)
                     ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f,
+                        bg = chromeBg, fg = chromeFg,
                         modifier = (if (bottomBarPx > 0) base.padding(bottom = with(density) { bottomBarPx.toDp() } + 8.dp)
                             else base.padding(bottom = 8.dp).navigationBarsPadding()).padding(start = 16.dp))
                 }
@@ -1300,7 +1331,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     if (gpsActive && positionOffCenter) {
                         IconButton(onClick = { recenterOnGps() }, modifier = controlBg) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location))
+                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location), tint = chromeFg)
                                 // Disque central au bleu du point de position : le bouton n'existant que
                                 // hors centre, c'est sa seule teinte.
                                 Canvas(Modifier.size(MyLocationDotSize)) { drawCircle(color = RecenterDotColor) }
@@ -1318,7 +1349,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
                             }
                         }, modifier = controlBg) {
-                            Icon(Icons.Filled.Directions, stringResource(R.string.planner_title))
+                            Icon(Icons.Filled.Directions, stringResource(R.string.planner_title), tint = chromeFg)
                         }
                     }
                 }
@@ -1451,6 +1482,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
                         pointCount = offlineBboxPoints.size,
+                        dark = darkChrome,
                         onCancelPoint = { offlineBboxPoints = offlineBboxPoints.dropLast(1) },
                         onCancelAll = { cancelOfflineDrawing() },
                         onValidate = {
@@ -1459,7 +1491,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             offlineConfigBbox = Bbox.of(lon1, lat1, lon2, lat2)
                             offlineDrawingActive = false
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                        modifier = Modifier.align(Alignment.BottomCenter)
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
                 }
@@ -1514,22 +1546,32 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
                     val imp = settings?.units == "imperial"
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
-                    Text(cursorInfoText(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
-                        fontSize = (settings?.profCursorFont ?: 11).sp,
-                        fontWeight = if (settings?.profCursorBold == true) FontWeight.Bold else null,
-                        color = Color.Black,
-                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = cursorBottomDp + 4.dp)
-                            .background(Color.White.copy(alpha = 0.7f))
-                            .padding(horizontal = 4.dp, vertical = 1.dp))
+                    // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur
+                    // un point plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui
+                    // est seul et va a gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
+                    CompositionLocalProvider(LocalContentColor provides Color.Black) {
+                        TrackInfoColumns(
+                            cursorInfos(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
+                            fontSp = settings?.profCursorFont ?: 11,
+                            bold = settings?.profCursorBold == true,
+                            arrangement = Arrangement.spacedBy(14.dp),
+                            // Meme ecart a droite qu'entre le bas du bloc et le profil : le coin se lit
+                            // alors comme un coin, et non comme deux marges qui ne se repondent pas.
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                                .padding(end = CursorInfoGap, bottom = cursorBottomDp + CursorInfoGap)
+                                .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
                 }
-                // Boutons de zoom sur le profil (début/fin de sélection A/B, expand pour dézoomer d'un niveau) :
-                // même hauteur que les infos du curseur ci-dessus, alignés à droite.
+                // Bouton de zoom du profil : même hauteur que les infos du point ci-dessus, mais à gauche -
+                // elles occupent désormais la droite.
                 if (activeLayerId != null && shown != null) {
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = cursorBottomDp + 4.dp)
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = cursorBottomDp + 4.dp)
                             .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
                     ) {
                         // Seul bouton restant : le retour a la vue complete. Le zoom lui-meme se fait aux
@@ -1554,21 +1596,41 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .padding(horizontal = 8.dp).navigationBarsPadding()
                             .onGloballyPositioned { profileBarHeightPx = it.size.height },
                     ) {
-                        ProfileTitleRow {
-                            Text(profileTitle, fontSize = (settings?.profTitleFont ?: 13).sp,
+                        // Le titre a sa ligne, les infos la leur : elles s'etalent alors sur toute la
+                        // largeur, en colonnes libellees, la ou les serrer a la suite du titre les
+                        // reduisait a une file de valeurs sans nom.
+                        //
+                        // Le "i" de la legende des pentes se pose AU-DESSUS du titre, au bout de sa ligne :
+                        // il ne lui prend pas de place, et un titre long passe dessous - d'ou son fond
+                        // blanc, qui le garde lisible sur le texte.
+                        val legendShown = settings?.profileSlope != false && settings?.profileSlopeLegend == true
+                        Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
+                            Text(profileTitle, fontSize = (settings?.profTitleFont ?: 16).sp,
                                 fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
                                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            if (windowStats != null) {
-                                TitleInfosRow(
-                                    titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp),
-                                    fontSize = settings?.profBarFont ?: 11,
-                                    bold = settings?.profBarBold == true)
+                            if (settings?.profileSlope != false) {
+                                SlopeLegendButton(
+                                    shown = legendShown,
+                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                ) { vm.setSlopeLegend(!legendShown) }
                             }
                         }
-                        if (windowStats != null && settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+                        if (windowStats != null) {
+                            TrackInfoColumns(
+                                titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp),
+                                fontSp = settings?.profBarFont ?: 11,
+                                bold = settings?.profBarBold == true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (windowStats != null && legendShown) {
                             SlopeLegend(windowStats.maxAbsSlope, settings?.profLegendFont ?: 9,
                                 Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 bold = settings?.profLegendBold == true)
+                        } else {
+                            // Sans legende, les infos toucheraient le graphique : elle tenait lieu de
+                            // respiration entre les deux.
+                            Spacer(Modifier.height(ProfileGraphGap))
                         }
                         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                             // Trace sans altitude : le profil serait une ligne plate et muette. On le
@@ -1636,6 +1698,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     bbox = bbox,
                     providerMinZoom = currentProvider?.minZoom ?: 0,
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
+                    dark = darkChrome,
+                    styleJson = style?.styleJson, styleUrl = style?.styleUrl,
                     onDismiss = { closeOfflineFlow() },
                     onDownload = { request ->
                         // Domaine B : lance le moteur, puis revient à la carte ou la popup de progression
@@ -1672,7 +1736,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     TextButton(onClick = { newFolderName = ""; folderPicker = false; newFolderDialog = true }) {
-                        Icon(Icons.Filled.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.label_new_folder))
+                        Icon(Icons.Outlined.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.label_new_folder))
                     }
                     HorizontalDivider(Modifier.padding(vertical = 4.dp))
                     TextButton(onClick = { pendingFolder = null; folderPicker = false; launchPicker() }) { Text(stringResource(R.string.label_root)) }
@@ -1986,55 +2050,63 @@ private fun LegendContent(
         // Header 2 lignes à hauteur totale inchangée (SPEC section 6.1) : l'ancien Row faisait 48dp de
         // contenu (IconButton) + 32dp de padding vertical = 80dp. On désactive le plancher tactile
         // de 48dp de Material3 (cf. Groupe N) pour tenir 2 lignes de 32dp dans le même budget.
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box(Modifier.fillMaxWidth()) {
+            // Plus de marge sous la bande grise : l'arborescence commence juste dessous, la bande faisant
+            // desormais la separation a elle seule.
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Column(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().height(32.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onSettings, modifier = Modifier.size(32.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(34.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(30.dp).clickable(onClick = onSettings)) {
                             Avatar(settings?.avatarSource ?: "", size = 30.dp, contentDescription = stringResource(R.string.settings_title))
                         }
                         Spacer(Modifier.width(8.dp))
-                        // Même taille/graisse que le titre "Réglages" (TopAppBar, titleLarge) : cohérence
-                        // entre les deux menus (bug 2.1). Fallback traduit si le titre personnalisé est vide,
-                        // au lieu de ne rien afficher.
+                        // Meme taille et meme graisse que le titre "Reglages" (17 sp, semi-gras) : ce sont
+                        // les deux titres d'ecran de l'application, et rien ne justifierait qu'ils se lisent
+                        // a deux tailles. La maquette du tiroir en donnait 15 ; celle des reglages, plus
+                        // recente, en donne 17, et c'est elle qui fait foi pour les deux.
+                        // Fallback traduit si le titre personnalise est vide, au lieu de ne rien afficher.
                         val title = settings?.customTitle?.ifBlank { stringResource(R.string.drawer_default_title) }
                             ?: stringResource(R.string.drawer_default_title)
-                        Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1,
+                        Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
-                    Spacer(Modifier.height(12.dp))
-                    // Trois actions du header en icône seule, même style (IconButton sans contour, 36 dp) :
-                    // "Nouveau dossier", "Importer" et "Carte hors-ligne", groupées à gauche avec un
-                    // espacement régulier ; le libellé passe en description d'accessibilité de l'icône.
+                    Spacer(Modifier.height(11.dp))
+                    // Les actions du header, sur la seule bande grise de l'en-tete : c'est elle qui les
+                    // rassemble, et le titre au-dessus s'en trouve rendu au fond du tiroir.
+                    //
+                    // "Importer" et "Telecharger" portent leur libelle, et tout le bouton - icone comme
+                    // texte - declenche l'action : ce sont les deux gestes qu'on vient chercher ici, et
+                    // une icone seule ne dit pas ce qu'elle importe ni ce qu'elle telecharge. "Nouveau
+                    // dossier" garde l'icone seule, universelle, et laisse la place aux deux autres.
                     Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        IconButton(onClick = { openNewFolder(null) }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder))
-                        }
-                        IconButton(onClick = onImport, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Filled.FileUpload, stringResource(R.string.action_import))
-                        }
+                        HeaderAction(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder)) { openNewFolder(null) }
+                        HeaderAction(Icons.Outlined.FileUpload, stringResource(R.string.action_import),
+                            showLabel = true, onClick = onImport)
                         if (showOfflineButton) {
-                            IconButton(onClick = onDownloadOffline, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Filled.Download, stringResource(R.string.action_offline_download))
-                            }
+                            HeaderAction(Icons.Outlined.FileDownload, stringResource(R.string.offline_action_download),
+                                showLabel = true, onClick = onDownloadOffline)
                         }
                     }
                 }
                 // Décalé au maximum vers l'angle haut-droit (SPEC section 6.1), superposé aux 2 lignes ci-dessus
                 // sans agrandir la hauteur du Box (32dp < hauteur totale du Column).
-                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
-                    Icon(Icons.Filled.Close, stringResource(R.string.action_close_menu), Modifier.size(18.dp))
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(end = 14.dp).size(30.dp).clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_close_menu), Modifier.size(17.dp))
                 }
             }
         }
-        HorizontalDivider()
 
         // Seule la liste défile verticalement ; le header reste fixe (SPEC menu latéral).
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 6.dp)) {
             if (null in importingIds) ImportSpinnerRow(0)
             combinedChildren(null, folders, layers).forEach { item ->
                 when (item) {
@@ -2130,37 +2202,50 @@ private fun FolderNode(
     val hoverZone = dctx.hoverTarget?.takeIf { it.kind == "folder" && it.id == folder.id }?.zone
 
     if (hoverZone == HoverZone.BEFORE) DropIndicatorLine()
-    Row(Modifier.fillMaxWidth()
-        .onGloballyPositioned { dctx.rowBounds["folder" to folder.id] = it.positionInRoot().y }
-        .zIndex(if (isDragging) 1f else 0f)
-        .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
-        .background(if (hoverZone == HoverZone.INTO) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-        .padding(start = (4 + depth * 20).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
+    DrawerRow(
+        depth = depth, dragging = isDragging, offset = offset, hovered = hoverZone == HoverZone.INTO,
+        onPositioned = { dctx.rowBounds["folder" to folder.id] = it },
+    ) {
         val allVisible = contents.isEmpty() || contents.all { it.visible }
-        IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(40.dp)) {
-            Icon(if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight, if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand))
-        }
-        IconButton(onClick = { vm.setFolderVisible(folder.id, !allVisible) }, modifier = Modifier.size(40.dp)) {
-            Icon(if (allVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                if (allVisible) stringResource(R.string.action_hide_folder) else stringResource(R.string.action_show_folder))
-        }
+        DrawerIcon(
+            if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
+            if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
+            size = DrawerChevronSize, onClick = { expanded = !expanded },
+        )
+        DrawerIcon(
+            if (allVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+            if (allVisible) stringResource(R.string.action_hide_folder) else stringResource(R.string.action_show_folder),
+            onClick = { vm.setFolderVisible(folder.id, !allVisible) },
+        )
         // Couleur adaptée au thème (clair/sombre), pas figée : contour (fermé) ou remplissage (ouvert)
         // noir en thème clair, blanc en thème sombre (bug 4.1). Même silhouette pleine (Filled.Folder) dans
         // les deux états : Filled.FolderOpen ne remplit que l'onglet arrière, pas tout le dossier.
-        Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null, Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(6.dp))
-        Text(folder.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        DragHandle(
-            onStart = { strongHaptic(context); dctx.onStart("folder", folder.id) },
-            onDrag = { dctx.onDrag("folder", folder.id, it) },
-            onEnd = { dctx.onEnd("folder", folder.id) })
-        Spacer(Modifier.width(6.dp))
-        RowMenu(onRename = { onRename("folder", folder.id, folder.name) }, onMove = { onMove("folder", folder.id) },
-            onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
-            onZoom = { onZoom("folder", folder.id) },
-            onColor = if (contents.isEmpty()) null else ({ showColor = true }))
+        Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null,
+            Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Nom d'un dossier : gras et en capitales. Il ne porte pas de couleur, contrairement a une couche,
+        // et n'a que sa graisse pour se distinguer de ce qu'il contient.
+        Text(folder.name.uppercase(), fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp,
+            fontWeight = FontWeight.Bold, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f))
+        // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
+        // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
+        if (contents.isNotEmpty()) {
+            Text("${contents.size}", fontSize = DrawerCountSp.sp, lineHeight = (DrawerCountSp * 1.3f).sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // Poignee et menu colles : ce sont les deux prises de la ligne, pas deux elements a distinguer.
+        // L'ecart de la ligne les separerait autant que le nom du compteur, qui n'ont rien a voir entre eux.
+        RowEndActions {
+            DragHandle(
+                onStart = { strongHaptic(context); dctx.onStart("folder", folder.id) },
+                onDrag = { dctx.onDrag("folder", folder.id, it) },
+                onEnd = { dctx.onEnd("folder", folder.id) })
+            RowMenu(onRename = { onRename("folder", folder.id, folder.name) }, onMove = { onMove("folder", folder.id) },
+                onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
+                onZoom = { onZoom("folder", folder.id) },
+                onColor = if (contents.isEmpty()) null else ({ showColor = true }))
+        }
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
     // Coche posee sur la couleur commune aux couches du dossier, s'il y en a une : autrement elles sont de
@@ -2210,9 +2295,9 @@ private fun LayerRow(
         kind = "layer", id = layer.id,
         depth = depth, color = layer.color, name = layer.name, visible = layer.visible,
         icon = when {
-            layer.hasLine && layer.hasPoints -> Icons.Filled.Public
-            layer.hasLine -> Icons.Filled.Route
-            else -> Icons.Filled.Place
+            layer.hasLine && layer.hasPoints -> R.drawable.ic_layer_globe
+            layer.hasLine -> R.drawable.ic_layer_route
+            else -> R.drawable.ic_layer_place
         },
         onToggle = { vm.setLayerVisible(layer, it) }, onColor = { vm.setLayerColor(layer, it) }, dctx = dctx,
         onRename = { onRename("layer", layer.id, layer.name) }, onMove = { onMove("layer", layer.id) },
@@ -2225,7 +2310,7 @@ private fun LayerRow(
 private fun LayerLine(
     kind: String, id: Long,
     depth: Int, color: String, name: String, visible: Boolean,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    @DrawableRes icon: Int,
     onToggle: (Boolean) -> Unit, onColor: (String) -> Unit, dctx: DragCtx,
     onRename: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit, onZoom: () -> Unit,
 ) {
@@ -2236,28 +2321,36 @@ private fun LayerLine(
     val hoverZone = dctx.hoverTarget?.takeIf { it.kind == kind && it.id == id }?.zone
 
     if (hoverZone == HoverZone.BEFORE) DropIndicatorLine()
-    Row(Modifier.fillMaxWidth()
-        .onGloballyPositioned { dctx.rowBounds[kind to id] = it.positionInRoot().y }
-        .zIndex(if (isDragging) 1f else 0f)
-        .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
-        .padding(start = (4 + depth * 20).dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onToggle(!visible) }, modifier = Modifier.size(40.dp)) {
-            Icon(if (visible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show))
+    DrawerRow(
+        depth = depth, dragging = isDragging, offset = offset, hovered = false,
+        onPositioned = { dctx.rowBounds[kind to id] = it },
+    ) {
+        // Place du chevron d'un dossier, laissee vide : sans elle, l'oeil d'une couche remonterait sous
+        // celui de son dossier et l'arbre perdrait sa colonne.
+        Spacer(Modifier.width(DrawerChevronSize))
+        DrawerIcon(
+            if (visible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
+            if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show),
+            onClick = { onToggle(!visible) },
+        )
+        // Le symbole palit avec le nom quand la couche est masquee : une ligne eteinte doit se lire
+        // eteinte d'un bout a l'autre, pas seulement a son oeil barre.
+        DrawerIcon(
+            painter = painterResource(icon), contentDescription = stringResource(R.string.action_color),
+            tint = Color(color.toColorInt()).copy(alpha = if (visible) 1f else 0.4f),
+            onClick = { showColor = true },
+        )
+        Text(name, fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            color = if (visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            modifier = Modifier.weight(1f))
+        RowEndActions {
+            DragHandle(
+                onStart = { strongHaptic(context); dctx.onStart(kind, id) },
+                onDrag = { dctx.onDrag(kind, id, it) },
+                onEnd = { dctx.onEnd(kind, id) })
+            RowMenu(onRename = onRename, onMove = onMove, onNewSub = null, onDelete = onDelete, onZoom = onZoom)
         }
-        IconButton(onClick = { showColor = true }, modifier = Modifier.size(40.dp)) {
-            Icon(icon, stringResource(R.string.action_color), tint = Color(color.toColorInt()))
-        }
-        Spacer(Modifier.width(2.dp))
-        Text(name, modifier = Modifier.weight(1f),
-            color = if (visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-        DragHandle(
-            onStart = { strongHaptic(context); dctx.onStart(kind, id) },
-            onDrag = { dctx.onDrag(kind, id, it) },
-            onEnd = { dctx.onEnd(kind, id) })
-        Spacer(Modifier.width(6.dp))
-        RowMenu(onRename = onRename, onMove = onMove, onNewSub = null, onDelete = onDelete, onZoom = onZoom)
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
     if (showColor) ColorPickerDialog(color, onPick = { onColor(it); showColor = false }, onDismiss = { showColor = false })
@@ -2279,6 +2372,24 @@ private const val GeocodeResultLimit = 10
  *  porte qu'un trait et deux chiffres, la ou un bouton doit rester franchement lisible sur une orthophoto
  *  ou un fond satellite. */
 private const val ControlButtonBgAlpha = 0.9f
+
+/**
+ * Fond des ornements poses sur la carte - echelle graphique et boutons de controle - en theme sombre.
+ *
+ * Clair, ils s'ecrivent en noir sur blanc ; sombre, les deux s'echangent, faute de quoi un pave blanc
+ * troue un ecran par ailleurs sombre et eblouit de nuit, quand on s'en sert le plus.
+ *
+ * Gris tres fonce et non noir : un aplat franchement noir sur un fond de carte sombre ne se lit plus
+ * comme un objet POSE dessus mais comme un trou dedans, et ses angles arrondis disparaissent.
+ */
+private val MapChromeDarkBg = Color(0xFF202124)
+
+/** Le fond d'un ornement de carte selon le theme. */
+private fun mapChromeBg(dark: Boolean): Color = if (dark) MapChromeDarkBg else Color.White
+
+/** Ce qui se dessine dessus : l'inverse exact du fond, sans demi-teinte - ces objets sont petits et se
+ *  lisent par-dessus n'importe quel fond de carte. */
+private fun mapChromeFg(dark: Boolean): Color = if (dark) Color.White else Color.Black
 
 /**
  * Fond d'un bouton pose sur la carte : un carre a peine adouci, resserre autour de l'icone.
@@ -2303,6 +2414,39 @@ private fun Modifier.mapButtonBackground(color: Color, square: Dp): Modifier = d
 /** Angles du fond : ceux du bouton d'itineraire de Google Maps, borne a la moitie du cote pour qu'un
  *  petit bouton s'arrondisse sans jamais depasser le cercle. */
 private val ControlButtonRadius = 16.dp
+
+/**
+ * Bouton "i" de la legende des pentes, au bout de la ligne de titre du profil.
+ *
+ * La legende n'a plus de reglage : elle se demande la, sur le profil qu'elle explique, et se referme du
+ * meme geste. Un reglage aurait demande d'aller le chercher dans un autre ecran pour lire une echelle de
+ * couleurs qu'on ne consulte qu'une fois.
+ *
+ * Fond blanc a 60 % : le bouton flotte au-dessus du titre, qu'un nom long fait passer dessous.
+ */
+@Composable
+private fun SlopeLegendButton(shown: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.6f)).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (shown) Icons.Filled.Info else Icons.Outlined.Info,
+            stringResource(R.string.settings_profile_slope_legend),
+            Modifier.size(17.dp), tint = Color(0xFF3F4A55),
+        )
+    }
+}
+
+/** Air autour du titre du bandeau de profil : au-dessus comme au-dessous, dans tous les cas. */
+private val ProfileTitleGap = 4.dp
+
+/** Air entre les infos de la trace et le graphique quand la legende des pentes n'est pas affichee :
+ *  c'est elle qui tenait cette place, et elle en prenait plus que six points. */
+private val ProfileGraphGap = 12.dp
+
+/** Ecart du bloc d'infos du point courant : le meme a droite de l'ecran qu'au-dessus du profil. */
+private val CursorInfoGap = 4.dp
 
 /** Ecart entre deux boutons poses sur la carte. Le triple de ce qu'il etait : les fonds arrondis se
  *  touchaient presque, et la colonne se lisait comme un seul bloc. */
@@ -2383,26 +2527,34 @@ private fun RouteProfilePanel(
     Column(
         modifier.fillMaxWidth().background(Color.White).padding(horizontal = 8.dp).navigationBarsPadding(),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            ProfileTitleRow(Modifier.weight(1f)) {
-                Text(title, fontSize = (settings?.profTitleFont ?: 13).sp,
-                    fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                TitleInfosRow(
-                    titleInfos(track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial),
-                    fontSize = settings?.profBarFont ?: 11,
-                    bold = settings?.profBarBold == true)
-            }
+        // Meme mise en page que le bandeau d'une trace : le titre sur sa ligne (la croix a son bout),
+        // les infos en colonnes sur toute la largeur en dessous.
+        Row(
+            Modifier.padding(vertical = ProfileTitleGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, fontSize = (settings?.profTitleFont ?: 16).sp,
+                fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                 IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
                     Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
                 }
             }
         }
-        if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
+        TrackInfoColumns(
+            titleInfos(track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial),
+            fontSp = settings?.profBarFont ?: 11,
+            bold = settings?.profBarBold == true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (settings?.profileSlope != false && settings?.profileSlopeLegend == true) {
             SlopeLegend(track.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
                 Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 bold = settings?.profLegendBold == true)
+        } else {
+            Spacer(Modifier.height(ProfileGraphGap))
         }
         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
             ElevationProfile(
@@ -2421,36 +2573,32 @@ private fun RouteProfilePanel(
     }
 }
 
-/**
- * Bandeau titre du profil : le titre puis les infos de la trace sur UNE seule ligne tant qu'elles y
- * tiennent toutes les deux ; sinon le titre garde la ligne entière et les infos passent juste en dessous,
- * calées à droite. Layout maison plutôt qu'un Row : le basculement dépend de la largeur réellement mesurée
- * des deux textes, qui varie avec le titre, la taille de police et le nombre d'infos choisies en réglages.
- * [content] émet le titre puis, éventuellement, les infos.
+/*
+ * Mesures du menu lateral, reprises telles quelles de la maquette (captures/trailog-drawer-styles.html).
+ * Elles sont ici et non a l'appel : une ligne d'arbre est faite de cinq elements que trois composables se
+ * partagent, et les voir cote a cote est le seul moyen de garder la grille droite.
  */
-@Composable
-private fun ProfileTitleRow(modifier: Modifier = Modifier, gap: Dp = 8.dp, content: @Composable () -> Unit) {
-    Layout(content, modifier) { measurables, constraints ->
-        val inner = constraints.copy(minWidth = 0)
-        val title = measurables[0].measure(inner)
-        val infos = measurables.getOrNull(1)?.measure(inner)
-        val gapPx = gap.roundToPx()
-        when {
-            infos == null -> layout(constraints.maxWidth, title.height) { title.place(0, 0) }
-            title.width + gapPx + infos.width <= constraints.maxWidth -> {
-                val h = maxOf(title.height, infos.height)
-                layout(constraints.maxWidth, h) {
-                    title.place(0, (h - title.height) / 2)
-                    infos.place(title.width + gapPx, (h - infos.height) / 2)
-                }
-            }
-            else -> layout(constraints.maxWidth, title.height + infos.height) {
-                title.place(0, 0)
-                infos.place(constraints.maxWidth - infos.width, title.height)
-            }
-        }
-    }
-}
+/*
+ * Toutes ces mesures ont ete relevees d'un cran (~15 %) par rapport a la maquette : a l'echelle du dessin,
+ * l'arbre se lisait juste, mais du bout du doigt il se visait mal. Elles montent ENSEMBLE - le rapport
+ * entre le chevron, l'oeil, le nom et la poignee fait la ligne, pas leurs valeurs prises une a une.
+ */
+/** Retrait de chaque niveau d'imbrication. */
+private val DrawerIndent = 17.dp
+/** Marges d'une ligne : le retrait de depart, puis ce qui la separe de la suivante. */
+private val DrawerRowPadH = 7.dp
+private val DrawerRowPadV = 6.dp
+/** Ecart entre deux elements d'une ligne (chevron, oeil, symbole, nom...). */
+private val DrawerRowGap = 7.dp
+/** Chevron, oeil, symbole : trois tailles voisines, pas une seule - l'oeil et le symbole portent la ligne,
+ *  le chevron n'est qu'un accessoire de pliage. */
+private val DrawerChevronSize = 16.dp
+private val DrawerIconSize = 17.dp
+/** Cible tactile posee autour de ces petites icones : ce qu'on peut prendre sans grossir le dessin. */
+private val DrawerHitSize = 30.dp
+/** Nom d'une couche, et compteur d'un dossier. */
+private val DrawerNameSp = 13f
+private val DrawerCountSp = 10.5f
 
 /** Au-delà, la légende ne gagne plus en lisibilité : l'image ne ferait que s'étirer (500 px de large). */
 private val LegendMaxWidth = 260.dp
@@ -2525,6 +2673,100 @@ private fun ColorPickerDialog(current: String, onPick: (String) -> Unit, onDismi
     )
 }
 
+/** Action de l'en-tete du menu : cible de 38 dp, dessin de 18 - un cran au-dessus de la maquette, comme
+ *  le reste du tiroir. */
+@Composable
+private fun HeaderAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, label: String,
+    showLabel: Boolean = false, onClick: () -> Unit,
+) {
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    if (!showLabel) {
+        Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+            Icon(icon, label, Modifier.size(22.dp), tint = tint)
+        }
+        return
+    }
+    // Icone et libelle dans une meme pastille cliquable : le texte n'est pas une legende posee a cote du
+    // bouton, il en fait partie, et un appui dessus vaut un appui sur l'icone.
+    Row(
+        Modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick)
+            .padding(start = 11.dp, end = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, Modifier.size(22.dp), tint = tint)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
+    }
+}
+
+/**
+ * Une ligne de l'arbre du menu lateral : le retrait de son niveau, et ce que le drag lui fait.
+ *
+ * Le retrait est celui de la maquette (15 dp par niveau) et non l'indentation d'une liste ordinaire : cet
+ * arbre descend a trois ou quatre niveaux sur un ecran de telephone, et 15 dp est ce qui reste lisible
+ * sans manger la moitie de la largeur au dernier.
+ */
+@Composable
+private fun DrawerRow(
+    depth: Int, dragging: Boolean, offset: Float, hovered: Boolean,
+    onPositioned: (Float) -> Unit, content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .onGloballyPositioned { onPositioned(it.positionInRoot().y) }
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer { translationY = offset; alpha = if (dragging) 0.85f else 1f }
+            .background(if (hovered) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
+            .padding(
+                start = DrawerRowPadH + DrawerIndent * depth, end = DrawerRowPadH,
+                top = DrawerRowPadV, bottom = DrawerRowPadV,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+/**
+ * Icone d'une ligne d'arbre : petite au dessin, large au doigt.
+ *
+ * Le dessin fait 15 dp comme dans la maquette, la zone tapee 26 : sans cet ecart, il faudrait choisir
+ * entre une ligne haute de 48 dp et des cibles qu'on rate. La cible reste sous le minimum Material,
+ * assume - une ligne d'arbre en aligne cinq, et l'arbre en empile une vingtaine.
+ */
+@Composable
+private fun DrawerIcon(
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?, size: Dp = DrawerIconSize,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant, onClick: () -> Unit,
+) {
+    Box(Modifier.size(DrawerHitSize).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(imageVector, contentDescription, Modifier.size(size), tint = tint)
+    }
+}
+
+/** Meme icone, dessinee a partir d'un trace du projet (symboles de couche, cf. ic_layer_route). */
+@Composable
+private fun DrawerIcon(
+    painter: androidx.compose.ui.graphics.painter.Painter,
+    contentDescription: String?, tint: Color, onClick: () -> Unit,
+) {
+    Box(Modifier.size(DrawerHitSize).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(painter, contentDescription, Modifier.size(DrawerIconSize), tint = tint)
+    }
+}
+
+/** Les deux prises de fin de ligne, poignee et menu, serrees l'une contre l'autre. */
+@Composable
+private fun RowEndActions(content: @Composable RowScope.() -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
 /** Poignée : appui long -> drag de réordonnancement (avec animation/haptique gérées par la ligne). */
 @Composable
 private fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () -> Unit) {
@@ -2534,9 +2776,9 @@ private fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () -
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnEnd by rememberUpdatedState(onEnd)
     Icon(
-        Icons.Filled.DragHandle, stringResource(R.string.action_drag_to_move),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(26.dp).pointerInput(Unit) {
+        Icons.Filled.DragIndicator, stringResource(R.string.action_drag_to_move),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        modifier = Modifier.size(DrawerIconSize).pointerInput(Unit) {
             var total = 0f
             detectDragGesturesAfterLongPress(
                 onDragStart = { total = 0f; currentOnStart() },
@@ -2557,7 +2799,10 @@ private fun RowMenu(
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more)) }
+        Box(Modifier.size(DrawerHitSize).clickable { open = true }, contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more), Modifier.size(DrawerIconSize),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.action_zoom_to_layer)) }, onClick = { open = false; onZoom() })
             if (onColor != null) {
@@ -2572,82 +2817,12 @@ private fun RowMenu(
     }
 }
 
-/* ----------------------- Infos profil configurables ----------------------- */
-
-/** Une info de la ligne de titre : [display] est la forme compacte affichée (abrégée, ex. "D+ 1254 m"),
- *  [name] et [value] la forme complète dictée à l'appui long (ex. "Dénivelé positif" + "1254 m"). */
-private class TitleInfo(val key: String, val display: String, val name: String, val value: String)
-
-@Composable
-private fun titleInfos(stats: fr.lc4918.trailog.domain.model.TrackStats, csv: String, imp: Boolean): List<TitleInfo> {
-    val nDist = stringResource(R.string.info_name_distance)
-    val nAsc = stringResource(R.string.info_name_ascent)
-    val nDesc = stringResource(R.string.info_name_descent)
-    val nDur = stringResource(R.string.info_name_duration)
-    val nMin = stringResource(R.string.info_name_alt_min)
-    val nMax = stringResource(R.string.info_name_alt_max)
-    return csv.split(",").mapNotNull { raw ->
-        val k = raw.trim()
-        when (k) {
-            "dist" -> Format.distance(stats.distance, imp).let { TitleInfo(k, it, nDist, it) }
-            "asc" -> Format.elevation(stats.ascent, imp).let { TitleInfo(k, "D+ $it", nAsc, it) }
-            "desc" -> Format.elevation(stats.descent, imp).let { TitleInfo(k, "D- $it", nDesc, it) }
-            "dur" -> stats.duration?.let { Format.duration(it) }?.let { TitleInfo(k, it, nDur, it) }
-            "min" -> Format.elevation(stats.min, imp).let { TitleInfo(k, "min $it", nMin, it) }
-            "max" -> Format.elevation(stats.max, imp).let { TitleInfo(k, "max $it", nMax, it) }
-            else -> null
-        }
-    }
-}
-
-/**
- * Infos de la trace du bandeau titre, une par une plutôt qu'en une seule chaîne : chacune est sa propre
- * cible d'appui long, qui montre au-dessus du doigt son libellé long et sa valeur ("D+ 1254 m" ->
- * "Dénivelé positif 1254 m"). L'affichage reste abrégé, faute de place sur cette ligne.
- * FlowRow et non Row : quand toutes les infos ne tiennent pas sur la largeur, elles passent à la ligne
- * (comme le faisait le retour à la ligne du texte unique), en coupant entre deux infos et non au milieu.
- * Le séparateur est collé à l'info qui le précède (même Row) pour ne jamais ouvrir une ligne.
- */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun TitleInfosRow(items: List<TitleInfo>, fontSize: Int, bold: Boolean, modifier: Modifier = Modifier) {
-    val weight = if (bold) FontWeight.Bold else null
-    FlowRow(modifier, horizontalArrangement = Arrangement.End) {
-        items.forEachIndexed { i, info ->
-            key(info.key) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                        tooltip = {
-                            PlainTooltip(caretSize = TooltipDefaults.caretSize) {
-                                Text("${info.name} ${info.value}")
-                            }
-                        },
-                        state = rememberTooltipState(),
-                    ) {
-                        Text(info.display, fontSize = fontSize.sp, fontWeight = weight)
-                    }
-                    if (i < items.lastIndex) Text(" · ", fontSize = fontSize.sp, fontWeight = weight)
-                }
-            }
-        }
-    }
-}
-
-private fun cursorInfoText(s: fr.lc4918.trailog.domain.model.Sample, csv: String, imp: Boolean): String =
-    csv.split(",").mapNotNull { k ->
-        when (k.trim()) {
-            "dist" -> Format.distance(s.x, imp)
-            "ele" -> Format.elevation(s.z, imp)
-            "slope" -> "${"%.1f".format(s.slope)}%"
-            "time" -> s.t?.let { Format.duration(it) }
-            else -> null
-        }
-    }.joinToString(" · ")
-
 @SuppressLint("DefaultLocale")
 @Composable
-private fun ScaleBar(controller: MapController, tick: Int, maxWidthPx: Float, modifier: Modifier = Modifier) {
+private fun ScaleBar(
+    controller: MapController, tick: Int, maxWidthPx: Float,
+    bg: Color, fg: Color, modifier: Modifier = Modifier,
+) {
     if (maxWidthPx <= 0f) return
     val cam = remember(tick) { controller.cameraState() }
     val mpp = remember(tick) { cam?.let { controller.metersPerPixel(it.first) } ?: 0.0 }
@@ -2661,19 +2836,19 @@ private fun ScaleBar(controller: MapController, tick: Int, maxWidthPx: Float, mo
     val label = if (nice >= 1000) {
         val km = nice / 1000.0; (if (km % 1.0 == 0.0) "${km.toInt()}" else String.format("%.1f", km)) + " km"
     } else "${nice.toInt()} m"
-    val strokeColor = Color.Black.copy(alpha = 0.7f)
+    val strokeColor = fg.copy(alpha = 0.7f)
     val bgAlpha = 0.7f
     Column(
-        // Padding du haut supprimé (le fond blanc ne doit pas déborder au-dessus du texte) ; celui du bas
+        // Padding du haut supprimé (le fond ne doit pas déborder au-dessus du texte) ; celui du bas
         // reste pour ne pas coller le trait horizontal au bord de la carte.
-        modifier.background(Color.White.copy(alpha = bgAlpha)).padding(start = 2.dp, end = 2.dp, top = 0.dp, bottom = 1.dp),
+        modifier.background(bg.copy(alpha = bgAlpha)).padding(start = 2.dp, end = 2.dp, top = 0.dp, bottom = 1.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // lineHeight réduit sous fontSize : resserre vraiment la boîte du texte (hauteur réservée), au lieu
         // de juste déplacer son rendu. Décalé vers le bas de la moitié de la hauteur des ticks pour que le
         // texte descende plus bas que leur extrémité haute (sans quoi il reste entièrement au-dessus).
         Text(
-            label, fontSize = fontSizeSp.sp, lineHeight = (fontSizeSp * 0.8f).sp, color = Color.Black,
+            label, fontSize = fontSizeSp.sp, lineHeight = (fontSizeSp * 0.8f).sp, color = fg,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
             modifier = Modifier.offset(y = tickHeightDp / 2),
         )

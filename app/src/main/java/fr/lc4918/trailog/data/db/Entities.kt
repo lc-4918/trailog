@@ -81,7 +81,19 @@ data class ProviderEntity(
 )
 
 /** Force par defaut de l'ombrage du relief (%). Le bouton de remise a zero de son reglage y revient. */
-const val DefaultDemOpacityPct = 40
+const val DefaultDemOpacityPct = 30
+
+/**
+ * Rangs de depart des deux familles de fonds qui n'apparaissent pas dans le semis : un .mbtiles importe
+ * ou telecharge, et un composite.
+ *
+ * Ils sont pris hors de portee des fonds semes (numerotes de 0 a une quarantaine) pour que le
+ * gestionnaire les pose dans cet ordre - fonds distants, relief, .mbtiles, composites - sans avoir a
+ * ranger les elements par type : le tri s'y fait sur le seul `sortOrder`, que le glisser-deposer
+ * reecrit ensuite librement.
+ */
+const val MbtilesSortOrder = 1000
+const val CompositeSortOrder = 2000
 
 /** Fond composite = couche arrière-plan (opaque) + couche premier plan (avec transparence réglable). */
 @Entity(tableName = "composites")
@@ -116,10 +128,12 @@ data class SettingsEntity(
     val theme: String = "system",          // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil
     val profileSlope: Boolean = true,      // colorer l'aire par pente
-    val profileSlopeLegend: Boolean = true,// afficher la légende des pentes
+    // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
+    // n'est plus une preference mais un etat d'affichage, qui se referme du meme geste.
+    val profileSlopeLegend: Boolean = false,
     val bubbleFont: Int = 14,              // taille police infobulle (sp)
     val profAxisFont: Int = 9,             // axes du profil
-    val profTitleFont: Int = 13,           // titre (nom)
+    val profTitleFont: Int = 16,           // titre (nom)
     val profBarFont: Int = 11,             // infos barre de titre
     val profLegendFont: Int = 9,           // légende des pentes
     val profCursorFont: Int = 11,          // infos du point courant
@@ -144,10 +158,10 @@ data class SettingsEntity(
     val customTitle: String = "",                   // titre du menu latéral ; vide = titre par défaut traduit
     val avatarSource: String = "",                  // chemin fichier local ou URL ; vide = icône par défaut
     val showBasemapControlButton: Boolean = true,   // bouton du gestionnaire de fonds de plan sur la carte
-    val basemapControlWidthPct: Int = 50,           // largeur du panneau (% de la largeur d'écran)
+    val basemapControlWidthPct: Int = 70,           // largeur du panneau (% de la largeur d'écran)
     // Opacité du panneau (%), appliquée telle quelle en alpha. A porté la transparence jusqu'à la
     // migration 20->21, qui a inversé les valeurs en base pour coller enfin au nom de la colonne.
-    val basemapControlOpacityPct: Int = 80,
+    val basemapControlOpacityPct: Int = 90,
     val bubbleTitleFont: Int = 16,                  // taille police du titre de l'infobulle ("Marqueur")
     val bubbleTitleBold: Boolean = true,
     val simplifyRender: Boolean = true,             // simplifier la géométrie des traces dans le rendu de carte

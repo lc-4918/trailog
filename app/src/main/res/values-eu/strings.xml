@@ -51,15 +51,15 @@
     <string name="action_load_image_from_phone">Kargatu irudi bat</string>
     <string name="action_manage_providers">Kudeatu hornitzaileak</string>
     <string name="action_offline_download">Lineaz kanpoko mapa</string>
+    <string name="offline_bbox_step_label">Hautatu deskargatu beharreko eremua</string>
     <string name="offline_bbox_points_count">%1$d/2 puntu</string>
     <string name="offline_action_cancel_point">Desegin puntua</string>
     <string name="offline_action_back">Atzera</string>
     <string name="offline_action_validate">Balioztatu</string>
-    <string name="offline_config_title">Deskargaren konfigurazioa</string>
+    <string name="offline_config_title">Lauzen deskarga</string>
     <string name="offline_config_zoom_label">Zoom mailak</string>
-    <string name="offline_config_zoom_range">Zoom %1$d - %2$d</string>
-    <string name="offline_config_stat_tiles">Lauza kopurua: %1$s</string>
-    <string name="offline_config_stat_size">Kalkulatutako tamaina: %1$s</string>
+    <string name="offline_config_label_tiles">Lauza kopurua</string>
+    <string name="offline_config_label_size">Kalkulatutako tamaina</string>
     <string name="offline_config_name_label">Geruzaren izena</string>
     <string name="offline_config_name_placeholder">adib. Nire ibilaldia 2026ko uztaila</string>
     <string name="offline_config_continue_on_error_label">Jarraitu errorea gertatuz gero</string>
@@ -108,8 +108,6 @@
     <string name="planner_remove_step">Kendu etapa</string>
     <string name="planner_import_layer">Inportatu geruza gisa</string>
     <string name="planner_download_gpx">Deskargatu GPX gisa</string>
-    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
-    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
     <string name="planner_zoom_out">Ikuspegi osoa</string>
     <string name="planner_layer_name">Geruzaren izena</string>
     <string name="planner_clear_step">Garbitu</string>
@@ -128,6 +126,7 @@
 
     <!-- Elkarrizketa-koadroak -->
     <string name="dialog_composite_title">Oinarrizko mapa konposatu berria</string>
+    <string name="dialog_composite_edit_title">Editatu oinarri-mapa konposatua</string>
     <string name="dialog_import_into_title">Inportatu hemen...</string>
     <string name="dialog_gps_disabled_title">GPS sentsorea inaktibo</string>
     <string name="dialog_gps_disabled_text">Kokapen-detekzioa desgaituta dago. Gaitu nahi duzu?</string>
@@ -247,8 +246,8 @@
     <string name="settings_field_name">Izena</string>
     <string name="settings_field_url">URLa</string>
     <string name="settings_field_api_key">API gakoa</string>
-    <string name="settings_field_tile_size">Lauza-tamaina (px) - normalean 256 edo 512</string>
     <string name="settings_field_relief_opacity">Erliebearen opakutasuna: %1$d%%</string>
+    <string name="basemap_relief_active">Aktibo</string>
     <string name="settings_field_zoom_levels">Zoom-mailak: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Kokapena: %1$s</string>
     <string name="offline_thumb_location_title">Kokapen orokorra</string>
@@ -341,4 +340,46 @@
 
     <string name="profile_no_elevation">Ibilbidea altimetriarik gabe</string>
 
+    <string name="settings_section_map_controls">Botoiak eta keinuak</string>
+    <string name="settings_group_storage">Biltegiratzea</string>
+    <string name="settings_group_interaction">Interakzioa</string>
+    <string name="settings_group_appearance">Itxura</string>
+    <string name="settings_group_application">Aplikazioa</string>
+    <string name="settings_section_add_basemap">Gehitu oinarri-mapa</string>
+    <string name="settings_section_installed_basemaps">Instalatutako oinarriak</string>
+    <string name="settings_section_services">Zerbitzuak</string>
+    <string name="settings_section_profile_calc">Profilaren kalkulua</string>
+    <string name="settings_section_personalisation">Pertsonalizazioa</string>
+    <string name="settings_section_tap_tolerance">Ukitze-tolerantzia</string>
+    <string name="settings_section_side_menu_open">Alboko menua irekitzea</string>
+    <string name="settings_providers_subtitle">URLak, API gakoak, zoom mailak</string>
+    <string name="settings_label_panel_width">Panelaren zabalera</string>
+    <string name="settings_label_panel_opacity">Panelaren opakutasuna</string>
+    <string name="settings_label_opacity">Opakutasuna</string>
+    <string name="settings_label_show_button">Erakutsi botoia</string>
+    <string name="settings_label_smoothing">Profilaren leuntzea</string>
+    <string name="settings_label_vertical_scale">Eskala bertikala</string>
+    <string name="settings_label_title_line">Izenburu-lerroa</string>
+    <string name="settings_label_current_point">Uneko puntua</string>
+    <string name="settings_label_waypoints">Bidepuntuak</string>
+    <string name="settings_label_tracks">Arrastoak</string>
+    <string name="settings_label_theme">Gaia</string>
+    <string name="settings_label_language">Hizkuntza</string>
+    <string name="settings_label_units">Unitateak</string>
+    <string name="settings_label_updates">Eguneraketak</string>
+    <string name="settings_label_map_button_size">Botoien tamaina</string>
+    <string name="settings_label_marker_size">Markatzaileen tamaina</string>
+    <string name="settings_label_bubble_position">Kokapena</string>
+    <string name="settings_label_avatar">Avatarra</string>
+    <string name="settings_label_side_title">Alboko menuaren izenburua</string>
+    <string name="settings_sw_gps_button">GPS kokapen botoia</string>
+    <string name="settings_sw_geocoding">Leku eta helbide bilaketa</string>
+    <string name="settings_sw_planner">Planifikatzailearen botoia</string>
+    <string name="settings_sw_measure">Neurketa botoia</string>
+    <string name="settings_sw_scale">Eskala grafikoa</string>
+    <string name="settings_sw_rotation">Maparen biraketa</string>
+    <string name="settings_sw_buttons_bg">Botoien atzeko hondoa</string>
+    <string name="settings_sw_status_bar_sub">Mapa azpitik doa</string>
+    <string name="settings_sw_simplify_sub">Bistaratze azkarragoa</string>
+    <string name="settings_services_hint">Utzi hutsik lehenetsitako zerbitzari publikoak erabiltzeko.</string>
 </resources>

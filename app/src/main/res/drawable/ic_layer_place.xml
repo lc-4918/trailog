@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Symbole d'une couche de points : epingle en contour (cf. ic_layer_route pour l'origine du trace). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="20" android:viewportHeight="20">
+    <path android:pathData="M10,17.5c0,0 5.5,-5.2 5.5,-9a5.5,5.5 0 1,0 -11,0c0,3.8 5.5,9 5.5,9"
+        android:strokeColor="#000000" android:strokeWidth="1.7"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M8,8.5a2,2 0 1,0 4,0a2,2 0 1,0 -4,0"
+        android:strokeColor="#000000" android:strokeWidth="1.7"
+        android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

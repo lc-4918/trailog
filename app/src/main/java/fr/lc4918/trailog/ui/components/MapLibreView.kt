@@ -26,6 +26,7 @@ import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.ui.profile.SlopeRamp
 import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -36,7 +37,9 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -261,6 +264,7 @@ class MapController {
         Expression.eq(Expression.geometryType(), Expression.literal("MultiLineString")),
     )
     private val pointGeometryFilter: Expression = Expression.eq(Expression.geometryType(), Expression.literal("Point"))
+    private val polygonGeometryFilter: Expression = Expression.eq(Expression.geometryType(), Expression.literal("Polygon"))
 
     /** Ajoute/actualise une source par couche, avec ses deux style layers (ligne + points) filtrés par géométrie. */
     fun setLayers(list: List<RenderLayer>, markerHeightPx: Float) {
@@ -398,14 +402,22 @@ class MapController {
         return out
     }
 
+    /** Rouge du cadre de la bbox hors-ligne, celui du bouton "Retour" de la barre de tracé. */
+    private val BBOX_RED = "#D32F2F"
+
     /** Coins posés pendant le tracé de la bbox hors-ligne : rendus en croix "viseur" (pas les épingles
-     *  habituelles) + contour du rectangle une fois 2 coins posés. Source/couches dédiées, indépendantes
-     *  du système générique [setLayers]/[RenderLayer] (overlay propre à l'app, pas une couche importée). */
-    fun setBboxDraw(points: List<Pair<Double, Double>>) {
+     *  habituelles) + cadre rouge et emprise blanchie une fois 2 coins posés. Source/couches dédiées,
+     *  indépendantes du système générique [setLayers]/[RenderLayer] (overlay propre à l'app, pas une
+     *  couche importée).
+     *
+     *  [showPoints] est faux pour la vue d'ensemble de l'écran de téléchargement : l'emprise y est déjà
+     *  fixée, ses coins n'ont plus rien à montrer - seul le cadre compte. */
+    fun setBboxDraw(points: List<Pair<Double, Double>>, showPoints: Boolean = true) {
         val s = style ?: return
         if (points.isEmpty()) {
-            s.getLayer("bbox-draw-line")?.let { s.removeLayer(it) }
             s.getLayer("bbox-draw-pt")?.let { s.removeLayer(it) }
+            s.getLayer("bbox-draw-line")?.let { s.removeLayer(it) }
+            s.getLayer("bbox-draw-fill")?.let { s.removeLayer(it) }
             s.getSource("bbox-draw-src")?.let { s.removeSource(it) }
             return
         }
@@ -413,8 +425,13 @@ class MapController {
         val existing = s.getSourceAs<GeoJsonSource>("bbox-draw-src")
         if (existing == null) {
             s.addSource(GeoJsonSource("bbox-draw-src", geojson))
+            // Emprise blanchie sous le cadre : elle éclaircit le fond sans le masquer, là où un aplat de
+            // la couleur du cadre teindrait la carte et rendrait ses couleurs illisibles.
+            addLayerSafe(FillLayer("bbox-draw-fill", "bbox-draw-src").withProperties(
+                PropertyFactory.fillColor("#FFFFFF"), PropertyFactory.fillOpacity(0.1f))
+                .withFilter(polygonGeometryFilter))
             addLayerSafe(LineLayer("bbox-draw-line", "bbox-draw-src").withProperties(
-                PropertyFactory.lineColor("#FF6D00"), PropertyFactory.lineWidth(3f))
+                PropertyFactory.lineColor(BBOX_RED), PropertyFactory.lineWidth(3f))
                 .withFilter(lineGeometryFilter))
             val img = "bbox_crosshair"
             s.addImage(img, crosshairBitmap(android.graphics.Color.BLACK, (40 * density).toInt()))
@@ -423,15 +440,20 @@ class MapController {
             s.addLayerAbove(
                 SymbolLayer("bbox-draw-pt", "bbox-draw-src").withProperties(
                     PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f), PropertyFactory.iconAnchor("center"),
-                    PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                    PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.visibility(if (showPoints) Property.VISIBLE else Property.NONE))
                     .withFilter(pointGeometryFilter),
                 "bbox-draw-line",
             )
         } else {
             existing.setGeoJson(geojson)
+            (s.getLayer("bbox-draw-pt") as? SymbolLayer)?.setProperties(
+                PropertyFactory.visibility(if (showPoints) Property.VISIBLE else Property.NONE))
         }
     }
 
+    /** Le rectangle est décrit deux fois, en ligne et en polygone : la ligne porte le cadre, le polygone
+     *  l'emprise blanchie, et une seule géométrie ne peut pas faire les deux. */
     private fun bboxDrawGeoJson(points: List<Pair<Double, Double>>): String {
         val features = StringBuilder()
         points.forEach { (lon, lat) ->
@@ -442,10 +464,11 @@ class MapController {
             val (lon1, lat1) = points[0]; val (lon2, lat2) = points[1]
             val w = minOf(lon1, lon2); val e = maxOf(lon1, lon2)
             val south = minOf(lat1, lat2); val n = maxOf(lat1, lat2)
+            val ring = """[[$w,$south],[$e,$south],[$e,$n],[$w,$n],[$w,$south]]"""
             if (features.isNotEmpty()) features.append(',')
             features.append(
-                """{"type":"Feature","geometry":{"type":"LineString","coordinates":""" +
-                    """[[$w,$south],[$e,$south],[$e,$n],[$w,$n],[$w,$south]]},"properties":{}}"""
+                """{"type":"Feature","geometry":{"type":"LineString","coordinates":$ring},"properties":{}},""" +
+                    """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[$ring]},"properties":{}}"""
             )
         }
         return """{"type":"FeatureCollection","features":[$features]}"""
@@ -618,8 +641,9 @@ class MapController {
         return out.toString()
     }
 
-    /** Croix "+" simple : les deux traits se croisent exactement au centre (le point exact posé),
-     *  contrairement à un viseur à cercle qui laisse un vide au milieu. */
+    /** Croix "+" traversante, cerclée en son centre : les deux traits se croisent exactement au point posé
+     *  (un viseur à cercle vide laisserait le point lui-même invisible), et le petit cercle marque
+     *  l'intersection au milieu des lignes de la carte, qui autrement se confondent avec la croix. */
     private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {
         val size = sizePx.coerceIn(16, 128)
         val bmp = createBitmap(size, size)
@@ -630,6 +654,7 @@ class MapController {
         val cx = size / 2f; val cy = size / 2f
         c.drawLine(cx, 0f, cx, size.toFloat(), paint)
         c.drawLine(0f, cy, size.toFloat(), cy, paint)
+        c.drawCircle(cx, cy, size * 0.18f, paint)
         return bmp
     }
 
@@ -656,12 +681,33 @@ class MapController {
         return bmp
     }
 
+    /**
+     * Camera visant [lat]/[lon] AU MILIEU DE L'ECRAN, orientation et inclinaison inchangees.
+     *
+     * Le decalage de vue ("padding") est explicitement remis a zero, et c'est tout l'objet de ce detour :
+     * un cadrage sur emprise (cf. [fitTo]) rend une camera qui PORTE le decalage qu'on lui a demande, et
+     * MapLibre le conserve ensuite pour toutes les transitions - c'est ecrit dans son contrat. Un
+     * recentrage venant apres posait donc son point au milieu de la zone restante, sous les boutons du
+     * haut et au-dessus de la bande du bas : la position s'affichait bien, mais decalee, et le bouton de
+     * recentrage ne disparaissait pas puisqu'elle n'etait toujours pas au centre.
+     */
+    private fun centeredCamera(lat: Double, lon: Double, zoom: Double? = null): CameraPosition? {
+        val cur = map?.cameraPosition ?: return null
+        return CameraPosition.Builder(cur)
+            .target(LatLng(lat, lon))
+            .zoom(zoom ?: cur.zoom)
+            .padding(0.0, 0.0, 0.0, 0.0)
+            .build()
+    }
+
     fun moveTo(lat: Double, lon: Double, zoom: Double) {
-        map?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom))
+        val cam = centeredCamera(lat, lon, zoom) ?: return
+        map?.moveCamera(CameraUpdateFactory.newCameraPosition(cam))
     }
     /** Recentre sur un point sans changer le niveau de zoom courant (bouton de recentrage GPS). */
     fun centerOn(lat: Double, lon: Double) {
-        map?.easeCamera(CameraUpdateFactory.newLatLng(LatLng(lat, lon)))
+        val cam = centeredCamera(lat, lon) ?: return
+        map?.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
     }
 
     /** Recentre sur un point en garantissant [minZoom] : un zoom déjà plus serré est conservé. Sert au lieu
@@ -670,7 +716,10 @@ class MapController {
     fun centerOnAtLeast(lat: Double, lon: Double, minZoom: Double) {
         val z = map?.cameraPosition?.zoom ?: return
         if (z >= minZoom) centerOn(lat, lon)
-        else map?.easeCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), minZoom))
+        else {
+            val cam = centeredCamera(lat, lon, minZoom) ?: return
+            map?.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
+        }
     }
     fun cameraState(): Triple<Double, Double, Double>? {
         val cp = map?.cameraPosition ?: return null
@@ -741,6 +790,20 @@ class MapController {
     fun screenOf(lon: Double, lat: Double): PointF? = map?.projection?.toScreenLocation(LatLng(lat, lon))
 
     /**
+     * Le point est-il dans la vue, avec une marge de confort ?
+     *
+     * Mesure a l'ecran et non sur les coordonnees : c'est bien "le voit-on" qu'on demande, et la reponse
+     * doit valoir a tout zoom. La marge evite de declarer visible un point colle au bord, que la moindre
+     * inclinaison ou le bandeau du profil recouvriraient.
+     */
+    fun isOnScreen(lon: Double, lat: Double, marginPx: Float = 96f): Boolean {
+        val m = map ?: return true
+        val p = screenOf(lon, lat) ?: return true
+        return p.x > marginPx && p.y > marginPx &&
+            p.x < m.width - marginPx && p.y < m.height - marginPx
+    }
+
+    /**
      * [topPaddingPx] / [bottomPaddingPx] : hauteurs masquees en haut (barre de statut, la carte passant
      * dessous en mode bord-a-bord) et en bas (bande du planificateur). A laisser libres pour que le
      * contenu cadre tienne dans ce qu'on voit REELLEMENT, et non sous une barre ou un panneau.
@@ -783,12 +846,22 @@ class MapController {
     private fun emptyFc() = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 }
 
+/**
+ * La carte, et le controleur qui la pilote.
+ *
+ * [gesturesEnabled] et [destroyOnDispose] valent pour les cartes de decor - la vue d'ensemble d'une
+ * emprise, par exemple : on ne les manipule pas, et elles vont et viennent avec un ecran, la ou la carte
+ * principale vit aussi longtemps que l'application. Les valeurs par defaut sont celles de cette
+ * derniere : gestes ouverts, et surtout pas de destruction a la sortie de composition.
+ */
 @Composable
 fun MapLibreView(
     modifier: Modifier = Modifier,
     controller: MapController,
     styleJson: String?,
     styleUrl: String?,
+    gesturesEnabled: Boolean = true,
+    destroyOnDispose: Boolean = false,
     onReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -808,7 +881,10 @@ fun MapLibreView(
             }
         }
         lifecycleOwner.lifecycle.addObserver(obs)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(obs)
+            if (destroyOnDispose) mapView.onDestroy()
+        }
     }
 
     LaunchedEffect(controller) { controller.onStyleApplied = onReady }
@@ -825,6 +901,7 @@ fun MapLibreView(
                 map.uiSettings.isAttributionEnabled = false
                 map.uiSettings.isLogoEnabled = false
                 controller.onMapReady(map)
+                if (!gesturesEnabled) map.uiSettings.setAllGesturesEnabled(false)
                 map.addOnMapClickListener { ll -> controller.handleTap(ll, map.projection.toScreenLocation(ll)); false }
                 // false = evenement non consomme : MapLibre garde son comportement d'appui long.
                 map.addOnMapLongClickListener { ll ->

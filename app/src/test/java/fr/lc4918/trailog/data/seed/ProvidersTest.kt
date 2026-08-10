@@ -79,6 +79,17 @@ class ProvidersTest {
         assertTrue("le relief doit figurer dans le gestionnaire", dem.first().enabled)
     }
 
+    /** Le drapeau dit deja le pays : le repeter dans le nom volait la moitie de la ligne du gestionnaire.
+     *  Un nom ajoute plus tard avec son pays devant passerait inapercu sans ce test. */
+    @Test fun `aucun fond pays ne repete son pays dans son nom`() {
+        val pays = listOf("France", "Espagne", "Hongrie", "Slovaquie", "Autriche", "Norvège", "Belgique",
+            "Suède", "Croatie", "Suisse", "Allemagne", "Finlande", "Slovénie", "Tchéquie", "Royaume-Uni",
+            "Pologne", "Portugal")
+        all.filter { it.groupName == "Pays" }.forEach { p ->
+            pays.forEach { assertTrue("${p.id} : \"$it\" dans \"${p.name}\"", it !in p.name) }
+        }
+    }
+
     @Test fun `les surcouches sont declarees transparentes`() {
         all.filter { it.groupName == "Overlays" }.forEach {
             assertTrue("${it.id} : surcouche non transparente", it.transparent)
@@ -102,6 +113,7 @@ class ProvidersTest {
      *  utilisateur. Un "enabled = false" oublie sur un fond ajoute la rallongerait sans qu'on le remarque. */
     @Test fun `seuls huit fonds sont actifs d entree`() {
         assertEquals(
+            // Le relief se pose entre les fonds mondiaux et les fonds nationaux, d'ou sa place ici.
             listOf("osm", "mapbox_outdoors", "google_street", "google_sat", "google_relief",
                 "dem_terrarium", "ign_fr", "ign_es"),
             all.filter { it.enabled }.map { it.id },

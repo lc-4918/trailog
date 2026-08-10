@@ -48,6 +48,24 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Deux réglages donnent-ils le MÊME style de carte ?
+ *
+ * Sert de filtre à la reconstruction du style : la position caméra vit elle aussi dans `SettingsEntity` et
+ * s'écrit à chaque arrêt de la carte. Sans ce filtre, chaque déplacement relançait `buildStyle` (et un
+ * éventuel chargement de style vectoriel distant) puis recomposait tout l'écran, saturant le processeur.
+ *
+ * **Le piège est l'oubli, pas le filtre.** Un réglage qui entre dans le style et qu'on oublie ici ne casse
+ * rien de visible : le style se reconstruit à la PROCHAINE cause valable, et le changement s'applique donc
+ * avec un tour de retard. C'est ce qui est arrivé à l'ombrage du relief, quand son état a quitté le fond
+ * DEM pour les réglages : on l'éteignait, il restait ; on l'allumait, il n'apparaissait qu'au changement de
+ * fond suivant. Extrait ici, et verrouillé par test, pour que l'oubli suivant se voie.
+ */
+internal fun sameStyleSettings(a: SettingsEntity?, b: SettingsEntity?): Boolean =
+    a?.defaultBasemapId == b?.defaultBasemapId &&
+        a?.mbtilesDir == b?.mbtilesDir &&
+        a?.hillshadeOn == b?.hillshadeOn
+
 /** Position de dépose lors d'un drag & drop dans la légende : avant/après un sibling, ou dedans (dossier cible). */
 enum class DropPosition { BEFORE, INTO, AFTER }
 
@@ -570,6 +588,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Thème de la seule bande du planificateur : "system", "light" ou "dark". Mémorisé d'une ouverture à
      *  l'autre, le choix valant pour la façon de travailler et non pour un trajet. */
+    /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
+     *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
+    fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        if (s.profileSlopeLegend != shown) db.settings().upsert(s.copy(profileSlopeLegend = shown))
+    }
+
     fun setPlannerBandTheme(pref: String) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         if (s.plannerBandTheme != pref) db.settings().upsert(s.copy(plannerBandTheme = pref))
@@ -697,13 +722,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            // Ne réémettre que sur un changement pertinent pour le style (fond de plan, dossier MBTiles) :
-            // la position caméra est aussi stockée dans SettingsEntity et écrite à chaque arrêt de la carte ;
-            // sans ce distinctUntilChanged, chaque déplacement relançait buildStyle (et un éventuel fetch du
-            // style vectoriel distant) + recomposait tout l'écran, saturant le CPU (cf. lenteur du profil).
-            val styleRelevantSettings = settings.distinctUntilChanged { a, b ->
-                a?.defaultBasemapId == b?.defaultBasemapId && a?.mbtilesDir == b?.mbtilesDir
-            }
+            val styleRelevantSettings = settings.distinctUntilChanged(::sameStyleSettings)
             combine(styleRelevantSettings, providers, composites) { s, p, c -> Triple(s, p, c) }.collectLatest { (s, provs, comps) ->
                 _mapStyle.value = s?.let { buildStyle(it, provs, comps) }
                 _activeLegends.value = s?.let { displayedProviders(it, provs, comps).mapNotNull { p -> p.legendAsset } }

@@ -51,15 +51,15 @@
     <string name="action_load_image_from_phone">Carrega una imatge</string>
     <string name="action_manage_providers">Gestiona els proveïdors</string>
     <string name="action_offline_download">Mapa sense connexió</string>
+    <string name="offline_bbox_step_label">Selecciona l\'àrea a baixar</string>
     <string name="offline_bbox_points_count">%1$d/2 punts</string>
     <string name="offline_action_cancel_point">Desfés el punt</string>
     <string name="offline_action_back">Enrere</string>
     <string name="offline_action_validate">Valida</string>
-    <string name="offline_config_title">Configuració de la baixada</string>
+    <string name="offline_config_title">Baixada de tessel·les</string>
     <string name="offline_config_zoom_label">Nivells de zoom</string>
-    <string name="offline_config_zoom_range">Zoom %1$d a %2$d</string>
-    <string name="offline_config_stat_tiles">Nombre de tessel·les: %1$s</string>
-    <string name="offline_config_stat_size">Mida estimada: %1$s</string>
+    <string name="offline_config_label_tiles">Nombre de tessel·les</string>
+    <string name="offline_config_label_size">Mida estimada</string>
     <string name="offline_config_name_label">Nom de la capa</string>
     <string name="offline_config_name_placeholder">p. ex. La meva ruta juliol 2026</string>
     <string name="offline_config_continue_on_error_label">Continua en cas d\'error</string>
@@ -108,8 +108,6 @@
     <string name="planner_remove_step">Elimina l\'etapa</string>
     <string name="planner_import_layer">Importa com a capa</string>
     <string name="planner_download_gpx">Baixa en GPX</string>
-    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
-    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nom de la capa</string>
     <string name="planner_clear_step">Esborra</string>
@@ -128,6 +126,7 @@
 
     <!-- Diàlegs -->
     <string name="dialog_composite_title">Nou mapa base compost</string>
+    <string name="dialog_composite_edit_title">Edita el fons compost</string>
     <string name="dialog_import_into_title">Importa a...</string>
     <string name="dialog_gps_disabled_title">Sensor GPS inactiu</string>
     <string name="dialog_gps_disabled_text">La localització està desactivada. Vols activar-la?</string>
@@ -247,8 +246,8 @@
     <string name="settings_field_name">Nom</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clau API</string>
-    <string name="settings_field_tile_size">Mida de tessel·la (px) - sovint 256 o 512</string>
     <string name="settings_field_relief_opacity">Opacitat del relleu: %1$d%%</string>
+    <string name="basemap_relief_active">Actiu</string>
     <string name="settings_field_zoom_levels">Nivells de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicació: %1$s</string>
     <string name="offline_thumb_location_title">Localització global</string>
@@ -341,4 +340,46 @@
 
     <string name="profile_no_elevation">Recorregut sense altimetria</string>
 
+    <string name="settings_section_map_controls">Botons i gestos</string>
+    <string name="settings_group_storage">Emmagatzematge</string>
+    <string name="settings_group_interaction">Interacció</string>
+    <string name="settings_group_appearance">Aparença</string>
+    <string name="settings_group_application">Aplicació</string>
+    <string name="settings_section_add_basemap">Afegir un fons</string>
+    <string name="settings_section_installed_basemaps">Fons instal·lats</string>
+    <string name="settings_section_services">Serveis</string>
+    <string name="settings_section_profile_calc">Càlcul del perfil</string>
+    <string name="settings_section_personalisation">Personalització</string>
+    <string name="settings_section_tap_tolerance">Tolerància de toc</string>
+    <string name="settings_section_side_menu_open">Obertura del menú lateral</string>
+    <string name="settings_providers_subtitle">URL, claus d\'API, nivells de zoom</string>
+    <string name="settings_label_panel_width">Amplada del plafó</string>
+    <string name="settings_label_panel_opacity">Opacitat del plafó</string>
+    <string name="settings_label_opacity">Opacitat</string>
+    <string name="settings_label_show_button">Mostra el botó</string>
+    <string name="settings_label_smoothing">Suavitzat del perfil</string>
+    <string name="settings_label_vertical_scale">Escala vertical</string>
+    <string name="settings_label_title_line">Línia de títol</string>
+    <string name="settings_label_current_point">Punt actual</string>
+    <string name="settings_label_waypoints">Waypoints</string>
+    <string name="settings_label_tracks">Traces</string>
+    <string name="settings_label_theme">Tema</string>
+    <string name="settings_label_language">Idioma</string>
+    <string name="settings_label_units">Unitats</string>
+    <string name="settings_label_updates">Actualitzacions</string>
+    <string name="settings_label_map_button_size">Mida dels botons</string>
+    <string name="settings_label_marker_size">Mida dels marcadors</string>
+    <string name="settings_label_bubble_position">Posició</string>
+    <string name="settings_label_avatar">Avatar</string>
+    <string name="settings_label_side_title">Títol del menú lateral</string>
+    <string name="settings_sw_gps_button">Botó de localització GPS</string>
+    <string name="settings_sw_geocoding">Cerca de lloc i adreça</string>
+    <string name="settings_sw_planner">Botó del planificador</string>
+    <string name="settings_sw_measure">Botó de mesura</string>
+    <string name="settings_sw_scale">Escala gràfica</string>
+    <string name="settings_sw_rotation">Rotació del mapa</string>
+    <string name="settings_sw_buttons_bg">Fons darrere dels botons</string>
+    <string name="settings_sw_status_bar_sub">El mapa passa per sota</string>
+    <string name="settings_sw_simplify_sub">Visualització més ràpida</string>
+    <string name="settings_services_hint">Deixeu-ho buit per utilitzar els servidors públics per defecte.</string>
 </resources>

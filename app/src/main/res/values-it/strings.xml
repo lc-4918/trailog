@@ -51,15 +51,15 @@
     <string name="action_load_image_from_phone">Carica un\'immagine</string>
     <string name="action_manage_providers">Gestisci fornitori</string>
     <string name="action_offline_download">Mappa offline</string>
+    <string name="offline_bbox_step_label">Seleziona l\'area da scaricare</string>
     <string name="offline_bbox_points_count">%1$d/2 punti</string>
     <string name="offline_action_cancel_point">Annulla punto</string>
     <string name="offline_action_back">Indietro</string>
     <string name="offline_action_validate">Convalida</string>
-    <string name="offline_config_title">Configurazione del download</string>
+    <string name="offline_config_title">Download dei tasselli</string>
     <string name="offline_config_zoom_label">Livelli di zoom</string>
-    <string name="offline_config_zoom_range">Zoom da %1$d a %2$d</string>
-    <string name="offline_config_stat_tiles">Numero di tile: %1$s</string>
-    <string name="offline_config_stat_size">Dimensione stimata: %1$s</string>
+    <string name="offline_config_label_tiles">Numero di tile</string>
+    <string name="offline_config_label_size">Dimensione stimata</string>
     <string name="offline_config_name_label">Nome del livello</string>
     <string name="offline_config_name_placeholder">es. La mia escursione luglio 2026</string>
     <string name="offline_config_continue_on_error_label">Continua in caso di errore</string>
@@ -108,8 +108,6 @@
     <string name="planner_remove_step">Elimina la tappa</string>
     <string name="planner_import_layer">Importa come livello</string>
     <string name="planner_download_gpx">Scarica in GPX</string>
-    <string name="planner_summary">%1$s · D+ %2$s · D- %3$s · %4$s</string>
-    <string name="planner_summary_part">%1$s · D+ %2$s · D- %3$s · ~%4$s</string>
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nome del livello</string>
     <string name="planner_clear_step">Cancella</string>
@@ -128,6 +126,7 @@
 
     <!-- Finestre di dialogo -->
     <string name="dialog_composite_title">Nuova mappa di base composita</string>
+    <string name="dialog_composite_edit_title">Modificare lo sfondo composito</string>
     <string name="dialog_import_into_title">Importa in...</string>
     <string name="dialog_gps_disabled_title">Sensore GPS inattivo</string>
     <string name="dialog_gps_disabled_text">Il rilevamento della posizione è disattivato. Vuoi attivarlo?</string>
@@ -247,8 +246,8 @@
     <string name="settings_field_name">Nome</string>
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Chiave API</string>
-    <string name="settings_field_tile_size">Dimensione tile (px) - solitamente 256 o 512</string>
     <string name="settings_field_relief_opacity">Opacità del rilievo: %1$d%%</string>
+    <string name="basemap_relief_active">Attivo</string>
     <string name="settings_field_zoom_levels">Livelli di zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Posizione: %1$s</string>
     <string name="offline_thumb_location_title">Posizione globale</string>
@@ -341,4 +340,46 @@
 
     <string name="profile_no_elevation">Percorso senza altimetria</string>
 
+    <string name="settings_section_map_controls">Pulsanti e gesti</string>
+    <string name="settings_group_storage">Archiviazione</string>
+    <string name="settings_group_interaction">Interazione</string>
+    <string name="settings_group_appearance">Aspetto</string>
+    <string name="settings_group_application">Applicazione</string>
+    <string name="settings_section_add_basemap">Aggiungere uno sfondo</string>
+    <string name="settings_section_installed_basemaps">Sfondi installati</string>
+    <string name="settings_section_services">Servizi</string>
+    <string name="settings_section_profile_calc">Calcolo del profilo</string>
+    <string name="settings_section_personalisation">Personalizzazione</string>
+    <string name="settings_section_tap_tolerance">Tolleranza del tocco</string>
+    <string name="settings_section_side_menu_open">Apertura del menu laterale</string>
+    <string name="settings_providers_subtitle">URL, chiavi API, livelli di zoom</string>
+    <string name="settings_label_panel_width">Larghezza del pannello</string>
+    <string name="settings_label_panel_opacity">Opacità del pannello</string>
+    <string name="settings_label_opacity">Opacità</string>
+    <string name="settings_label_show_button">Mostrare il pulsante</string>
+    <string name="settings_label_smoothing">Livellamento del profilo</string>
+    <string name="settings_label_vertical_scale">Scala verticale</string>
+    <string name="settings_label_title_line">Riga del titolo</string>
+    <string name="settings_label_current_point">Punto corrente</string>
+    <string name="settings_label_waypoints">Waypoint</string>
+    <string name="settings_label_tracks">Tracce</string>
+    <string name="settings_label_theme">Tema</string>
+    <string name="settings_label_language">Lingua</string>
+    <string name="settings_label_units">Unità</string>
+    <string name="settings_label_updates">Aggiornamenti</string>
+    <string name="settings_label_map_button_size">Dimensione dei pulsanti</string>
+    <string name="settings_label_marker_size">Dimensione dei marcatori</string>
+    <string name="settings_label_bubble_position">Posizione</string>
+    <string name="settings_label_avatar">Avatar</string>
+    <string name="settings_label_side_title">Titolo del menu laterale</string>
+    <string name="settings_sw_gps_button">Pulsante di posizione GPS</string>
+    <string name="settings_sw_geocoding">Ricerca di luoghi e indirizzi</string>
+    <string name="settings_sw_planner">Pulsante del pianificatore</string>
+    <string name="settings_sw_measure">Pulsante di misura</string>
+    <string name="settings_sw_scale">Scala grafica</string>
+    <string name="settings_sw_rotation">Rotazione della mappa</string>
+    <string name="settings_sw_buttons_bg">Sfondo dietro i pulsanti</string>
+    <string name="settings_sw_status_bar_sub">La mappa passa sotto</string>
+    <string name="settings_sw_simplify_sub">Visualizzazione più rapida</string>
+    <string name="settings_services_hint">Lasciare vuoto per usare i server pubblici predefiniti.</string>
 </resources>

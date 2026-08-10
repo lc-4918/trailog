@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.data.seed
 
+import fr.lc4918.trailog.data.db.CompositeSortOrder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,9 +32,11 @@ class CompositesTest {
         all.forEach { assertTrue("${it.name} : ${it.foregroundOpacity}", it.foregroundOpacity in 0f..1f) }
     }
 
+    /** Contigus, mais a partir de [CompositeSortOrder] : les composites se rangent apres tous les fonds,
+     *  semes comme importes, et leurs ordres partent donc de ce rang-la et non de zero. */
     @Test fun `les ordres de tri sont uniques et contigus`() {
         val orders = all.map { it.sortOrder }.sorted()
-        assertEquals((0 until all.size).toList(), orders)
+        assertEquals((CompositeSortOrder until CompositeSortOrder + all.size).toList(), orders)
     }
 
     /** Composite semé par défaut : l'AF3V par-dessus Mapbox Outdoors, a pleine opacite. */

@@ -13,6 +13,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +37,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.ShowChart
@@ -61,6 +65,8 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -87,6 +93,8 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import fr.lc4918.trailog.ui.theme.isDarkTheme
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -108,6 +116,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
@@ -122,6 +131,7 @@ import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.db.CompositeEntity
+import fr.lc4918.trailog.data.db.CompositeSortOrder
 import fr.lc4918.trailog.data.db.DefaultDemOpacityPct
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
@@ -143,6 +153,7 @@ import fr.lc4918.trailog.update.UpdateCheck
 import fr.lc4918.trailog.update.UpdateFlow
 import fr.lc4918.trailog.update.UpdateManager
 import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,23 +199,52 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         stringResource(R.string.settings_tab_general) to Icons.Filled.Tune,
     )
 
+    // Palette propre a cet ecran : cartes claires sur fond bleute, cf. SettingsPalette.
+    ProvideSettingsPalette(dark = isDarkTheme(cur.theme)) {
+    val palette = settingsPalette
     Scaffold(
+        containerColor = palette.screen,
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
-                actions = { Avatar(cur.avatarSource, size = 30.dp, modifier = Modifier.padding(end = 16.dp)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(19.dp)) } },
+                actions = { Avatar(cur.avatarSource, size = 26.dp, modifier = Modifier.padding(end = 14.dp)) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = palette.card, titleContentColor = palette.label,
+                    navigationIconContentColor = palette.label),
+            )
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { pad ->
-        // Désactive l'agrandissement automatique de la zone tactile minimale (48dp) que Material3 impose
-        // en interne à IconButton/Switch/Slider : sans ça, un Modifier.size() plus petit posé sur ces
-        // composants est silencieusement ignoré pour l'espace réellement réservé (cf. bug 2.1/2.2).
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        // Les composants gardent la taille que Material leur donne, cible tactile de 48 dp comprise : cet
+        // ecran se lit et se regle au doigt, la densite n'y vaut pas la lisibilite. Le seul endroit qui la
+        // neutralise encore est la fiche d'un fournisseur, ou dix lignes se suivent dans une popup.
         Column(Modifier.padding(pad).fillMaxSize()) {
-            TabRow(selectedTabIndex = tab) {
+            // Onglets en pastilles et non en soulignement : ils partagent la surface blanche de la barre,
+            // et c'est l'aplat d'accent qui dit lequel est ouvert - le meme aplat que les puces retenues,
+            // plus bas, une seule facon de dire "retenu" sur tout l'ecran.
+            Row(
+                Modifier.fillMaxWidth().background(palette.card).padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 tabs.forEachIndexed { i, (label, icon) ->
-                    Tab(selected = tab == i, onClick = { tab = i },
-                        text = { Text(label) }, icon = { Icon(icon, null) })
+                    val selected = tab == i
+                    Column(
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) palette.accentContainer else Color.Transparent)
+                            .clickable { tab = i }
+                            .padding(vertical = 7.dp, horizontal = 2.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Icon(icon, null, Modifier.size(16.dp),
+                            tint = if (selected) palette.accentStrong else palette.subtle)
+                        // 12 sp et non les 9,5 de la maquette : a cette taille, un onglet se devine plus
+                        // qu'il ne se lit, et c'est la premiere chose qu'on lit de l'ecran.
+                        Text(label, fontSize = 12.sp, maxLines = 1,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selected) palette.accentStrong else palette.subtle)
+                    }
                 }
             }
             AnimatedContent(
@@ -216,7 +256,10 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                 },
                 label = "settings_tab"
             ) { currentTab ->
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp),
+                ) {
                     when (currentTab) {
                         0 -> MapTab(cur, vm)
                         1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") })
@@ -229,80 +272,134 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                 }
             }
         }
-        }
+    }
     }
 }
 
 /* --------------- Onglets --------------- */
 
+/**
+ * Onglet "Carte" : ce qui s'affiche sur la carte et par-dessus elle.
+ *
+ * Trois parties, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis ce
+ * qui decrit le relief parcouru. Les deux dernieres portent un titre de groupe ; la premiere n'en a pas,
+ * elle commence en tete de l'onglet ou il n'y a encore rien dont la distinguer.
+ *
+ * Les libelles des interrupteurs ont perdu leur "Afficher" : la rubrique s'appelle "Boutons et gestes",
+ * et le repeter sept fois de suite ne disait rien de plus.
+ */
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    // Trois parties, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis
-    // ce qui decrit le relief. L'onglet ayant recu tout l'ancien onglet "Profil", il devenait trop long
-    // pour se lire d'une traite ; les deux suivantes portent donc un titre de groupe.
-    //
-    // La premiere n'en a pas : elle commence en tete de l'onglet, ou il n'y a encore rien dont la
-    // distinguer, et son titre ne faisait que repeter le nom de l'onglet a une ligne d'intervalle.
-    // Suite d'interrupteurs sans titre de rubrique : chacun ne porte qu'un reglage, et son libelle le dit
-    // deja entierement. Un titre au-dessus n'aurait fait que repeter la ligne qu'il coiffe, et les six
-    // rubriques d'une ligne donnaient un groupe deux fois plus long que son contenu.
-    // Les services que deux d'entre eux commandent (geocodeur, moteur d'itineraire) se configurent dans
-    // l'onglet "Itineraires" : cet onglet-ci repond a "qu'est-ce qui s'affiche", l'autre a "comment ca se
-    // calcule".
-    SwitchRow(stringResource(R.string.settings_show_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
-    SwitchRow(stringResource(R.string.settings_enable_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
-    SwitchRow(stringResource(R.string.settings_enable_route_planner), cur.routePlannerEnabled) {
-        vm.save(cur.copy(routePlannerEnabled = it))
+    SectionTitle(stringResource(R.string.settings_section_map_controls), tight = true)
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_buttons_bg), cur.controlButtonsBackground) { vm.save(cur.copy(controlButtonsBackground = it)) }
+        RowDivider()
+        // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
+        // zone tactile, il deborderait dessus.
+        SliderRow(
+            label = stringResource(R.string.settings_label_map_button_size),
+            value = "${cur.mapButtonSizeDp} dp",
+            fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
+            steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
+            onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
+        )
     }
-    SwitchRow(stringResource(R.string.settings_enable_track_measure), cur.trackMeasureEnabled) {
-        vm.save(cur.copy(trackMeasureEnabled = it))
+
+    SectionTitle(stringResource(R.string.settings_section_basemap_control))
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_label_show_button), cur.showBasemapControlButton) {
+            vm.save(cur.copy(showBasemapControlButton = it))
+        }
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_panel_width), "${cur.basemapControlWidthPct} %",
+            fractionOf(cur.basemapControlWidthPct, 20, 90),
+            { vm.save(cur.copy(basemapControlWidthPct = valueOf(it, 20, 90))) },
+        )
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_panel_opacity), "${cur.basemapControlOpacityPct} %",
+            fractionOf(cur.basemapControlOpacityPct, 30, 100),
+            { vm.save(cur.copy(basemapControlOpacityPct = valueOf(it, 30, 100))) },
+        )
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(basemapControlWidthPct = 70, basemapControlOpacityPct = 90))
+        }
     }
-    SwitchRow(stringResource(R.string.settings_show_scale_bar), cur.showScale) { vm.save(cur.copy(showScale = it)) }
-    SwitchRow(stringResource(R.string.settings_allow_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
-    SwitchRow(stringResource(R.string.settings_control_buttons_background), cur.controlButtonsBackground) {
-        vm.save(cur.copy(controlButtonsBackground = it))
+
+    GroupTitle(stringResource(R.string.settings_group_pois))
+    SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
+    SettingsCard {
+        StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
+            vm.save(cur.copy(markerSize = it))
+        }
     }
-    // Taille des boutons posés sur la carte. Le curseur ne va pas au-delà du bouton Material plein : plus
-    // grand, il ne dépasserait pas sa zone tactile, il déborderait dessus.
-    Text(stringResource(R.string.settings_map_button_size, cur.mapButtonSizeDp),
-        style = MaterialTheme.typography.bodyMedium)
-    CompactSlider(
-        value = cur.mapButtonSizeDp.toFloat(),
-        valueRange = MinMapButtonSizeDp.toFloat()..MaxMapButtonSizeDp.toFloat(),
-        steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
-        onValueChange = { vm.save(cur.copy(mapButtonSizeDp = it.toInt())) },
-    )
-    // Seule rubrique titree du groupe, et placee en dernier : c'est la seule qui porte plus qu'un
-    // interrupteur - deux reglages de panneau et leur remise a zero, qu'il faut bien rattacher a quelque
-    // chose. La poser au milieu aurait coupe la suite d'interrupteurs en deux.
-    Section(stringResource(R.string.settings_section_basemap_control))
-    SwitchRow(stringResource(R.string.settings_show_basemap_control_button), cur.showBasemapControlButton) {
-        vm.save(cur.copy(showBasemapControlButton = it))
+    SectionTitle(stringResource(R.string.settings_section_bubbles))
+    SettingsCard {
+        StepperLine(stringResource(R.string.settings_font_size), cur.bubbleFont, 7, 28,
+            bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
+        RowDivider()
+        StepperLine(stringResource(R.string.font_title), cur.bubbleTitleFont, 7, 28,
+            bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
+        RowDivider()
+        PickRow(
+            stringResource(R.string.settings_label_bubble_position),
+            BubblePosition.of(cur.bubblePosition), BubblePosition.entries,
+            optionLabel = { bubblePositionLabel(it) },
+        ) { vm.save(cur.copy(bubblePosition = it.key)) }
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_opacity), "${cur.bubbleOpacityPct} %",
+            fractionOf(cur.bubbleOpacityPct, 30, 100),
+            { vm.save(cur.copy(bubbleOpacityPct = valueOf(it, 30, 100))) },
+        )
     }
-    Text(stringResource(R.string.settings_basemap_control_width, cur.basemapControlWidthPct), style = MaterialTheme.typography.bodyMedium)
-    CompactSlider(value = cur.basemapControlWidthPct.toFloat(), valueRange = 20f..90f,
-        onValueChange = { vm.save(cur.copy(basemapControlWidthPct = it.toInt())) })
-    Text(stringResource(R.string.settings_basemap_control_opacity, cur.basemapControlOpacityPct), style = MaterialTheme.typography.bodyMedium)
-    CompactSlider(value = cur.basemapControlOpacityPct.toFloat(), valueRange = 30f..100f,
-        onValueChange = { vm.save(cur.copy(basemapControlOpacityPct = it.toInt())) })
-    TextButton(onClick = { vm.save(cur.copy(basemapControlWidthPct = 50, basemapControlOpacityPct = 80)) }) {
-        Text(stringResource(R.string.action_reset_defaults))
-    }
-    Group(stringResource(R.string.settings_group_pois))
-    Section(stringResource(R.string.settings_section_markers))
-    FontStepper(stringResource(R.string.settings_marker_size), cur.markerSize, min = 16, max = 80) { vm.save(cur.copy(markerSize = it)) }
-    Section(stringResource(R.string.settings_section_bubbles))
-    FontStepper(stringResource(R.string.settings_font_size), cur.bubbleFont, bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
-    FontStepper(stringResource(R.string.font_title), cur.bubbleTitleFont, bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
-    Text(stringResource(R.string.settings_bubble_position), style = MaterialTheme.typography.bodyMedium)
-    BubblePositionPicker(BubblePosition.of(cur.bubblePosition)) { vm.save(cur.copy(bubblePosition = it.key)) }
-    Text(stringResource(R.string.settings_bubble_opacity, cur.bubbleOpacityPct), style = MaterialTheme.typography.bodyMedium)
-    CompactSlider(value = cur.bubbleOpacityPct.toFloat(), valueRange = 30f..100f,
-        onValueChange = { vm.save(cur.copy(bubbleOpacityPct = it.toInt())) })
-    // L'apparence du profil altimetrique termine cet onglet : elle decrit, elle aussi, ce qui s'affiche
-    // par-dessus la carte. Elle avait son propre onglet, rendu au calcul d'itineraire.
-    Group(stringResource(R.string.settings_group_elevation_profile))
+
+    GroupTitle(stringResource(R.string.settings_group_elevation_profile))
     ProfileSettings(cur, vm)
 }
+
+/** Ligne a interrupteur : la ligne entiere bascule, pas seulement l'interrupteur. */
+@Composable private fun ColumnScopeMarker.SwitchLine(
+    label: String, checked: Boolean, sub: String? = null, onChange: (Boolean) -> Unit,
+) {
+    SetRow(label, sub = sub, onClick = { onChange(!checked) }, role = Role.Switch) {
+        SettingsSwitch(checked)
+    }
+}
+
+/** Ligne a pas-a-pas, avec sa bascule de graisse quand le reglage en porte une. */
+@Composable private fun ColumnScopeMarker.StepperLine(
+    label: String, value: Int, min: Int, max: Int,
+    bold: Boolean? = null, onBold: ((Boolean) -> Unit)? = null, onChange: (Int) -> Unit,
+) {
+    StepperRow(
+        label = label, value = value, min = min, max = max, bold = bold, onBold = onBold,
+        boldLabel = stringResource(R.string.settings_bold_abbrev),
+        decreaseLabel = stringResource(R.string.action_decrease),
+        increaseLabel = stringResource(R.string.action_increase),
+        onChange = onChange,
+    )
+}
+
+/** Fraction 0..1 d'une valeur entiere dans sa plage, et son retour : les curseurs de l'ecran parlent tous
+ *  en fractions, les reglages en unites. Une seule conversion, au meme endroit pour tous. */
+private fun fractionOf(value: Int, min: Int, max: Int): Float =
+    ((value - min).toFloat() / (max - min).toFloat()).coerceIn(0f, 1f)
+
+private fun valueOf(fraction: Float, min: Int, max: Int): Int =
+    (min + fraction * (max - min)).roundToInt().coerceIn(min, max)
 
 /** Libellé traduit d'une discipline d'itinéraire. */
 @Composable fun routingProfileLabel(p: RoutingProfile): String = stringResource(
@@ -330,7 +427,11 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 /** Ligne des disciplines. Partagee avec le planificateur, qui doit offrir exactement le meme choix, dans
  *  la meme forme : c'est le meme reglage, une fois par defaut et une fois pour le trajet en cours. */
 @Composable internal fun RoutingProfilePicker(current: RoutingProfile, onSelect: (RoutingProfile) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Marge egale sur les quatre cotes, et non un simple decalage vers le bas : la rangee se pose ainsi au
+    // milieu de la carte qui la porte, sans blanc en trop au-dessus de la pastille retenue, et les
+    // disciplines des extremites detachent leurs quatre angles arrondis comme celles du milieu - collees au
+    // bord, leurs deux angles exterieurs disparaissaient dans l'arrondi de la carte.
+    Row(Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         RoutingProfile.entries.forEach { p ->
             val selected = p == current
             val label = routingProfileLabel(p)
@@ -382,7 +483,7 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(bubblePositionLabel(current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(bubblePositionLabel(current), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 ExposedDropdownMenuDefaults.TrailingIcon(open, modifier = Modifier.requiredSize(CompactIconSize))
             }
         }
@@ -400,35 +501,57 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 ) {
     val mapProviders = providers.filter { it.type != "DEM" && !it.transparent && it.enabled }
     val mapComposites = composites.filter { it.enabled }
-    // Le Relief (type DEM) est un fournisseur standard (URL, activation, édition) : il suit les mêmes
-    // règles que les autres et apparaît donc dans "Gérer les fournisseurs", pas dans les fonds MBTILES (bug 3.1).
+    // Le Relief (type DEM) est un fournisseur standard (URL, activation, edition) : il suit les memes
+    // regles que les autres et figure donc dans "Gerer les fournisseurs", pas dans les fonds MBTILES.
     val basemapEntries = providers.filter { it.type == "MBTILES" }
     val otherProviders = providers.filter { it.type != "MBTILES" }
-
-    Section(stringResource(R.string.settings_section_default_basemap))
-    BasemapPicker(mapProviders, mapComposites, cur.defaultBasemapId) { vm.save(cur.copy(defaultBasemapId = it)) }
-
-    Section(stringResource(R.string.settings_section_basemaps))
-    OutlinedButton(onClick = onPickMbtiles, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Filled.FileDownload, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.action_import_mbtiles))
-    }
     var creatingComposite by remember { mutableStateOf(false) }
     var editingComposite by remember { mutableStateOf<CompositeEntity?>(null) }
-    OutlinedButton(onClick = { creatingComposite = true }, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Filled.Layers, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.action_create_composite))
-    }
-    Spacer(Modifier.height(8.dp))
-    // Dossier réel des .mbtiles (miroir de TrailogRepository.mbtilesDir) : affiché dans l'éditeur MBTILES.
+    var providersDialogOpen by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
+    // Dossier reel des .mbtiles (miroir de TrailogRepository.mbtilesDir) : affiche dans l'editeur MBTILES.
     val mbtilesDirPath = cur.mbtilesDir.ifBlank { File(ctx.filesDir, "mbtiles").absolutePath }
-    basemapEntries.forEach { p ->
-        val onDelete: (() -> Unit)? = if (!p.builtin) { { vm.deleteProvider(p) } } else null
-        ProviderRow(p, onSave = vm::saveProvider, onDelete = onDelete, mbtilesDirPath = mbtilesDirPath)
+
+    SectionTitle(stringResource(R.string.settings_section_default_basemap), tight = true)
+    SettingsCard {
+        BasemapPickRow(mapProviders, mapComposites, cur.defaultBasemapId) { vm.save(cur.copy(defaultBasemapId = it)) }
     }
-    composites.forEach { c ->
-        CompositeRow(c, onToggle = { vm.saveComposite(c.copy(enabled = it)) },
-            onEdit = { editingComposite = c }, onDelete = { vm.deleteComposite(c) })
+
+    // Les deux boutons d'ajout sortent de la liste des fonds : on ne confond plus "ce que je peux
+    // ajouter" et "ce que j'ai deja".
+    SectionTitle(stringResource(R.string.settings_section_add_basemap))
+    SettingsCard {
+        CardButton(stringResource(R.string.action_import_mbtiles), painterResource(R.drawable.ic_settings_download), onPickMbtiles)
+        CardButton(stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers)) { creatingComposite = true }
     }
+
+    if (basemapEntries.isNotEmpty() || composites.isNotEmpty()) {
+        SectionTitle(stringResource(R.string.settings_section_installed_basemaps))
+        SettingsCard {
+            basemapEntries.forEachIndexed { i, p ->
+                if (i > 0) RowDivider()
+                val onDelete: (() -> Unit)? = if (!p.builtin) { { vm.deleteProvider(p) } } else null
+                ProviderRow(p, onSave = vm::saveProvider, onDelete = onDelete, mbtilesDirPath = mbtilesDirPath)
+            }
+            composites.forEachIndexed { i, c ->
+                if (i > 0 || basemapEntries.isNotEmpty()) RowDivider()
+                CompositeRow(c, onToggle = { vm.saveComposite(c.copy(enabled = it)) },
+                    onEdit = { editingComposite = c }, onDelete = { vm.deleteComposite(c) })
+            }
+        }
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_providers))
+    SettingsCard {
+        SetRow(
+            stringResource(R.string.action_manage_providers),
+            sub = stringResource(R.string.settings_providers_subtitle),
+            onClick = { providersDialogOpen = true },
+        ) {
+            RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_manage_providers))
+        }
+    }
+
     if (creatingComposite) {
         CompositeEditorDialog(null, providers,
             onSave = { vm.saveComposite(it); creatingComposite = false }, onDismiss = { creatingComposite = false })
@@ -436,13 +559,6 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     editingComposite?.let { c ->
         CompositeEditorDialog(c, providers,
             onSave = { vm.saveComposite(it); editingComposite = null }, onDismiss = { editingComposite = null })
-    }
-
-    Section(stringResource(R.string.settings_section_providers))
-    var providersDialogOpen by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.action_manage_providers), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        CompactIconButton(onClick = { providersDialogOpen = true }, stringResource(R.string.action_manage_providers), Icons.AutoMirrored.Filled.OpenInNew)
     }
     if (providersDialogOpen) {
         val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -453,16 +569,29 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         }
         val pendingImport by vm.pendingProvidersImport.collectAsState()
         Dialog(onDismissRequest = { providersDialogOpen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.85f), shape = MaterialTheme.shapes.large, tonalElevation = 4.dp) {
-                Column(Modifier.fillMaxSize().padding(16.dp)) {
+            // La popup reprend le fond et les cartes de l'ecran : elle en est le prolongement, pas une
+            // fenetre d'un autre monde.
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.85f),
+                shape = RoundedCornerShape(20.dp), color = settingsPalette.screen,
+            ) {
+                Column(Modifier.fillMaxSize().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.settings_section_providers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                        CompactIconButton(onClick = { exportLauncher.launch("trailog_providers.json") }, stringResource(R.string.action_export), Icons.Filled.FileUpload)
-                        CompactIconButton(onClick = { importLauncher.launch("application/json") }, stringResource(R.string.action_import), Icons.Filled.FileDownload)
-                        IconButton(onClick = { providersDialogOpen = false }) { Icon(Icons.Filled.Close, stringResource(R.string.action_close)) }
+                        Text(stringResource(R.string.settings_section_providers), fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+                            modifier = Modifier.weight(1f))
+                        RowIcon(Icons.Filled.FileUpload, stringResource(R.string.action_export)) { exportLauncher.launch("trailog_providers.json") }
+                        RowIcon(Icons.Filled.FileDownload, stringResource(R.string.action_import)) { importLauncher.launch("application/json") }
+                        RowIcon(Icons.Filled.Close, stringResource(R.string.action_close)) { providersDialogOpen = false }
                     }
+                    Spacer(Modifier.height(8.dp))
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                        otherProviders.forEach { p -> ProviderRow(p, onSave = vm::saveProvider) }
+                        SettingsCard {
+                            otherProviders.forEachIndexed { i, p ->
+                                if (i > 0) RowDivider()
+                                ProviderRow(p, onSave = vm::saveProvider)
+                            }
+                        }
                     }
                 }
             }
@@ -479,15 +608,18 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     }
 }
 
+/** Ligne d'un composite : meme grammaire qu'un fond (cf. ProviderRow) - symbole, nom, actions, etat. */
 @Composable private fun CompositeRow(c: CompositeEntity, onToggle: (Boolean) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        CompactSwitch(checked = c.enabled, onCheckedChange = onToggle)
-        Spacer(Modifier.width(4.dp))
-        Icon(Icons.Filled.Layers, null, modifier = Modifier.size(CompactIconSize))
-        Spacer(Modifier.width(6.dp))
-        Text(c.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        CompactIconButton(onClick = onEdit, stringResource(R.string.action_edit), Icons.Filled.Edit)
-        CompactIconButton(onClick = onDelete, stringResource(R.string.action_delete), Icons.Filled.DeleteOutline)
+    Row(
+        Modifier.fillMaxWidth().defaultMinSize(minHeight = 46.dp).padding(horizontal = 14.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_settings_layers), null, Modifier.size(16.dp), tint = settingsPalette.subtle)
+        Text(c.name, fontSize = 12.5.sp, color = settingsPalette.label, modifier = Modifier.weight(1f))
+        RowIcon(Icons.Filled.Edit, stringResource(R.string.action_edit), onClick = onEdit)
+        RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_delete), onClick = onDelete)
+        SettingsSwitch(c.enabled, onToggle)
     }
 }
 
@@ -504,34 +636,40 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     var bgId by remember { mutableStateOf(existing?.backgroundProviderId ?: bgSelectable.firstOrNull()?.id ?: "") }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        // Meme fond et memes cartes que l'ecran des reglages (cf. la popup des fournisseurs).
         Surface(
-            modifier = Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.8f),
-            shape = MaterialTheme.shapes.large, tonalElevation = 4.dp,
+            // Hauteur libre, bornee a ce que l'ecran offre : la popup ne porte que quatre champs, lui
+            // en reserver 80 % laissait un grand vide sous le dernier.
+            modifier = Modifier.fillMaxWidth(0.86f).heightIn(max = 620.dp),
+            shape = RoundedCornerShape(20.dp), color = settingsPalette.screen,
         ) {
-            Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
-                Text(stringResource(R.string.dialog_composite_title), style = MaterialTheme.typography.titleLarge)
-                Spacer(Modifier.height(12.dp))
-                CompactOutlinedTextField(name, { name = it },
-                    label = { Text(stringResource(R.string.field_composite_name)) }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(12.dp))
-                Text(stringResource(R.string.field_foreground_opacity, opacityPct), style = MaterialTheme.typography.bodyMedium)
-                CompactSlider(value = opacityPct.toFloat(), valueRange = 0f..100f, onValueChange = { opacityPct = it.toInt() })
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.FlipToFront, null, tint = Color.Red)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.label_foreground_layer), style = MaterialTheme.typography.labelMedium)
+            Column(Modifier.fillMaxWidth().padding(14.dp).verticalScroll(rememberScrollState())) {
+                Text(stringResource(if (existing == null) R.string.dialog_composite_title
+                    else R.string.dialog_composite_edit_title), fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold, color = settingsPalette.label)
+                Spacer(Modifier.height(10.dp))
+                SettingsCard {
+                    FieldRow(stringResource(R.string.field_composite_name)) {
+                        SettingsTextField(name, "") { name = it }
+                    }
+                    RowDivider()
+                    SliderRow(
+                        stringResource(R.string.settings_label_opacity), "$opacityPct %",
+                        fractionOf(opacityPct, 0, 100),
+                        { opacityPct = valueOf(it, 0, 100) },
+                    )
+                    RowDivider()
+                    // Les deux couches suivent les deux premiers reglages, dans la meme carte et sous la
+                    // meme legende : ce sont quatre champs d'un meme objet, non deux paires a rapprocher.
+                    FieldRow(stringResource(R.string.label_foreground_layer), Icons.Filled.FlipToFront) {
+                        LayerSelect(providers, fgId) { fgId = it }
+                    }
+                    RowDivider()
+                    FieldRow(stringResource(R.string.label_background_layer), Icons.Filled.FlipToBack) {
+                        LayerSelect(bgSelectable, bgId) { bgId = it }
+                    }
                 }
-                LayerSelect(providers, fgId) { fgId = it }
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.FlipToBack, null, tint = Color.Red)
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.label_background_layer), style = MaterialTheme.typography.labelMedium)
-                }
-                LayerSelect(bgSelectable, bgId) { bgId = it }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
                     Spacer(Modifier.width(8.dp))
@@ -541,7 +679,7 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
                                 id = existing?.id ?: 0, name = name,
                                 backgroundProviderId = bgId, foregroundProviderId = fgId,
                                 foregroundOpacity = opacityPct / 100f, enabled = existing?.enabled ?: true,
-                                sortOrder = existing?.sortOrder ?: 0, folderId = existing?.folderId,
+                                sortOrder = existing?.sortOrder ?: CompositeSortOrder, folderId = existing?.folderId,
                             ))
                         }
                     }) { Text(stringResource(R.string.action_save)) }
@@ -552,14 +690,21 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+/** Choix d'une couche : le cadre de champ de l'ecran, et le menu des fonds sous lui. */
 @Composable private fun LayerSelect(items: List<ProviderEntity>, current: String, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val name = items.firstOrNull { it.id == current }?.name ?: current
-    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
-        CompactOutlinedTextField(value = name, onValueChange = {}, readOnly = true,
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(open) }, textStyle = MaterialTheme.typography.bodyMedium)
-        ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+    Box {
+        Row(
+            fieldBoxModifier().clickable { open = true }.padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(name, fontSize = 12.sp, color = settingsPalette.label, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(16.dp), tint = settingsPalette.subtle)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             items.forEach { p -> DropdownMenuItem(text = { ProviderOptionLabel(p) }, onClick = { onSelect(p.id); open = false }) }
         }
     }
@@ -571,55 +716,67 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
  * l'onglet qu'ils occupaient etant rendu au calcul d'itineraire.
  */
 @Composable private fun ProfileSettings(cur: SettingsEntity, vm: SettingsViewModel) {
-    Section(stringResource(R.string.settings_section_display))
-    SwitchRow(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
-    SwitchRow(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
-    SwitchRow(stringResource(R.string.settings_profile_slope_legend), cur.profileSlopeLegend) { vm.save(cur.copy(profileSlopeLegend = it)) }
-    // Valeurs autorisées : 1 m, puis pas de 5 jusqu'à 100 m (souvent ~1 point GPS tous les 80 m). Non
-    // équidistantes (1->5) → le slider parcourt un index et mappe vers ces valeurs, plutôt qu'une plage
-    // continue. Un réglage existant hors liste est ramené à la valeur la plus proche.
-    val smoothingValues = remember { listOf(1) + (5..100 step 5).toList() }
-    val smoothingIdx = smoothingValues.indexOf(cur.profileSmoothingM).let { exact ->
-        if (exact >= 0) exact
-        else smoothingValues.indices.minByOrNull { kotlin.math.abs(smoothingValues[it] - cur.profileSmoothingM) } ?: 0
+    SectionTitle(stringResource(R.string.settings_section_display), tight = true)
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
+        RowDivider()
+        // Pas d'interrupteur pour la legende des pentes : elle se demande d'un "i" pose sur le bandeau du
+        // profil, la ou elle sert, et se referme du meme geste (cf. SlopeLegendButton).
+        SwitchLine(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
     }
-    Section(stringResource(R.string.settings_section_profile_smoothing, cur.profileSmoothingM))
-    CompactSlider(value = smoothingIdx.toFloat(), valueRange = 0f..(smoothingValues.size - 1).toFloat(),
-        steps = smoothingValues.size - 2,
-        onValueChange = { vm.save(cur.copy(profileSmoothingM = smoothingValues[(it + 0.5f).toInt().coerceIn(0, smoothingValues.lastIndex)])) })
-    Text(stringResource(R.string.settings_profile_smoothing_hint),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    // Échelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (mètres d'altitude par cm physique).
-    // Bornes choisies d'après la hauteur du graphe (~1,6 cm) : de 50 (le graphe couvre ~80 m) à 1200 m/cm
-    // (~1900 m). Valeurs non équidistantes → slider indexé, comme le lissage.
-    val vsValues = remember { listOf(0, 50, 100, 150, 200, 250, 300, 500, 800, 1200) }
-    val vsIdx = vsValues.indexOf(cur.profileVerticalScaleMPerCm).let { if (it >= 0) it else 0 }
-    val vsLabel = if (cur.profileVerticalScaleMPerCm <= 0) stringResource(R.string.settings_vertical_scale_auto)
-        else stringResource(R.string.settings_vertical_scale_value, cur.profileVerticalScaleMPerCm)
-    Section(stringResource(R.string.settings_section_vertical_scale, vsLabel))
-    CompactSlider(value = vsIdx.toFloat(), valueRange = 0f..(vsValues.size - 1).toFloat(),
-        steps = vsValues.size - 2,
-        onValueChange = { vm.save(cur.copy(profileVerticalScaleMPerCm = vsValues[(it + 0.5f).toInt().coerceIn(0, vsValues.lastIndex)])) })
-    Text(stringResource(R.string.settings_vertical_scale_hint),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas a
-    // l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre trace.
-    // Les autres reglages du profil (grille, pentes, polices) se jugent immediatement et se defont seuls.
-    TextButton(onClick = { vm.save(cur.copy(profileSmoothingM = 5, profileVerticalScaleMPerCm = 0)) }) {
-        Text(stringResource(R.string.action_reset_defaults))
+
+    SectionTitle(stringResource(R.string.settings_section_title_line_info))
+    SettingsCard {
+        SetRow(stringResource(R.string.settings_label_title_line))
+        InfoChipRow(
+            listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent),
+                "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration),
+                "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
+            cur.titleInfos, scrollable = true,
+        ) { vm.save(cur.copy(titleInfos = it)) }
+        RowDivider()
+        SetRow(stringResource(R.string.settings_label_current_point))
+        InfoChipRow(
+            listOf("dist" to stringResource(R.string.chip_distance), "ele" to stringResource(R.string.chip_altitude),
+                "slope" to stringResource(R.string.chip_slope), "time" to stringResource(R.string.chip_time)),
+            cur.cursorInfos,
+        ) { vm.save(cur.copy(cursorInfos = it)) }
     }
-    Section(stringResource(R.string.settings_section_title_line_info))
-    InfoChips(listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent), "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration), "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
-        cur.titleInfos) { vm.save(cur.copy(titleInfos = it)) }
-    Section(stringResource(R.string.settings_section_cursor_info))
-    InfoChips(listOf("dist" to stringResource(R.string.chip_distance), "ele" to stringResource(R.string.chip_altitude), "slope" to stringResource(R.string.chip_slope), "time" to stringResource(R.string.chip_time)),
-        cur.cursorInfos) { vm.save(cur.copy(cursorInfos = it)) }
-    Section(stringResource(R.string.settings_section_font_sizes))
-    FontStepper(stringResource(R.string.font_axes), cur.profAxisFont, bold = cur.profAxisBold, onBold = { vm.save(cur.copy(profAxisBold = it)) }) { vm.save(cur.copy(profAxisFont = it)) }
-    FontStepper(stringResource(R.string.font_title), cur.profTitleFont, bold = cur.profTitleBold, onBold = { vm.save(cur.copy(profTitleBold = it)) }) { vm.save(cur.copy(profTitleFont = it)) }
-    FontStepper(stringResource(R.string.font_title_bar_info), cur.profBarFont, bold = cur.profBarBold, onBold = { vm.save(cur.copy(profBarBold = it)) }) { vm.save(cur.copy(profBarFont = it)) }
-    FontStepper(stringResource(R.string.settings_profile_slope_legend), cur.profLegendFont, bold = cur.profLegendBold, onBold = { vm.save(cur.copy(profLegendBold = it)) }) { vm.save(cur.copy(profLegendFont = it)) }
-    FontStepper(stringResource(R.string.font_cursor_point), cur.profCursorFont, bold = cur.profCursorBold, onBold = { vm.save(cur.copy(profCursorBold = it)) }) { vm.save(cur.copy(profCursorFont = it)) }
+
+    SectionTitle(stringResource(R.string.settings_section_font_sizes))
+    SettingsCard {
+        StepperLine(stringResource(R.string.font_axes), cur.profAxisFont, 7, 28,
+            bold = cur.profAxisBold, onBold = { vm.save(cur.copy(profAxisBold = it)) }) { vm.save(cur.copy(profAxisFont = it)) }
+        RowDivider()
+        StepperLine(stringResource(R.string.font_title), cur.profTitleFont, 7, 28,
+            bold = cur.profTitleBold, onBold = { vm.save(cur.copy(profTitleBold = it)) }) { vm.save(cur.copy(profTitleFont = it)) }
+        RowDivider()
+        StepperLine(stringResource(R.string.font_title_bar_info), cur.profBarFont, 7, 28,
+            bold = cur.profBarBold, onBold = { vm.save(cur.copy(profBarBold = it)) }) { vm.save(cur.copy(profBarFont = it)) }
+        RowDivider()
+        StepperLine(stringResource(R.string.settings_profile_slope_legend), cur.profLegendFont, 7, 28,
+            bold = cur.profLegendBold, onBold = { vm.save(cur.copy(profLegendBold = it)) }) { vm.save(cur.copy(profLegendFont = it)) }
+        RowDivider()
+        StepperLine(stringResource(R.string.font_cursor_point), cur.profCursorFont, 7, 28,
+            bold = cur.profCursorBold, onBold = { vm.save(cur.copy(profCursorBold = it)) }) { vm.save(cur.copy(profCursorFont = it)) }
+    }
+}
+
+/** Puces d'un choix multiple ordonne (infos affichees) : l'ordre d'affichage suit celui des puces, non
+ *  celui des taps - deux traces cote a cote doivent presenter leurs infos dans le meme ordre. */
+@Composable private fun ColumnScopeMarker.InfoChipRow(
+    options: List<Pair<String, String>>, csv: String, scrollable: Boolean = false, onChange: (String) -> Unit,
+) {
+    val selected = csv.split(",").map { it.trim() }.filter { it.isNotBlank() }
+    ChipRow(scrollable = scrollable) {
+        options.forEach { (key, label) ->
+            val on = key in selected
+            SettingsChip(label, selected = on) {
+                val next = if (on) selected - key else selected + key
+                onChange(options.map { it.first }.filter { it in next }.joinToString(","))
+            }
+        }
+    }
 }
 
 /**
@@ -630,22 +787,63 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
  * interrupteurs qui montrent leurs boutons sur la carte, eux, restent dans l'onglet "Carte".
  */
 @Composable private fun RoutesTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    Section(stringResource(R.string.settings_section_geocoding_service))
-    CompactOutlinedTextField(
-        value = cur.geocodingUrl, onValueChange = { vm.save(cur.copy(geocodingUrl = it.trim())) },
-        // Sans libelle : le titre de la rubrique le porte deja, et le repeter dans le champ mange une
-        // ligne pour rien.
-        singleLine = true, modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(Photon.DEFAULT_URL) },
-    )
-    Section(stringResource(R.string.settings_section_routing_service))
-    CompactOutlinedTextField(
-        value = cur.routingUrl, onValueChange = { vm.save(cur.copy(routingUrl = it.trim())) },
-        singleLine = true, modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(Valhalla.DEFAULT_URL) },
-    )
-    Section(stringResource(R.string.settings_section_default_discipline))
-    RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
+    SectionTitle(stringResource(R.string.settings_section_services), tight = true)
+    SettingsCard {
+        FieldRow(stringResource(R.string.settings_section_geocoding_service)) {
+            SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
+        }
+        RowDivider()
+        FieldRow(stringResource(R.string.settings_section_routing_service)) {
+            SettingsTextField(cur.routingUrl, Valhalla.DEFAULT_URL) { vm.save(cur.copy(routingUrl = it.trim())) }
+        }
+        Hint(stringResource(R.string.settings_services_hint))
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_default_discipline))
+    SettingsCard {
+        RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
+    }
+
+    // Le lissage et l'echelle verticale ont quitte l'onglet "Carte" pour celui-ci : ils ne decrivent pas
+    // ce qui s'affiche mais comment le profil se CALCULE, la ligne de partage que les deux onglets
+    // revendiquent depuis toujours.
+    SectionTitle(stringResource(R.string.settings_section_profile_calc))
+    SettingsCard {
+        // Valeurs autorisees : 1 m, puis pas de 5 jusqu'a 100 m (souvent ~1 point GPS tous les 80 m). Non
+        // equidistantes (1->5) : le curseur parcourt un index et rend la valeur, plutot qu'une plage
+        // continue. Un reglage existant hors liste est ramene a la valeur la plus proche.
+        val smoothing = remember { listOf(1) + (5..100 step 5).toList() }
+        val smoothingIdx = smoothing.indexOf(cur.profileSmoothingM).let { exact ->
+            if (exact >= 0) exact
+            else smoothing.indices.minByOrNull { kotlin.math.abs(smoothing[it] - cur.profileSmoothingM) } ?: 0
+        }
+        SliderRow(
+            stringResource(R.string.settings_label_smoothing), "${cur.profileSmoothingM} m",
+            fractionOf(smoothingIdx, 0, smoothing.lastIndex), steps = smoothing.size - 2,
+            onFraction = { vm.save(cur.copy(profileSmoothingM = smoothing[valueOf(it, 0, smoothing.lastIndex)])) },
+        )
+        Hint(stringResource(R.string.settings_profile_smoothing_hint))
+        RowDivider()
+        // Echelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (metres d'altitude par cm
+        // physique). Bornes choisies d'apres la hauteur du graphe (~1,6 cm). Valeurs non equidistantes,
+        // donc curseur indexe, comme le lissage.
+        val scales = remember { listOf(0, 50, 100, 150, 200, 250, 300, 500, 800, 1200) }
+        val scaleIdx = scales.indexOf(cur.profileVerticalScaleMPerCm).let { if (it >= 0) it else 0 }
+        SliderRow(
+            stringResource(R.string.settings_label_vertical_scale),
+            if (cur.profileVerticalScaleMPerCm <= 0) stringResource(R.string.settings_vertical_scale_auto)
+            else stringResource(R.string.settings_vertical_scale_value, cur.profileVerticalScaleMPerCm),
+            fractionOf(scaleIdx, 0, scales.lastIndex), steps = scales.size - 2,
+            onFraction = { vm.save(cur.copy(profileVerticalScaleMPerCm = scales[valueOf(it, 0, scales.lastIndex)])) },
+        )
+        Hint(stringResource(R.string.settings_vertical_scale_hint))
+        // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas
+        // a l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre
+        // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(profileSmoothingM = 5, profileVerticalScaleMPerCm = 0))
+        }
+    }
 }
 
 /**
@@ -655,8 +853,7 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
  * En build debug, la verification est inoperante (cf. UpdateManager.isSupported) : on le dit plutot que de
  * laisser un bouton qui ne repondrait jamais rien.
  */
-@Composable private fun UpdatesSetting(cur: SettingsEntity, vm: SettingsViewModel) {
-    val ctx = LocalContext.current
+@Composable private fun ColumnScopeMarker.UpdatesRow(cur: SettingsEntity, vm: SettingsViewModel) {
     val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<ReleaseInfo?>(null) }
@@ -664,15 +861,18 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     val upToDate = stringResource(R.string.update_none_available)
     val failed = stringResource(R.string.update_check_failed)
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        SegRow(
-            listOf("auto" to stringResource(R.string.update_mode_auto), "manual" to stringResource(R.string.update_mode_manual)),
-            cur.updateCheckMode,
-        ) { vm.save(cur.copy(updateCheckMode = it)) }
+    SetRow(stringResource(R.string.settings_label_updates)) {
+        SettingsChip(stringResource(R.string.update_mode_auto), cur.updateCheckMode != "manual") {
+            vm.save(cur.copy(updateCheckMode = "auto"))
+        }
+        SettingsChip(stringResource(R.string.update_mode_manual), cur.updateCheckMode == "manual") {
+            vm.save(cur.copy(updateCheckMode = "manual"))
+        }
         if (UpdateManager.isSupported && cur.updateCheckMode == "manual") {
-            OutlinedButton(
-                onClick = {
-                    if (checking) return@OutlinedButton
+            if (checking) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                InlineButton(stringResource(R.string.update_action_check)) {
                     checking = true; message = null
                     scope.launch {
                         when (val r = UpdateManager.check()) {
@@ -682,25 +882,14 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
                         }
                         checking = false
                     }
-                },
-                enabled = !checking,
-                modifier = Modifier.height(CompactChipHeight),
-                contentPadding = PaddingValues(horizontal = 10.dp),
-            ) { Text(stringResource(R.string.update_action_check), style = MaterialTheme.typography.labelSmall) }
-            if (checking) {
-                Spacer(Modifier.width(8.dp))
-                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                }
             }
         }
     }
-    if (!UpdateManager.isSupported) {
-        Text(stringResource(R.string.update_unsupported_debug),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        return
-    }
-    message?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    // En build debug, la verification est inoperante (cf. UpdateManager.isSupported) : on le dit plutot
+    // que de laisser un bouton qui ne repondrait jamais rien.
+    if (!UpdateManager.isSupported) Hint(stringResource(R.string.update_unsupported_debug))
+    message?.let { Hint(it) }
     UpdateFlow(release = found, onDone = { found = null })
 }
 
@@ -709,67 +898,124 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     onPickImportDir: () -> Unit, onPickMbtilesFolder: () -> Unit, onPickAvatar: () -> Unit,
 ) {
     val ctx = LocalContext.current
-
-    Section(stringResource(R.string.settings_section_import_folder))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(if (cur.importDir.isBlank()) stringResource(R.string.settings_default_system) else (cur.importDir.toUri().lastPathSegment ?: stringResource(R.string.settings_default_system)),
-            modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        OutlinedButton(onClick = onPickImportDir) { Icon(Icons.Filled.Folder, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.action_browse)) }
-    }
-    Section(stringResource(R.string.settings_section_mbtiles_folder))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(if (cur.mbtilesDir.isBlank()) stringResource(R.string.settings_app_folder_default) else StoragePaths.displayName(cur.mbtilesDir),
-            modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        OutlinedButton(onClick = onPickMbtilesFolder) { Icon(Icons.Filled.Folder, null); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.action_browse)) }
-    }
-    Section(stringResource(R.string.settings_section_side_menu))
-    SegRow(listOf("burger" to stringResource(R.string.side_menu_burger), "swipe" to stringResource(R.string.side_menu_swipe), "both" to stringResource(R.string.side_menu_both)), cur.sideMenuMode) { vm.save(cur.copy(sideMenuMode = it)) }
-    Section(stringResource(R.string.settings_section_status_bar))
-    SwitchRow(stringResource(R.string.settings_status_bar_transparent), cur.statusBarTransparent) { vm.save(cur.copy(statusBarTransparent = it)) }
-    // Deux tolérances : les marqueurs sont interrogés avant les traces et l'emportent, une valeur large sur
-    // eux rend une trace qui passe à côté difficile à atteindre.
-    Section(stringResource(R.string.settings_section_tap_tolerance_points, cur.tapToleranceDp))
-    CompactSlider(value = cur.tapToleranceDp.toFloat(), valueRange = 4f..40f, steps = 35,
-        onValueChange = { vm.save(cur.copy(tapToleranceDp = it.toInt())) })
-    Section(stringResource(R.string.settings_section_tap_tolerance_lines, cur.lineTapToleranceDp))
-    CompactSlider(value = cur.lineTapToleranceDp.toFloat(), valueRange = 4f..40f, steps = 35,
-        onValueChange = { vm.save(cur.copy(lineTapToleranceDp = it.toInt())) })
-    Section(stringResource(R.string.settings_section_performance))
-    SwitchRow(stringResource(R.string.settings_simplify_render), cur.simplifyRender) { vm.save(cur.copy(simplifyRender = it)) }
-    Text(stringResource(R.string.settings_simplify_render_hint),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Section(stringResource(R.string.settings_section_units))
-    SegRow(listOf("meters" to stringResource(R.string.unit_metric), "imperial" to stringResource(R.string.unit_imperial)), cur.units) { vm.save(cur.copy(units = it)) }
-
-    Section(stringResource(R.string.settings_section_updates))
-    UpdatesSetting(cur, vm)
-
-    Section(stringResource(R.string.settings_section_language))
-    var currentLang by remember { mutableStateOf(LocalePrefs.get(ctx)) }
-    LanguagePicker(currentLang) { code ->
-        currentLang = code
-        LocalePrefs.set(ctx, code)
-        (ctx as? Activity)?.recreate()
-    }
-
-    Section(stringResource(R.string.settings_section_theme))
-    SegRow(listOf("system" to stringResource(R.string.theme_system), "light" to stringResource(R.string.theme_light), "dark" to stringResource(R.string.theme_dark)), cur.theme) { vm.save(cur.copy(theme = it)) }
-
-    Section(stringResource(R.string.font_title))
-    var titleText by remember(cur.customTitle) { mutableStateOf(cur.customTitle) }
-    CompactOutlinedTextField(titleText, { titleText = it }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium)
-    TextButton(onClick = { vm.save(cur.copy(customTitle = titleText)) }) { Text(stringResource(R.string.action_save)) }
-
-    Section(stringResource(R.string.settings_section_avatar))
     var avatarDialogOpen by remember { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.action_change_avatar), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        CompactIconButton(onClick = { avatarDialogOpen = true }, stringResource(R.string.action_change_avatar), Icons.AutoMirrored.Filled.OpenInNew)
-        if (cur.avatarSource.isNotBlank()) {
-            CompactIconButton(onClick = { vm.save(cur.copy(avatarSource = "")) }, stringResource(R.string.action_reset_avatar), Icons.Filled.DeleteOutline)
+    var confirmReset by remember { mutableStateOf(false) }
+
+    // Treize rubriques a plat devenaient une liste ou l'on cherchait. Quatre groupes : ou ca se range, ce
+    // qui repond au doigt, ce que ca donne a voir, et ce que l'application fait d'elle-meme.
+    GroupTitle(stringResource(R.string.settings_group_storage), first = true)
+    SettingsCard {
+        SetRow(
+            stringResource(R.string.settings_section_import_folder),
+            sub = if (cur.importDir.isBlank()) stringResource(R.string.settings_default_system)
+                else (cur.importDir.toUri().lastPathSegment ?: stringResource(R.string.settings_default_system)),
+        ) {
+            InlineButton(stringResource(R.string.action_browse), Icons.Filled.Folder, onPickImportDir)
+        }
+        RowDivider()
+        SetRow(
+            stringResource(R.string.settings_section_mbtiles_folder),
+            sub = if (cur.mbtilesDir.isBlank()) stringResource(R.string.settings_app_folder_default)
+                else StoragePaths.displayName(cur.mbtilesDir),
+        ) {
+            InlineButton(stringResource(R.string.action_browse), Icons.Filled.Folder, onPickMbtilesFolder)
         }
     }
+
+    GroupTitle(stringResource(R.string.settings_group_interaction))
+    SectionTitle(stringResource(R.string.settings_section_side_menu_open), tight = true)
+    SettingsCard {
+        SegChips(
+            listOf("burger" to stringResource(R.string.side_menu_burger),
+                "swipe" to stringResource(R.string.side_menu_swipe),
+                "both" to stringResource(R.string.side_menu_both)),
+            cur.sideMenuMode,
+        ) { vm.save(cur.copy(sideMenuMode = it)) }
+    }
+    // Deux tolerances : les marqueurs sont interroges avant les traces et l'emportent, une valeur large
+    // sur eux rend une trace qui passe a cote difficile a atteindre.
+    SectionTitle(stringResource(R.string.settings_section_tap_tolerance))
+    SettingsCard {
+        SliderRow(
+            stringResource(R.string.settings_label_waypoints), "${cur.tapToleranceDp} dp",
+            fractionOf(cur.tapToleranceDp, 4, 40), steps = 35,
+            onFraction = { vm.save(cur.copy(tapToleranceDp = valueOf(it, 4, 40))) },
+        )
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_tracks), "${cur.lineTapToleranceDp} dp",
+            fractionOf(cur.lineTapToleranceDp, 4, 40), steps = 35,
+            onFraction = { vm.save(cur.copy(lineTapToleranceDp = valueOf(it, 4, 40))) },
+        )
+    }
+
+    GroupTitle(stringResource(R.string.settings_group_appearance))
+    var currentLang by remember { mutableStateOf(LocalePrefs.get(ctx)) }
+    SettingsCard {
+        PickRow(
+            stringResource(R.string.settings_label_theme), cur.theme,
+            listOf("system", "light", "dark"),
+            optionLabel = {
+                stringResource(when (it) {
+                    "light" -> R.string.theme_light
+                    "dark" -> R.string.theme_dark
+                    else -> R.string.theme_system
+                })
+            },
+        ) { vm.save(cur.copy(theme = it)) }
+        RowDivider()
+        PickRow(
+            stringResource(R.string.settings_label_language), currentLang,
+            LocalePrefs.SELECTABLE, optionLabel = { LocalePrefs.nativeName(it) },
+        ) { code ->
+            currentLang = code
+            LocalePrefs.set(ctx, code)
+            (ctx as? Activity)?.recreate()
+        }
+        RowDivider()
+        PickRow(
+            stringResource(R.string.settings_label_units), cur.units, listOf("meters", "imperial"),
+            optionLabel = { stringResource(if (it == "imperial") R.string.unit_imperial else R.string.unit_metric) },
+        ) { vm.save(cur.copy(units = it)) }
+        RowDivider()
+        SwitchLine(
+            stringResource(R.string.settings_status_bar_transparent), cur.statusBarTransparent,
+            sub = stringResource(R.string.settings_sw_status_bar_sub),
+        ) { vm.save(cur.copy(statusBarTransparent = it)) }
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_personalisation))
+    var titleText by remember(cur.customTitle) { mutableStateOf(cur.customTitle) }
+    SettingsCard {
+        FieldRow(stringResource(R.string.settings_label_side_title)) {
+            SettingsTextField(titleText, stringResource(R.string.drawer_default_title)) { titleText = it }
+        }
+        RowDivider()
+        SetRow(stringResource(R.string.settings_label_avatar)) {
+            if (cur.avatarSource.isNotBlank()) {
+                RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_reset_avatar)) {
+                    vm.save(cur.copy(avatarSource = ""))
+                }
+            }
+            RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_change_avatar)) {
+                avatarDialogOpen = true
+            }
+        }
+        CardAction(stringResource(R.string.action_save)) { vm.save(cur.copy(customTitle = titleText)) }
+    }
+
+    GroupTitle(stringResource(R.string.settings_group_application))
+    SettingsCard {
+        SwitchLine(
+            stringResource(R.string.settings_simplify_render), cur.simplifyRender,
+            sub = stringResource(R.string.settings_sw_simplify_sub),
+        ) { vm.save(cur.copy(simplifyRender = it)) }
+        Hint(stringResource(R.string.settings_simplify_render_hint))
+        RowDivider()
+        UpdatesRow(cur, vm)
+        CardAction(stringResource(R.string.action_reset_all_settings)) { confirmReset = true }
+    }
+
     if (avatarDialogOpen) {
         var urlText by remember { mutableStateOf("") }
         AlertDialog(
@@ -783,7 +1029,7 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
                     Spacer(Modifier.height(12.dp))
                     CompactOutlinedTextField(urlText, { urlText = it },
                         placeholder = { Text(stringResource(R.string.avatar_url_placeholder)) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
+                        modifier = Modifier.fillMaxWidth(), singleLine = true)
                 }
             },
             confirmButton = {
@@ -794,12 +1040,6 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
             },
             dismissButton = { TextButton(onClick = { avatarDialogOpen = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
-    }
-
-    Section(stringResource(R.string.settings_section_reset))
-    var confirmReset by remember { mutableStateOf(false) }
-    OutlinedButton(onClick = { confirmReset = true }, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.action_reset_all_settings))
     }
     if (confirmReset) {
         AlertDialog(
@@ -820,12 +1060,14 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 
 /* --------------- Helpers (taille compacte : cf. bug 1.5) --------------- */
 
-private val CompactIconButtonSize = 32.dp
-private val CompactIconSize = 18.dp
-private val CompactChipHeight = 28.dp
+private val CompactIconButtonSize = 40.dp
+private val CompactIconSize = 22.dp
+private val CompactChipHeight = 36.dp
 
 @Composable private fun Section(t: String) {
-    Spacer(Modifier.height(10.dp)); Text(t, style = MaterialTheme.typography.titleSmall); Spacer(Modifier.height(4.dp))
+    Spacer(Modifier.height(16.dp))
+    Text(t, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    Spacer(Modifier.height(6.dp))
 }
 
 /**
@@ -837,16 +1079,27 @@ private val CompactChipHeight = 28.dp
  * hierarchie sur une liste qui defile.
  */
 @Composable private fun Group(t: String) {
-    Spacer(Modifier.height(18.dp))
+    Spacer(Modifier.height(24.dp))
     Text(t, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     HorizontalDivider(Modifier.padding(top = 2.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
 }
 
+/**
+ * Ligne a interrupteur : l'interrupteur d'abord, son libelle ensuite.
+ *
+ * La ligne entiere est cliquable, pas seulement l'interrupteur : c'est le libelle qu'on vise du regard,
+ * et une cible de 40 dp de large au bout d'une phrase de trente caracteres se rate.
+ */
 @Composable private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 1.dp)) {
-        CompactSwitch(checked = checked, onCheckedChange = onChange)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+            .clickable(role = Role.Switch) { onChange(!checked) }
+            .padding(vertical = 4.dp),
+    ) {
+        Switch(checked = checked, onCheckedChange = null)
+        Spacer(Modifier.width(16.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -865,27 +1118,21 @@ private val CompactChipHeight = 28.dp
     }
 }
 
-/** Slider compact : le thumb accepte une taille personnalisée via [SliderDefaults.Thumb], mais le
- *  track par défaut a une hauteur fixe non surchargeable, on le redessine donc à la main. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Curseur de reglage, celui de Material sans retouche.
+ *
+ * Il a longtemps ete redessine plus fin (piste de 4 dp, pastille de 14 dp) pour tenir plus de rubriques
+ * a l'ecran. La pastille s'attrapait mal et la piste se lisait mal ; l'ecran des reglages se parcourt en
+ * defilant, la place gagnee ne valait pas ce qu'elle coutait.
+ */
 @Composable private fun CompactSlider(
     value: Float, onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f, steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     Slider(
         value = value, onValueChange = onValueChange, valueRange = valueRange, steps = steps,
-        onValueChangeFinished = onValueChangeFinished, interactionSource = interactionSource,
-        thumb = { SliderDefaults.Thumb(interactionSource = interactionSource, thumbSize = DpSize(14.dp, 14.dp)) },
-        track = { state ->
-            val fraction = ((state.value - state.valueRange.start) /
-                (state.valueRange.endInclusive - state.valueRange.start)).coerceIn(0f, 1f)
-            Box(Modifier.fillMaxWidth().height(4.dp)) {
-                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.surfaceVariant))
-                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(MaterialTheme.colorScheme.primary))
-            }
-        },
+        onValueChangeFinished = onValueChangeFinished,
     )
 }
 
@@ -894,14 +1141,14 @@ private val CompactChipHeight = 28.dp
     bold: Boolean? = null, onBold: ((Boolean) -> Unit)? = null, onChange: (Int) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 1.dp)) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         if (bold != null && onBold != null) {
             FilterChip(selected = bold, onClick = { onBold(!bold) },
                 label = { Text(stringResource(R.string.settings_bold_abbrev), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall) },
                 modifier = Modifier.height(CompactChipHeight).padding(end = 4.dp))
         }
         CompactIconButton(onClick = { if (value > min) onChange(value - 1) }, stringResource(R.string.action_decrease), Icons.Filled.Remove)
-        Text("$value", Modifier.widthIn(min = 22.dp), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+        Text("$value", Modifier.widthIn(min = 26.dp), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
         CompactIconButton(onClick = { if (value < max) onChange(value + 1) }, stringResource(R.string.action_increase), Icons.Filled.Add)
     }
 }
@@ -929,16 +1176,16 @@ private val CompactChipHeight = 28.dp
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun BasemapPicker(providers: List<ProviderEntity>, composites: List<CompositeEntity>, current: String, onSelect: (String) -> Unit) {
+/** Fond affiche au demarrage : une ligne de carte, le nom en accent et le menu de tous les fonds. */
+@Composable private fun ColumnScopeMarker.BasemapPickRow(
+    providers: List<ProviderEntity>, composites: List<CompositeEntity>, current: String, onSelect: (String) -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     val currentLabel = providers.firstOrNull { it.id == current }?.name
         ?: composites.firstOrNull { compositeBasemapId(it.id) == current }?.name
         ?: current
-    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
-        CompactOutlinedTextField(value = currentLabel, onValueChange = {}, readOnly = true,
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(open) }, textStyle = MaterialTheme.typography.bodyMedium)
-        ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+    SetRow(stringResource(R.string.settings_section_default_basemap), onClick = { open = true }) {
+        PickValue(currentLabel, open, { open = false }) {
             providers.forEach { p -> DropdownMenuItem(text = { ProviderOptionLabel(p) }, onClick = { onSelect(p.id); open = false }) }
             composites.forEach { c -> DropdownMenuItem(text = { Text(c.name) }, onClick = { onSelect(compositeBasemapId(c.id)); open = false }) }
         }
@@ -965,7 +1212,7 @@ private val CompactChipHeight = 28.dp
             ) {
                 LanguageFlag(current)
                 Spacer(Modifier.width(8.dp))
-                Text(LocalePrefs.nativeName(current), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(LocalePrefs.nativeName(current), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 ExposedDropdownMenuDefaults.TrailingIcon(open, modifier = Modifier.requiredSize(CompactIconSize))
             }
         }
@@ -1047,7 +1294,9 @@ private val CompactChipHeight = 28.dp
     }
 }
 
-@Composable private fun ProviderRow(
+/** Ligne d'un fond dans une carte de reglages, depliable en editeur. Extension de la portee d'une carte :
+ *  elle en emprunte les filets, ses champs et son action de fin. */
+@Composable private fun ColumnScopeMarker.ProviderRow(
     p: ProviderEntity, onSave: (ProviderEntity) -> Unit, onDelete: (() -> Unit)? = null,
     mbtilesDirPath: String? = null,
 ) {
@@ -1055,59 +1304,84 @@ private val CompactChipHeight = 28.dp
     var name by remember(p.id) { mutableStateOf(p.name) }
     var url by remember(p.id) { mutableStateOf(p.urlTemplate) }
     var key by remember(p.id) { mutableStateOf(p.apiKey ?: "") }
-    var tile by remember(p.id) { mutableStateOf(p.tileSize.toString()) }
+    var zoom by remember(p.id) { mutableStateOf(p.minZoom.toFloat()..p.maxZoom.toFloat()) }
     val isMbtiles = p.type == "MBTILES"
     val flagCode = flagCodeFor(p)
-    fun resetFields() { name = p.name; url = p.urlTemplate; key = p.apiKey ?: ""; tile = p.tileSize.toString() }
-    Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            CompactSwitch(checked = p.enabled, onCheckedChange = { onSave(p.copy(enabled = it)) })
-            Spacer(Modifier.width(4.dp))
+    fun resetFields() {
+        name = p.name; url = p.urlTemplate; key = p.apiKey ?: ""
+        zoom = p.minZoom.toFloat()..p.maxZoom.toFloat()
+    }
+    Column(Modifier.fillMaxWidth()) {
+        // Meme grammaire que les lignes des onglets : drapeau ou rien, libelle, actions a droite, l'etat
+        // en dernier. Le type ne s'affiche plus a cote du nom mais sous lui - il decrit le fond, il ne le
+        // nomme pas.
+        Row(
+            Modifier.fillMaxWidth().defaultMinSize(minHeight = 46.dp).padding(horizontal = 14.dp, vertical = 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (flagCode != null) {
                 AsyncImage(model = flagAssetModel(flagCode), contentDescription = null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(CompactIconSize).clip(RoundedCornerShape(2.dp)))
-                Spacer(Modifier.width(6.dp))
+                    modifier = Modifier.size(18.dp, 13.dp).clip(RoundedCornerShape(3.dp)))
             }
-            Text("${p.name}  (${p.type})", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            CompactIconButton(
-                onClick = {
-                    // Fermer sans "Enregistrer" annule les modifications en cours (SPEC section 4.3, scénario 1).
-                    if (expanded) resetFields()
-                    expanded = !expanded
-                },
-                contentDescription = if (expanded) stringResource(R.string.action_close) else stringResource(R.string.action_edit),
-                icon = if (expanded) Icons.Filled.Close else Icons.Filled.Edit,
-            )
+            Column(Modifier.weight(1f)) {
+                Text(p.name, fontSize = 12.5.sp, color = settingsPalette.label)
+                Text(p.type, fontSize = 10.5.sp, color = settingsPalette.subtle, modifier = Modifier.padding(top = 2.dp))
+            }
+            RowIcon(
+                if (expanded) Icons.Filled.Close else Icons.Filled.Edit,
+                if (expanded) stringResource(R.string.action_close) else stringResource(R.string.action_edit),
+            ) {
+                // Fermer sans "Enregistrer" annule les modifications en cours.
+                if (expanded) resetFields()
+                expanded = !expanded
+            }
             if (onDelete != null) {
-                CompactIconButton(onClick = onDelete, stringResource(R.string.action_delete), Icons.Filled.DeleteOutline)
+                RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_delete), onClick = onDelete)
             }
+            SettingsSwitch(p.enabled) { onSave(p.copy(enabled = it)) }
         }
         if (expanded) {
-            CompactOutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.settings_field_name)) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
+            // Champs de l'editeur : le cadre de 42 dp de l'ecran, avec sa legende au-dessus. Les memes
+            // que ceux des URL de services, pour qu'un fond se corrige comme un service se regle.
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_field_name)) {
+                SettingsTextField(name, "") { name = it }
+            }
             // Pour un MBTILES, le fichier est fixe (résolu via le dossier mbtiles) et son emplacement est
             // affiché plus bas en lecture seule : pas de champ éditable. 'url' conserve sa valeur d'origine.
-            if (!isMbtiles) CompactOutlinedTextField(url, { url = it }, label = { Text(stringResource(R.string.settings_field_url)) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
-            if (!isMbtiles) CompactOutlinedTextField(key, { key = it }, label = { Text(stringResource(R.string.settings_field_api_key)) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
-            // Taille de tuile masquée pour un MBTILES (toujours 256, non pertinent) ; `tile` garde sa valeur.
-            if (!isMbtiles) CompactOutlinedTextField(tile, { tile = it.filter { ch -> ch.isDigit() } },
-                label = { Text(stringResource(R.string.settings_field_tile_size)) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, textStyle = MaterialTheme.typography.bodyMedium)
+            if (!isMbtiles) {
+                FieldRow(stringResource(R.string.settings_field_url)) { SettingsTextField(url, "") { url = it } }
+                FieldRow(stringResource(R.string.settings_field_api_key)) { SettingsTextField(key, "") { key = it } }
+                // Plage de zoom servie par le fond, au curseur double plutot qu'en deux nombres a saisir :
+                // les niveaux vont de 0 a 22 et se choisissent l'un par rapport a l'autre, ce qu'une paire
+                // de champs ne montre pas. Elle remplace la taille de tuile, qui vaut 256 partout sauf de
+                // rares exceptions et qu'on ne corrigeait jamais. (Meme libelle que l'ecran de
+                // telechargement : c'est la meme plage, dite de la meme facon.)
+                RangeSliderRow(
+                    label = stringResource(R.string.offline_config_zoom_label),
+                    value = "${zoom.start.toInt()} - ${zoom.endInclusive.toInt()}",
+                    range = zoom, bounds = 0f..22f, steps = 21,
+                    onRange = { zoom = it },
+                )
+            }
             // Force de l'ombrage, propre au relief : c'est le seul rendu qu'un fond DEM expose, ses tuiles
             // brutes n'étant pas des images à regarder. Enregistrée au relâché du curseur plutôt qu'à
             // chaque pixel : chaque valeur reconstruit le style de la carte.
             if (p.type == "DEM") {
-                Text(stringResource(R.string.settings_field_relief_opacity, p.opacityPct),
-                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp))
                 var opacity by remember(p.id, p.opacityPct) { mutableFloatStateOf(p.opacityPct.toFloat()) }
-                CompactSlider(value = opacity, valueRange = 0f..100f,
-                    onValueChange = { opacity = it },
-                    onValueChangeFinished = { onSave(p.copy(opacityPct = opacity.toInt())) })
+                SliderRow(
+                    stringResource(R.string.settings_label_opacity), "${opacity.toInt()} %",
+                    fraction = opacity / 100f, onFraction = { opacity = it * 100f },
+                )
+                LaunchedEffect(opacity) {
+                    // Ecrit apres un court repos du doigt : chaque valeur reconstruit le style de la carte.
+                    kotlinx.coroutines.delay(200)
+                    if (opacity.toInt() != p.opacityPct) onSave(p.copy(opacityPct = opacity.toInt()))
+                }
                 if (p.opacityPct != DefaultDemOpacityPct) {
-                    TextButton(onClick = { onSave(p.copy(opacityPct = DefaultDemOpacityPct)) }) {
-                        Text(stringResource(R.string.action_reset_defaults))
+                    CardAction(stringResource(R.string.action_reset_defaults)) {
+                        onSave(p.copy(opacityPct = DefaultDemOpacityPct))
                     }
                 }
             }
@@ -1116,9 +1390,8 @@ private val CompactChipHeight = 28.dp
             if (isMbtiles) {
                 Text(
                     stringResource(R.string.settings_field_zoom_levels, p.minZoom, p.maxZoom),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                    fontSize = 12.5.sp, color = settingsPalette.subtle,
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 2.dp),
                 )
                 // Chemin réel du fichier (urlTemplate ne porte que le nom, résolu via le dossier mbtiles).
                 val fullPath = when {
@@ -1128,9 +1401,8 @@ private val CompactChipHeight = 28.dp
                 }
                 Text(
                     stringResource(R.string.settings_field_mbtiles_location, fullPath),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 2.dp),
+                    fontSize = 10.5.sp, lineHeight = 15.sp, color = settingsPalette.subtle,
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 4.dp),
                 )
                 // Miniatures générées à la fin du téléchargement (SPEC section 6), affichées si présentes.
                 val ctx = LocalContext.current
@@ -1152,14 +1424,17 @@ private val CompactChipHeight = 28.dp
                 }
             }
             // "Enregistrer" (outlined, centré) seulement si un champ a changé par rapport à l'enregistré.
-            // (Pour un MBTILES, url/taille sont masqués et conservent leur valeur : seul le nom peut varier.)
+            // (Pour un MBTILES, url/clé/zoom sont masqués et conservent leur valeur : seul le nom peut varier.)
+            val minZ = zoom.start.toInt()
+            val maxZ = zoom.endInclusive.toInt()
             val dirty = name != p.name || url != p.urlTemplate ||
-                key != (p.apiKey ?: "") || tile != p.tileSize.toString()
+                key != (p.apiKey ?: "") || minZ != p.minZoom || maxZ != p.maxZoom
             if (dirty) {
                 Spacer(Modifier.height(8.dp))   // léger espacement au-dessus du bouton
                 OutlinedButton(
                     onClick = {
-                        onSave(p.copy(name = name, urlTemplate = url, apiKey = key.ifBlank { null }, tileSize = tile.toIntOrNull() ?: p.tileSize))
+                        onSave(p.copy(name = name, urlTemplate = url, apiKey = key.ifBlank { null },
+                            minZoom = minZ, maxZoom = maxZ))
                         expanded = false
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),

@@ -6,6 +6,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,11 +14,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material.icons.outlined.Folder as FolderOutlined
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +43,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
@@ -276,7 +280,9 @@ fun BasemapControlPanel(
         Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState(), enabled = dragInfo == null)) {
             Box(Modifier.fillMaxWidth().padding(4.dp)) {
                 IconButton(onClick = { newFolderDialog = true }, modifier = Modifier.align(Alignment.CenterStart).size(32.dp)) {
-                    Icon(Icons.Filled.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
+                    // Meme icone que le "nouveau dossier" du menu lateral : c'est la meme action, sur
+                    // l'autre arbre de l'application.
+                    Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
                 }
                 // Décalé au maximum vers l'angle haut-droit du gestionnaire (SPEC section 7.1).
                 IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
@@ -378,10 +384,12 @@ private fun BasemapNode(
             }
         }
         // Le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes) : le tap allume ou
-        // éteint son ombrage (surbrillance = allumé), au lieu de remplacer le fond courant.
+        // éteint son ombrage. Son état se dit par un badge et non par la surbrillance des fonds - il se
+        // superpose au fond courant au lieu de le remplacer, et se lit donc à côté de lui, pas à sa place.
         is ProviderEntity -> if (item.type == "DEM") BasemapLeaf(
             kind = "provider", id = item.id, name = item.name, depth = depth,
-            selected = reliefOn, dctx = dctx, onSelect = { onToggleRelief() },
+            selected = false, dctx = dctx, onSelect = { onToggleRelief() },
+            trailing = { if (reliefOn) ActiveBadge() },
         ) { BasemapIcon(item) } else BasemapLeaf(
             kind = "provider", id = item.id, name = item.name, depth = depth,
             selected = item.id == currentBasemapId, dctx = dctx, onSelect = { onSelect(item.id) },
@@ -397,7 +405,7 @@ private fun BasemapNode(
 @Composable
 private fun BasemapLeaf(
     kind: String, id: String, name: String, depth: Int, selected: Boolean, dctx: BDragCtx,
-    onSelect: () -> Unit, icon: @Composable () -> Unit,
+    onSelect: () -> Unit, trailing: (@Composable () -> Unit)? = null, icon: @Composable () -> Unit,
 ) {
     val key = kind to id
     val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo.id == id
@@ -432,6 +440,7 @@ private fun BasemapLeaf(
                     onDragEnd = { currentDctx.onEnd(kind, id) },
                 )
             })
+        trailing?.invoke()
     }
     if (hoverZone == BHoverZone.AFTER) DropLine()
 }
@@ -440,12 +449,32 @@ private fun BasemapLeaf(
 @Composable
 private fun BasemapIcon(p: ProviderEntity) {
     val code = flagCodeFor(p)
-    if (code != null) {
-        AsyncImage(model = flagAssetModel(code), contentDescription = null, contentScale = ContentScale.Crop,
-            modifier = Modifier.size(20.dp).clip(RoundedCornerShape(2.dp)))
-    } else {
-        Icon(Icons.Filled.Public, null, Modifier.size(20.dp))
+    when {
+        code != null -> AsyncImage(model = flagAssetModel(code), contentDescription = null,
+            contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(RoundedCornerShape(2.dp)))
+        // Le relief porte une montagne, et non le globe des fonds mondiaux : ce n'est pas une carte de
+        // plus, c'est un ombrage qui se pose sur celle qui est dessous.
+        p.type == "DEM" -> Icon(Icons.Outlined.Terrain, null, Modifier.size(20.dp))
+        else -> Icon(Icons.Outlined.Public, null, Modifier.size(20.dp))
     }
+}
+
+/**
+ * Pastille "ACTIVE" du relief : contour et texte a la couleur d'accent, en capitales.
+ *
+ * Un badge plutot qu'une surbrillance de ligne : la surbrillance dit "c'est le fond courant", et le relief
+ * n'en est pas un - il s'ajoute par-dessus. Deux etats differents ne peuvent pas porter la meme marque.
+ */
+@Composable
+private fun ActiveBadge() {
+    Text(
+        stringResource(R.string.basemap_relief_active).uppercase(),
+        fontSize = 9.sp, lineHeight = 11.sp, letterSpacing = 0.08.em,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    )
 }
 
 @Composable

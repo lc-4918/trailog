@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.data.seed
 
 import fr.lc4918.trailog.data.db.CompositeEntity
+import fr.lc4918.trailog.data.db.CompositeSortOrder
 
 /**
  * Fonds composites par défaut : un fond opaque en arrière-plan, un fond transparent en premier plan.
@@ -19,7 +20,7 @@ object Composites {
             backgroundProviderId = "mapbox_outdoors",
             foregroundProviderId = "af3v",
             foregroundOpacity = 1f,
-            sortOrder = 0,
+            sortOrder = CompositeSortOrder,
         ),
     )
 }

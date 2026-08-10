@@ -6,6 +6,7 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.data.db.MbtilesSortOrder
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
@@ -408,7 +409,7 @@ class TrailogRepository(private val ctx: Context) {
                 attribution = meta["attribution"],
                 transparent = false,
                 builtin = false,
-                sortOrder = 1000,
+                sortOrder = MbtilesSortOrder,
             )
             db.providers().upsert(prov)
             prov
@@ -450,7 +451,7 @@ class TrailogRepository(private val ctx: Context) {
                         attribution = provider.attribution,
                         transparent = false,
                         builtin = false,
-                        sortOrder = 1000,
+                        sortOrder = MbtilesSortOrder,
                     )
                     db.providers().upsert(prov)
                     // Miniatures (SPEC section 6) : best-effort et bornées, elles n'empêchent jamais le succès

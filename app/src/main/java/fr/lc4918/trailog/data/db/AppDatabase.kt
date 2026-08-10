@@ -100,6 +100,42 @@ internal object MigrationSql {
     // ci-dessus, qui lit ce qu'on ecrase.
     const val LIST_DEM_IN_CONTROL =
         "UPDATE providers SET enabled = 1 WHERE type = 'DEM'"
+    // Les fonds d'un pays perdent le pays de leur nom : le drapeau le dit deja. Ne renomme que ceux restes
+    // au nom seme - un nom choisi a la main dans les reglages ne doit pas etre ecrase.
+    val DROP_COUNTRY_FROM_NAMES = """
+        UPDATE providers SET name = CASE id
+            WHEN 'ign_fr' THEN 'IGN Scan'
+            WHEN 'ign_es' THEN 'IGN MTN'
+            WHEN 'hu' THEN 'Turistautak'
+            WHEN 'sk' THEN 'Freemap'
+            WHEN 'at' THEN 'basemap.at'
+            WHEN 'no' THEN 'Statkart'
+            WHEN 'be' THEN 'NGI Topo'
+            WHEN 'se' THEN 'Lantmäteriet'
+            WHEN 'hr' THEN 'DGU TK25'
+            WHEN 'de' THEN 'basemap.de'
+            WHEN 'fi' THEN 'Maastokartta'
+            WHEN 'si' THEN 'GURS DTK50'
+            WHEN 'cz' THEN 'CUZK ZTM'
+            WHEN 'gb' THEN 'OS Outdoor'
+            WHEN 'pl' THEN 'GUGiK Topo'
+            WHEN 'pt' THEN 'Carta Militar 25k'
+            ELSE name END
+        WHERE (id = 'ign_fr' AND name = 'France - IGN Scan') OR (id = 'ign_es' AND name = 'Espagne - IGN MTN') OR (id = 'hu' AND name = 'Hongrie - Turistautak') OR (id = 'sk' AND name = 'Slovaquie - Freemap') OR (id = 'at' AND name = 'Autriche - basemap.at') OR (id = 'no' AND name = 'Norvège - Statkart') OR (id = 'be' AND name = 'Belgique - NGI') OR (id = 'se' AND name = 'Suède - Lantmäteriet') OR (id = 'hr' AND name = 'Croatie - DGU') OR (id = 'de' AND name = 'Allemagne - Web Raster') OR (id = 'fi' AND name = 'Finlande - Maastokartta') OR (id = 'si' AND name = 'Slovénie - GURS DTK50') OR (id = 'cz' AND name = 'Tchéquie - CUZK ZTM') OR (id = 'gb' AND name = 'Royaume-Uni - OS Outdoor') OR (id = 'pl' AND name = 'Pologne - GUGiK Topo') OR (id = 'pt' AND name = 'Portugal - Carta Militar 25k')
+    """.trimIndent()
+    // Le titre du profil passe de 13 a 16 : n'ajuste que les bases restees a l'ancien defaut, comme le
+    // report de la taille du titre d'infobulle.
+    const val BUMP_PROFILE_TITLE_FONT =
+        "UPDATE settings SET profTitleFont = 16 WHERE profTitleFont = 13"
+    // La legende des pentes n'est plus un reglage mais un etat d'affichage, ferme au repos : on l'eteint
+    // partout. Sans condition - la valeur precedente etait le defaut "affichee", que plus rien ne porte.
+    const val HIDE_SLOPE_LEGEND = "UPDATE settings SET profileSlopeLegend = 0"
+    // Le gestionnaire de fonds s'ouvre desormais plus large et plus opaque. N'ajuste que les bases restees
+    // aux anciens defauts, comme les autres reports de defaut.
+    const val WIDEN_BASEMAP_CONTROL =
+        "UPDATE settings SET basemapControlWidthPct = 70 WHERE basemapControlWidthPct = 50"
+    const val OPACIFY_BASEMAP_CONTROL =
+        "UPDATE settings SET basemapControlOpacityPct = 90 WHERE basemapControlOpacityPct = 80"
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -114,7 +150,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 34,
+    version = 38,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -267,11 +303,36 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.DROP_COUNTRY_FROM_NAMES)
+            }
+        }
+
+        private val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.BUMP_PROFILE_TITLE_FONT)
+            }
+        }
+
+        private val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.HIDE_SLOPE_LEGEND)
+            }
+        }
+
+        private val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.WIDEN_BASEMAP_CONTROL)
+                db.execSQL(MigrationSql.OPACIFY_BASEMAP_CONTROL)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }
