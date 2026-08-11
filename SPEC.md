@@ -130,6 +130,11 @@ pour la montrer entière, avec une marge. Le
 
 ## 7. Menu latéral
 
+Le menu d'un dossier donne ses **statistiques** : nombre de couches et de traces, distance, D+, D- et durée,
+**sous-dossiers compris** - comme l'oeil, la couleur et le cadrage, qui portent déjà sur tout ce qu'il
+contient. La durée n'apparaît que si toutes ses traces sont horodatées : un total partiel serait plus petit
+que le temps réellement passé.
+
 L'arborescence des dossiers et des couches, pleine largeur, avec les cases d'affichage. Ouverture par
 bouton, par balayage, ou les deux (réglage). L'avatar en tête ouvre les réglages. Le gestionnaire de fonds
 y est accessible.

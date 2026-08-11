@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Reverse, split, join</string>
     <string name="settings_profile_remaining">Remaining on the track</string>
     <string name="settings_profile_remaining_sub">Distance and ascent from the GPS position</string>
+    <string name="action_zoom_to_layers">Zoom to layers</string>
+    <string name="action_folder_stats">Statistics</string>
+    <string name="stats_layers">Layers</string>
+    <string name="stats_tracks">Tracks</string>
+    <string name="stats_marker_layers">Marker layers</string>
     <string name="action_delete">Delete</string>
     <string name="action_drag_to_move">Drag to move</string>
     <string name="action_edit">Edit</string>

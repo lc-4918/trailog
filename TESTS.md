@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**474 tests, 46 fichiers**, tous verts.
+**479 tests, 47 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -255,6 +255,17 @@ construire un style.
 
 `BasemapIconsTest` vérifie que **chaque** fond du groupe "Pays" a son drapeau : la table est tenue à
 la main, un fond ajouté sans son entrée passerait silencieusement au globe générique.
+
+### `ui` - totaux d'un dossier
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `FolderStatsTest` | 5 | totaux récursifs, et la durée qu'on n'annonce pas |
+
+Deux fautes qui passeraient inaperçues : un total qui oublie les **sous-dossiers** ne correspond à rien de
+ce que l'écran montre - le dossier applique déjà tout le reste à ce qu'il contient -, et une durée
+**partielle** est plus petite que le temps réellement passé, ce qui se lit comme une sortie plus rapide
+qu'elle ne l'a été. D'où la règle : pas de durée du tout si une seule trace n'est pas horodatée.
 
 ### `map/offline` - hors-ligne
 

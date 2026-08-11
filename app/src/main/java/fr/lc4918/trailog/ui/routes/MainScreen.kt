@@ -178,6 +178,15 @@ import fr.lc4918.trailog.ui.planner.RouteState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
 import fr.lc4918.trailog.ui.settings.routingProfileLabel
+import fr.lc4918.trailog.ui.settings.ProvideSettingsPalette
+import fr.lc4918.trailog.ui.settings.settingsPalette
+import fr.lc4918.trailog.ui.settings.SettingsCard
+import fr.lc4918.trailog.ui.settings.SetRow
+import fr.lc4918.trailog.ui.settings.RowDivider
+import fr.lc4918.trailog.ui.settings.ValueText
+import fr.lc4918.trailog.ui.settings.Hint
+import fr.lc4918.trailog.ui.settings.RowIcon
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -2355,6 +2364,7 @@ private fun LegendContent(
     val elevating by vm.elevating.collectAsState()
     val importingIds = ImportSpinners(importing.keys, elevating.keys)
     var deleteFolderTarget by remember { mutableStateOf<FolderEntity?>(null) }
+    var statsTarget by remember { mutableStateOf<FolderEntity?>(null) }
 
     // ---------- sorties d'une couche : enregistrer un GPX, ou l'envoyer ailleurs ----------
     // Le selecteur de fichier est UNIQUE et vit ici, non dans chaque ligne de l'arborescence : une couche
@@ -2531,7 +2541,8 @@ private fun LegendContent(
             combinedChildren(null, folders, layers).forEach { item ->
                 when (item) {
                     is FolderEntity -> key("folder", item.id) {
-                        FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds, layerActions) { deleteFolderTarget = it }
+                        FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds,
+                            layerActions, onStats = { statsTarget = it }) { deleteFolderTarget = it }
                     }
                     is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom, layerActions) }
                 }
@@ -2609,7 +2620,8 @@ private fun FolderNode(
     folder: FolderEntity, allFolders: List<FolderEntity>, allLayers: List<LayerEntity>,
     depth: Int, vm: MainViewModel, dctx: DragCtx,
     onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onNewFolder: (Long?) -> Unit, onZoom: (String, Long) -> Unit,
-    importingIds: ImportSpinners, layerActions: LayerActions, onDeleteFolder: (FolderEntity) -> Unit,
+    importingIds: ImportSpinners, layerActions: LayerActions,
+    onStats: (FolderEntity) -> Unit, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
     var showColor by remember { mutableStateOf(false) }
@@ -2664,7 +2676,8 @@ private fun FolderNode(
             RowMenu(onRename = { onRename("folder", folder.id, folder.name) }, onMove = { onMove("folder", folder.id) },
                 onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
                 onZoom = { onZoom("folder", folder.id) },
-                onColor = if (contents.isEmpty()) null else ({ showColor = true }))
+                onColor = if (contents.isEmpty()) null else ({ showColor = true }),
+                onStats = { onStats(folder) })
         }
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
@@ -2683,7 +2696,8 @@ private fun FolderNode(
         combinedChildren(folder.id, allFolders, allLayers).forEach { item ->
             when (item) {
                 is FolderEntity -> key("folder", item.id) {
-                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom, importingIds, layerActions, onDeleteFolder)
+                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom,
+                        importingIds, layerActions, onStats, onDeleteFolder)
                 }
                 is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onMove, onZoom, layerActions) }
             }
@@ -3024,6 +3038,70 @@ private fun MapBarAction(label: String, primary: Boolean = false, onClick: () ->
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
     )
+}
+
+/**
+ * Ce que porte un dossier, en chiffres.
+ *
+ * Reprend la grammaire des reglages - carte blanche, une ligne par valeur, l'accent sur la valeur et non
+ * sur son libelle : c'est le meme genre d'objet, une liste de couples nom/valeur qu'on parcourt de l'oeil.
+ *
+ * La duree ne s'affiche QUE si toutes les traces du dossier sont horodatees (cf. [FolderStats]) : un total
+ * partiel serait plus petit que le temps reellement passe, sans que rien ne le dise.
+ */
+@Composable
+private fun FolderStatsDialog(
+    folder: FolderEntity,
+    folders: List<FolderEntity>,
+    layers: List<LayerEntity>,
+    imperial: Boolean,
+    dark: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val stats = remember(folder, folders, layers) { folderStats(folder.id, folders, layers) }
+    ProvideSettingsPalette(dark = dark) {
+        val p = settingsPalette
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = p.screen,
+            title = { Text(folder.name, color = p.label, maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+            text = {
+                SettingsCard {
+                    SetRow(stringResource(R.string.stats_layers)) { ValueText("${stats.layers}") }
+                    RowDivider()
+                    SetRow(stringResource(R.string.stats_tracks)) { ValueText("${stats.tracks}") }
+                    if (stats.markers > 0) {
+                        RowDivider()
+                        SetRow(stringResource(R.string.stats_marker_layers)) { ValueText("${stats.markers}") }
+                    }
+                    // Les mesures n'ont de sens que s'il y a des traces : un dossier de marqueurs
+                    // afficherait sinon trois zeros, qui se lisent comme une mesure ratee.
+                    if (stats.tracks > 0) {
+                        RowDivider()
+                        SetRow(stringResource(R.string.chip_distance)) {
+                            ValueText(Format.distance(stats.distance, imperial))
+                        }
+                        RowDivider()
+                        SetRow(stringResource(R.string.info_name_ascent)) {
+                            ValueText(Format.elevation(stats.ascent, imperial))
+                        }
+                        RowDivider()
+                        SetRow(stringResource(R.string.info_name_descent)) {
+                            ValueText(Format.elevation(stats.descent, imperial))
+                        }
+                        stats.movingTime?.let {
+                            RowDivider()
+                            SetRow(stringResource(R.string.info_name_duration)) { ValueText(Format.duration(it)) }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close), color = p.accent) }
+            },
+        )
+    }
 }
 
 @Composable
@@ -3497,6 +3575,8 @@ private fun RowMenu(
     // dans sa ligne, et un dossier vide n'a rien a colorer - l'entree disparait plutot que de ne rien faire.
     onColor: (() -> Unit)? = null,
     layer: LayerEntity? = null, layerActions: LayerActions? = null,
+    // Propre au dossier : le total de ce qu'il contient, sous-dossiers compris.
+    onStats: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -3505,7 +3585,19 @@ private fun RowMenu(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.action_zoom_to_layer)) }, onClick = { open = false; onZoom() })
+            // Un dossier cadre TOUTES ses couches, pas une : le libelle le dit au pluriel.
+            DropdownMenuItem(
+                text = {
+                    Text(stringResource(
+                        if (onNewSub != null) R.string.action_zoom_to_layers else R.string.action_zoom_to_layer
+                    ))
+                },
+                onClick = { open = false; onZoom() },
+            )
+            if (onStats != null) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
+                    onClick = { open = false; onStats() })
+            }
             if (onColor != null) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
                     onClick = { open = false; onColor() })

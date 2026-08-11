@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Umkehren, teilen, verbinden</string>
     <string name="settings_profile_remaining">Rest auf der Spur</string>
     <string name="settings_profile_remaining_sub">Distanz und Anstieg ab der GPS-Position</string>
+    <string name="action_zoom_to_layers">Auf Ebenen zoomen</string>
+    <string name="action_folder_stats">Statistik</string>
+    <string name="stats_layers">Ebenen</string>
+    <string name="stats_tracks">Spuren</string>
+    <string name="stats_marker_layers">Markerebenen</string>
     <string name="action_delete">Löschen</string>
     <string name="action_drag_to_move">Ziehen zum Verschieben</string>
     <string name="action_edit">Bearbeiten</string>

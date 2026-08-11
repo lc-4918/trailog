@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Inverser, couper, joindre</string>
     <string name="settings_profile_remaining">Restant sur la trace</string>
     <string name="settings_profile_remaining_sub">Distance et D+ depuis la position GPS</string>
+    <string name="action_zoom_to_layers">Zoom sur les couches</string>
+    <string name="action_folder_stats">Statistiques</string>
+    <string name="stats_layers">Couches</string>
+    <string name="stats_tracks">Traces</string>
+    <string name="stats_marker_layers">Couches de marqueurs</string>
     <string name="action_delete">Supprimer</string>
     <string name="action_drag_to_move">Glisser pour déplacer</string>
     <string name="action_edit">Éditer</string>

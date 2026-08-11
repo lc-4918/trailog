@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Inverter, cortar, juntar</string>
     <string name="settings_profile_remaining">Restante no trilho</string>
     <string name="settings_profile_remaining_sub">Distância e desnível desde a posição GPS</string>
+    <string name="action_zoom_to_layers">Zoom nas camadas</string>
+    <string name="action_folder_stats">Estatísticas</string>
+    <string name="stats_layers">Camadas</string>
+    <string name="stats_tracks">Trilhos</string>
+    <string name="stats_marker_layers">Camadas de marcadores</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_drag_to_move">Arrastar para mover</string>
     <string name="action_edit">Editar</string>

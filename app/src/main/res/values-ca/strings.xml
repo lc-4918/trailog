@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Inverteix, talla, uneix</string>
     <string name="settings_profile_remaining">Restant a la traça</string>
     <string name="settings_profile_remaining_sub">Distància i desnivell des de la posició GPS</string>
+    <string name="action_zoom_to_layers">Zoom a les capes</string>
+    <string name="action_folder_stats">Estadístiques</string>
+    <string name="stats_layers">Capes</string>
+    <string name="stats_tracks">Traces</string>
+    <string name="stats_marker_layers">Capes de marcadors</string>
     <string name="action_delete">Suprimeix</string>
     <string name="action_drag_to_move">Arrossega per moure</string>
     <string name="action_edit">Edita</string>

@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Alderantzikatu, moztu, lotu</string>
     <string name="settings_profile_remaining">Ibilbidean falta dena</string>
     <string name="settings_profile_remaining_sub">Distantzia eta desnibela GPS posiziotik</string>
+    <string name="action_zoom_to_layers">Zooma geruzetara</string>
+    <string name="action_folder_stats">Estatistikak</string>
+    <string name="stats_layers">Geruzak</string>
+    <string name="stats_tracks">Ibilbideak</string>
+    <string name="stats_marker_layers">Markatzaile-geruzak</string>
     <string name="action_delete">Ezabatu</string>
     <string name="action_drag_to_move">Arrastatu mugitzeko</string>
     <string name="action_edit">Editatu</string>

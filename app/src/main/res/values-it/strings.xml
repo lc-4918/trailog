@@ -67,6 +67,11 @@
     <string name="settings_sw_track_edit_sub">Invertire, tagliare, unire</string>
     <string name="settings_profile_remaining">Restante sulla traccia</string>
     <string name="settings_profile_remaining_sub">Distanza e dislivello dalla posizione GPS</string>
+    <string name="action_zoom_to_layers">Zoom sui livelli</string>
+    <string name="action_folder_stats">Statistiche</string>
+    <string name="stats_layers">Livelli</string>
+    <string name="stats_tracks">Tracce</string>
+    <string name="stats_marker_layers">Livelli di marcatori</string>
     <string name="action_delete">Elimina</string>
     <string name="action_drag_to_move">Trascina per spostare</string>
     <string name="action_edit">Modifica</string>
