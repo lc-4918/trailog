@@ -198,6 +198,22 @@ internal object MigrationSql {
         `trackMeasureEnabled` INTEGER NOT NULL, `mapButtonSizeDp` INTEGER NOT NULL, PRIMARY KEY(`id`))
         """.trimIndent().replace('\n', ' ')
 
+    /**
+     * Les quatre boutons de la carte qui s'affichent par defaut - burger, GPS, gestionnaire de fonds,
+     * planificateur - ramenes a cet etat sur une base deja en place.
+     *
+     * La migration 30->31 en avait deja rallume deux ; le gestionnaire de fonds, lui, n'a jamais ete
+     * repris par aucune, si bien qu'une base ou il etait eteint le restait indefiniment. Applique sans
+     * condition, pour la meme raison qu'alors : un booleen ne dit pas s'il vaut faux par choix ou par
+     * defaut, et les trois se redecochent d'un tap dans les reglages.
+     *
+     * Le burger n'y figure pas : il ne tient pas a un interrupteur mais au mode d'ouverture du menu
+     * lateral, dont le defaut ("both") l'affiche deja. Le forcer effacerait le choix de qui ouvre son menu
+     * au seul balayage - un geste, pas un bouton absent.
+     */
+    const val SHOW_DEFAULT_MAP_BUTTONS =
+        "UPDATE settings SET showGpsButton = 1, showBasemapControlButton = 1, routePlannerEnabled = 1"
+
     // Completement des altitudes manquantes : desactive sur une base deja en place, comme le geocodage
     // avant lui. Les trois champs de service restent vides, donc aux defauts du code (cf. ElevationServices).
     const val ADD_FILL_MISSING_ELEVATION =
@@ -223,7 +239,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 40,
+    version = 41,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -418,11 +434,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_40_41 = object : Migration(40, 41) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.SHOW_DEFAULT_MAP_BUTTONS)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

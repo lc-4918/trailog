@@ -428,6 +428,40 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 40 -> 41 : les quatre boutons affiches par defaut ----------
+
+    /**
+     * Les trois interrupteurs des boutons affiches par defaut sont rallumes sur une base deja en place.
+     *
+     * Le gestionnaire de fonds est celui qui manquait : la migration 30 -> 31 avait reglé le GPS et le
+     * planificateur, jamais lui. Le test verrouille donc que les TROIS y passent - en oublier un ne casse
+     * rien de visible, et personne ne le remarque avant de chercher le bouton absent.
+     */
+    @Test fun `40 vers 41 rallume les trois boutons affiches par defaut`() {
+        val db = freshDb("m4041"); settingsV16(db)
+        db.execSQL("ALTER TABLE settings ADD COLUMN showGpsButton INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE settings ADD COLUMN showBasemapControlButton INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(MigrationSql.ADD_ROUTE_PLANNER_ENABLED)
+        db.execSQL(MigrationSql.SHOW_DEFAULT_MAP_BUTTONS)
+        assertEquals(1, scalar(db, "SELECT showGpsButton FROM settings") { it.getInt(0) })
+        assertEquals(1, scalar(db, "SELECT showBasemapControlButton FROM settings") { it.getInt(0) })
+        assertEquals(1, scalar(db, "SELECT routePlannerEnabled FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    /** Le burger n'est pas un interrupteur mais un mode d'ouverture du menu : qui ouvre le sien au seul
+     *  balayage doit garder son choix, la migration ne touchant pas a cette colonne. */
+    @Test fun `40 vers 41 ne touche pas au mode d'ouverture du menu lateral`() {
+        val db = freshDb("m4041b"); settingsV16(db)
+        db.execSQL("ALTER TABLE settings ADD COLUMN showGpsButton INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE settings ADD COLUMN showBasemapControlButton INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(MigrationSql.ADD_ROUTE_PLANNER_ENABLED)
+        db.execSQL("ALTER TABLE settings ADD COLUMN sideMenuMode TEXT NOT NULL DEFAULT 'swipe'")
+        db.execSQL(MigrationSql.SHOW_DEFAULT_MAP_BUTTONS)
+        assertEquals("swipe", scalar(db, "SELECT sideMenuMode FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {

@@ -256,8 +256,10 @@ rouvrir le planificateur ne doit pas ressortir le trajet précédent.
 Quatre onglets :
 
 - **Carte** : boutons affichés sur la carte, échelle, rotation, gestionnaire de fonds, marqueurs et
-  infobulles, apparence du profil. Le bouton GPS, celui du planificateur et le fond blanc translucide des
-  boutons sont **actifs par défaut** ; la recherche de lieu et la mesure sur trace ne le sont pas.
+  infobulles, apparence du profil. Quatre boutons sont posés sur la carte **par défaut** : le burger, le
+  GPS, le gestionnaire de fonds et le planificateur - plus le fond blanc translucide qui les porte. La
+  recherche de lieu et la mesure sur trace, elles, ne le sont pas : ce sont les deux seules à s'ajouter
+  volontairement.
 - **Tuiles** : fond par défaut, catalogue des fournisseurs et composites, import/export
   (cf. [`BASEMAPS.md`](BASEMAPS.md)).
 - **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, calcul du profil, et
