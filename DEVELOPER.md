@@ -36,6 +36,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  ├─ model/                    Models.kt (TrackPoint, TrackStats), Points.kt, BubblePosition.kt
 │  └─ geo/                      TrackMath.kt (distance, D+/D-, pente), Format.kt
 ├─ data/
+│  ├─ backup/                   archive zip de sauvegarde et sa relecture
 │  ├─ db/                       Room : Entities, DAO, AppDatabase (migrations explicites)
 │  ├─ seed/Providers.kt         Fonds de carte par défaut
 │  ├─ imp/                      LayerImporter (GPX/GeoJSON/KML), PropertyDetector

@@ -214,6 +214,17 @@ internal object MigrationSql {
     const val SHOW_DEFAULT_MAP_BUTTONS =
         "UPDATE settings SET showGpsButton = 1, showBasemapControlButton = 1, routePlannerEnabled = 1"
 
+    // Ligne du restant sur la trace : allumee sur une base deja en place, comme sur une installation
+    // neuve. Elle n'apparait que capteur allume et profil ouvert, elle n'encombre donc rien le reste du
+    // temps - et c'est exactement la situation ou l'on veut la voir.
+    const val ADD_PROFILE_REMAINING =
+        "ALTER TABLE settings ADD COLUMN profileRemaining INTEGER NOT NULL DEFAULT 1"
+
+    // Barre de retouche des traces : eteinte sur une base deja en place, comme les autres commandes qui ne
+    // servent qu'a qui les demande. Elle modifie des traces importees, elle n'apparait pas d'elle-meme.
+    const val ADD_TRACK_EDIT_ENABLED =
+        "ALTER TABLE settings ADD COLUMN trackEditEnabled INTEGER NOT NULL DEFAULT 0"
+
     // Completement des altitudes manquantes : desactive sur une base deja en place, comme le geocodage
     // avant lui. Les trois champs de service restent vides, donc aux defauts du code (cf. ElevationServices).
     const val ADD_FILL_MISSING_ELEVATION =
@@ -239,7 +250,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 41,
+    version = 43,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -440,11 +451,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_41_42 = object : Migration(41, 42) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_TRACK_EDIT_ENABLED)
+            }
+        }
+
+        private val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_PROFILE_REMAINING)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

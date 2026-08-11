@@ -99,6 +99,110 @@ object TrackMath {
         return ComputedTrack(samples, stats, hasZ(points), withTime)
     }
 
+    /**
+     * Duree de marche estimee, en secondes, d'apres la **fonction de Tobler**.
+     *
+     * Sert aux traces qui n'ont pas d'horodatage - un parcours dessine, un itineraire recu, un export qui
+     * n'a pas garde les temps : la question qu'on se pose devant est "combien de temps ca me prend", et
+     * une distance seule n'y repond pas en montagne.
+     *
+     * Tobler donne la vitesse de marche en fonction de la PENTE : `v = 6 x exp(-3,5 x |p + 0,05|)` km/h,
+     * ou p est la pente en tangente. Le decalage de 0,05 place le maximum en legere descente (environ -3 %),
+     * ou l'on marche effectivement le plus vite, et non a plat - c'est ce que cette fonction apporte sur
+     * une simple moyenne, et c'est ce qui la rend utile en montagne : cinq kilometres de plat et cinq
+     * kilometres de raide ne se marchent pas dans le meme temps.
+     *
+     * Ce n'est qu'une estimation, jamais un temps mesure : l'affichage la marque d'un "~" (cf.
+     * `TrackInfoColumns`). Elle ne compte ni pause, ni repas, ni photo, et suppose une marche reguliere -
+     * elle est optimiste pour qui flane, pessimiste pour qui court.
+     *
+     * Zero pour une trace sans altitude exploitable : la formule y verrait un immense plat et rendrait un
+     * temps de coureur sur un parcours de montagne. Mieux vaut ne rien annoncer.
+     */
+    fun toblerSeconds(samples: List<Sample>): Double {
+        if (samples.size < 2) return 0.0
+        var seconds = 0.0
+        for (i in 1 until samples.size) {
+            val dx = samples[i].x - samples[i - 1].x
+            if (dx <= 0.0) continue
+            val slope = (samples[i].z - samples[i - 1].z) / dx
+            // 6 km/h = 1,667 m/s, la vitesse de reference de Tobler a plat.
+            val speed = 1.66667 * kotlin.math.exp(-3.5 * abs(slope + 0.05))
+            if (speed > 0.0) seconds += dx / speed
+        }
+        return seconds
+    }
+
+    /**
+     * L'echantillon a l'abscisse [x], **interpole entre les deux points qui l'encadrent**.
+     *
+     * C'est ce qui permet au point courant de se poser n'importe ou sur le parcours, et non seulement sur
+     * un sommet de la trace. Un profil affiche jusqu'a deux mille echantillons pour une trace qui en porte
+     * dix fois plus : sans interpolation, le curseur saute d'un echantillon a l'autre, et la coupe qui s'y
+     * fiait ne pouvait tomber qu'entre deux points deja presents.
+     *
+     * Tout est interpole lineairement - position, altitude, temps - sauf la pente, prise a l'echantillon
+     * suivant : c'est LA pente du troncon qu'on est en train de parcourir, la moyenner avec celle du
+     * troncon precedent l'adoucirait precisement la ou elle change.
+     *
+     * Null pour une trace vide. Borne aux deux extremites : demander une abscisse au-dela du bout rend le
+     * bout, sans cas particulier a ecrire chez l'appelant.
+     */
+    fun sampleAt(samples: List<Sample>, x: Double): Sample? {
+        if (samples.isEmpty()) return null
+        if (x <= samples.first().x) return samples.first()
+        if (x >= samples.last().x) return samples.last()
+        // Recherche dichotomique du premier echantillon a droite : une trace en porte jusqu'a deux mille,
+        // et le curseur se deplace au doigt, donc plusieurs fois par seconde.
+        var lo = 0; var hi = samples.size - 1
+        while (lo < hi) { val m = (lo + hi) / 2; if (samples[m].x < x) lo = m + 1 else hi = m }
+        val b = samples[lo]
+        val a = samples[(lo - 1).coerceAtLeast(0)]
+        val span = b.x - a.x
+        if (span <= 0.0) return b
+        val t = ((x - a.x) / span).coerceIn(0.0, 1.0)
+        return Sample(
+            x = x,
+            z = a.z + (b.z - a.z) * t,
+            slope = b.slope,
+            t = if (a.t != null && b.t != null) a.t + (b.t - a.t) * t else b.t,
+            lon = a.lon + (b.lon - a.lon) * t,
+            lat = a.lat + (b.lat - a.lat) * t,
+        )
+    }
+
+    /** Ce qui reste a parcourir depuis une abscisse : la distance, et le denivele positif. */
+    data class Remaining(val distance: Double, val ascent: Double)
+
+    /**
+     * Ce qui reste de la trace a partir du kilometrage [alongM] : la distance, et le D+.
+     *
+     * Le D+ restant est ce qu'on vient chercher en cours de sortie ; la distance seule ne dit pas si les
+     * trois derniers kilometres sont une descente ou le mur du col. Le point de depart tombe rarement sur
+     * un echantillon : l'altitude y est interpolee entre ses deux voisins, faute de quoi la montee du
+     * segment en cours serait comptee en entier alors qu'on en a deja fait la moitie.
+     */
+    fun remaining(samples: List<Sample>, alongM: Double): Remaining {
+        if (samples.isEmpty()) return Remaining(0.0, 0.0)
+        val end = samples.last().x
+        if (alongM >= end) return Remaining(0.0, 0.0)
+        val from = alongM.coerceAtLeast(samples.first().x)
+        // Premier echantillon devant nous, et altitude a l'endroit exact ou l'on se trouve.
+        var i = samples.indexOfFirst { it.x >= from }
+        if (i <= 0) i = 1
+        val prev = samples[i - 1]
+        val next = samples[i]
+        val span = next.x - prev.x
+        var z = if (span > 0) prev.z + (next.z - prev.z) * ((from - prev.x) / span) else prev.z
+        var ascent = 0.0
+        for (k in i until samples.size) {
+            val dz = samples[k].z - z
+            if (dz > 0) ascent += dz
+            z = samples[k].z
+        }
+        return Remaining(end - from, ascent)
+    }
+
     private fun smooth(x: DoubleArray, z: DoubleArray, meters: Double) {
         val n = z.size
         if (meters <= 0 || n < 3) return

@@ -120,8 +120,9 @@ class RoutePlannerState {
 
     fun toggleProfile() { profileVisible = !profileVisible }
 
-    /** Index du curseur dans les points du parcours (repere sur la carte + infos du point). */
-    var cursor by mutableStateOf<Int?>(null)
+    /** Point courant sur le parcours, en metres depuis son debut (repere sur la carte + infos du point).
+     *  Une abscisse et non un indice, comme pour le profil d'une trace : elle se pose entre deux sommets. */
+    var cursor by mutableStateOf<Double?>(null)
         private set
 
     // ---------- Zoom du profil ----------
@@ -272,13 +273,13 @@ class RoutePlannerState {
         if (r !is RouteState.Done) cursor = null
     }
 
-    /** Tap sur le graphique : [localIndex] est relatif a la fenetre affichee. */
-    fun tapProfile(localIndex: Int) { cursor = windowStart + localIndex }
+    /** Tap sur le graphique : [alongM] est une abscisse absolue sur le parcours. */
+    fun tapProfile(alongM: Double) { cursor = alongM }
 
     /** Le parcours affiche ne correspond plus aux etapes : on le retire avant d'en recalculer un. */
     private fun invalidate() {
         // Le parcours affiche reste en place jusqu'a l'arrivee du nouveau (cf. recomputing). Seuls le
-        // curseur et le zoom retombent : ils designaient des index qui n'auront plus le meme sens.
+        // curseur et le zoom retombent : ils designaient un parcours qui n'aura plus la meme longueur.
         cursor = null
         resetZoom()
         revision++

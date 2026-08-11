@@ -137,6 +137,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.RoutingProfile
@@ -191,7 +192,68 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { vm.importAvatarImage(it) }
     }
+
+    // ---------- sauvegarde et restauration ----------
+    val scope = rememberCoroutineScope()
+    val backupOk = stringResource(R.string.backup_written)
+    val backupFailed = stringResource(R.string.backup_failed)
+    val backupWriter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        uri?.let { vm.writeBackup(it) { ok -> scope.launch { snackbar.showSnackbar(if (ok) backupOk else backupFailed) } } }
+    }
+    // Restaurer efface ce qui est en place : on demande avant d'ouvrir le selecteur, et non apres avoir
+    // choisi le fichier - une confirmation qui arrive une fois l'archive designee se lit comme une
+    // formalite, et se valide sans etre lue.
+    var restoreTarget by remember { mutableStateOf(false) }
+    var restoreDone by remember { mutableStateOf<RestoreOutcome?>(null) }
+    val restorePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { vm.restoreBackup(it) { outcome -> restoreDone = outcome } }
+    }
+
     LaunchedEffect(status) { status?.let { snackbar.showSnackbar(it); vm.clearStatus() } }
+
+    if (restoreTarget) {
+        AlertDialog(
+            onDismissRequest = { restoreTarget = false },
+            title = { Text(stringResource(R.string.settings_backup_restore)) },
+            text = { Text(stringResource(R.string.backup_restore_warning)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    restoreTarget = false
+                    // Le type MIME est large : selon le gestionnaire de fichiers et la source (nuage,
+                    // messagerie), un zip arrive annonce en octet-stream, et un filtre strict le rendrait
+                    // ingrisable sans dire pourquoi.
+                    restorePicker.launch(arrayOf("application/zip", "application/octet-stream", "*/*"))
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = { TextButton(onClick = { restoreTarget = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+    restoreDone?.let { outcome ->
+        AlertDialog(
+            onDismissRequest = { restoreDone = null },
+            title = { Text(stringResource(R.string.settings_backup_restore)) },
+            text = {
+                Text(stringResource(when (outcome) {
+                    RestoreOutcome.OK -> R.string.backup_restored
+                    RestoreOutcome.NOT_A_BACKUP -> R.string.backup_not_a_backup
+                    RestoreOutcome.UNSUPPORTED_FORMAT -> R.string.backup_too_recent
+                    RestoreOutcome.FAILED -> R.string.backup_restore_failed
+                }))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val done = outcome == RestoreOutcome.OK
+                    restoreDone = null
+                    // Redemarrage APRES une restauration reussie, et seulement dans ce cas : la base
+                    // restauree n'est pas celle que Room a ouverte, et tout ce qui vit en memoire - flux,
+                    // caches, profils decodes - decrit encore l'ancienne.
+                    if (done) restartApp(ctx)
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+        )
+    }
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf(
@@ -269,7 +331,9 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                         else -> SystemTab(cur, vm,
                             onPickImportDir = { importDirPicker.launch(null) },
                             onPickMbtilesFolder = { treePicker.launch(null) },
-                            onPickAvatar = { avatarPicker.launch("image/*") })
+                            onPickAvatar = { avatarPicker.launch("image/*") },
+                            onBackup = { backupWriter.launch(BackupFileName.of(System.currentTimeMillis())) },
+                            onRestore = { restoreTarget = true })
                     }
                 }
             }
@@ -300,6 +364,11 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
+        RowDivider()
+        SwitchLine(
+            stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
+            sub = stringResource(R.string.settings_sw_track_edit_sub),
+        ) { vm.save(cur.copy(trackEditEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
         RowDivider()
@@ -439,16 +508,19 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
             val label = routingProfileLabel(p)
             Column(
                 Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                    .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    // Aplat d'accent translucide plutot que le couple primary/onPrimary : `onPrimary`
+                    // appartient au jeu par defaut de Material, que l'application ne redefinit pas - il
+                    // est violet. Le meme bleu, pose a 18 %, dit "retenu" dans les deux themes.
+                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent)
                     .clickable { onSelect(p) }
                     .padding(vertical = 6.dp, horizontal = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(routingProfileIcon(p), label, modifier = Modifier.size(24.dp),
-                    tint = if (selected) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current)
+                    tint = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current)
                 Text(label, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 2,
                     textAlign = TextAlign.Center,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary else LocalContentColor.current)
+                    color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current)
             }
         }
     }
@@ -725,6 +797,11 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         // Pas d'interrupteur pour la legende des pentes : elle se demande d'un "i" pose sur le bandeau du
         // profil, la ou elle sert, et se referme du meme geste (cf. SlopeLegendButton).
         SwitchLine(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
+        RowDivider()
+        SwitchLine(
+            stringResource(R.string.settings_profile_remaining), cur.profileRemaining,
+            sub = stringResource(R.string.settings_profile_remaining_sub),
+        ) { vm.save(cur.copy(profileRemaining = it)) }
     }
 
     SectionTitle(stringResource(R.string.settings_section_title_line_info))
@@ -930,6 +1007,7 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 @Composable private fun SystemTab(
     cur: SettingsEntity, vm: SettingsViewModel,
     onPickImportDir: () -> Unit, onPickMbtilesFolder: () -> Unit, onPickAvatar: () -> Unit,
+    onBackup: () -> Unit, onRestore: () -> Unit,
 ) {
     val ctx = LocalContext.current
     var avatarDialogOpen by remember { mutableStateOf(false) }
@@ -954,6 +1032,21 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         ) {
             InlineButton(stringResource(R.string.action_browse), Icons.Filled.Folder, onPickMbtilesFolder)
         }
+    }
+
+    // La contrepartie du "aucun compte, aucune synchronisation" : sans elle, un telephone change emporte
+    // tout. Rangee sous "Stockage" et non dans un groupe a elle : c'est de la meme matiere qu'il s'agit -
+    // ou vivent les donnees, et comment elles en sortent.
+    SectionTitle(stringResource(R.string.settings_section_backup))
+    SettingsCard {
+        SetRow(stringResource(R.string.settings_backup_create)) {
+            InlineButton(stringResource(R.string.action_save), Icons.Filled.FileUpload, onBackup)
+        }
+        RowDivider()
+        SetRow(stringResource(R.string.settings_backup_restore)) {
+            InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileDownload, onRestore)
+        }
+        Hint(stringResource(R.string.settings_backup_hint))
     }
 
     GroupTitle(stringResource(R.string.settings_group_interaction))
@@ -1291,7 +1384,7 @@ private val CompactChipHeight = 36.dp
     var expanded by remember { mutableStateOf(false) }
     val model = "file://${file.absolutePath}"
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, style = MaterialTheme.typography.labelMedium, color = settingsPalette.subtle)
         Spacer(Modifier.height(4.dp))
         Box(Modifier.fillMaxWidth()) {
             AsyncImage(
@@ -1305,7 +1398,7 @@ private val CompactChipHeight = 36.dp
     if (expanded) {
         Dialog(onDismissRequest = { expanded = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.8f)) {
-                Surface(Modifier.fillMaxSize(), shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.surface) {
+                Surface(Modifier.fillMaxSize(), shape = RoundedCornerShape(8.dp), color = settingsPalette.card) {
                     AsyncImage(
                         model = model, contentDescription = title, contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize().padding(8.dp),
@@ -1477,4 +1570,19 @@ private val CompactChipHeight = 36.dp
             Spacer(Modifier.height(12.dp))   // margin-bottom de l'éditeur
         }
     }
+}
+
+/**
+ * Relance l'application depuis zero.
+ *
+ * Seul geste de l'application qui tue son propre processus, et il n'a qu'un seul appelant : apres une
+ * restauration, la base sur le disque n'est plus celle que Room a ouverte. Rouvrir proprement supposerait
+ * de reconstruire tout ce qui en depend - flux, caches, ecrans - alors qu'un redemarrage le fait sans
+ * risque d'en oublier un. L'ecran suivant est celui du demarrage normal, avec les donnees restaurees.
+ */
+private fun restartApp(ctx: android.content.Context) {
+    val intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    if (intent != null) ctx.startActivity(intent)
+    Runtime.getRuntime().exit(0)
 }

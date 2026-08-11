@@ -72,13 +72,14 @@ test unitaire.
 
 ## Tests unitaires
 
-**399 tests, 41 fichiers**, tous verts.
+**474 tests, 46 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `TrackMathTest` | 3 | distance, dénivelé positif et négatif, pente |
+| `TrackMathTest` | 14 | distance, dénivelé, pente, temps estimé, restant, **point courant interpolé** |
+| `TrackEditTest` | 20 | couper, joindre, fusionner et inverser une trace importée |
 | `FormatTest` | 14 | formatage des durées, distances et altitudes affichées dans le profil et sur les mesures de géocodage |
 | `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, échantillonnage du parcours mesuré |
 
@@ -86,6 +87,28 @@ test unitaire.
 au pixel (projeté orthogonal, borné aux extrémités), et le parcours mesuré est rendu à pas constant en
 un nombre impair de points - c'est ce qui fait de son élément central le milieu exact de la mesure, où
 l'infobulle vient s'ancrer.
+
+`TrackMathTest` verrouille aussi le **point courant continu** : il se pose entre deux échantillons, avec
+sa position, son altitude et son horaire interpolés. Sans lui, le point sautait d'un échantillon à l'autre
+- jusqu'à plusieurs dizaines de mètres sur une longue trace, dont le profil n'affiche que deux mille points
+- et la coupe qui s'y fiait ne pouvait tomber qu'entre deux points déjà présents.
+
+`TrackEditTest` couvre les seules opérations qui **modifient** une trace reçue : une faute n'y est pas
+réparable, le fichier d'origine n'est plus là. Il verrouille que le point de coupe appartient aux **deux**
+morceaux (sinon un trou apparaît à la jointure, compté en moins des deux côtés), qu'une coupe ne donnant
+pas deux morceaux parcourables est refusée, que l'inversion **efface les horodatages** - un temps qui
+recule n'est pas une trace valide - et que la fusion ne recolle pas les polylignes, ce qui ferait
+apparaître entre elles une droite jamais parcourue.
+
+Il verrouille aussi ce qui rend la coupe utilisable : le point visé est **interpolé sur le tronçon** (une
+trace tracée à la règle ne porte que ses extrémités - couper "au sommet le plus proche" y revenait à ne
+pouvoir couper nulle part), il n'est **pas** dupliqué quand on vise un sommet, et la jonction raccorde les
+extrémités **les plus proches**, en retournant au besoin le segment enregistré à l'envers - qui perd alors
+ses horodatages, pour la même raison que l'inversion.
+
+Dans `TrackMathTest`, le temps de marche estimé (Tobler) est vérifié sur sa propriété caractéristique :
+une légère descente est plus rapide que le plat. C'est ce qu'apporte cette fonction sur une moyenne, et
+c'est ce qu'un mauvais signe dans la formule ferait disparaître sans rien casser d'autre.
 
 `FormatTest` couvre notamment les deux reports d'arrondi : 59 min 59 s doit donner "2 h" et non
 "1 h 60 min", et le même cas une case au-dessus pour les jours.
@@ -119,6 +142,25 @@ Cas notables :
 - Un fichier **vide** (lisible, sans géométrie) et un fichier **mal formé** sont deux cas distincts :
   l'utilisateur n'a rien à corriger dans le premier.
 
+### `data/backup` - sauvegarde
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `BackupArchiveTest` | 8 | contenu de l'archive, restauration en deux temps, archives refusées |
+
+Ce sont, avec les migrations, les seuls tests dont l'échec se paie en **données perdues** : une archive
+incomplète ne se découvre qu'au moment où l'on en a besoin - quand l'original n'existe plus.
+
+Points vérifiés :
+
+- Une sauvegarde décrit un **état complet** : ce qui n'y est pas doit disparaître à la restauration, sans
+  quoi une couche supprimée avant la sauvegarde reviendrait après.
+- Les **journaux** de l'ancienne base (`-wal`, `-shm`) sont retirés : ils décrivent des pages qui
+  n'existent plus dans la base posée, et corromperaient celle-ci dès sa première ouverture.
+- Un zip **quelconque** n'est pas une sauvegarde, et ne touche à rien : c'est l'en-tête qui les distingue.
+- Une entrée nommée `../autre.db` ne doit pas faire écrire hors du dossier de travail. Une archive vient
+  de l'extérieur, et c'est une faiblesse connue des lecteurs de zip.
+
 ### `data/repo` - persistance
 
 | Fichier | Tests | Ce qui est verrouillé |
@@ -138,7 +180,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 30 | les 25 migrations, rejouées sur un vrai SQLite |
+| `MigrationsTest` | 33 | les 27 migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -146,6 +188,11 @@ détruit les couches importées de l'utilisateur, en silence, au premier lanceme
 Le SQL n'est pas recopié dans les tests. Il vit dans `MigrationSql` (`data/db/AppDatabase.kt`), que
 les migrations et les tests lisent tous deux : une copie dans le test validerait une version qui n'est
 plus celle du code.
+
+Un test y décrit ce qu'aucune migration ne dit : **les défauts d'une installation neuve**. Aucune migration
+ne s'y exécute - Room crée les tables depuis l'entité, et la ligne de réglages vient des valeurs par défaut
+de Kotlin. Une valeur retournée là ne casserait donc aucun test de migration, et personne ne verrait qu'un
+nouvel utilisateur découvre un bouton qu'on voulait discret.
 
 Points vérifiés :
 
@@ -269,6 +316,7 @@ des sous-dossiers d'une autre couleur.
 | `PhotonTest` | 21 | construction des requêtes (recherche et inverse), lecture de la réponse du géocodeur et découpage de l'adresse en morceaux |
 | `ValhallaTest` | 20 | construction de la requête et lecture de la réponse du moteur d'itinéraire |
 | `PolylineTest` | 5 | décodage des polylignes encodées, dont la précision propre à Valhalla |
+| `GpxWriterTest` | 11 | le seul format par lequel une trace ressort de l'application |
 
 Les deux seuls endroits où une faute serait **muette** : une URL mal formée ou un champ mal lu ne lève
 rien, la liste de propositions sort simplement vide - indiscernable d'un service qui ne trouve pas.
@@ -292,6 +340,12 @@ coordonnées passent par `toString()` et non `format()`, faute de quoi une local
 incomplet (longueur sans durée, ou l'inverse) doit valoir "aucun itinéraire" plutôt qu'une distance de
 zéro. Il verrouille aussi la correspondance des cinq disciplines avec les modèles de coût, seul endroit
 du code qui parle le vocabulaire du moteur.
+
+`GpxWriterTest` garde la sortie. Sa faute type est muette **de l'autre côté** : le fichier s'écrit sans
+rien lever et ne se découvre qu'à l'ouverture, dans une autre application, souvent une fois le téléphone
+rangé. Il verrouille l'ordre des éléments d'un waypoint - le schéma GPX 1.1 l'impose, et un lecteur strict
+refuse le fichier entier pour une inversion -, le fait qu'une photo ou un lien ne se glisse pas dans un
+champ texte sous forme de son objet Kotlin, et le point décimal en locale française.
 
 `PolylineTest` garde la géométrie affichée sur la carte. Sa faute possible est entièrement muette :
 Valhalla encode au **millionième** de degré là où l'algorithme d'origine travaille au cent-millième, et
@@ -333,6 +387,43 @@ Il verrouille aussi ce qui n'est **pas** demandé : les points qui portent déj�
 déjà complet qui ne déclenche aucune requête, et la trace trop longue pour le découpage en emprises, qui
 renonce avant le premier appel plutôt que d'épuiser le quota de la clé pour un profil que la règle du tout
 ou rien refuserait au bout.
+
+### `ui` - recherche dans l'arborescence
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `TreeSearchTest` | 6 | recherche par fragment, insensible à la casse et aux accents |
+
+Une recherche qui ne trouve pas est une faute **muette** : elle ressemble en tout point à une couche
+absente, et l'utilisateur en conclut qu'il l'a supprimée. Le test couvre les huit langues de
+l'application par leurs accents, la recherche sur un fragment quelconque du nom - on se souvient du
+"Ventoux" bien avant du "2019-07-14 - Mont Ventoux" que l'appareil a nommé - et la recherche vide, qui ne
+filtre rien.
+
+### `ui/edit` - placement du marqueur de coupe
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `CutBubblePlacementTest` | 15 | côté libre autour du point, et maintien de la bulle à l'écran |
+
+Deux fautes possibles, toutes deux **muettes** : une bulle posée sur la trace masque l'endroit même qu'on
+examine avant de couper, et une bulle poussée hors de l'écran ne se voit pas du tout. Rien ne lève dans
+l'un ni l'autre cas - l'utilisateur constate seulement qu'il ne voit pas ce qu'il vise.
+
+Le choix se fait par **recouvrement réel** : on pose les quatre rectangles candidats et l'on compte les
+tronçons de trace qui les traversent. Deux versions ont échoué avant celle-ci, et les tests gardent
+maintenant leurs deux leçons :
+
+- juger sur l'**orientation** de la trace au point visé ne vaut que pour une trace droite ; dans un lacet
+  ou une boucle, le côté "opposé à la direction" tombe en plein sur une autre portion du tracé ;
+- le test doit porter sur le seul **corps** de la bulle, pointe exclue. La trace passe par définition *par*
+  le point de coupe : la pointe la touche donc toujours, et la compter donnait quatre côtés occupés, donc
+  un choix sans objet.
+
+Il vérifie aussi qu'un long tronçon **traversant** un candidat est vu alors qu'aucun de ses sommets n'y est,
+que la bulle tient dans l'écran **dans les deux sens à la fois** lorsque le point est dans un coin, et que
+son encombrement suit le côté retenu - la pointe s'ajoute en largeur sur les côtés, en hauteur en haut et
+en bas.
 
 ### `net` - portée des services
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.domain.model.TrackStats
 import kotlin.math.roundToInt
@@ -66,8 +67,10 @@ fun ElevationProfile(
     axisColor: Color = Color(0xFF888888),
     gridColor: Color = Color(0x22000000),
     textColor: Color = Color(0xFF555555),
-    cursorIndex: Int? = null,
-    onScrub: (Int) -> Unit = {},
+    // Abscisse du point courant (m depuis le debut de la trace), et non un indice d'echantillon : le
+    // curseur se pose n'importe ou sur le parcours, y compris entre deux sommets (cf. TrackMath.sampleAt).
+    cursorX: Double? = null,
+    onScrub: (Double) -> Unit = {},
     // Marge (px) dont on rentre le dernier label de l'axe X, pour dégager la courbure de l'angle bas-droit
     // de l'écran. 0 si l'écran n'a pas d'angle arrondi (détecté par l'appelant via l'API RoundedCorner).
     lastLabelInsetPx: Float = 0f,
@@ -90,12 +93,11 @@ fun ElevationProfile(
     val spanZ = (maxZ - minZ).coerceAtLeast(1.0)
     val padLpx = padL(axisFontSp)
 
-    fun idxAt(px: Float, w: Float): Int {
+    /** L'abscisse visee par un doigt pose a [px] : la position exacte sous le doigt, sans se rabattre sur
+     *  l'echantillon le plus proche. */
+    fun xAt(px: Float, w: Float): Double {
         val rel = ((px - padLpx) / (w - padLpx - padR)).coerceIn(0f, 1f)
-        val target = minX + rel * spanX
-        var lo = 0; var hi = samples.size - 1
-        while (lo < hi) { val m = (lo + hi) / 2; if (samples[m].x < target) lo = m + 1 else hi = m }
-        return lo
+        return minX + rel * spanX
     }
 
     val cache = remember { ProfileDrawCache() }
@@ -117,7 +119,7 @@ fun ElevationProfile(
     val scrub by rememberUpdatedState(onScrub)
     val zoomCb by rememberUpdatedState(onZoom)
     val doubleTapCb by rememberUpdatedState(onDoubleTap)
-    val toIndex by rememberUpdatedState<(Float, Float) -> Int> { px, w -> idxAt(px, w) }
+    val toX by rememberUpdatedState<(Float, Float) -> Double> { px, w -> xAt(px, w) }
     val toFraction by rememberUpdatedState<(Float, Float) -> Float> { px, w -> fractionAt(px, w) }
     val zoomable = onZoom != null
 
@@ -126,14 +128,14 @@ fun ElevationProfile(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { off -> doubleTapCb?.invoke(toFraction(off.x, size.width.toFloat())) },
-                    onTap = { scrub(toIndex(it.x, size.width.toFloat())) },
+                    onTap = { scrub(toX(it.x, size.width.toFloat())) },
                 )
             }
             .then(
                 if (!zoomable) {
                     // Profil d'une trace : le seul geste est le deplacement du curseur.
                     Modifier.pointerInput(Unit) {
-                        detectHorizontalDragGestures { ch, _ -> scrub(toIndex(ch.position.x, size.width.toFloat())) }
+                        detectHorizontalDragGestures { ch, _ -> scrub(toX(ch.position.x, size.width.toFloat())) }
                     }
                 } else {
                     // Profil du planificateur : le detecteur de transformation de Compose couvre les deux
@@ -143,7 +145,7 @@ fun ElevationProfile(
                         detectTransformGestures(panZoomLock = false) { centroid, _, zoom, _ ->
                             val w = size.width.toFloat()
                             if (zoom != 1f) zoomCb?.invoke(zoom, toFraction(centroid.x, w))
-                            else scrub(toIndex(centroid.x, w))
+                            else scrub(toX(centroid.x, w))
                         }
                     }
                 }
@@ -237,9 +239,12 @@ fun ElevationProfile(
         cache.areaRuns.forEach { (path, col) -> drawPath(path, col) }
         drawPath(cache.linePath, lineColor, style = Stroke(width = 2.5f))
 
-        cursorIndex?.let { idx ->
-            if (idx in samples.indices) {
-                val s = samples[idx]; val cx = sx(s.x); val cy = sy(s.z)
+        // Le curseur ne se dessine que s'il tombe dans la fenetre affichee : zoome sur une portion, un
+        // point courant reste ailleurs sur la trace, et le rabattre sur le bord le montrerait la ou il
+        // n'est pas.
+        cursorX?.takeIf { it in minX..maxX }?.let { cxVal ->
+            TrackMath.sampleAt(samples, cxVal)?.let { s ->
+                val cx = sx(s.x); val cy = sy(s.z)
                 drawLine(Color(0x99000000), Offset(cx, padT), Offset(cx, baseY), strokeWidth = 2f)
                 drawCircle(Color.White, radius = 7f, center = Offset(cx, cy))
                 drawCircle(lineColor, radius = 7f, center = Offset(cx, cy), style = Stroke(width = 3.5f))

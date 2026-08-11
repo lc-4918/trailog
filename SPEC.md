@@ -94,12 +94,50 @@ La force de l'ombrage se règle dans sa fiche.
   l'import : un import qui semble bloqué n'est alors qu'un import qui attend une réponse.
 - Renommer, déplacer, supprimer dossiers et couches. Une action de dossier - l'oeil, la couleur commune,
   le cadrage - porte sur **tout** ce qu'il contient, sous-dossiers compris.
+- **Exporter une couche en GPX**, l'enregistrer où l'on veut ou l'**envoyer** à une autre application
+  (montre, messagerie). Les champs standard d'un waypoint sortent ; les photos, les liens et les champs
+  libres n'ont pas de place dans le format et restent dans l'application.
+- **Retoucher une trace** : voir la section 6 bis. Ce ne sont pas des outils de dessin - ce sont les
+  gestes qu'on fait sur un fichier reçu.
+
+## 6 bis. Retoucher une trace
+
+Les retouches vivent dans une **barre d'outils verticale** posée sur la carte, ouverte par un bouton de la
+colonne de gauche, sous le burger - et **absente par défaut** : ses outils modifient des traces importées,
+et son mode détourne les taps de la carte ; qui ne retouche pas ses traces n'a aucune raison de croiser ce
+bouton (réglage, onglet Carte). La barre s'ouvre du même côté que son bouton, centrée verticalement, et
+descend sous les commandes du haut quand le milieu de l'écran tombe dedans. Elles ne portent pas sur une couche mais sur un **segment** - parfois deux, parfois dans deux
+couches différentes -, et un segment se désigne du doigt : un menu d'arborescence n'a aucun moyen de dire
+"celui-là, pas l'autre". Tant qu'un outil est allumé, les taps sur une trace lui reviennent et n'ouvrent
+plus de profil.
+
+- **Inverser** (flèche circulaire) : tapez la trace. Les horodatages tombent - un temps qui recule n'est
+  pas une trace valide -, ce qui est demandé avant quand la trace en porte.
+- **Couper** (ciseaux) : tapez la trace à l'endroit voulu. Un **marqueur** s'y pose, **n'importe où sur le
+  parcours** et pas seulement sur un sommet : le point visé est le projeté du doigt sur le tronçon, inséré
+  dans la trace au moment de la coupe. Un nouveau tap le déplace ; une barre demande confirmation. Le marqueur est une **bulle dont la pointe
+touche le point**, posée du côté - gauche, haut, droite ou bas - dont le corps **ne recouvre aucune portion de trace** - on regarde cet endroit pour
+décider si l'on coupe là, une pastille posée dessus le masquait. Au bord de l'écran, la carte se décale
+pour la montrer entière, avec une marge. Le
+  premier morceau reste dans la couche, le second devient sa voisine.
+- **Joindre** (maillon) : tapez le premier segment, puis le second - d'une même couche ou de deux couches.
+  Trois façons de les relier : **ligne droite**, **parcours réaliste** (le moteur d'itinéraire, dans la
+  discipline réglée) ou **sans jonction** (les deux segments se retrouvent dans la même couche, distincts).
+  Les deux segments sont raccordés par leurs extrémités les plus proches, celui qui a été enregistré à
+  l'envers étant retourné pour l'occasion. Faute d'itinéraire, la jonction se fait en ligne droite et le dit.
+- **Annuler** : défait la **dernière** retouche, y compris une couche créée ou supprimée, qui retrouve son
+  identité. Un seul niveau : une retouche fautive se voit tout de suite, sur la carte.
 
 ## 7. Menu latéral
 
 L'arborescence des dossiers et des couches, pleine largeur, avec les cases d'affichage. Ouverture par
 bouton, par balayage, ou les deux (réglage). L'avatar en tête ouvre les réglages. Le gestionnaire de fonds
 y est accessible.
+
+Un **champ de recherche** filtre les couches par leur nom, sans tenir compte de la casse ni des accents, et
+sur un fragment quelconque du nom. Il remplace l'arbre par la liste à plat de ce qu'il trouve, plutôt que de
+déplier les dossiers autour des résultats : une couche cherchée est une couche qu'on veut voir maintenant,
+son rangement est justement ce qu'on ne voulait pas parcourir.
 
 ## 8. Carte et gestes
 
@@ -251,6 +289,21 @@ même zoom et le même curseur que celui d'une trace.
 La bande se réduit à un bouton pour rendre la carte entière, et se referme sur une feuille vierge :
 rouvrir le planificateur ne doit pas ressortir le trajet précédent.
 
+## 14 bis. Pendant la sortie
+
+Le point courant du profil se déplace **de façon continue** le long du parcours : il se pose entre deux
+sommets, à l'endroit exact visé, et non d'échantillon en échantillon comme avant.
+
+Le capteur allumé et un profil ouvert, la position est **projetée sur la trace affichée** (réglage, onglet
+Carte > Profil altimétrique > Affichage) : la barre du
+profil annonce ce qui reste à parcourir et à monter jusqu'au bout - le D+ restant, parce que la distance
+seule ne dit pas si les trois derniers kilomètres sont une descente ou le mur du col. Au-delà de 50 m
+d'écart, l'écart à la trace est dit lui aussi : le "restant" ne décrit alors plus le chemin qu'on suit.
+
+Une trace **sans horodatage** reçoit un temps de marche estimé, marqué d'un `~`, calculé d'après la pente
+(fonction de Tobler) : cinq kilomètres de plat et cinq kilomètres de raide ne se marchent pas dans le même
+temps, et c'est la question qu'on se pose devant une trace inconnue.
+
 ## 15. Réglages
 
 Quatre onglets :
@@ -264,7 +317,8 @@ Quatre onglets :
   (cf. [`BASEMAPS.md`](BASEMAPS.md)).
 - **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, calcul du profil, et
   le complètement de l'altimétrie manquante avec ses deux services (cf. section 6).
-- **Système** : dossiers d'import et des MBTiles, menu latéral, tolérances de tap, simplification du rendu,
+- **Système** : dossiers d'import et des MBTiles, **sauvegarde et restauration**, menu latéral, tolérances
+  de tap, simplification du rendu,
   unités, mises à jour, langue, thème, avatar, remise à zéro.
 
 Tout tient dans une seule ligne de base, écrite à chaque changement.

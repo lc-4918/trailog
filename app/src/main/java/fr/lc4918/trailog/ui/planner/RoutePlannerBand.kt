@@ -38,6 +38,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -96,6 +97,20 @@ private const val BandAlpha = 0.94f
 private val FieldShape = RoundedCornerShape(4.dp)
 private val FieldHeight = 40.dp
 private val FieldTextPadding = 16.dp
+
+/**
+ * Titre de la bande, et texte des etapes.
+ *
+ * Le titre passe de 13 a 16 : c'est le titre d'un ecran, au meme rang que celui d'un profil de trace, et
+ * il se lisait plus petit que le nom des lieux saisis dessous. Les etapes font le chemin inverse - un nom
+ * de lieu complet ("Grenoble, Isere, France") tient rarement sur une ligne de champ, et chaque point de
+ * moins en fait entrer davantage avant l'abreviation.
+ *
+ * L'indice et la valeur partagent la MEME taille : ce sont deux etats du meme texte, et les voir changer
+ * de corps au moment de la saisie ferait sauter la ligne.
+ */
+private const val BandTitleSp = 16f
+private const val FieldTextSp = 13f
 
 /** Ce qui separe deux champs, en toute circonstance : pose autour de chacun, donc compte double entre
  *  deux voisins. */
@@ -181,7 +196,7 @@ private fun BandHeader(
             IconButton(onClick = onCollapse, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Filled.ExpandMore, stringResource(R.string.planner_collapse), Modifier.size(20.dp))
             }
-            Text(stringResource(R.string.planner_title), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+            Text(stringResource(R.string.planner_title), fontSize = BandTitleSp.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 4.dp))
             // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
@@ -346,8 +361,7 @@ private fun StepRow(
                             .padding(horizontal = FieldTextPadding),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyLarge)
+                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = FieldTextSp.sp)
                     }
                 } else {
                     CompactOutlinedTextField(
@@ -360,7 +374,11 @@ private fun StepRow(
                                 focused = it.isFocused
                                 if (it.isFocused) state.focus(step)
                             },
-                        placeholder = { Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        textStyle = LocalTextStyle.current.copy(fontSize = FieldTextSp.sp),
+                        placeholder = {
+                            Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                fontSize = FieldTextSp.sp)
+                        },
                     )
                 }
                 // Attente et effacement POSES SUR le champ, et non dans son emplacement d'icone de fin :
@@ -554,8 +572,6 @@ private fun ResultsZone(
                         bold = settings?.profLegendBold == true)
                 }
                 Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
-                    fun toWindow(absolute: Int?) =
-                        absolute?.let { a -> (a - state.windowStart).takeIf { it in samples.indices } }
                     ElevationProfile(
                         samples = samples, stats = stats,
                         grid = settings?.profileGrid ?: true,
@@ -563,7 +579,7 @@ private fun ResultsZone(
                         lineColor = MaterialTheme.colorScheme.primary,
                         axisFontSp = settings?.profAxisFont ?: 9,
                         axisBold = settings?.profAxisBold == true,
-                        cursorIndex = toWindow(state.cursor),
+                        cursorX = state.cursor,
                         onScrub = { state.tapProfile(it) },
                         onZoom = { scale, fraction -> state.zoomBy(scale, fraction, r.track.samples.size) },
                         // Double-tap : un grossissement franc au point vise, la ou le pincement dose.

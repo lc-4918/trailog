@@ -23,6 +23,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** Ce qu'une restauration a donné, pour l'écran qui l'a demandée. */
+enum class RestoreOutcome { OK, NOT_A_BACKUP, UNSUPPORTED_FORMAT, FAILED }
+
 /** Entrée d'un fournisseur dans le fichier JSON d'import/export (SPEC section 4.2). Distincte de
  *  [ProviderEntity] : n'inclut pas `folderId`/`sortOrder` (placement propre à cette installation,
  *  préservé pour les fournisseurs déjà connus, ajouté en fin de liste pour les nouveaux). */
@@ -61,6 +64,36 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     val pendingProvidersImport = _pendingProvidersImport.asStateFlow()
 
     fun save(s: SettingsEntity) = viewModelScope.launch { db.settings().upsert(s) }
+
+    // ---------- sauvegarde et restauration ----------
+
+    /**
+     * Écrit la sauvegarde dans le fichier choisi. [onDone] reçoit faux si l'écriture a échoué - support
+     * plein, fichier retiré : l'utilisateur doit le savoir, une sauvegarde qu'on croit avoir est pire que
+     * pas de sauvegarde du tout.
+     */
+    fun writeBackup(uri: Uri, onDone: (Boolean) -> Unit) = viewModelScope.launch {
+        val ok = runCatching {
+            val app = getApplication<Application>()
+            app.contentResolver.openOutputStream(uri)?.use { repo.writeBackup(it) } ?: error("flux nul")
+        }.isSuccess
+        onDone(ok)
+    }
+
+    /** Relit une sauvegarde. L'application doit redémarrer derrière (cf. TrailogRepository.restoreBackup). */
+    fun restoreBackup(uri: Uri, onDone: (RestoreOutcome) -> Unit) = viewModelScope.launch {
+        val outcome = runCatching {
+            val app = getApplication<Application>()
+            val result = app.contentResolver.openInputStream(uri)?.use { repo.restoreBackup(it) }
+            when (result) {
+                fr.lc4918.trailog.data.backup.BackupArchive.Result.OK -> RestoreOutcome.OK
+                fr.lc4918.trailog.data.backup.BackupArchive.Result.NOT_A_BACKUP -> RestoreOutcome.NOT_A_BACKUP
+                fr.lc4918.trailog.data.backup.BackupArchive.Result.UNSUPPORTED_FORMAT -> RestoreOutcome.UNSUPPORTED_FORMAT
+                null -> RestoreOutcome.FAILED
+            }
+        }.getOrDefault(RestoreOutcome.FAILED)
+        onDone(outcome)
+    }
     fun saveProvider(p: ProviderEntity) = viewModelScope.launch { db.providers().upsert(p) }
     fun deleteProvider(p: ProviderEntity) = viewModelScope.launch { db.providers().delete(p) }
     fun saveComposite(c: CompositeEntity) = viewModelScope.launch { db.composites().upsert(c) }

@@ -1,6 +1,10 @@
 package fr.lc4918.trailog.routing
 
+import fr.lc4918.trailog.domain.model.PointFeature
+import fr.lc4918.trailog.domain.model.PropValue
 import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.domain.model.TrackPoint
+import java.time.Instant
 
 /**
  * Écriture d'un itinéraire calculé en GPX 1.1.
@@ -40,6 +44,73 @@ object GpxWriter {
         }
         append("    </trkseg>\n  </trk>\n</gpx>\n")
     }.toByteArray(Charsets.UTF_8)
+
+    /**
+     * Document GPX d'une **couche** : ses waypoints, puis ses traces, un segment par ligne.
+     *
+     * Le même écrivain que pour un parcours calculé, et non un second : ce qui sort de l'application doit
+     * être lisible par elle (cf. `LayerImporter`), et deux écrivains finiraient par diverger sur un détail
+     * - l'ordre des éléments, l'échappement - qu'aucun test ne rattraperait des deux côtés à la fois.
+     *
+     * Une couche porte plus que ce que le GPX sait dire. Les champs standard d'un waypoint (nom,
+     * commentaire, description, symbole, type, altitude) sont écrits ; **les photos, les liens et les
+     * champs libres n'ont pas de place dans le format** et ne sortent pas. C'est la limite du GPX, pas un
+     * oubli : le fichier de couche de l'application, lui, les garde tous.
+     *
+     * L'ordre des éléments n'est pas libre : le schéma GPX 1.1 impose `ele` puis `time`, puis le nom, le
+     * commentaire, la description, le symbole et le type. Un lecteur strict refuse le fichier entier pour
+     * une inversion.
+     */
+    fun writeLayer(
+        name: String,
+        points: List<PointFeature>,
+        lines: List<List<TrackPoint>>,
+    ): ByteArray = buildString {
+        append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
+        append("""<gpx version="1.1" creator="Trailog" xmlns="http://www.topografix.com/GPX/1/1">""").append('\n')
+        append("  <metadata><name>").append(escape(name)).append("</name></metadata>\n")
+        points.forEach { p ->
+            append("""  <wpt lat="${p.lat}" lon="${p.lon}">""").append('\n')
+            text(p, "ele")?.toDoubleOrNull()?.let { append("    <ele>").append(it).append("</ele>\n") }
+            WPT_TAGS.forEach { (tag, keys) ->
+                // Une balise, et les noms sous lesquels la propriété peut arriver : "description" est le
+                // nom que donne le KML à ce que le GPX appelle "desc". Le premier trouvé l'emporte.
+                val v = keys.firstNotNullOfOrNull { text(p, it) } ?: return@forEach
+                append("    <").append(tag).append('>').append(escape(v)).append("</").append(tag).append(">\n")
+            }
+            append("  </wpt>\n")
+        }
+        if (lines.isNotEmpty()) {
+            append("  <trk>\n    <name>").append(escape(name)).append("</name>\n")
+            lines.forEach { seg ->
+                append("    <trkseg>\n")
+                seg.forEach { pt ->
+                    append("""      <trkpt lat="${pt.lat}" lon="${pt.lon}">""")
+                    pt.ele?.let { append("<ele>").append(it).append("</ele>") }
+                    pt.timeMs?.let { append("<time>").append(Instant.ofEpochMilli(it)).append("</time>") }
+                    append("</trkpt>\n")
+                }
+                append("    </trkseg>\n")
+            }
+            append("  </trk>\n")
+        }
+        append("</gpx>\n")
+    }.toByteArray(Charsets.UTF_8)
+
+    /** Les champs standard d'un waypoint, **dans l'ordre qu'impose le schéma**, et les propriétés d'où ils
+     *  sortent. `ele` est écrit avant eux, séparément : c'est le seul qui soit un nombre. */
+    private val WPT_TAGS = listOf(
+        "name" to listOf("name"),
+        "cmt" to listOf("cmt"),
+        "desc" to listOf("desc", "description"),
+        "sym" to listOf("sym"),
+        "type" to listOf("type"),
+    )
+
+    /** La valeur texte d'une propriété de waypoint, ou null : une image ou un lien n'a pas de place dans
+     *  les champs standard du GPX. */
+    private fun text(p: PointFeature, key: String): String? =
+        (p.props[key] as? PropValue.Text)?.value?.trim()?.takeIf { it.isNotEmpty() }
 
     /**
      * Nom de fichier tiré du titre : tout ce qui n'est ni lettre, ni chiffre, ni tiret devient un tiret.

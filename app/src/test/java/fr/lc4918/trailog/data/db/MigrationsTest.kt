@@ -3,6 +3,7 @@ package fr.lc4918.trailog.data.db
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -462,7 +463,51 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 41 -> 42 : barre de retouche des traces ----------
+
+    /** Eteinte sur une base deja en place : ses outils modifient des traces importees, et son mode detourne
+     *  les taps de la carte. Ce n'est pas un bouton qui s'invite. */
+    @Test fun `41 vers 42 ajoute la barre de retouche eteinte`() {
+        val db = freshDb("m4142"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_TRACK_EDIT_ENABLED)
+        assertEquals(0, scalar(db, "SELECT trackEditEnabled FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    // ---------- 42 -> 43 : ligne du restant sur la trace ----------
+
+    /** Allumee, contrairement aux boutons de carte ajoutes eteints : elle ne s'affiche que capteur allume
+     *  et profil ouvert, donc uniquement la ou on la cherche. */
+    @Test fun `42 vers 43 ajoute la ligne du restant, allumee`() {
+        val db = freshDb("m4243"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_PROFILE_REMAINING)
+        assertEquals(1, scalar(db, "SELECT profileRemaining FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
+
+    /**
+     * Ce que voit une INSTALLATION NEUVE : les quatre commandes de carte posées par défaut, et celles qui
+     * ne le sont pas.
+     *
+     * Sur une installation neuve, aucune migration ne s'exécute - Room crée les tables depuis l'entité, et
+     * la ligne de réglages vient des valeurs par défaut de Kotlin. Les migrations, elles, ne décrivent que
+     * le sort des bases déjà en place : elles ne disent RIEN de ce que découvre un nouvel utilisateur, et
+     * une valeur par défaut retournée dans l'entité ne casserait aucun de leurs tests.
+     */
+    @Test fun `une installation neuve n'affiche que les quatre commandes par defaut`() {
+        val neuf = SettingsEntity()
+        assertTrue("burger", neuf.sideMenuMode != "swipe")
+        assertTrue("GPS", neuf.showGpsButton)
+        assertTrue("gestionnaire de fonds", neuf.showBasemapControlButton)
+        assertTrue("planificateur", neuf.routePlannerEnabled)
+        // Les trois fonctions qui s'ajoutent volontairement : deux interrogent un service tiers, la
+        // troisieme modifie des traces importees.
+        assertFalse("geocodage", neuf.geocodingEnabled)
+        assertFalse("mesure sur trace", neuf.trackMeasureEnabled)
+        assertFalse("retouche des traces", neuf.trackEditEnabled)
+    }
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
         val db = AppDatabase.get(ctx)
@@ -474,7 +519,7 @@ class MigrationsTest {
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
             "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
-            "mapButtonSizeDp", "hillshadeOn", "fillMissingElevation", "elevationIgnUrl",
+            "mapButtonSizeDp", "hillshadeOn", "trackEditEnabled", "fillMissingElevation", "elevationIgnUrl",
             "elevationWorldUrl", "elevationWorldKey")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est

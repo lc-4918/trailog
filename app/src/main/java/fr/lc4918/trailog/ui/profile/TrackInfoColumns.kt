@@ -53,8 +53,18 @@ internal fun splitUnit(v: String): Pair<String, String> {
     return if (tail.isNotEmpty() && tail.all { it.isLetter() }) v.take(i) to tail else v to ""
 }
 
+/**
+ * Les infos d'une trace, dans l'ordre demande par [csv].
+ *
+ * [estimatedSeconds] remplace la duree quand la trace n'en porte pas : une trace sans horodatage n'a pas
+ * de duree mesuree, mais elle a un temps de marche previsible (cf. `TrackMath.toblerSeconds`). Il sort
+ * prefixe d'un "~", comme la duree estimee d'un parcours calcule : le meme signe pour la meme chose, une
+ * valeur qu'on n'a pas mesuree.
+ */
 @Composable
-internal fun titleInfos(stats: TrackStats, csv: String, imp: Boolean): List<TitleInfo> {
+internal fun titleInfos(
+    stats: TrackStats, csv: String, imp: Boolean, estimatedSeconds: Double? = null,
+): List<TitleInfo> {
     // Libelles de colonne : ceux des pastilles qui choisissent ces memes infos dans les reglages. Les
     // reprendre plutot que d'en ecrire d'autres garde les deux ecrans d'accord, et evite huit traductions.
     val lDist = stringResource(R.string.chip_distance)
@@ -76,6 +86,7 @@ internal fun titleInfos(stats: TrackStats, csv: String, imp: Boolean): List<Titl
             "asc" -> TitleInfo(k, lAsc, nAsc, Format.elevation(stats.ascent, imp))
             "desc" -> TitleInfo(k, lDesc, nDesc, Format.elevation(stats.descent, imp))
             "dur" -> stats.duration?.let { TitleInfo(k, lDur, nDur, Format.duration(it)) }
+                ?: estimatedSeconds?.takeIf { it > 0 }?.let { TitleInfo(k, lDur, nDur, "~" + Format.duration(it)) }
             "min" -> TitleInfo(k, lMin, nMin, Format.elevation(stats.min, imp))
             "max" -> TitleInfo(k, lMax, nMax, Format.elevation(stats.max, imp))
             else -> null

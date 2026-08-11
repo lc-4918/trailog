@@ -57,13 +57,14 @@ import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -71,8 +72,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
@@ -104,8 +113,22 @@ import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.SettingsEntity
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.ContentCut
+import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.Link
+import fr.lc4918.trailog.ui.components.MapActionBar
+import fr.lc4918.trailog.ui.edit.CutBubblePlacement
+import fr.lc4918.trailog.ui.edit.CutTarget
+import fr.lc4918.trailog.ui.edit.EditTool
+import fr.lc4918.trailog.ui.edit.SegmentRef
+import fr.lc4918.trailog.ui.edit.TrackEditState
+import fr.lc4918.trailog.data.repo.TrailogRepository
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.geocode.GeocodePlace
@@ -249,8 +272,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // ---------- position GPS ----------
     var gpsActive by remember { mutableStateOf(false) }
-    // légère transparence du bouton GPS dès que la carte est bougée à la main ou qu'un menu s'ouvre
-    var gpsButtonDimmed by remember { mutableStateOf(false) }
     // vrai tant qu'un recentrage automatique est dû (activation du capteur, ou retour au premier plan) :
     // consommé dès que la prochaine position arrive
     var pendingCenter by remember { mutableStateOf(false) }
@@ -273,7 +294,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         locationManager.removeUpdates(locationListener)
         controller.clearUserLocation()
         gpsActive = false
-        gpsButtonDimmed = false
         pendingCenter = false
         lastUserLocation = null
     }
@@ -288,7 +308,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         runCatching {
             locationManager.requestLocationUpdates(provider, 2000L, 5f, locationListener)
             gpsActive = true
-            gpsButtonDimmed = false
             val last = locationManager.getLastKnownLocation(provider)
             if (last != null) {
                 controller.setUserLocation(last.longitude, last.latitude, last.accuracy)
@@ -326,9 +345,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // (mais ne désactive pas le capteur lui-même, seulement les mises à jour côté appli)
     LaunchedEffect(settings?.showGpsButton) {
         if (settings?.showGpsButton == false && gpsActive) stopGps()
-    }
-    LaunchedEffect(drawerState.isOpen, settingsOpen) {
-        if (gpsActive && (drawerState.isOpen || settingsOpen)) gpsButtonDimmed = true
     }
     DisposableEffect(Unit) { onDispose { locationManager.removeUpdates(locationListener) } }
 
@@ -461,6 +477,56 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // ---------- planificateur d'itinéraire ----------
     val planner = remember { RoutePlannerState() }
+    // ---------- retouche des traces ----------
+    val edit = remember { TrackEditState() }
+    val canUndo by vm.canUndo.collectAsState()
+    val cutGeometry by vm.cutGeometry.collectAsState()
+    // Le marqueur retire : la geometrie gardee pour lui n'a plus d'objet, et elle pese quelques megaoctets.
+    LaunchedEffect(edit.cut == null) { if (edit.cut == null) vm.loadCutGeometry(null) }
+    // Le reglage coupe : la barre se referme et rend les taps a la carte, comme le geocodage et la mesure.
+    LaunchedEffect(settings?.trackEditEnabled) {
+        if (settings?.trackEditEnabled == false) edit.close()
+    }
+    var reverseConfirm by remember { mutableStateOf<LayerEntity?>(null) }
+    val sameSegmentMessage = stringResource(R.string.edit_same_segment)
+    val cannotSplitMessage = stringResource(R.string.split_impossible)
+    val routedFellBack = stringResource(R.string.join_fell_back_straight)
+
+    /**
+     * Tap sur une trace en mode retouche : selon l'outil, il inverse, pose le marqueur de coupe, ou
+     * designe un segment a joindre.
+     *
+     * Le point retenu n'est jamais celui du doigt mais son PROJETE sur la geometrie complete (cf.
+     * TrackEdit.locate) : c'est ce qui permet de couper entre deux sommets, la ou le curseur du profil ne
+     * savait designer que des points deja presents.
+     */
+    fun onEditTap(key: String, lon: Double, lat: Double) {
+        val id = key.removePrefix("ly").toLongOrNull() ?: return
+        val layer = layers.firstOrNull { it.id == id }?.takeIf { it.hasLine } ?: return
+        when (edit.tool) {
+            EditTool.REVERSE -> {
+                if (layer.hasTime) reverseConfirm = layer else vm.reverseLayer(layer)
+                edit.choose(EditTool.NONE)
+            }
+            EditTool.CUT -> {
+                edit.busy = true
+                // La geometrie sert a la bulle du marqueur, qui doit savoir ce qu'elle recouvrirait.
+                vm.loadCutGeometry(layer)
+                vm.locateOnLayer(layer, lon, lat) { hit ->
+                    edit.busy = false
+                    if (hit != null) edit.placeCut(CutTarget(layer.id, layer.name, hit))
+                }
+            }
+            EditTool.JOIN -> {
+                edit.busy = true
+                vm.locateOnLayer(layer, lon, lat) { hit ->
+                    edit.busy = false
+                    if (hit != null) edit.pick(SegmentRef(layer.id, layer.name, hit.segment), sameSegmentMessage)
+                }
+            }
+            EditTool.NONE -> Unit
+        }
+    }
     var importDialog by remember { mutableStateOf(false) }
     /**
      * Fond des boutons poses sur la carte, quand le reglage le demande.
@@ -468,8 +534,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * Sa taille est reglee (cf. SettingsEntity.mapButtonSizeDp) et ne touche QUE le carre dessine : la zone
      * tactile reste aux 48 dp de Material, quel que soit le curseur.
      *
-     * Le bouton GPS actif en est exclu par son appelant : il porte deja un fond bleu, qui dit qu'il est
-     * allume - un fond blanc par-dessus lui oterait sa seule marque d'etat.
+     * Tous les boutons le recoivent, y compris le GPS allume : son etat se lit desormais a la couleur de
+     * son dessin, non a un aplat qui le distinguait de ses voisins.
      */
     val mapButtonSize = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
     // Ornements poses sur la carte : en theme sombre, le fond et le dessin s'echangent (cf. MapChromeBg).
@@ -595,8 +661,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // planificateur fermant le profil ouvert quand il s'ouvre (cf. plus bas).
     LaunchedEffect(planner.cursor, planner.route) {
         val s = planner.done?.track?.samples ?: return@LaunchedEffect
-        val i = planner.cursor
-        if (i != null && i in s.indices) controller.setCursor(s[i].lon, s[i].lat) else controller.clearCursor()
+        val p = planner.cursor?.let { TrackMath.sampleAt(s, it) }
+        if (p != null) controller.setCursor(p.lon, p.lat) else controller.clearCursor()
     }
 
     /** Octets GPX du parcours calculé, sous [name] : servent au téléchargement comme à l'import. */
@@ -666,7 +732,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(controller) {
         controller.onCameraMove = { moveTick++ }
         controller.onUserMoveBegin = {
-            if (gpsActive) gpsButtonDimmed = true
             autoFramed = false
         }
         // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
@@ -680,7 +745,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
     // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
     // reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offlineDrawingActive, measure.picking, mapPoint.pickingPoint) {
+    LaunchedEffect(controller, offlineDrawingActive, measure.picking, mapPoint.pickingPoint, edit.awaitingTap) {
         when {
             offlineDrawingActive -> controller.onRawTap = { lon, lat ->
                 if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
@@ -699,6 +764,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
             mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
+            // Retouche : les taps sur une trace lui reviennent, et n'ouvrent donc pas de profil. Le vide
+            // ne referme rien - sortir du mode se fait par la barre, pas par un tap a cote.
+            edit.awaitingTap -> {
+                controller.onRawTap = null
+                controller.onPickPoint = null
+                controller.onPickLine = { key, lon, lat -> onEditTap(key, lon, lat) }
+                controller.onTapEmpty = null
+            }
             else -> {
                 controller.onRawTap = null
                 controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
@@ -771,9 +844,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         controller.setMapPointMarkers(mapPoint.markers, markerPx)
     }
     LaunchedEffect(cursor, computed) {
-        val idx = cursor; val s = computed?.samples
-        if (idx != null && s != null && idx in s.indices) {
-            val p = s[idx]
+        val along = cursor; val s = computed?.samples
+        val p = if (along != null && s != null) TrackMath.sampleAt(s, along) else null
+        if (p != null) {
             controller.setCursor(p.lon, p.lat)
             // Curseur sorti de l'ecran : la carte le rejoint. Deplacer le curseur sur le profil, c'est
             // demander a voir cet endroit-la ; le laisser hors champ rendrait le geste muet des qu'on
@@ -916,6 +989,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             ModalDrawerSheet(Modifier.fillMaxWidth(), drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 LegendContent(
                     folders = folders, layers = layers, settings = settings, vm = vm,
+                    open = drawerState.isOpen,
                     onSettings = { scope.launch { drawerState.snapTo(DrawerValue.Closed) }; onSettings() },
                     onClose = { scope.launch { drawerState.close() } },
                     onImport = { folderPicker = true },
@@ -950,6 +1024,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
                 // Colonne des boutons du coin haut-gauche : la barre habituelle, puis le bouton de recherche
                 // de lieu juste dessous, à l'écart vertical qui sépare déjà le burger du bouton GPS.
+                //
+                // Les icones sont toutes AU TRAIT. Ce n'est pas une preference de style : le menu, la
+                // loupe et la regle le sont deja dans le jeu plein de Material - ce sont des dessins
+                // lineaires par nature -, tandis que l'epingle, le marteau et le panneau de direction y
+                // sont des aplats. Melangees, trois taches pleines cotoyaient quatre traits dans la meme
+                // colonne. Leurs variantes "Outlined" remettent tout le monde au meme poids.
                 Column(
                     Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
                         .onGloballyPositioned { topControlsHeightPx = it.size.height },
@@ -964,22 +1044,19 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         if (settings?.showGpsButton == true) {
                             IconButton(
                                 onClick = { onGpsButtonTap() },
-                                // Actif, il porte son fond bleu, seule marque de son etat ; eteint, il
-                                // recoit le fond commun des boutons de controle s'il est demande. Les deux
-                                // passent par le MEME peintre : le bleu etait auparavant pose par un
-                                // background() couvrant les 48 dp entiers du bouton, ce qui le rendait plus
-                                // large que les autres fonds et le faisait cohabiter avec l'ondulation de
-                                // l'IconButton, d'ou un aplat inegal.
-                                modifier = (
-                                    if (gpsActive) Modifier.mapButtonBackground(MaterialTheme.colorScheme.primary, mapButtonSize)
-                                    else controlBg
-                                ).alpha(if (gpsButtonDimmed) 0.6f else 1f),
+                                // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
+                                // bleu, comme le bouton de retouche. Le bouton portait auparavant un aplat
+                                // bleu plein, seul de son espece dans la colonne - il se lisait comme un
+                                // objet d'une autre famille, la ou tous les autres gardent le fond commun
+                                // des ornements de carte.
+                                modifier = controlBg,
                             ) {
+                                val gpsTint = if (gpsActive) MaterialTheme.colorScheme.primary else chromeFg
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Filled.Place, stringResource(R.string.content_desc_gps_position), modifier = Modifier.size(16.dp),
-                                        tint = if (gpsActive) Color.White else chromeFg)
-                                    Text(stringResource(R.string.gps_label), fontSize = 7.sp, lineHeight = 7.sp,
-                                        color = if (gpsActive) Color.White else chromeFg)
+                                    Icon(Icons.Outlined.Place, stringResource(R.string.content_desc_gps_position),
+                                        modifier = Modifier.size(GpsIconSize), tint = gpsTint)
+                                    Text(stringResource(R.string.gps_label), fontSize = GpsLabelSp.sp,
+                                        lineHeight = GpsLabelSp.sp, color = gpsTint)
                                 }
                             }
                         }
@@ -1011,6 +1088,20 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             measure.open()
                         }, modifier = controlBg) {
                             Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title), tint = chromeFg)
+                        }
+                    }
+                    // Retouche des traces : un bouton, et non une barre permanente. Ouvrir le mode est un
+                    // geste conscient - il detourne les taps de la carte, qui n'ouvrent plus de profil tant
+                    // qu'un outil attend son point. Dans la colonne de gauche, sous le burger, avec les
+                    // deux autres fonctions qui s'ouvrent en mode.
+                    if (settings?.trackEditEnabled == true) {
+                        IconButton(onClick = { edit.toggleBar() }, modifier = controlBg) {
+                            Icon(
+                                // Un crayon plutot qu'un marteau : deux traits contre une silhouette
+                                // pleine d'outils croises, illisible a 22 dp au-dessus d'une carte.
+                                Icons.Outlined.Edit, stringResource(R.string.edit_toolbar),
+                                tint = if (edit.open) MaterialTheme.colorScheme.primary else chromeFg,
+                            )
                         }
                     }
                     if (geo.searchOpen) {
@@ -1346,9 +1437,34 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
                             }
                         }, modifier = controlBg) {
-                            Icon(Icons.Filled.Directions, stringResource(R.string.planner_title), tint = chromeFg)
+                            Icon(Icons.Outlined.Directions, stringResource(R.string.planner_title), tint = chromeFg)
                         }
                     }
+                }
+
+                /*
+                 * Barre de retouche : verticale, du MEME cote que le bouton qui l'ouvre - la colonne de
+                 * gauche -, sans quoi le regard traverserait l'ecran entre le geste et son resultat.
+                 *
+                 * Centree verticalement, mais jamais sous les boutons du haut : sur un petit ecran, ou avec
+                 * la recherche de lieu et la mesure affichees, le milieu de l'ecran tombe dans la colonne
+                 * des commandes. Elle descend alors juste au-dessous, gardant l'espacement des boutons.
+                 */
+                if (edit.open) {
+                    var toolbarHeightPx by remember { mutableIntStateOf(0) }
+                    val gapPx = with(density) { MapControlSpacing.roundToPx() }
+                    val topPx = maxOf(
+                        (constraints.maxHeight - toolbarHeightPx) / 2,
+                        topControlsHeightPx + gapPx,
+                    )
+                    TrackEditToolbar(
+                        state = edit, canUndo = canUndo, chromeBg = chromeBg, chromeFg = chromeFg,
+                        onUndo = { vm.undoLastEdit() },
+                        modifier = Modifier.align(Alignment.TopStart)
+                            .offset { IntOffset(0, topPx) }
+                            .padding(start = 8.dp)
+                            .onGloballyPositioned { toolbarHeightPx = it.size.height },
+                    )
                 }
                 /*
                  * Hauteur maximale de la bande : 60 % de l'écran, MAIS jamais plus que ce qui reste
@@ -1418,6 +1534,140 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { pointBarHeightPx = it.size.height },
                     )
+                }
+                // ---------- retouche : marqueur de coupe, consignes et confirmations ----------
+                // Le marqueur suit la carte au deplacement et au zoom (moveTick), comme les infobulles :
+                // il designe un point du terrain, pas un point de l'ecran.
+                edit.cut?.let { target ->
+                    val p = target.hit.point
+                    // La bulle SUIT la carte a chaque image : c'est le point du terrain qu'elle designe.
+                    val off = remember(moveTick, target) { controller.screenOf(p.lon, p.lat) }
+                    /*
+                     * Le COTE, lui, ne se recalcule pas a chaque image : recalcule en continu, il change
+                     * en cours de geste et la bulle tremble. Il est donc fige, et revu seulement :
+                     *
+                     * - a la pose du marqueur ;
+                     * - a la FIN d'un deplacement ou d'un dezoom (idleTick), une seule fois.
+                     *
+                     * Jamais a un zoom avant : ce qui etait degage a l'echelle du dessus l'est encore en
+                     * s'approchant, la trace ne faisant que s'ecarter d'elle-meme.
+                     */
+                    val cutPlacedTick = remember(target) { idleTick }
+                    var cutSide by remember(target) { mutableStateOf<CutBubblePlacement.Side?>(null) }
+                    var cutZoom by remember(target) { mutableStateOf(Double.MAX_VALUE) }
+                    val bubbleWpx = with(density) { CutBubbleWidth.roundToPx() }
+                    val bubbleHpx = with(density) { CutBubbleHeight.roundToPx() }
+                    val tailPx = with(density) { CutTailHeight.roundToPx() }
+                    val marginPx = with(density) { CutBubbleMargin.roundToPx() }
+                    val topInsetPx = WindowInsets.statusBars.getTop(density)
+
+                    LaunchedEffect(target, idleTick) {
+                        val zoom = controller.cameraState()?.third ?: return@LaunchedEffect
+                        if (cutSide != null && zoom > cutZoom) return@LaunchedEffect
+                        val here = controller.screenOf(p.lon, p.lat) ?: return@LaunchedEffect
+                        // Ce que la bulle pourrait recouvrir : les portions de trace assez proches pour
+                        // tomber sous elle, converties en metres a l'echelle du moment.
+                        val reachPx = kotlin.math.hypot(
+                            (bubbleWpx + tailPx).toDouble(), (bubbleHpx + tailPx).toDouble(),
+                        ) + marginPx
+                        val radiusM = reachPx * controller.metersPerPixel(p.lat)
+                        val runs = withContext(Dispatchers.Default) {
+                            TrackEdit.nearbyRuns(cutGeometry, p.lon, p.lat, radiusM)
+                        }
+                        val screenRuns = runs.map { run ->
+                            run.mapNotNull { q -> controller.screenOf(q.lon, q.lat)?.let { it.x to it.y } }
+                        }.filter { it.size >= 2 }
+                        val pl = CutBubblePlacement.choose(
+                            pointX = here.x.toInt(), pointY = here.y.toInt(), track = screenRuns,
+                            bubbleW = bubbleWpx, bubbleH = bubbleHpx, tail = tailPx,
+                            viewW = constraints.maxWidth, viewH = constraints.maxHeight,
+                            topInset = topInsetPx, margin = marginPx,
+                        )
+                        cutSide = pl.side
+                        cutZoom = zoom
+                        // Le decalage de carte n'a lieu qu'a la POSE du marqueur : le rejouer a chaque fin
+                        // de deplacement ramenerait la carte de force des qu'on la pousse pour regarder
+                        // ailleurs.
+                        if (idleTick == cutPlacedTick && (pl.panX != 0 || pl.panY != 0)) {
+                            controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+                        }
+                    }
+                    val side = cutSide
+                    if (off != null && side != null) {
+                        val totalW = if (side == CutBubblePlacement.Side.LEFT || side == CutBubblePlacement.Side.RIGHT)
+                            bubbleWpx + tailPx else bubbleWpx
+                        val totalH = if (side == CutBubblePlacement.Side.TOP || side == CutBubblePlacement.Side.BOTTOM)
+                            bubbleHpx + tailPx else bubbleHpx
+                        val bx = when (side) {
+                            CutBubblePlacement.Side.LEFT -> off.x.toInt() - totalW
+                            CutBubblePlacement.Side.RIGHT -> off.x.toInt()
+                            else -> off.x.toInt() - totalW / 2
+                        }
+                        val by = when (side) {
+                            CutBubblePlacement.Side.TOP -> off.y.toInt() - totalH
+                            CutBubblePlacement.Side.BOTTOM -> off.y.toInt()
+                            else -> off.y.toInt() - totalH / 2
+                        }
+                        CutMarkerBubble(
+                            side = side, bg = chromeBg, fg = chromeFg,
+                            modifier = Modifier.offset { IntOffset(bx, by) },
+                        )
+                    }
+                }
+                if (edit.open && edit.tool != EditTool.NONE) {
+                    val barModifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+                        .padding(bottom = with(density) { profileBarHeightPx.toDp() })
+                    val cutTarget = edit.cut
+                    val a = edit.first
+                    val b = edit.second
+                    when {
+                        // Coupe : le marqueur est pose, on demande confirmation. Un nouveau tap ailleurs
+                        // le deplace tant qu'on n'a pas confirme.
+                        cutTarget != null -> MapActionBar(
+                            text = stringResource(R.string.edit_cut_confirm, cutTarget.layerName),
+                            onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
+                        ) {
+                            MapBarAction(stringResource(R.string.action_cancel)) { edit.choose(EditTool.NONE) }
+                            MapBarAction(stringResource(R.string.action_split_track), primary = true) {
+                                val layer = layers.firstOrNull { it.id == cutTarget.layerId }
+                                edit.choose(EditTool.NONE)
+                                if (layer != null) vm.splitLayerAt(layer, cutTarget.hit) { ok ->
+                                    if (!ok) edit.message = cannotSplitMessage
+                                }
+                            }
+                        }
+                        // Jonction : les deux segments sont designes, reste a dire comment les relier.
+                        a != null && b != null -> MapActionBar(
+                            text = stringResource(R.string.edit_join_how, a.layerName, b.layerName),
+                            onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
+                        ) {
+                            val apply: (TrailogRepository.JoinMode) -> Unit = { mode ->
+                                val la = layers.firstOrNull { it.id == a.layerId }
+                                val lb = layers.firstOrNull { it.id == b.layerId }
+                                edit.choose(EditTool.NONE)
+                                if (la != null && lb != null) {
+                                    vm.joinSegments(la, a.segment, lb, b.segment, mode) { applied ->
+                                        if (applied != mode) edit.message = routedFellBack
+                                    }
+                                }
+                            }
+                            MapBarAction(stringResource(R.string.join_straight)) { apply(TrailogRepository.JoinMode.STRAIGHT) }
+                            MapBarAction(stringResource(R.string.join_routed), primary = true) { apply(TrailogRepository.JoinMode.ROUTED) }
+                            MapBarAction(stringResource(R.string.join_none)) { apply(TrailogRepository.JoinMode.NONE) }
+                        }
+                        // Sinon : la consigne de l'outil en cours.
+                        else -> MapPromptBar(
+                            text = when (edit.tool) {
+                                EditTool.REVERSE -> stringResource(R.string.edit_pick_reverse)
+                                EditTool.CUT -> stringResource(R.string.edit_pick_cut)
+                                EditTool.JOIN -> if (a == null) stringResource(R.string.edit_pick_first)
+                                    else stringResource(R.string.edit_pick_second, a.layerName)
+                                EditTool.NONE -> ""
+                            },
+                            onClose = { edit.choose(EditTool.NONE) },
+                            modifier = barModifier,
+                        )
+                    }
                 }
                 // Infobulle de la mesure : ancrée sur le parcours mesuré au plus près de son milieu, et
                 // suivant la carte au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu). Le zoom
@@ -1528,13 +1778,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 val windowStats = remember(shown, zoomRange, windowSamples) {
                     if (zoomRange != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
                 }
-                fun toWindow(absolute: Int?) = absolute?.let { a -> windowSamples?.let { (a - windowStart).takeIf { i -> i in it.indices } } }
-                val cursorInWindow = toWindow(cursor)
+                // Le curseur est une abscisse absolue : la fenetre zoomee n'a plus rien a lui retrancher,
+                // et l'echantillon qu'il designe s'obtient par interpolation (cf. TrackMath.sampleAt).
+                val cursorSample = remember(cursor, windowSamples) {
+                    val along = cursor
+                    if (along == null || windowSamples == null) null
+                    else TrackMath.sampleAt(windowSamples, along)?.takeIf { along >= windowSamples.first().x && along <= windowSamples.last().x }
+                }
 
                 // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
                 // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
-                val cIdx = cursorInWindow; val cSamples = windowSamples
-                if (computed != null && cSamples != null && cIdx != null && cIdx in cSamples.indices) {
+                if (computed != null && cursorSample != null) {
                     val imp = settings?.units == "imperial"
                     val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
                     // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur
@@ -1542,7 +1796,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // est seul et va a gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
                     CompositionLocalProvider(LocalContentColor provides Color.Black) {
                         TrackInfoColumns(
-                            cursorInfos(cSamples[cIdx], settings?.cursorInfos ?: "dist,ele,slope", imp),
+                            cursorInfos(cursorSample, settings?.cursorInfos ?: "dist,ele,slope", imp),
                             fontSp = settings?.profCursorFont ?: 11,
                             bold = settings?.profCursorBold == true,
                             arrangement = Arrangement.spacedBy(14.dp),
@@ -1591,27 +1845,64 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         // largeur, en colonnes libellees, la ou les serrer a la suite du titre les
                         // reduisait a une file de valeurs sans nom.
                         //
-                        // Le "i" de la legende des pentes se pose AU-DESSUS du titre, au bout de sa ligne :
-                        // il ne lui prend pas de place, et un titre long passe dessous - d'ou son fond
-                        // blanc, qui le garde lisible sur le texte.
+                        /*
+                         * Le "i" de la legende des pentes se pose en EXPOSANT au bout de la premiere ligne
+                         * du titre, et le titre lui reserve sa place.
+                         *
+                         * Il passait auparavant PAR-DESSUS le titre, qui filait dessous : un nom long se
+                         * lisait alors sous un rond blanc. Le titre s'ecrit desormais sur deux lignes au
+                         * besoin, dans la largeur qui reste - c'est-a-dire que la place du "i" est retiree
+                         * a la colonne de texte, non prise au titre.
+                         */
                         val legendShown = settings?.profileSlope != false && settings?.profileSlopeLegend == true
+                        val hasLegendButton = settings?.profileSlope != false
                         Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
                             Text(profileTitle, fontSize = (settings?.profTitleFont ?: 16).sp,
                                 fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            if (settings?.profileSlope != false) {
+                                maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(end = if (hasLegendButton) SlopeLegendGutter else 0.dp))
+                            if (hasLegendButton) {
                                 SlopeLegendButton(
                                     shown = legendShown,
-                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                    // En haut, non centre : sur un titre de deux lignes, un "i" centre
+                                    // tomberait entre les deux, ou il n'appartiendrait plus a aucune.
+                                    modifier = Modifier.align(Alignment.TopEnd),
                                 ) { vm.setSlopeLegend(!legendShown) }
                             }
                         }
                         if (windowStats != null) {
+                            // Temps de marche estime, pour une trace qui n'a pas d'horodatage : calcule sur
+                            // les echantillons affiches, il suit donc le zoom du profil comme les autres
+                            // totaux. Retenu tant qu'ils ne changent pas - une recomposition ne doit pas
+                            // relancer un balayage de deux mille points.
+                            val tobler = remember(windowSamples) {
+                                windowSamples?.let { TrackMath.toblerSeconds(it) }
+                            }
                             TrackInfoColumns(
-                                titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp),
+                                titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp, tobler),
                                 fontSp = settings?.profBarFont ?: 11,
                                 bold = settings?.profBarBold == true,
                                 modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        // Ou l'on en est SUR CETTE TRACE, capteur allume : ce qui reste a parcourir, et le
+                        // denivele qui reste a monter. C'est la seule ligne de l'application qui serve
+                        // PENDANT la sortie et non avant ou apres - d'ou sa place, sous les totaux du
+                        // parcours entier, qu'elle vient nuancer.
+                        //
+                        // Calculee sur la trace COMPLETE et non sur la fenetre zoomee : la question est
+                        // "combien me reste-t-il jusqu'au bout", pas "jusqu'au bord du graphique".
+                        val whole = computed?.samples
+                        val position = lastUserLocation
+                        val onTrack = remember(position, whole) {
+                            if (position == null || whole.isNullOrEmpty()) null
+                            else TrackMeasure.project(whole, position.second, position.first)
+                                ?.let { it to TrackMath.remaining(whole, it.alongM) }
+                        }
+                        if (gpsActive && onTrack != null && settings?.profileRemaining != false) {
+                            RemainingOnTrackRow(
+                                projection = onTrack.first, remaining = onTrack.second, imperial = imp,
+                                fontSp = settings?.profBarFont ?: 11,
                             )
                         }
                         if (windowStats != null && legendShown) {
@@ -1636,7 +1927,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
                                     axisFontSp = settings?.profAxisFont ?: 9,
                                     axisBold = settings?.profAxisBold == true,
-                                    cursorIndex = cursorInWindow, onScrub = { vm.onProfileTap(it) },
+                                    cursorX = cursor, onScrub = { vm.onProfileTap(it) },
                                     onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
                                     onDoubleTap = { fraction -> vm.zoomProfile(2f, fraction) },
                                     lastLabelInsetPx = lastLabelInsetPx,
@@ -1744,6 +2035,30 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // cet ordre parce que le nom est obligatoire et le dossier facultatif. Le choix de dossier ne s'affiche
     // que s'il y en a : sans dossier, la couche va forcément à la racine, et l'offrir serait une question
     // sans réponse possible.
+    // Inverser efface les horodatages (cf. TrackEdit.reverse) : on le demande avant, et seulement quand la
+    // trace en porte - une confirmation pour rien s'apprend a ignorer.
+    reverseConfirm?.let { layer ->
+        AlertDialog(
+            onDismissRequest = { reverseConfirm = null },
+            title = { Text(stringResource(R.string.reverse_confirm_title)) },
+            text = { Text(stringResource(R.string.reverse_confirm)) },
+            confirmButton = {
+                TextButton(onClick = { vm.reverseLayer(layer); reverseConfirm = null }) {
+                    Text(stringResource(R.string.action_ok))
+                }
+            },
+            dismissButton = { TextButton(onClick = { reverseConfirm = null }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+    // Ce que la retouche a refuse, ou ce sur quoi elle s'est repliee.
+    edit.message?.let { message ->
+        AlertDialog(
+            onDismissRequest = { edit.message = null },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { edit.message = null }) { Text(stringResource(R.string.action_ok)) } },
+        )
+    }
+
     if (importDialog) {
         var layerName by remember { mutableStateOf(defaultRouteName(planner.targets, currentPositionLabel)) }
         val focus = remember { FocusRequester() }
@@ -1959,6 +2274,9 @@ private fun strongHaptic(context: Context) {
 private fun LegendContent(
     folders: List<FolderEntity>, layers: List<LayerEntity>, settings: SettingsEntity?,
     vm: MainViewModel,
+    // Le tiroir reste COMPOSE une fois referme : sans ce drapeau, son contenu n'a aucun moyen de savoir
+    // qu'il a disparu de l'ecran, et garde l'etat dans lequel on l'a laisse.
+    open: Boolean,
     onSettings: () -> Unit, onClose: () -> Unit, onImport: () -> Unit,
     showOfflineButton: Boolean, onDownloadOffline: () -> Unit,
     onZoom: (String, Long) -> Unit,
@@ -2038,6 +2356,54 @@ private fun LegendContent(
     val importingIds = ImportSpinners(importing.keys, elevating.keys)
     var deleteFolderTarget by remember { mutableStateOf<FolderEntity?>(null) }
 
+    // ---------- sorties d'une couche : enregistrer un GPX, ou l'envoyer ailleurs ----------
+    // Le selecteur de fichier est UNIQUE et vit ici, non dans chaque ligne de l'arborescence : une couche
+    // par ligne en ouvrirait autant, pour un geste qui ne concerne jamais qu'une couche a la fois. La
+    // couche visee attend donc son tour dans un etat, que le retour du selecteur relit.
+    val drawerCtx = LocalContext.current
+    var gpxPending by remember { mutableStateOf<ByteArray?>(null) }
+    val gpxExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/gpx+xml")
+    ) { uri ->
+        val bytes = gpxPending
+        gpxPending = null
+        if (uri != null && bytes != null) {
+            runCatching { drawerCtx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+        }
+    }
+    val onExportLayer: (LayerEntity) -> Unit = { layer ->
+        vm.layerGpx(layer) { bytes -> gpxPending = bytes; gpxExporter.launch(GpxWriter.fileName(layer.name)) }
+    }
+    val shareLabel = stringResource(R.string.action_share)
+    val onShareLayer: (LayerEntity) -> Unit = { layer ->
+        vm.shareLayerGpx(layer) { uri ->
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "application/gpx+xml"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, layer.name)
+                // Le droit de lecture est accorde a l'application QUI RECOIT, et pour cette URI seulement :
+                // sans ce drapeau, elle obtient une adresse qu'elle n'a pas le droit d'ouvrir.
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            runCatching { drawerCtx.startActivity(Intent.createChooser(send, shareLabel)) }
+        }
+    }
+    val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer)
+    var searchQuery by remember { mutableStateOf("") }
+    var searchOpen by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    // Tiroir referme : la recherche se referme avec lui. On rouvre le menu pour consulter l'arborescence,
+    // pas pour retrouver un filtre pose la fois d'avant - et le bouton allume, seul temoin de ce filtre,
+    // n'est plus la pour le dire.
+    LaunchedEffect(open) {
+        if (!open && searchOpen) {
+            searchOpen = false
+            searchQuery = ""
+            focusManager.clearFocus()
+        }
+    }
+
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         // Header 2 lignes à hauteur totale inchangée (SPEC section 6.1) : l'ancien Row faisait 48dp de
         // contenu (IconButton) + 32dp de padding vertical = 80dp. On désactive le plancher tactile
@@ -2084,12 +2450,30 @@ private fun LegendContent(
                             HeaderAction(Icons.Outlined.FileDownload, stringResource(R.string.offline_action_download),
                                 showLabel = true, onClick = onDownloadOffline)
                         }
+                        // La recherche est a l'oppose des trois autres : elle ne cree ni n'importe rien,
+                        // elle change la facon de LIRE ce qui est en dessous. Le vide entre elle et les
+                        // autres dit cette difference mieux qu'un filet.
+                        Spacer(Modifier.weight(1f))
+                        HeaderAction(
+                            Icons.Filled.Search, stringResource(R.string.search_placeholder),
+                            active = searchOpen,
+                        ) {
+                            searchOpen = !searchOpen
+                            // Refermer la barre efface la recherche : la garder filtrerait l'arborescence
+                            // sans que rien a l'ecran ne dise pourquoi elle est incomplete.
+                            if (!searchOpen) { searchQuery = ""; focusManager.clearFocus() }
+                        }
                     }
                 }
                 // Décalé au maximum vers l'angle haut-droit (SPEC section 6.1), superposé aux 2 lignes ci-dessus
                 // sans agrandir la hauteur du Box (32dp < hauteur totale du Column).
+                // Meme marge de bord que les lignes de l'arborescence, et meme cible de 30 dp : la croix
+                // tombe donc exactement sur la colonne des menus "trois points" des couches. A 14 dp, elle
+                // s'en decalait de sept, ce qui se voyait comme un defaut d'alignement sans qu'on sache
+                // lequel des deux etait de travers.
                 Box(
-                    Modifier.align(Alignment.TopEnd).padding(end = 14.dp).size(30.dp).clickable(onClick = onClose),
+                    Modifier.align(Alignment.TopEnd).padding(end = DrawerRowPadH).size(DrawerHitSize)
+                        .clickable(onClick = onClose),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Filled.Close, stringResource(R.string.action_close_menu), Modifier.size(17.dp))
@@ -2097,15 +2481,59 @@ private fun LegendContent(
             }
         }
 
-        // Seule la liste défile verticalement ; le header reste fixe (SPEC menu latéral).
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 6.dp)) {
+        // Recherche : elle remplace l'arbre par la liste a plat de ce qu'elle trouve, plutot que de
+        // deplier les dossiers autour des resultats. Une couche trouvee est une couche qu'on veut voir
+        // MAINTENANT - son rangement, on le connait deja, c'est meme pour ne pas avoir a le parcourir
+        // qu'on a tape son nom.
+        if (searchOpen) {
+            // Le focus est pris A L'OUVERTURE, et la seule : demande a chaque recomposition, le champ
+            // reprendrait le clavier des qu'on le lache.
+            LaunchedEffect(Unit) { searchFocus.requestFocus() }
+            SearchField(searchQuery, searchFocus) { searchQuery = it }
+        }
+
+        /*
+         * Un toucher dans l'arborescence rend le focus au tiroir, donc referme le clavier.
+         *
+         * Sur la passe INITIALE et sans consommer l'evenement : la ligne touchee le recoit ensuite
+         * normalement. Un simple clickable englobant, lui, aurait vole les taps des lignes.
+         */
+        Column(
+            Modifier.weight(1f).fillMaxWidth()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val e = awaitPointerEvent(PointerEventPass.Initial)
+                            if (e.type == PointerEventType.Press) focusManager.clearFocus()
+                        }
+                    }
+                }
+                .verticalScroll(rememberScrollState()).padding(vertical = 6.dp),
+        ) {
+            val query = searchQuery.trim()
+            if (query.isNotEmpty()) {
+                val found = layers.filter { TreeSearch.matches(it.name, query) }
+                if (found.isEmpty()) {
+                    Text(
+                        stringResource(R.string.search_no_result), fontSize = DrawerNameSp.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    )
+                }
+                found.forEach { item ->
+                    key("found", item.id) {
+                        LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom, layerActions)
+                    }
+                }
+                return@Column
+            }
             importingIds.state(null)?.let { ImportSpinnerRow(0, it) }
             combinedChildren(null, folders, layers).forEach { item ->
                 when (item) {
                     is FolderEntity -> key("folder", item.id) {
-                        FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds) { deleteFolderTarget = it }
+                        FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds, layerActions) { deleteFolderTarget = it }
                     }
-                    is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom) }
+                    is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom, layerActions) }
                 }
             }
         }
@@ -2181,7 +2609,7 @@ private fun FolderNode(
     folder: FolderEntity, allFolders: List<FolderEntity>, allLayers: List<LayerEntity>,
     depth: Int, vm: MainViewModel, dctx: DragCtx,
     onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onNewFolder: (Long?) -> Unit, onZoom: (String, Long) -> Unit,
-    importingIds: ImportSpinners, onDeleteFolder: (FolderEntity) -> Unit,
+    importingIds: ImportSpinners, layerActions: LayerActions, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
     var showColor by remember { mutableStateOf(false) }
@@ -2255,9 +2683,9 @@ private fun FolderNode(
         combinedChildren(folder.id, allFolders, allLayers).forEach { item ->
             when (item) {
                 is FolderEntity -> key("folder", item.id) {
-                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom, importingIds, onDeleteFolder)
+                    FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom, importingIds, layerActions, onDeleteFolder)
                 }
-                is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onMove, onZoom) }
+                is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onMove, onZoom, layerActions) }
             }
         }
     }
@@ -2300,6 +2728,7 @@ class ImportSpinners(private val importing: Set<Long?>, private val elevating: S
 private fun LayerRow(
     layer: LayerEntity, depth: Int, vm: MainViewModel, dctx: DragCtx,
     onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onZoom: (String, Long) -> Unit,
+    actions: LayerActions,
 ) {
     LayerLine(
         kind = "layer", id = layer.id,
@@ -2312,6 +2741,7 @@ private fun LayerRow(
         onToggle = { vm.setLayerVisible(layer, it) }, onColor = { vm.setLayerColor(layer, it) }, dctx = dctx,
         onRename = { onRename("layer", layer.id, layer.name) }, onMove = { onMove("layer", layer.id) },
         onDelete = { vm.deleteLayer(layer) }, onZoom = { onZoom("layer", layer.id) },
+        layerActions = actions, layer = layer,
     )
 }
 
@@ -2323,6 +2753,8 @@ private fun LayerLine(
     @DrawableRes icon: Int,
     onToggle: (Boolean) -> Unit, onColor: (String) -> Unit, dctx: DragCtx,
     onRename: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit, onZoom: () -> Unit,
+    // Une couche et ce qu'on peut en faire ; null pour un dossier, dont le menu n'a ni sortie ni retouche.
+    layerActions: LayerActions? = null, layer: LayerEntity? = null,
 ) {
     var showColor by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -2359,11 +2791,239 @@ private fun LayerLine(
                 onStart = { strongHaptic(context); dctx.onStart(kind, id) },
                 onDrag = { dctx.onDrag(kind, id, it) },
                 onEnd = { dctx.onEnd(kind, id) })
-            RowMenu(onRename = onRename, onMove = onMove, onNewSub = null, onDelete = onDelete, onZoom = onZoom)
+            RowMenu(
+                onRename = onRename, onMove = onMove, onNewSub = null, onDelete = onDelete, onZoom = onZoom,
+                layer = layer, layerActions = layerActions,
+            )
         }
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
     if (showColor) ColorPickerDialog(color, onPick = { onColor(it); showColor = false }, onDismiss = { showColor = false })
+}
+
+/**
+ * Ou l'on en est sur la trace affichee : ce qui reste a parcourir, et a monter.
+ *
+ * L'ecart a la trace n'est dit qu'au-dela de [OffTrackThresholdM] : sur la trace, il vaut la precision du
+ * capteur et ne veut rien dire ; loin d'elle, il est la seule information qui compte - le "restant" ne
+ * decrit alors plus le chemin qu'on suit.
+ */
+@Composable
+private fun RemainingOnTrackRow(
+    projection: TrackMeasure.Projection, remaining: TrackMath.Remaining, imperial: Boolean, fontSp: Int,
+) {
+    val off = projection.awayM >= OffTrackThresholdM
+    Row(
+        Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Place, null, Modifier.size((fontSp + 3).dp),
+            tint = MaterialTheme.colorScheme.primary)
+        Text(
+            stringResource(R.string.track_remaining,
+                Format.distance(remaining.distance, imperial), Format.elevation(remaining.ascent, imperial)),
+            fontSize = fontSp.sp, fontWeight = FontWeight.Medium, color = Color.Black,
+        )
+        if (off) {
+            Text(
+                stringResource(R.string.track_off_track, Format.distance(projection.awayM, imperial)),
+                fontSize = (fontSp - 1).sp, color = MaterialTheme.colorScheme.error,
+                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Au-dela de cet ecart, on ne suit plus la trace : c'est le moment de le dire. Cinquante metres passent
+ *  la precision d'un GPS de telephone sous couvert forestier, sans attendre qu'on soit vraiment perdu. */
+private const val OffTrackThresholdM = 50.0
+
+/**
+ * Champ de recherche du menu lateral : la loupe DANS le champ, la croix a l'autre bout.
+ *
+ * Les deux icones sont a l'interieur du contour, et non posees de part et d'autre : dehors, la loupe
+ * mangeait la marge gauche et le champ n'etait plus centre entre les deux bords du tiroir. Dedans, elles
+ * appartiennent au champ - ce qu'elles decrivent - et les marges redeviennent egales.
+ *
+ * La croix n'apparait qu'une fois la saisie commencee : c'est le seul moment ou elle a quelque chose a
+ * faire.
+ */
+@Composable
+private fun SearchField(query: String, focus: FocusRequester, onQuery: (String) -> Unit) {
+    CompactOutlinedTextField(
+        value = query, onValueChange = onQuery, singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).focusRequester(focus),
+        placeholder = { Text(stringResource(R.string.search_placeholder), fontSize = DrawerNameSp.sp) },
+        leadingIcon = {
+            Icon(Icons.Filled.Search, null, Modifier.size(DrawerIconSize),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                Box(
+                    Modifier.size(DrawerHitSize).clip(CircleShape).clickable { onQuery("") },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_clear_search),
+                        Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+    )
+}
+
+/*
+ * Bulle du marqueur de coupe. Sa POINTE marque le point, le corps se tenant a cote - au-dessus, en
+ * dessous, a gauche ou a droite selon ce que la trace laisse libre (cf. CutBubblePlacement) : c'est la
+ * seule facon de designer un endroit sans le masquer, et cet endroit-la est precisement celui qu'on
+ * regarde avant de confirmer.
+ */
+private val CutBubbleWidth = 30.dp
+private val CutBubbleHeight = 28.dp
+private val CutTailHeight = 8.dp
+private val CutTailWidth = 11.dp
+
+/** Air laisse autour de la bulle quand la carte se decale pour la degager : sans elle, la bulle
+ *  affleurerait le bord de l'ecran, ce qui se lit comme un objet coupe. */
+private val CutBubbleMargin = 12.dp
+
+/**
+ * Marqueur de coupe : les ciseaux dans une bulle dont la pointe touche le point de coupe.
+ *
+ * Pose par son coin haut-gauche (cf. son appelant) : la pointe tombe alors exactement sur le point vise.
+ */
+@Composable
+private fun CutMarkerBubble(
+    side: CutBubblePlacement.Side, bg: Color, fg: Color, modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    // La pointe change de cote AVEC le cote retenu : bulle en haut, elle descend de son bord bas ; bulle a
+    // droite, elle part de son bord gauche. Dans les quatre cas, son sommet tombe sur le point.
+    val shape = remember(density, side) {
+        val tail = with(density) { CutTailHeight.toPx() }
+        val tailW = with(density) { CutTailWidth.toPx() }
+        val radius = with(density) { 8.dp.toPx() }
+        GenericShape { size, _ ->
+            // Le corps recule du cote de la pointe, qui occupe la place ainsi liberee.
+            val left = if (side == CutBubblePlacement.Side.RIGHT) tail else 0f
+            val top = if (side == CutBubblePlacement.Side.BOTTOM) tail else 0f
+            val right = size.width - if (side == CutBubblePlacement.Side.LEFT) tail else 0f
+            val bottom = size.height - if (side == CutBubblePlacement.Side.TOP) tail else 0f
+            addRoundRect(RoundRect(Rect(left, top, right, bottom), CornerRadius(radius, radius)))
+            val cx = (left + right) / 2
+            val cy = (top + bottom) / 2
+            when (side) {
+                CutBubblePlacement.Side.TOP -> {
+                    moveTo(cx - tailW / 2, bottom); lineTo(cx, size.height); lineTo(cx + tailW / 2, bottom)
+                }
+                CutBubblePlacement.Side.BOTTOM -> {
+                    moveTo(cx - tailW / 2, top); lineTo(cx, 0f); lineTo(cx + tailW / 2, top)
+                }
+                CutBubblePlacement.Side.LEFT -> {
+                    moveTo(right, cy - tailW / 2); lineTo(size.width, cy); lineTo(right, cy + tailW / 2)
+                }
+                CutBubblePlacement.Side.RIGHT -> {
+                    moveTo(left, cy - tailW / 2); lineTo(0f, cy); lineTo(left, cy + tailW / 2)
+                }
+            }
+            close()
+        }
+    }
+    val horizontal = side == CutBubblePlacement.Side.LEFT || side == CutBubblePlacement.Side.RIGHT
+    Box(
+        modifier
+            .size(
+                width = CutBubbleWidth + if (horizontal) CutTailHeight else 0.dp,
+                height = CutBubbleHeight + if (horizontal) 0.dp else CutTailHeight,
+            )
+            .shadow(3.dp, shape)
+            // Les memes couleurs que les boutons poses sur la carte : blanc sur noir en theme sombre,
+            // noir sur blanc en clair. La bulle est un ornement de carte comme eux, elle ne peut pas
+            // suivre une autre regle a deux centimetres de la barre d'outils.
+            .background(bg, shape)
+            .padding(
+                start = if (side == CutBubblePlacement.Side.RIGHT) CutTailHeight else 0.dp,
+                top = if (side == CutBubblePlacement.Side.BOTTOM) CutTailHeight else 0.dp,
+                end = if (side == CutBubblePlacement.Side.LEFT) CutTailHeight else 0.dp,
+                bottom = if (side == CutBubblePlacement.Side.TOP) CutTailHeight else 0.dp,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Filled.ContentCut, null, Modifier.size(16.dp), tint = fg)
+    }
+}
+
+/**
+ * Barre de retouche des traces : inverser, couper, joindre, et defaire.
+ *
+ * Verticale et du meme cote que le bouton qui l'ouvre - la colonne de gauche -, sans quoi le regard
+ * traverserait l'ecran entre le geste et son resultat. Les trois premiers boutons sont des OUTILS : ils
+ * s'allument, et le prochain tap sur une trace leur revient. Le quatrieme est une action immediate, d'ou
+ * sa separation.
+ */
+@Composable
+private fun TrackEditToolbar(
+    state: TrackEditState,
+    canUndo: Boolean,
+    chromeBg: Color,
+    chromeFg: Color,
+    onUndo: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.background(chromeBg.copy(alpha = ControlButtonBgAlpha), RoundedCornerShape(ControlButtonRadius))
+            .padding(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        EditToolButton(Icons.Filled.Autorenew, stringResource(R.string.action_reverse_track),
+            active = state.tool == EditTool.REVERSE, chromeFg = chromeFg) { state.choose(EditTool.REVERSE) }
+        EditToolButton(Icons.Filled.ContentCut, stringResource(R.string.action_split_track),
+            active = state.tool == EditTool.CUT, chromeFg = chromeFg) { state.choose(EditTool.CUT) }
+        EditToolButton(Icons.Filled.Link, stringResource(R.string.action_join_track),
+            active = state.tool == EditTool.JOIN, chromeFg = chromeFg) { state.choose(EditTool.JOIN) }
+        // Un filet entre les outils et l'annulation : celle-ci n'attend aucun tap sur la carte, elle
+        // s'applique en se touchant. Les confondre ferait chercher un point a designer.
+        Box(Modifier.padding(vertical = 2.dp).size(width = 18.dp, height = 1.dp)
+            .background(chromeFg.copy(alpha = 0.25f)))
+        EditToolButton(
+            Icons.AutoMirrored.Filled.Undo, stringResource(R.string.action_undo),
+            active = false, chromeFg = chromeFg, enabled = canUndo, onClick = onUndo,
+        )
+    }
+}
+
+/** Un bouton de la barre : allume quand son outil attend un tap, eteint sinon. */
+@Composable
+private fun EditToolButton(
+    icon: ImageVector, label: String, active: Boolean, chromeFg: Color,
+    enabled: Boolean = true, onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(40.dp)) {
+        Icon(
+            icon, label, Modifier.size(20.dp),
+            tint = when {
+                !enabled -> chromeFg.copy(alpha = 0.3f)
+                active -> MaterialTheme.colorScheme.primary
+                else -> chromeFg
+            },
+        )
+    }
+}
+
+/** Un bouton d'une barre du bas : le choix principal se distingue par son fond. */
+@Composable
+private fun MapBarAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
+    Text(
+        label,
+        fontSize = 12.sp,
+        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
+        color = Color.White,
+        modifier = Modifier.clip(RoundedCornerShape(6.dp))
+            .background(if (primary) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.15f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
@@ -2437,7 +3097,9 @@ private val ControlButtonRadius = 16.dp
 @Composable
 private fun SlopeLegendButton(shown: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.6f)).clickable(onClick = onClick),
+        // Plus de fond blanc : il servait a garder le "i" lisible quand il chevauchait le titre, ce qui
+        // n'arrive plus - le titre lui reserve sa gouttiere (cf. SlopeLegendGutter).
+        modifier.size(SlopeLegendButtonSize).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -2448,6 +3110,13 @@ private fun SlopeLegendButton(shown: Boolean, modifier: Modifier = Modifier, onC
     }
 }
 
+/** Cote du "i" de la legende des pentes. */
+private val SlopeLegendButtonSize = 22.dp
+
+/** Largeur que le titre du profil laisse au "i" : le bouton, et l'air qui l'ecarte du texte. C'est cette
+ *  gouttiere qui empeche un titre long de passer dessous. */
+private val SlopeLegendGutter = SlopeLegendButtonSize + 4.dp
+
 /** Air autour du titre du bandeau de profil : au-dessus comme au-dessous, dans tous les cas. */
 private val ProfileTitleGap = 4.dp
 
@@ -2457,6 +3126,21 @@ private val ProfileGraphGap = 12.dp
 
 /** Ecart du bloc d'infos du point courant : le meme a droite de l'ecran qu'au-dessus du profil. */
 private val CursorInfoGap = 4.dp
+
+/*
+ * Dessin du bouton GPS : son epingle, et le mot "GPS" dessous.
+ *
+ * Il porte DEUX elements la ou ses voisins n'en ont qu'un, et se dessinait donc plus petit qu'eux - une
+ * epingle de 16 dp contre les 24 dp d'une icone ordinaire. Les deux ont grandi ensemble, en gardant leur
+ * rapport : le mot doit rester lisible sans concurrencer l'epingle, qui porte le sens.
+ *
+ * La borne haute n'est pas le confort mais le CARRE DE FOND, dont le cote se regle a partir de 36 dp
+ * (cf. MinMapButtonSizeDp) : a 20 dp d'epingle et 8 sp de mot, l'ensemble tient dans le plus petit carre
+ * avec de l'air de chaque cote. Au-dela, le dessin toucherait le bord de son fond au premier cran du
+ * curseur.
+ */
+private val GpsIconSize = 20.dp
+private const val GpsLabelSp = 8f
 
 /** Ecart entre deux boutons poses sur la carte. Le triple de ce qu'il etait : les fonds arrondis se
  *  touchaient presque, et la colonne se lisait comme un seul bloc. */
@@ -2528,9 +3212,9 @@ private fun RouteProfilePanel(
     settings: SettingsEntity?,
     imperial: Boolean,
     lineColor: Color,
-    cursorIndex: Int?,
+    cursorX: Double?,
     lastLabelInsetPx: Float,
-    onScrub: (Int) -> Unit,
+    onScrub: (Double) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2554,7 +3238,10 @@ private fun RouteProfilePanel(
             }
         }
         TrackInfoColumns(
-            titleInfos(track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial),
+            titleInfos(
+                track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial,
+                remember(track.samples) { TrackMath.toblerSeconds(track.samples) },
+            ),
             fontSp = settings?.profBarFont ?: 11,
             bold = settings?.profBarBold == true,
             modifier = Modifier.fillMaxWidth(),
@@ -2574,7 +3261,7 @@ private fun RouteProfilePanel(
                 lineColor = lineColor,
                 axisFontSp = settings?.profAxisFont ?: 9,
                 axisBold = settings?.profAxisBold == true,
-                cursorIndex = cursorIndex, onScrub = onScrub,
+                cursorX = cursorX, onScrub = onScrub,
                 lastLabelInsetPx = lastLabelInsetPx,
                 verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -2688,9 +3375,12 @@ private fun ColorPickerDialog(current: String, onPick: (String) -> Unit, onDismi
 @Composable
 private fun HeaderAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector, label: String,
-    showLabel: Boolean = false, onClick: () -> Unit,
+    showLabel: Boolean = false, active: Boolean = false, onClick: () -> Unit,
 ) {
-    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    // Allume, seul le DESSIN change de couleur. Un aplat derriere lui - meme leger - lui donnait un poids
+    // que ses voisins n'ont pas, et le bouton paraissait plus gros alors que sa cible fait les memes
+    // 44 dp. C'est la regle des boutons de la carte, ou l'etat se lit a la couleur du trait.
+    val tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     if (!showLabel) {
         Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
             Icon(icon, label, Modifier.size(22.dp), tint = tint)
@@ -2806,6 +3496,7 @@ private fun RowMenu(
     // Propre au dossier, et seulement s'il porte des couches : une couche a deja sa pastille de couleur
     // dans sa ligne, et un dossier vide n'a rien a colorer - l'entree disparait plutot que de ne rien faire.
     onColor: (() -> Unit)? = null,
+    layer: LayerEntity? = null, layerActions: LayerActions? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -2822,10 +3513,31 @@ private fun RowMenu(
             DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { open = false; onRename() })
             DropdownMenuItem(text = { Text(stringResource(R.string.action_move)) }, onClick = { open = false; onMove() })
             if (onNewSub != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_new_subfolder)) }, onClick = { open = false; onNewSub() })
+            // Les SORTIES d'une couche seulement. Les retouches, elles, ont quitte ce menu pour la barre
+            // d'outils de la carte : elles agissent sur un segment, parfois sur deux, et designer un
+            // segment se fait du doigt sur la carte - pas dans le menu d'une ligne d'arborescence.
+            if (layer != null && layerActions != null) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_export_gpx)) },
+                    onClick = { open = false; layerActions.onExport(layer) })
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) },
+                    onClick = { open = false; layerActions.onShare(layer) })
+            }
             DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { open = false; onDelete() })
         }
     }
 }
+
+/**
+ * Ce qu'on peut faire d'une couche depuis son menu, au-dela de ce qu'un dossier sait faire aussi.
+ *
+ * Un porteur plutot que cinq lambdas passees de main en main : l'arborescence les traverse sur toute sa
+ * profondeur, et chacune aurait suivi les autres a chaque appel. Toutes visent la couche entiere, d'ou le
+ * parametre commun - la ligne qui les declenche sait laquelle, pas ce qu'il faut en faire.
+ */
+class LayerActions(
+    val onExport: (LayerEntity) -> Unit,
+    val onShare: (LayerEntity) -> Unit,
+)
 
 @SuppressLint("DefaultLocale")
 @Composable

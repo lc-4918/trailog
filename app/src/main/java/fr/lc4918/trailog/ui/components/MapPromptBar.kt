@@ -35,6 +35,51 @@ internal val MapBarBackground = Color(0xFF1B1B1B).copy(alpha = 0.9f)
  * petite qu'un bouton d'icône ordinaire, la barre devant garder la hauteur de sa seule ligne de texte.
  * Sans elle, la barre ne se referme que par le retour système (cf. MainScreen).
  */
+/**
+ * La même barre, augmentée de boutons : une consigne qui appelle une réponse, et non un simple tap sur la
+ * carte.
+ *
+ * Les actions sont sur leur propre ligne, sous le texte : mises à sa suite, une consigne un peu longue les
+ * repoussait hors de l'écran sur un téléphone étroit - or ce sont elles qu'on vient chercher.
+ */
+@Composable
+fun MapActionBar(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
+    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit,
+) {
+    Box(
+        modifier.fillMaxWidth().padding(8.dp)
+            .background(MapBarBackground, RoundedCornerShape(8.dp))
+            .padding(10.dp),
+    ) {
+        androidx.compose.foundation.layout.Column(
+            Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(end = if (onClose != null) 22.dp else 0.dp))
+            androidx.compose.foundation.layout.Row(
+                Modifier.padding(top = 6.dp),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions,
+            )
+        }
+        if (onClose != null) {
+            Box(
+                Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape).clickable(onClick = onClose),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Close, stringResource(R.string.action_close),
+                    Modifier.size(16.dp), tint = Color.White)
+            }
+        }
+    }
+}
+
 @Composable
 fun MapPromptBar(text: String, modifier: Modifier = Modifier, onClose: (() -> Unit)? = null) {
     Box(

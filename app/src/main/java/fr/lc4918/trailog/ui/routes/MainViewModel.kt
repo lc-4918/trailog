@@ -13,11 +13,15 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
+import fr.lc4918.trailog.data.repo.TrailogRepository
+import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
+import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.map.StyleBuilder
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
@@ -96,7 +100,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val activeLayerId = _activeLayerId.asStateFlow()
     private val _computed = MutableStateFlow<ComputedTrack?>(null)
     val computed = _computed.asStateFlow()
-    private val _cursor = MutableStateFlow<Int?>(null)
+    /**
+     * Point courant sur la trace, en **metres depuis son debut** et non en indice d'echantillon.
+     *
+     * Une abscisse se pose partout : entre deux sommets, au milieu d'un troncon, a l'endroit exact ou le
+     * doigt s'est arrete. Un indice ne le pouvait pas - il ne designait qu'un des deux mille echantillons
+     * du profil affiche -, et tout ce qui s'y fiait heritait de cette limite.
+     */
+    private val _cursor = MutableStateFlow<Double?>(null)
     val cursor = _cursor.asStateFlow()
     // vrai entre le tap sur une trace et l'affichage de son profil (spinner dans la zone du graphique).
     private val _profileLoading = MutableStateFlow(false)
@@ -162,15 +173,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val current = _computed.value
         if (_activeLayerId.value == id && current != null) {
             viewModelScope.launch {
-                val idx = withContext(Dispatchers.Default) {
-                    var best = -1; var bestD = Double.MAX_VALUE
-                    current.samples.forEachIndexed { i, s ->
-                        val d = TrackMath.haversine(lon, lat, s.lon, s.lat)
-                        if (d < bestD) { bestD = d; best = i }
-                    }
-                    if (best >= 0) best else null
+                // Projection sur la ligne brisee, et non plus recherche du sommet le plus proche : le
+                // curseur tombe la ou le doigt a vise, meme entre deux points de la trace.
+                val along = withContext(Dispatchers.Default) {
+                    TrackMeasure.project(current.samples, lon, lat)?.alongM
                 }
-                if (_activeLayerId.value == id) _cursor.value = idx
+                if (_activeLayerId.value == id) _cursor.value = along
             }
             return
         }
@@ -188,12 +196,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val nearest = profiles.minByOrNull { ct ->
                     ct.samples.minOfOrNull { s -> TrackMath.haversine(lon, lat, s.lon, s.lat) } ?: Double.MAX_VALUE
                 } ?: return@withContext null
-                var best = -1; var bestD = Double.MAX_VALUE
-                nearest.samples.forEachIndexed { i, s ->
-                    val d = TrackMath.haversine(lon, lat, s.lon, s.lat)
-                    if (d < bestD) { bestD = d; best = i }
-                }
-                nearest to (if (best >= 0) best else null)
+                nearest to TrackMeasure.project(nearest.samples, lon, lat)?.alongM
             }
             // Ne pas écraser si l'utilisateur a retapé une autre trace pendant le calcul.
             if (_activeLayerId.value == id) {
@@ -300,7 +303,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _selectedMarkerId.value = null; _markerLayerId.value = null; _markerLayerData.value = null
         _selectedMarkerPos.value = null
     }
-    fun setCursor(index: Int?) { _cursor.value = index }
+    fun setCursor(alongM: Double?) { _cursor.value = alongM }
 
     private fun resetProfileZoom() {
         _profileZoom.value = null
@@ -320,11 +323,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Tap sur le graphique du profil : deplace le curseur. [localIndex] est relatif a la fenetre
-     * actuellement affichee (la portion zoomee, ou la trace complete si aucun zoom).
+     * Tap sur le graphique du profil : deplace le curseur. [alongM] est une abscisse ABSOLUE sur la trace,
+     * lue directement sous le doigt - la fenetre zoomee n'a donc plus a etre retranchee, et le curseur ne
+     * se decale plus d'un zoom a l'autre.
      */
-    fun onProfileTap(localIndex: Int) {
-        _cursor.value = (_profileZoom.value?.first ?: 0) + localIndex
+    fun onProfileTap(alongM: Double) {
+        _cursor.value = alongM
     }
 
     /** Import d'une image choisie par l'utilisateur pour un champ IMAGE d'infobulle. */
@@ -373,6 +377,121 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             repo.saveFeatures(layer, newData)
             renderTick.value++              // le .map réécrit change de révision -> rechargement des marqueurs
         }
+    }
+
+    // ---------- sorties et retouches d'une couche ----------
+
+    /** La couche en GPX, rendue à l'appelant qui sait quoi en faire : l'écrire, ou l'envoyer. */
+    fun layerGpx(layer: LayerEntity, onReady: (ByteArray) -> Unit) = viewModelScope.launch {
+        onReady(repo.layerGpx(layer))
+    }
+
+    /** La couche en GPX, posée dans un fichier qu'une autre application a le droit de lire. */
+    fun shareLayerGpx(layer: LayerEntity, onReady: (Uri) -> Unit) = viewModelScope.launch {
+        onReady(repo.shareableFile(repo.layerGpx(layer), GpxWriter.fileName(layer.name)))
+    }
+
+    /**
+     * Ce qui suit toute retouche de géométrie : la carte relit la couche, et le profil ouvert dessus se
+     * referme.
+     *
+     * Le profil est refermé plutôt que recalculé : ses échantillons, son curseur et son zoom décrivent une
+     * trace qui vient de changer de longueur. Les garder afficherait un curseur au milieu d'un profil qui
+     * n'est plus le sien ; le retap sur la trace le rouvre aussitôt, à jour.
+     */
+    private fun afterGeometryEdit(layerId: Long) {
+        renderTick.value++
+        if (_activeLayerId.value == layerId) closeProfile()
+    }
+
+    /**
+     * De quoi défaire la dernière retouche : les couches telles qu'elles étaient, et celles qu'elle a
+     * créées.
+     *
+     * **Un seul niveau**, gardé en mémoire. Une géométrie pèse quelques mégaoctets ; en empiler plusieurs
+     * demanderait de les écrire sur le disque et de décider quand elles expirent, pour couvrir un cas -
+     * revenir trois retouches en arrière - qui ne se présente pas : une retouche fautive se voit tout de
+     * suite, sur la carte.
+     */
+    private class EditUndo(
+        val restore: List<TrailogRepository.LayerSnapshot>,
+        val created: List<Long>,
+    )
+
+    private var lastEdit: EditUndo? = null
+    private val _canUndo = MutableStateFlow(false)
+    val canUndo = _canUndo.asStateFlow()
+
+    private suspend fun rememberBefore(vararg layers: LayerEntity): List<TrailogRepository.LayerSnapshot> =
+        layers.distinctBy { it.id }.map { repo.snapshotLayer(it) }
+
+    private fun keepUndo(before: List<TrailogRepository.LayerSnapshot>, created: List<Long>) {
+        lastEdit = EditUndo(before, created)
+        _canUndo.value = true
+    }
+
+    /** Défait la dernière retouche : les couches reprennent leur géométrie, et ce qui a été créé s'en va. */
+    fun undoLastEdit() = viewModelScope.launch {
+        val u = lastEdit ?: return@launch
+        lastEdit = null
+        _canUndo.value = false
+        repo.restoreLayers(u.restore, u.created)
+        u.restore.forEach { afterGeometryEdit(it.layer.id) }
+        u.created.forEach { if (_activeLayerId.value == it) closeProfile() }
+    }
+
+    /** Inverse le sens de la trace. Les horodatages tombent (cf. TrackEdit.reverse). */
+    fun reverseLayer(layer: LayerEntity) = viewModelScope.launch {
+        val before = rememberBefore(layer)
+        repo.reverseLayer(layer)
+        keepUndo(before, emptyList())
+        afterGeometryEdit(layer.id)
+    }
+
+    /**
+     * Géométrie de la couche qu'on est en train de couper, gardée le temps de la coupe.
+     *
+     * Chargée **une fois** par marqueur posé : la bulle du marqueur doit savoir ce qu'elle recouvrirait,
+     * donc relire la trace autour d'elle à chaque recalcul - et relire le fichier à chaque déplacement de
+     * carte coûterait un décodage complet, jusqu'à plusieurs secondes sur une grosse trace.
+     */
+    private val _cutGeometry = MutableStateFlow<List<List<TrackPoint>>>(emptyList())
+    val cutGeometry = _cutGeometry.asStateFlow()
+
+    fun loadCutGeometry(layer: LayerEntity?) = viewModelScope.launch {
+        _cutGeometry.value = if (layer == null) emptyList() else repo.loadTrackLines(layer)
+    }
+
+    /** Où tombe un tap sur la géométrie d'une couche (segment et point exact), pour la coupe et la jonction. */
+    fun locateOnLayer(layer: LayerEntity, lon: Double, lat: Double, onFound: (TrackEdit.Hit?) -> Unit) =
+        viewModelScope.launch { onFound(repo.locateOnLayer(layer, lon, lat)) }
+
+    /** Coupe la trace à l'endroit visé. [onDone] reçoit faux si la coupe ne donnait pas deux morceaux. */
+    fun splitLayerAt(layer: LayerEntity, hit: TrackEdit.Hit, onDone: (Boolean) -> Unit) =
+        viewModelScope.launch {
+            val before = rememberBefore(layer)
+            val created = repo.splitLayerAt(layer, hit)
+            if (created != null) {
+                keepUndo(before, listOf(created))
+                afterGeometryEdit(layer.id)
+            }
+            onDone(created != null)
+        }
+
+    /**
+     * Joint deux segments. [onDone] reçoit le mode **réellement appliqué** : une jonction par itinéraire
+     * retombe en ligne droite quand le moteur ne répond pas, et l'écran doit pouvoir le dire.
+     */
+    fun joinSegments(
+        layer: LayerEntity, segmentA: Int, other: LayerEntity, segmentB: Int,
+        mode: TrailogRepository.JoinMode, onDone: (TrailogRepository.JoinMode) -> Unit,
+    ) = viewModelScope.launch {
+        val before = rememberBefore(layer, other)
+        val applied = repo.joinSegments(layer, segmentA, other, segmentB, mode)
+        keepUndo(before, emptyList())
+        afterGeometryEdit(layer.id)
+        if (layer.id != other.id) afterGeometryEdit(other.id)
+        onDone(applied)
     }
 
     // ---------- visibilité ----------

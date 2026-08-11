@@ -64,8 +64,8 @@ import androidx.compose.ui.unit.sp
  * par des cartes blanches sur un fond bleute, autour du bleu de l'application - une grammaire qui n'aurait
  * pas de sens sur la carte, et qui reste donc ici.
  *
- * En theme sombre, ces valeurs claires seraient illisibles : les roles sont alors repris du theme, la
- * hierarchie tenant aux memes ecarts (fond, carte, filet) mais dans l'autre sens.
+ * En theme sombre, ces valeurs claires seraient illisibles : une seconde palette prend le relais
+ * (cf. DarkSettingsPalette), batie sur les memes ecarts - fond, carte, filet - dans l'autre sens.
  */
 class SettingsPalette(
     /** Fond de l'ecran, sur lequel les cartes se detachent. */
@@ -101,22 +101,35 @@ private val LightSettingsPalette = SettingsPalette(
     outline = Color(0xFFC3D1DD), fieldBg = Color(0xFFF4F8FB), track = Color(0xFFDCE7F0),
 )
 
+/**
+ * La meme grammaire en sombre : les memes ecarts entre fond, carte et filet, dans l'autre sens.
+ *
+ * **Ecrite ici plutot que tiree des roles de Material.** Elle l'etait, et c'est ce qui posait du LAVANDE
+ * sur cet ecran : l'application ne redefinit que `primary` et `secondary` de son jeu de couleurs, si bien
+ * que `primaryContainer` et les surfaces restaient celles du jeu par defaut de Material 3 - violettes. La
+ * pastille d'un onglet ouvert, celle d'une puce retenue et les fonds de carte tiraient donc au violet, sur
+ * un ecran par ailleurs bleu.
+ *
+ * Les valeurs sont donc posees comme celles du clair, et les deux se lisent cote a cote. Meme bleu que
+ * l'application, decline en sombre : c'est le seul moyen que "retenu" ait la meme couleur partout.
+ */
+private val DarkSettingsPalette = SettingsPalette(
+    screen = Color(0xFF0E141B), card = Color(0xFF161F29), divider = Color(0xFF223140),
+    label = Color(0xFFE7EEF5), subtle = Color(0xFF9FB3C6), section = Color(0xFF89A2B9),
+    accent = Color(0xFF6FB6E8), accentStrong = Color(0xFFC7E3F8), accentContainer = Color(0xFF1D4A70),
+    outline = Color(0xFF33475C), fieldBg = Color(0xFF1B2836), track = Color(0xFF2A3B4D),
+)
+
 private val LocalSettingsPalette = staticCompositionLocalOf { LightSettingsPalette }
 
 /** La palette en cours. Voir [SettingsPalette] pour ce qui la distingue du theme. */
 val settingsPalette: SettingsPalette
     @Composable get() = LocalSettingsPalette.current
 
-/** Pose la palette de l'ecran : celle de la maquette en clair, celle du theme en sombre. */
+/** Pose la palette de l'ecran : celle de la maquette en clair, sa jumelle sombre sinon. */
 @Composable
 fun ProvideSettingsPalette(dark: Boolean, content: @Composable () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    val palette = if (!dark) LightSettingsPalette else SettingsPalette(
-        screen = cs.surface, card = cs.surfaceContainerHigh, divider = cs.outlineVariant,
-        label = cs.onSurface, subtle = cs.onSurfaceVariant, section = cs.onSurfaceVariant,
-        accent = cs.primary, accentStrong = cs.primary, accentContainer = cs.primaryContainer,
-        outline = cs.outline, fieldBg = cs.surfaceContainerHighest, track = cs.surfaceVariant,
-    )
+    val palette = if (dark) DarkSettingsPalette else LightSettingsPalette
     CompositionLocalProvider(LocalSettingsPalette provides palette, content = content)
 }
 
@@ -439,7 +452,9 @@ fun SettingsChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        Text(label, fontSize = 11.sp, color = if (selected) p.accentStrong else Color(0xFF3F576D).takeIf { !selected } ?: p.accentStrong,
+        // Le texte d'une puce libre suit le gris de la palette, et non un bleu-gris ecrit en dur : celui-ci
+        // venait de la maquette claire, et disparaissait presque sur une carte sombre.
+        Text(label, fontSize = 11.sp, color = if (selected) p.accentStrong else p.subtle,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
@@ -565,7 +580,7 @@ fun SettingsTextField(value: String, placeholder: String, onValueChange: (String
 /** Bordure d'une carte de discipline, retenue ou non. */
 @Composable
 fun disciplineBorder(selected: Boolean): BorderStroke =
-    BorderStroke(1.dp, if (selected) settingsPalette.accentContainer else Color(0xFFE1EAF2))
+    BorderStroke(1.dp, if (selected) settingsPalette.accentContainer else settingsPalette.outline)
 
 /**
  * Ligne a choix : le libelle, la valeur retenue, et le menu qui s'ouvre d'un tap sur la ligne entiere.

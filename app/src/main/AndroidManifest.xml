@@ -35,6 +35,22 @@
             Avec adjustResize et le mode bord-a-bord (cf. enableEdgeToEdge dans MainActivity), le clavier
             n'est plus qu'un inset : la fenetre ne bouge pas, et WindowInsets.ime le decrit fidelement.
         -->
+        <!--
+            Fichiers ouverts a une autre application (partage d'une trace en GPX). Depuis Android 7, un
+            file:// envoye a une autre application leve une exception : celle qui recoit n'a aucun droit
+            sur le stockage prive de celle qui envoie. Le fournisseur delivre un content:// temporaire, et
+            ne donne acces qu'au seul dossier de partage (cf. res/xml/file_paths.xml).
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.partage"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

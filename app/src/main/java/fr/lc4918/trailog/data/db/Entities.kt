@@ -131,6 +131,10 @@ data class SettingsEntity(
     // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
     // n'est plus une preference mais un etat d'affichage, qui se referme du meme geste.
     val profileSlopeLegend: Boolean = false,
+    // Ligne du restant sous les totaux du profil : distance et D+ jusqu'au bout, depuis la position GPS
+    // projetee sur la trace. Active par defaut - elle ne s'affiche que capteur allume ET profil ouvert,
+    // c'est-a-dire dans la seule situation ou on la cherche.
+    val profileRemaining: Boolean = true,
     val bubbleFont: Int = 14,              // taille police infobulle (sp)
     val profAxisFont: Int = 9,             // axes du profil
     val profTitleFont: Int = 16,           // titre (nom)
@@ -218,6 +222,10 @@ data class SettingsEntity(
     // Bouton de mesure sur trace. Desactive par defaut comme les deux boutons voisins, mais pour une autre
     // raison : il n'interroge aucun service, il ne sert simplement qu'a qui mesure ses parcours.
     val trackMeasureEnabled: Boolean = false,
+    // Bouton de la barre de retouche des traces. Desactive par defaut, et pour la raison la plus forte de
+    // toutes : ses outils MODIFIENT une trace importee, et son mode detourne les taps de la carte. Qui ne
+    // retouche pas ses traces n'a aucune raison de croiser ce bouton.
+    val trackEditEnabled: Boolean = false,
     // Cote du carre dessine derriere un bouton de carte (dp). La zone tactile, elle, ne bouge pas : elle
     // reste aux 48 dp que Material impose, quelle que soit la taille choisie. Les bornes vont donc du plus
     // discret (le carre ne fait alors que la taille de l'icone) au bouton Material plein, qui occupe toute

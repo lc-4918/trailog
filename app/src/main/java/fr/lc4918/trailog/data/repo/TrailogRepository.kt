@@ -2,6 +2,8 @@ package fr.lc4918.trailog.data.repo
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.net.Uri
+import androidx.core.content.FileProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.FolderEntity
@@ -9,6 +11,8 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MbtilesSortOrder
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.backup.BackupArchive
+import fr.lc4918.trailog.data.backup.BackupDir
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.imp.LayerImporter
 import fr.lc4918.trailog.data.imp.ParsedLayer
@@ -17,11 +21,15 @@ import fr.lc4918.trailog.elevation.ElevationServices
 import fr.lc4918.trailog.data.seed.Composites
 import fr.lc4918.trailog.data.seed.DemoData
 import fr.lc4918.trailog.data.seed.Providers
+import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.routing.Valhalla
 import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.map.offline.OfflineTileDownloader
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
+import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
@@ -54,6 +62,7 @@ class TrailogRepository(private val ctx: Context) {
     private companion object {
         const val MAP_SUFFIX = ".map"     // fichier GeoJSON prêt-pour-carte précalculé
         const val PROF_SUFFIX = ".prof"   // profil (samples décimés + stats) précalculé par segment
+        const val SHARE_DIR = "partage"   // cache des fichiers ouverts à une autre application
     }
 
     // Paramètres du profil, identiques au tap comme au précalcul (sinon le .prof ne correspondrait pas).
@@ -189,6 +198,98 @@ class TrailogRepository(private val ctx: Context) {
         val bounds: DoubleArray,
     )
 
+    /** Ce qu'une géométrie écrite laisse derrière elle : le nom de son fichier, et tout ce que la ligne en
+     *  base doit en retenir. */
+    private class WrittenGeometry(
+        val fileName: String,
+        val computed: ImportComputation,
+        val hasLine: Boolean,
+        val hasPoints: Boolean,
+    )
+
+    /**
+     * Écrit les **trois fichiers** d'une couche - géométrie complète, rendu allégé, profil précalculé - et
+     * rend de quoi remplir sa ligne en base.
+     *
+     * Partagé par l'import et par les retouches de trace (couper, fusionner, inverser). Ces trois-là ne
+     * sont pas des imports, mais elles produisent exactement la même chose : trois fichiers cohérents entre
+     * eux et des statistiques qui les décrivent. Le seul moyen de garantir qu'une trace coupée est aussi
+     * bien décrite qu'une trace importée, c'est qu'elle passe par le même code.
+     *
+     * [fileName] permet de **réécrire par-dessus** une couche existante, ce que fait une retouche : la
+     * couche garde son identité, sa couleur et sa place dans l'arborescence.
+     */
+    private suspend fun writeGeometry(
+        points: List<PointFeature>,
+        lines: List<List<TrackPoint>>,
+        fileName: String = "layer_${System.currentTimeMillis()}.geojson",
+    ): WrittenGeometry = withContext(Dispatchers.IO) {
+        val simplify = simplifyRender()
+        val smoothingM = profileSmoothing()
+        // Stats, schéma, GeoJSON (source + rendu) et profil = CPU pur -> un seul passage sur
+        // Dispatchers.Default (les écritures fichier et la lecture des réglages restent sur IO).
+        val computed = withContext(Dispatchers.Default) {
+            // stats par segment puis agrégées (somme distance/D+/D-/temps, min/max altitude) : une
+            // concaténation globale des segments créerait un "saut" fantôme entre la fin d'un segment
+            // et le début du suivant.
+            val segmentStats = lines.map { TrackMath.compute(it) }
+            val allTrackPoints = lines.flatten()
+
+            val schemaKeys = LinkedHashMap<String, PropType>()
+            points.forEach { pt -> pt.props.forEach { (k, v) -> schemaKeys.putIfAbsent(k, typeOf(v)) } }
+            val schema = schemaKeys.map { (k, t) -> SchemaItem(k, t) }
+
+            val lons = points.map { it.lon } + allTrackPoints.map { it.lon }
+            val lats = points.map { it.lat } + allTrackPoints.map { it.lat }
+            val bounds = doubleArrayOf(
+                lons.minOrNull() ?: 0.0, lats.minOrNull() ?: 0.0,
+                lons.maxOrNull() ?: 0.0, lats.maxOrNull() ?: 0.0,
+            )
+
+            ImportComputation(
+                segmentStats = segmentStats,
+                schemaJson = LayerGeoJson.writeSchema(schema),
+                geoJson = LayerGeoJson.write(points, lines),
+                // GeoJSON prêt-pour-carte précalculé (évite un parse+re-sérialisation coûteux au rendu
+                // de grosses traces) : le rendu se contente de relire ce fichier .map.
+                mapGeoJson = LayerGeoJson.writeForMap(points, lines, simplify),
+                // Profil précalculé par segment (affichage instantané au tap, sans re-parser toute la trace).
+                prof = profileJson.encodeToString(computeProfiles(lines, smoothingM)),
+                bounds = bounds,
+            )
+        }
+        val file = File(layersDir, fileName)
+        file.writeText(computed.geoJson)
+        File(layersDir, file.name + MAP_SUFFIX).writeText(computed.mapGeoJson)
+        File(layersDir, file.name + PROF_SUFFIX).writeText(computed.prof)
+        // Le profil en cache mémoire porte encore celui d'AVANT la retouche : son fichier vient de changer
+        // sous lui. La clé de cache tient à la date du fichier, qu'on vient de réécrire, mais l'entrée
+        // périmée resterait en mémoire jusqu'à son éviction - on la retire tout de suite.
+        profileCache.keys.removeAll { it.startsWith(File(layersDir, file.name + PROF_SUFFIX).absolutePath) }
+        WrittenGeometry(file.name, computed, lines.isNotEmpty(), points.isNotEmpty())
+    }
+
+    /** La ligne en base décrite par la géométrie qu'on vient d'écrire : mesures, drapeaux et emprise.
+     *  Le nom, la couleur, le dossier et l'ordre appartiennent à l'appelant, jamais à la géométrie. */
+    private fun LayerEntity.describedBy(g: WrittenGeometry): LayerEntity {
+        val stats = g.computed.segmentStats
+        val (w, s, e, n) = g.computed.bounds
+        return copy(
+            geometryFile = g.fileName,
+            schemaJson = g.computed.schemaJson,
+            distance = stats.sumOf { it.stats.distance },
+            ascent = stats.sumOf { it.stats.ascent },
+            descent = stats.sumOf { it.stats.descent },
+            minEle = stats.filter { it.hasZ }.minOfOrNull { it.stats.min } ?: 0.0,
+            maxEle = stats.filter { it.hasZ }.maxOfOrNull { it.stats.max } ?: 0.0,
+            movingTime = if (stats.isNotEmpty() && stats.all { it.hasTime })
+                stats.sumOf { it.stats.duration ?: 0.0 } else null,
+            hasZ = stats.any { it.hasZ }, hasTime = stats.any { it.hasTime },
+            hasLine = g.hasLine, hasPoints = g.hasPoints,
+            west = w, south = s, east = e, north = n,
+        )
+    }
+
     /** Importe une couche (gpx/kml/kmz/geojson) : peut contenir des points et/ou des traces.
      *  Lève [EmptyLayerException] si le fichier, bien que lisible, ne contient ni trace ni point ;
      *  toute autre exception signale un fichier illisible (cf. MainViewModel.importLayer).
@@ -207,77 +308,300 @@ class TrailogRepository(private val ctx: Context) {
             val parsed = fillMissingElevation(
                 parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) }), onElevation,
             )
-            val hasLine = parsed.lines.isNotEmpty()
-            val simplify = simplifyRender()
-            val smoothingM = profileSmoothing()
-
-            // Stats, schéma, GeoJSON (source + rendu) et profil = CPU pur -> un seul passage sur
-            // Dispatchers.Default (les écritures fichier et la lecture des réglages restent sur IO).
-            val computed = withContext(Dispatchers.Default) {
-                // stats par segment puis agrégées (somme distance/D+/D-/temps, min/max altitude) : une
-                // concaténation globale des segments créerait un "saut" fantôme entre la fin d'un segment
-                // et le début du suivant.
-                val segmentStats = parsed.lines.map { TrackMath.compute(it) }
-                val allTrackPoints = parsed.lines.flatten()
-
-                val schemaKeys = LinkedHashMap<String, PropType>()
-                parsed.points.forEach { pt -> pt.props.forEach { (k, v) -> schemaKeys.putIfAbsent(k, typeOf(v)) } }
-                val schema = schemaKeys.map { (k, t) -> SchemaItem(k, t) }
-
-                val lons = parsed.points.map { it.lon } + allTrackPoints.map { it.lon }
-                val lats = parsed.points.map { it.lat } + allTrackPoints.map { it.lat }
-                val bounds = doubleArrayOf(
-                    lons.minOrNull() ?: 0.0, lats.minOrNull() ?: 0.0,
-                    lons.maxOrNull() ?: 0.0, lats.maxOrNull() ?: 0.0,
-                )
-
-                ImportComputation(
-                    segmentStats = segmentStats,
-                    schemaJson = LayerGeoJson.writeSchema(schema),
-                    geoJson = LayerGeoJson.write(parsed.points, parsed.lines),
-                    // GeoJSON prêt-pour-carte précalculé (évite un parse+re-sérialisation coûteux au rendu
-                    // de grosses traces) : le rendu se contente de relire ce fichier .map.
-                    mapGeoJson = LayerGeoJson.writeForMap(parsed.points, parsed.lines, simplify),
-                    // Profil précalculé par segment (affichage instantané au tap, sans re-parser toute la trace).
-                    prof = profileJson.encodeToString(computeProfiles(parsed.lines, smoothingM)),
-                    bounds = bounds,
-                )
-            }
-
-            val file = File(layersDir, "layer_${System.currentTimeMillis()}.geojson")
-            file.writeText(computed.geoJson)
-            File(layersDir, file.name + MAP_SUFFIX).writeText(computed.mapGeoJson)
-            File(layersDir, file.name + PROF_SUFFIX).writeText(computed.prof)
-
-            val (w, s, e, n) = computed.bounds
-            val segmentStats = computed.segmentStats
+            val written = writeGeometry(parsed.points, parsed.lines)
             val color = Palette.pick(db.layers().colorsInFolder(folderId))
             val order = db.layers().maxSort(folderId) + 1
             db.layers().insert(
                 LayerEntity(
                     name = parsed.name, folderId = folderId, link = parsed.link,
                     description = parsed.description, source = "import",
-                    geometryFile = file.name, color = color, sortOrder = order,
-                    schemaJson = computed.schemaJson,
-                    distance = segmentStats.sumOf { it.stats.distance },
-                    ascent = segmentStats.sumOf { it.stats.ascent },
-                    descent = segmentStats.sumOf { it.stats.descent },
-                    minEle = segmentStats.filter { it.hasZ }.minOfOrNull { it.stats.min } ?: 0.0,
-                    maxEle = segmentStats.filter { it.hasZ }.maxOfOrNull { it.stats.max } ?: 0.0,
-                    movingTime = if (segmentStats.isNotEmpty() && segmentStats.all { it.hasTime })
-                        segmentStats.sumOf { it.stats.duration ?: 0.0 } else null,
-                    hasZ = segmentStats.any { it.hasZ }, hasTime = segmentStats.any { it.hasTime },
-                    hasLine = hasLine, hasPoints = parsed.points.isNotEmpty(),
-                    west = w, south = s, east = e, north = n,
-                )
+                    color = color, sortOrder = order, geometryFile = written.fileName,
+                ).describedBy(written)
             )
-            doubleArrayOf(w, s, e, n)
+            written.computed.bounds
         }
 
     private fun typeOf(v: PropValue): PropType = when (v) {
         is PropValue.Link -> PropType.LINK
         is PropValue.Image -> PropType.IMAGE
         is PropValue.Text -> PropType.TEXT
+    }
+
+    /**
+     * La couche en GPX, prête à être écrite dans le fichier choisi ou envoyée à une autre application.
+     *
+     * Les octets plutôt qu'un fichier : les deux sorties n'ont pas la même destination - un `content://`
+     * choisi par l'utilisateur d'un côté, un fichier de cache partagé de l'autre - et le seul point commun
+     * est ce qu'on y écrit.
+     */
+    suspend fun layerGpx(layer: LayerEntity): ByteArray = withContext(Dispatchers.IO) {
+        val f = File(layersDir, layer.geometryFile)
+        val geometry = if (f.exists()) {
+            val text = f.readText()
+            withContext(Dispatchers.Default) { LayerGeoJson.parse(text) }
+        } else ParsedLayerGeometry(emptyList(), emptyList())
+        withContext(Dispatchers.Default) {
+            GpxWriter.writeLayer(layer.name, geometry.points, geometry.lines)
+        }
+    }
+
+    /**
+     * Écrit [bytes] dans un fichier du cache de partage et rend son URI `content://`.
+     *
+     * Un `file://` serait refusé par Android depuis la version 7 : une application qui reçoit un fichier
+     * n'a aucun droit sur le stockage privé de celle qui l'envoie. C'est le rôle du fournisseur déclaré au
+     * manifeste, qui ouvre l'accès à ce seul dossier, et seulement le temps de l'échange.
+     *
+     * Le dossier est vidé à chaque fois : ces fichiers ne servent qu'au partage en cours, et une trace
+     * exportée n'a pas à rester en clair dans le cache après coup.
+     */
+    suspend fun shareableFile(bytes: ByteArray, fileName: String): Uri = withContext(Dispatchers.IO) {
+        val dir = File(ctx.cacheDir, SHARE_DIR)
+        dir.deleteRecursively(); dir.mkdirs()
+        val f = File(dir, fileName)
+        f.writeBytes(bytes)
+        FileProvider.getUriForFile(ctx, "${ctx.packageName}.partage", f)
+    }
+
+    /**
+     * Retouche la géométrie d'une couche **en place** : même fichier, même ligne en base, mesures refaites.
+     *
+     * La couche garde ainsi son identité - sa couleur, son dossier, son rang, sa visibilité, et le profil
+     * ouvert dessus reste ouvert. Seule la matière change.
+     */
+    private suspend fun rewriteLayer(
+        layer: LayerEntity, points: List<PointFeature>, lines: List<List<TrackPoint>>,
+    ) {
+        val written = writeGeometry(points, lines, layer.geometryFile)
+        db.layers().update(layer.describedBy(written))
+    }
+
+    /** Points et lignes d'une couche, tels que son fichier les porte. */
+    private suspend fun geometryOf(layer: LayerEntity): ParsedLayerGeometry = withContext(Dispatchers.IO) {
+        val f = File(layersDir, layer.geometryFile)
+        if (!f.exists()) return@withContext ParsedLayerGeometry(emptyList(), emptyList())
+        val text = f.readText()
+        withContext(Dispatchers.Default) { LayerGeoJson.parse(text) }
+    }
+
+    /** Inverse le sens de la trace. Les horodatages tombent (cf. [TrackEdit.reverse]). */
+    suspend fun reverseLayer(layer: LayerEntity) {
+        val g = geometryOf(layer)
+        rewriteLayer(layer, g.points, TrackEdit.reverse(g.lines))
+    }
+
+    /** Où tombe un tap sur la géométrie d'une couche : segment touché et point exact (cf. [TrackEdit.locate]). */
+    suspend fun locateOnLayer(layer: LayerEntity, lon: Double, lat: Double): TrackEdit.Hit? {
+        val g = geometryOf(layer)
+        return withContext(Dispatchers.Default) { TrackEdit.locate(g.lines, lon, lat) }
+    }
+
+    /**
+     * Coupe la trace **à l'endroit visé**, en insérant le point s'il tombe entre deux sommets.
+     *
+     * Faux quand la coupe ne donnerait pas deux morceaux parcourables (aux extrémités, donc).
+     */
+    suspend fun splitLayerAt(layer: LayerEntity, hit: TrackEdit.Hit): Long? {
+        val g = geometryOf(layer)
+        val (head, tail) = withContext(Dispatchers.Default) { TrackEdit.splitAtHit(g.lines, hit) } ?: return null
+        rewriteLayer(layer, g.points, head)
+        val written = writeGeometry(emptyList(), tail)
+        return db.layers().insert(
+            LayerEntity(
+                name = ctx.getString(R.string.layer_part_two, layer.name),
+                folderId = layer.folderId, source = layer.source,
+                color = Palette.pick(db.layers().colorsInFolder(layer.folderId)),
+                sortOrder = db.layers().maxSort(layer.folderId) + 1,
+                geometryFile = written.fileName, visible = layer.visible,
+            ).describedBy(written)
+        )
+    }
+
+    /** Comment relier deux segments que l'on joint. */
+    enum class JoinMode {
+        /** Rien entre les deux : leurs extrémités se suivent, la distance compte la corde. */
+        STRAIGHT,
+        /** Un chemin praticable calculé par le moteur d'itinéraire, dans la discipline réglée. */
+        ROUTED,
+        /** Aucune jonction : les deux segments se retrouvent dans la même couche, distincts. */
+        NONE,
+    }
+
+    /**
+     * Joint (ou rapproche) deux segments, d'une même couche ou de deux couches différentes.
+     *
+     * Cas de deux couches : le segment visé dans [other] **rejoint** la couche [layer], et disparaît de la
+     * sienne - sans quoi il serait dessiné deux fois et compté deux fois. Une couche qui n'a plus ni
+     * segment ni marqueur est supprimée : elle n'aurait plus rien à montrer.
+     *
+     * En mode [JoinMode.ROUTED], le pont est calculé entre les deux extrémités les plus proches. Si le
+     * moteur ne répond pas - hors réseau, deux points qu'aucune voie ne relie - **la jonction se fait en
+     * ligne droite** plutôt que d'échouer : l'utilisateur a demandé à joindre, et une droite reste une
+     * jonction. Le résultat est rendu à l'appelant, qui peut le dire.
+     */
+    suspend fun joinSegments(
+        layer: LayerEntity, segmentA: Int,
+        other: LayerEntity, segmentB: Int,
+        mode: JoinMode,
+    ): JoinMode {
+        // Rien à joindre entre un segment et lui-même : l'appelant l'a déjà refusé, mais une garde ici
+        // évite qu'une jonction sur soi ne réécrive la couche avec une géométrie tronquée.
+        if (layer.id == other.id && segmentA == segmentB) return mode
+        val sameLayer = layer.id == other.id
+        val a = geometryOf(layer)
+        val b = if (sameLayer) a else geometryOf(other)
+        val movedIndex = if (sameLayer) segmentB else a.lines.size
+        val lines = if (sameLayer) a.lines else a.lines + listOf(b.lines.getOrNull(segmentB) ?: return mode)
+        var applied = mode
+        val bridge = if (mode != JoinMode.ROUTED) emptyList() else {
+            val computed = routedBridge(lines.getOrNull(segmentA), lines.getOrNull(movedIndex))
+            if (computed == null) applied = JoinMode.STRAIGHT
+            computed ?: emptyList()
+        }
+        val joined = when (mode) {
+            JoinMode.NONE -> lines
+            else -> withContext(Dispatchers.Default) { TrackEdit.join(lines, segmentA, movedIndex, bridge) }
+                ?: return mode
+        }
+        val points = if (sameLayer) a.points else a.points + b.points
+        rewriteLayer(layer, points, joined)
+        if (!sameLayer) {
+            val rest = b.lines.filterIndexed { i, _ -> i != segmentB }
+            if (rest.isEmpty()) deleteLayer(other) else rewriteLayer(other, emptyList(), rest)
+        }
+        return applied
+    }
+
+    /**
+     * Le chemin praticable entre les deux extrémités les plus proches de deux segments, ou null.
+     *
+     * Le moteur est interrogé sur les mêmes réglages que le planificateur - même instance, même discipline
+     * par défaut : joindre deux morceaux de trace et composer un itinéraire, c'est la même question posée
+     * au même service.
+     */
+    private suspend fun routedBridge(
+        first: List<TrackPoint>?, second: List<TrackPoint>?,
+    ): List<TrackPoint>? {
+        val a = first?.takeIf { it.isNotEmpty() } ?: return null
+        val b = second?.takeIf { it.isNotEmpty() } ?: return null
+        // Les mêmes quatre combinaisons que la jonction : le pont doit relier les extrémités que
+        // TrackEdit.join va effectivement mettre face à face.
+        val pairs = listOf(
+            a.last() to b.first(), a.last() to b.last(), a.first() to b.first(), a.first() to b.last(),
+        )
+        val (from, to) = pairs.minBy { (p, q) -> TrackMath.haversine(p.lon, p.lat, q.lon, q.lat) }
+        val s = db.settings().get()
+        val base = s?.routingUrl?.ifBlank { null } ?: Valhalla.DEFAULT_URL
+        val profile = RoutingProfile.of(s?.routingProfile)
+        val route = Valhalla.route(base, listOf(from.lat to from.lon, to.lat to to.lon), profile) ?: return null
+        // Les deux extrémités sont déjà dans les segments qu'on relie : le pont ne garde que ce qu'il y a
+        // entre elles, sans quoi la jointure porterait deux points au même endroit.
+        return route.points.drop(1).dropLast(1).ifEmpty { null }
+    }
+
+    /**
+     * Coupe la trace au point le plus proche de (lon, lat) : la couche garde le premier morceau, le second
+     * devient une couche voisine.
+     *
+     * Faux quand la coupe ne donnerait pas deux morceaux parcourables (cf. [TrackEdit.splitAt]) - au tout
+     * début ou à la toute fin de la trace, donc.
+     *
+     * **Les marqueurs restent avec la couche d'origine.** Les répartir supposerait de décider à quel
+     * morceau appartient un point posé à cent mètres de la coupe, ce qu'aucune règle ne dit ; les laisser
+     * ensemble est au moins prévisible, et un déplacement reste possible à la main.
+     */
+    suspend fun splitLayer(layer: LayerEntity, lon: Double, lat: Double): Boolean {
+        val g = geometryOf(layer)
+        val (segment, index) = TrackEdit.nearest(g.lines, lon, lat) ?: return false
+        val (head, tail) = TrackEdit.splitAt(g.lines, segment, index) ?: return false
+        rewriteLayer(layer, g.points, head)
+        val written = writeGeometry(emptyList(), tail)
+        db.layers().insert(
+            LayerEntity(
+                name = ctx.getString(R.string.layer_part_two, layer.name),
+                folderId = layer.folderId, source = layer.source,
+                // Une couleur distincte de celles du dossier : deux morceaux d'une même trace se suivent
+                // sur la carte, et rien ne dirait où l'un finit s'ils partageaient sa couleur.
+                color = Palette.pick(db.layers().colorsInFolder(layer.folderId)),
+                sortOrder = db.layers().maxSort(layer.folderId) + 1,
+                geometryFile = written.fileName, visible = layer.visible,
+            ).describedBy(written)
+        )
+        return true
+    }
+
+    /** Fusionne [other] dans [layer], puis supprime [other] : ses segments viennent à la suite. */
+    suspend fun mergeLayers(layer: LayerEntity, other: LayerEntity) {
+        val a = geometryOf(layer)
+        val b = geometryOf(other)
+        rewriteLayer(layer, a.points + b.points, TrackEdit.merge(a.lines, b.lines))
+        deleteLayer(other)
+    }
+
+    /** Les dossiers que la sauvegarde emporte : les géométries et les photos de waypoints. */
+    private fun backupDirs() = listOf(
+        BackupDir("layers", layersDir),
+        BackupDir("images", imagesDir),
+    )
+
+    /** Fichier de la base, tel que Room l'a ouvert. */
+    private fun databaseFile(): File = ctx.getDatabasePath("trailog.db")
+
+    /**
+     * Écrit la sauvegarde complète dans [out].
+     *
+     * Le **point de contrôle** du journal est indispensable : Room écrit en mode WAL, où les dernières
+     * transactions vivent dans un fichier `-wal` à côté de la base. Copier la base sans le replier
+     * d'abord donnerait une sauvegarde amputée de tout ce qui a été fait depuis le dernier repli - la
+     * dernière trace importée, typiquement.
+     */
+    suspend fun writeBackup(out: java.io.OutputStream) = withContext(Dispatchers.IO) {
+        db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() }
+        BackupArchive.create(out, databaseFile(), backupDirs(), System.currentTimeMillis())
+    }
+
+    /**
+     * Relit une sauvegarde et remplace tout ce qui est en place.
+     *
+     * L'application doit **redémarrer** derrière : la base restaurée n'est pas celle que Room a ouverte,
+     * et tout ce qui vit en mémoire - flux, caches, profils décodés - décrit encore l'ancienne. C'est
+     * l'appelant qui s'en charge (cf. l'écran des réglages), une fois le résultat connu.
+     */
+    suspend fun restoreBackup(input: InputStream): BackupArchive.Result = withContext(Dispatchers.IO) {
+        profileCache.clear()
+        BackupArchive.restore(input, databaseFile(), backupDirs(), File(ctx.cacheDir, "restauration"))
+    }
+
+    /** Une couche telle qu'elle était avant une retouche : sa ligne en base, et sa géométrie. */
+    class LayerSnapshot(
+        val layer: LayerEntity,
+        val points: List<PointFeature>,
+        val lines: List<List<TrackPoint>>,
+    )
+
+    /** Photographie une couche avant de la retoucher (cf. [restoreLayers]). */
+    suspend fun snapshotLayer(layer: LayerEntity): LayerSnapshot {
+        val g = geometryOf(layer)
+        return LayerSnapshot(layer, g.points, g.lines)
+    }
+
+    /**
+     * Remet les couches dans l'état photographié, et supprime celles que la retouche avait créées.
+     *
+     * Une couche **supprimée** par la retouche est recréée avec son identifiant d'origine : l'insertion
+     * remplace sur conflit de clé, si bien qu'une couche annulée retrouve son identité - le profil ouvert
+     * dessus, sa place dans l'arborescence, sa couleur. La recréer sous un nouvel identifiant l'aurait
+     * fait réapparaître comme une inconnue en fin de liste.
+     *
+     * Les suppressions d'abord, les restaurations ensuite : l'inverse laisserait un instant deux couches
+     * porteuses de la même géométrie.
+     */
+    suspend fun restoreLayers(snapshots: List<LayerSnapshot>, deleteIds: List<Long>) {
+        deleteIds.forEach { id -> db.layers().byId(id)?.let { deleteLayer(it) } }
+        snapshots.forEach { s ->
+            val written = writeGeometry(s.points, s.lines, s.layer.geometryFile)
+            db.layers().insert(s.layer.describedBy(written))
+        }
     }
 
     /** Supprime la couche (ligne en base + fichier géométrie + .map précalculé). */

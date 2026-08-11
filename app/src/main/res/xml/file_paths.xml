@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ce que le fournisseur de fichiers ouvre a une autre application : le seul dossier de partage, dans le
+    cache. Ni les couches, ni les images, ni la base - une application qui recoit une trace n'a aucune
+    raison de pouvoir lire les autres.
+-->
+<paths>
+    <cache-path name="partage" path="partage/" />
+</paths>
