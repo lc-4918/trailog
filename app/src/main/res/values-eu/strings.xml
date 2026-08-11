@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Nonahi irakurtzen da: erlojuak, mendi-aplikazioak, partekatze-guneak. Eremu estandarrak baino ez ditu gordetzen: argazkiek, estekek eta eremu askeek ez dute lekurik.</string>
     <string name="export_format_geojson_hint">Aplikazioaren biltegiratze-formatua: propietate guztiak gordetzen ditu, eremu askeak eta azaleko irudia barne. GIS softwareak (QGIS) irakurtzen du, mendi-aplikazioetan gutxiago. Argazkiak bide lokalak dira: babeskopiak soilik eramaten ditu.</string>
+    <string name="offline_config_width_label">Zabalera alde bakoitzean</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Ibilbidearen ondoko lauzak baino ez dira deskargatzen. Bere buruaren gainera itzultzen den ibilbideak ez ditu lauza berak birritan deskargatzen.</string>
+    <string name="offline_extent_title">Zer deskargatu?</string>
+    <string name="offline_extent_area">Eremu laukizuzen bat</string>
+    <string name="offline_extent_area_hint">Laukizuzen bat marrazten da mapan. Mendigune baterako, haran baterako, oraindik ezagutzen ez duzun eta nahi bezala ibiliko zaren eremu baterako.</string>
+    <string name="offline_extent_track">Ibilbide baten ondoan</string>
+    <string name="offline_extent_track_hint">Ibilbidea inguratzen duten lauzak soilik, zabalera doigarriarekin. Dagoeneko marraztutako irteera baterako: laukizuzen batek baino lauza gutxiago, hark gehienak alferrik eramaten baititu ibilbidea diagonalean doanean.</string>
+    <string name="offline_extent_no_track">Ez dago inguratzeko ibilbiderik. Inportatu bat, edo aukeratu eremu laukizuzen bat.</string>
     <string name="action_delete">Ezabatu</string>
     <string name="action_drag_to_move">Arrastatu mugitzeko</string>
     <string name="action_edit">Editatu</string>

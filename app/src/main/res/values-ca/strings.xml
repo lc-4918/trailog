@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Es llegeix a tot arreu: rellotges, aplicacions d\'excursionisme, webs de rutes. Només conserva els camps estàndard: les fotos, els enllaços i els camps lliures no hi caben.</string>
     <string name="export_format_geojson_hint">El format d\'emmagatzematge de l\'aplicació: conserva totes les propietats, inclosos els camps lliures i la imatge destacada. El llegeixen els SIG (QGIS), menys estès en aplicacions d\'excursionisme. Les fotos hi són camins locals: només la còpia de seguretat les emporta.</string>
+    <string name="offline_config_width_label">Amplada a cada costat</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Només es baixen les tessel·les que voregen la traça. Una traça que torna sobre ella mateixa no baixa dues vegades les mateixes tessel·les.</string>
+    <string name="offline_extent_title">Què baixar?</string>
+    <string name="offline_extent_area">Una zona rectangular</string>
+    <string name="offline_extent_area_hint">Es dibuixa un rectangle al mapa. Per a un massís, una vall, una zona que encara no coneixes i on aniràs a l\'atzar.</string>
+    <string name="offline_extent_track">Al llarg d\'una traça</string>
+    <string name="offline_extent_track_hint">Només les tessel·les que voregen el recorregut, amb una amplada ajustable. Per a una sortida ja traçada: moltes menys tessel·les que un rectangle, que se n\'emporta la major part per res tan bon punt la traça va en diagonal.</string>
+    <string name="offline_extent_no_track">Cap traça per vorejar. Importa\'n una o tria una zona rectangular.</string>
     <string name="action_delete">Suprimeix</string>
     <string name="action_drag_to_move">Arrossega per moure</string>
     <string name="action_edit">Edita</string>

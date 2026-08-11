@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Se lee en todas partes: relojes, aplicaciones de senderismo, webs de rutas. Solo conserva los campos estándar: las fotos, los enlaces y los campos libres no caben.</string>
     <string name="export_format_geojson_hint">El formato de almacenamiento de la aplicación: conserva todas las propiedades, incluidos los campos libres y la imagen destacada. Lo leen los SIG (QGIS), menos habitual en aplicaciones de senderismo. Las fotos son rutas locales: solo la copia de seguridad las lleva.</string>
+    <string name="offline_config_width_label">Anchura a cada lado</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Solo se descargan las teselas que bordean la traza. Una traza que vuelve sobre sí misma no descarga dos veces las mismas teselas.</string>
+    <string name="offline_extent_title">¿Qué descargar?</string>
+    <string name="offline_extent_area">Una zona rectangular</string>
+    <string name="offline_extent_area_hint">Se dibuja un rectángulo en el mapa. Para un macizo, un valle, una zona que aún no conoces y donde irás a tu aire.</string>
+    <string name="offline_extent_track">A lo largo de una traza</string>
+    <string name="offline_extent_track_hint">Solo las teselas que bordean el recorrido, con una anchura ajustable. Para una salida ya trazada: muchas menos teselas que un rectángulo, que se lleva la mayoría para nada en cuanto la traza va en diagonal.</string>
+    <string name="offline_extent_no_track">Ninguna traza que bordear. Importa una o elige una zona rectangular.</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_drag_to_move">Arrastrar para mover</string>
     <string name="action_edit">Editar</string>

@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Letto ovunque: orologi, app di escursionismo, siti di condivisione. Conserva solo i campi standard: foto, link e campi liberi non ci stanno.</string>
     <string name="export_format_geojson_hint">Il formato di archiviazione dell\'app: conserva tutte le proprietà, compresi i campi liberi e l\'immagine in evidenza. Letto dai GIS (QGIS), meno diffuso nelle app di escursionismo. Le foto sono percorsi locali: solo il backup le porta con sé.</string>
+    <string name="offline_config_width_label">Larghezza per lato</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Si scaricano solo le tessere che costeggiano la traccia. Una traccia che ripassa su se stessa non scarica due volte le stesse tessere.</string>
+    <string name="offline_extent_title">Che cosa scaricare?</string>
+    <string name="offline_extent_area">Un\'area rettangolare</string>
+    <string name="offline_extent_area_hint">Si traccia un rettangolo sulla mappa. Per un massiccio, una valle, una zona che non conosci ancora e dove andrai a caso.</string>
+    <string name="offline_extent_track">Lungo una traccia</string>
+    <string name="offline_extent_track_hint">Solo le tessere che costeggiano il percorso, su una larghezza regolabile. Per un\'uscita già tracciata: molte meno tessere di un rettangolo, che ne porta la maggior parte per nulla appena la traccia va in diagonale.</string>
+    <string name="offline_extent_no_track">Nessuna traccia da costeggiare. Importane una o scegli un\'area rettangolare.</string>
     <string name="action_delete">Elimina</string>
     <string name="action_drag_to_move">Trascina per spostare</string>
     <string name="action_edit">Modifica</string>

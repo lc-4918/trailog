@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Lido em todo o lado: relógios, aplicações de caminhada, sites de partilha. Guarda apenas os campos padrão - as fotos, as ligações e os campos livres não cabem.</string>
     <string name="export_format_geojson_hint">O formato de armazenamento da aplicação: guarda todas as propriedades, incluindo campos livres e a imagem de capa. Lido por SIG (QGIS), menos comum nas aplicações de caminhada. As fotos são caminhos locais: só a cópia de segurança as leva.</string>
+    <string name="offline_config_width_label">Largura de cada lado</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Só se transferem os mosaicos que ladeiam o trilho. Um trilho que volta sobre si mesmo não transfere duas vezes os mesmos mosaicos.</string>
+    <string name="offline_extent_title">O que transferir?</string>
+    <string name="offline_extent_area">Uma zona retangular</string>
+    <string name="offline_extent_area_hint">Desenha-se um retângulo no mapa. Para um maciço, um vale, uma zona que ainda não conheces e onde irás ao acaso.</string>
+    <string name="offline_extent_track">Ao longo de um trilho</string>
+    <string name="offline_extent_track_hint">Só os mosaicos que ladeiam o percurso, com largura ajustável. Para uma saída já traçada: muitos menos mosaicos do que um retângulo, que leva a maior parte para nada assim que o trilho segue na diagonal.</string>
+    <string name="offline_extent_no_track">Nenhum trilho para ladear. Importa um ou escolhe uma zona retangular.</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_drag_to_move">Arrastar para mover</string>
     <string name="action_edit">Editar</string>

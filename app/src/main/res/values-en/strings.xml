@@ -77,6 +77,15 @@
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Read everywhere: watches, hiking apps, sharing sites. Keeps only the standard fields - photos, links and custom fields have no place in it.</string>
     <string name="export_format_geojson_hint">The app\'s own storage format: it keeps every property, including custom fields and the pinned image. Read by GIS software (QGIS), less common in hiking apps. Photos are local paths in it: only the backup carries them.</string>
+    <string name="offline_config_width_label">Width on each side</string>
+    <string name="offline_config_width_value">%1$s</string>
+    <string name="offline_config_width_hint">Only the tiles bordering the track are downloaded. A track that folds back on itself does not download the same tiles twice.</string>
+    <string name="offline_extent_title">What to download?</string>
+    <string name="offline_extent_area">A rectangular area</string>
+    <string name="offline_extent_area_hint">You draw a rectangle on the map. For a massif, a valley, an area you do not know yet and will roam freely.</string>
+    <string name="offline_extent_track">Along a track</string>
+    <string name="offline_extent_track_hint">Only the tiles bordering the route, over an adjustable width. For an outing already traced: far fewer tiles than a rectangle, which carries most of them for nothing as soon as the track runs diagonally.</string>
+    <string name="offline_extent_no_track">No track to border. Import one, or choose a rectangular area.</string>
     <string name="action_delete">Delete</string>
     <string name="action_drag_to_move">Drag to move</string>
     <string name="action_edit">Edit</string>

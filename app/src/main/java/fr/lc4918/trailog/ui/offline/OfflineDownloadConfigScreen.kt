@@ -49,6 +49,8 @@ import fr.lc4918.trailog.ui.settings.ProvideSettingsPalette
 import fr.lc4918.trailog.ui.settings.RangeSliderRow
 import fr.lc4918.trailog.ui.settings.RowDivider
 import fr.lc4918.trailog.ui.settings.SetRow
+import fr.lc4918.trailog.ui.settings.SliderRow
+import fr.lc4918.trailog.ui.settings.Hint
 import fr.lc4918.trailog.ui.settings.SettingsCard
 import fr.lc4918.trailog.ui.settings.SettingsSwitch
 import fr.lc4918.trailog.ui.settings.SettingsTextField
@@ -68,6 +70,23 @@ import fr.lc4918.trailog.ui.settings.settingsPalette
  * courant, pour la vue d'ensemble de l'emprise : l'écran n'a accès ni aux préférences ni au style, mais
  * l'appelant les a déjà sous la main.
  */
+/**
+ * Largeurs proposees de chaque cote du parcours, en kilometres.
+ *
+ * Non equidistantes, comme les autres curseurs de l'application qui parcourent une liste : les premiers
+ * crans sont ceux qu'on emploie - de quoi couvrir une erreur d'itineraire ou un detour -, les derniers
+ * n'ont de sens que pour se garder une marge large, et chaque cran y coute bien plus de tuiles que le
+ * precedent.
+ */
+private val CorridorWidthKm = listOf(0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0)
+
+/** "500 m" en deca du kilometre, "2 km" au-dela : on ne dit pas "0,5 km". */
+private fun formatKm(km: Double): String = when {
+    km < 1.0 -> "${(km * 1000).toInt()} m"
+    km == Math.floor(km) -> "${km.toInt()} km"
+    else -> "%.1f km".format(km)
+}
+
 @Composable
 fun OfflineDownloadConfigScreen(
     bbox: Bbox,
@@ -78,18 +97,30 @@ fun OfflineDownloadConfigScreen(
     styleUrl: String?,
     onDismiss: () -> Unit,
     onDownload: (OfflineDownloadRequest) -> Unit,
+    /** Parcours a border, quand le telechargement suit une trace ; null pour une emprise rectangulaire. */
+    corridorPoints: List<Pair<Double, Double>>? = null,
+    corridorName: String = "",
 ) {
     val zoomBounds = providerMinZoom.toFloat()..providerMaxZoom.toFloat().coerceAtLeast(providerMinZoom.toFloat())
     // plage par défaut raisonnable : [min, min+6] bornée à la plage du provider (cf. SPEC section 3, "Détermination des niveaux").
     var zoomRange by remember {
         mutableStateOf(providerMinZoom.toFloat()..(providerMinZoom + 6).coerceAtMost(providerMaxZoom).toFloat())
     }
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(corridorName) }
     var continueOnError by remember { mutableStateOf(false) }
+    // Largeur telechargee de chaque cote du parcours. En kilometres parce que c'est l'unite dans laquelle
+    // on se represente un ecart de route : "500 m autour" ne dit pas grand-chose, "un kilometre de chaque
+    // cote" se voit.
+    var halfWidthKm by remember { mutableStateOf<Double>(CorridorWidthKm.first()) }
 
     val minZ = zoomRange.start.toInt()
     val maxZ = zoomRange.endInclusive.toInt()
-    val tileCount = remember(bbox, minZ, maxZ) { TileMath.totalTileCount(bbox, minZ, maxZ) }
+    // Le compte suit le mode : le couloir ne prend que ce qui borde la trace, et une meme tuile n'y compte
+    // qu'une fois meme quand le parcours repasse dessus.
+    val tileCount = remember(bbox, minZ, maxZ, corridorPoints, halfWidthKm) {
+        if (corridorPoints != null) TileMath.totalTileCountAlong(corridorPoints, minZ, maxZ, halfWidthKm * 1000.0)
+        else TileMath.totalTileCount(bbox, minZ, maxZ)
+    }
     val sizeLabel = remember(tileCount) { TileMath.formatSize(TileMath.estimateSizeBytes(tileCount)) }
     val tileCountLabel = remember(tileCount) {
         String.format(java.util.Locale.ROOT, "%,d", tileCount).replace(',', ' ')
@@ -129,6 +160,23 @@ fun OfflineDownloadConfigScreen(
                             onRange = { zoomRange = it },
                             steps = (providerMaxZoom - providerMinZoom - 1).coerceAtLeast(0),
                         )
+                        if (corridorPoints != null) {
+                            RowDivider()
+                            // La largeur est dans la MEME carte que le zoom : les deux commandent le poids
+                            // annonce juste dessous, et les separer ferait chercher laquelle agit.
+                            SliderRow(
+                                label = stringResource(R.string.offline_config_width_label),
+                                value = stringResource(R.string.offline_config_width_value, formatKm(halfWidthKm)),
+                                fraction = CorridorWidthKm.indexOf(halfWidthKm)
+                                    .coerceAtLeast(0).toFloat() / (CorridorWidthKm.size - 1),
+                                steps = CorridorWidthKm.size - 2,
+                                onFraction = { f ->
+                                    val i = Math.round(f * (CorridorWidthKm.size - 1)).coerceIn(0, CorridorWidthKm.lastIndex)
+                                    halfWidthKm = CorridorWidthKm[i]
+                                },
+                            )
+                            Hint(stringResource(R.string.offline_config_width_hint))
+                        }
                         RowDivider()
                         // Les deux estimations suivent le curseur dans la même carte : ce sont ses
                         // conséquences, pas une rubrique de plus.
@@ -164,7 +212,10 @@ fun OfflineDownloadConfigScreen(
                         .background(if (enabled) p.accent else p.track)
                         // 'enabled' garantit déjà name.isNotBlank() : pas de repli nécessaire ici.
                         .clickable(enabled = enabled) {
-                            onDownload(OfflineDownloadRequest(bbox, minZ, maxZ, name, continueOnError))
+                            onDownload(OfflineDownloadRequest(
+                                bbox, minZ, maxZ, name, continueOnError,
+                                corridor = corridorPoints?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
+                            ))
                         },
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,

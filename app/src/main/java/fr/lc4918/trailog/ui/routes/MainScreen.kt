@@ -221,9 +221,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     var offlineDrawingActive by remember { mutableStateOf(false) }
     var offlineBboxPoints by remember { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }  // (lon, lat)
     var offlineConfigBbox by remember { mutableStateOf<Bbox?>(null) }
+    // Deux facons de dire CE QU'ON TELECHARGE, proposees a l'appui du bouton (cf. OfflineExtentDialog) :
+    // un rectangle trace sur la carte, ou le couloir qui borde une trace.
+    var offlineExtentChoice by remember { mutableStateOf(false) }
+    var offlinePickTrack by remember { mutableStateOf(false) }
+    // Trace a border, et son parcours : garde en memoire le temps de l'ecran de configuration.
+    var offlineCorridor by remember { mutableStateOf<Pair<LayerEntity, List<Pair<Double, Double>>>?>(null) }
     // Referme complètement le flux (annulation ou fin de config) : sans réinitialiser les points, le
     // rectangle tracé resterait affiché indéfiniment sur la carte une fois l'écran de config quitté.
-    fun closeOfflineFlow() { offlineConfigBbox = null; offlineBboxPoints = emptyList() }
+    fun closeOfflineFlow() {
+        offlineConfigBbox = null; offlineBboxPoints = emptyList(); offlineCorridor = null
+    }
     // Quitte le tracé de bbox (bouton "Annuler" ou retour système) : contrairement à "Réinitialiser",
     // referme aussi entièrement le mode de saisie, pas seulement les points déjà posés.
     fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
@@ -1006,7 +1014,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     onDownloadOffline = {
                         scope.launch { drawerState.close() }
                         offlineBboxPoints = emptyList()
-                        offlineDrawingActive = true
+                        offlineExtentChoice = true
                     },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
@@ -1983,10 +1991,55 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
             // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
+        if (offlineExtentChoice) {
+            OfflineExtentDialog(
+                dark = isDarkTheme(settings?.theme),
+                onDismiss = { offlineExtentChoice = false },
+                onArea = {
+                    offlineExtentChoice = false
+                    offlineCorridor = null
+                    offlineDrawingActive = true
+                },
+                onTrack = { offlineExtentChoice = false; offlinePickTrack = true },
+            )
+        }
+        if (offlinePickTrack) {
+            val candidates = layers.filter { it.hasLine }
+            AlertDialog(
+                onDismissRequest = { offlinePickTrack = false },
+                title = { Text(stringResource(R.string.offline_extent_track)) },
+                text = {
+                    if (candidates.isEmpty()) Text(stringResource(R.string.offline_extent_no_track))
+                    else Column(Modifier.verticalScroll(rememberScrollState())) {
+                        candidates.forEach { l ->
+                            TextButton(onClick = {
+                                offlinePickTrack = false
+                                // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le
+                                // couloir se calcule sur les points reels, et l'estimation doit etre juste des
+                                // la premiere image.
+                                vm.trackPointsOf(l) { pts ->
+                                    if (pts.isNotEmpty()) {
+                                        offlineCorridor = l to pts
+                                        offlineConfigBbox = Bbox.of(
+                                            pts.minOf { it.first }, pts.minOf { it.second },
+                                            pts.maxOf { it.first }, pts.maxOf { it.second },
+                                        )
+                                    }
+                                }
+                            }) { Text(l.name) }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { offlinePickTrack = false }) { Text(stringResource(R.string.action_close)) } },
+            )
+        }
             offlineConfigBbox?.let { bbox ->
                 val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
                 OfflineDownloadConfigScreen(
                     bbox = bbox,
+                    corridorPoints = offlineCorridor?.second,
+                    corridorName = offlineCorridor?.first?.name.orEmpty(),
                     providerMinZoom = currentProvider?.minZoom ?: 0,
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
                     dark = darkChrome,
@@ -3125,6 +3178,43 @@ private fun FolderStatsDialog(
             },
             confirmButton = {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close), color = p.accent) }
+            },
+        )
+    }
+}
+
+/**
+ * Choix de ce que l'on telecharge : un rectangle, ou le couloir qui borde une trace.
+ *
+ * Le rectangle etait le seul mode, et il reste le bon pour un secteur qu'on ne connait pas encore. Pour
+ * une sortie deja tracee, il fait telecharger tout ce qui l'entoure - trois quarts de tuiles qu'on ne
+ * verra jamais sur une diagonale de soixante kilometres.
+ */
+@Composable
+private fun OfflineExtentDialog(
+    dark: Boolean, onDismiss: () -> Unit, onArea: () -> Unit, onTrack: () -> Unit,
+) {
+    ProvideSettingsPalette(dark = dark) {
+        val p = settingsPalette
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = p.screen,
+            title = { Text(stringResource(R.string.offline_extent_title), color = p.label) },
+            text = {
+                SettingsCard {
+                    SetRow(stringResource(R.string.offline_extent_area), onClick = onArea) {
+                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
+                    }
+                    Hint(stringResource(R.string.offline_extent_area_hint))
+                    RowDivider()
+                    SetRow(stringResource(R.string.offline_extent_track), onClick = onTrack) {
+                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
+                    }
+                    Hint(stringResource(R.string.offline_extent_track_hint))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = p.accent) }
             },
         )
     }

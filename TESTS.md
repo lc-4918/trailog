@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**479 tests, 47 fichiers**, tous verts.
+**487 tests, 48 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -272,8 +272,20 @@ qu'elle ne l'a été. D'où la règle : pas de durée du tout si une seule trace
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `TileMathTest` | 11 | pavage des tuiles, estimation de taille |
+| `TileCorridorTest` | 8 | tuiles qui bordent un parcours, sans trou ni doublon |
 | `TileUrlTest` | 8 | développement des gabarits d'URL |
 | `OfflineDownloadStateTest` | 2 | modèle de la demande de téléchargement |
+
+`TileCorridorTest` garde le téléchargement **le long d'une trace**. Ses deux fautes possibles ne se
+découvrent qu'après coup, hors réseau : un couloir **troué** laisse des carrés gris au milieu de la
+randonnée - d'où le parcours échantillonné par demi-tuile, faute de quoi deux sommets distants sauteraient
+tout ce qui les sépare -, et un couloir qui compte **deux fois** les mêmes tuiles annonce un poids faux et
+télécharge en double, ce qu'une trace qui revient sur elle-même provoque immanquablement.
+
+Le test mesure aussi ce que le couloir fait gagner, et **comment ce gain dépend du zoom** : au zoom 14 une
+tuile fait près de deux kilomètres de côté et le couloir n'économise que la moitié ; au zoom 16, où l'on
+télécharge vraiment pour marcher, il coûte cinq fois moins que le rectangle englobant - et c'est là que se
+trouve l'essentiel du poids.
 
 `TileMath` annonce à l'utilisateur combien de tuiles et de Mo il va télécharger. `TileUrl` est partagé
 par le téléchargement et les miniatures ; son test vérifie notamment que le gabarit

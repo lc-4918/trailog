@@ -10,4 +10,14 @@ data class OfflineDownloadRequest(
     val maxZoom: Int,
     val name: String,
     val continueOnError: Boolean,
+    /**
+     * Parcours a border, ou null pour prendre toute l'emprise.
+     *
+     * L'emprise reste renseignee dans les deux cas : elle sert au cadrage de l'apercu et aux metadonnees
+     * du fichier MBTiles, qui decrit ce qu'il couvre par un rectangle - c'est le format qui l'impose.
+     */
+    val corridor: OfflineCorridor? = null,
 )
+
+/** Un parcours et la largeur telechargee de chaque cote, en metres. */
+data class OfflineCorridor(val points: List<Pair<Double, Double>>, val radiusM: Double)

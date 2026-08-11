@@ -386,6 +386,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         onReady(repo.layerGpx(layer))
     }
 
+    /**
+     * Les points d'une couche, tous segments confondus, en (lon, lat).
+     *
+     * Sert au téléchargement en couloir : les tuiles se choisissent sur le parcours réel, pas sur son
+     * emprise. Les segments sont mis bout à bout - le couloir borde chacun d'eux, et l'ordre n'a aucune
+     * importance pour un calcul de distance à la polyligne.
+     */
+    fun trackPointsOf(layer: LayerEntity, onReady: (List<Pair<Double, Double>>) -> Unit) =
+        viewModelScope.launch {
+            onReady(repo.loadTrackLines(layer).flatten().map { it.lon to it.lat })
+        }
+
+    /** La couche en GeoJSON, telle qu'elle est stockée : le seul export qui ne perde rien. */
     fun layerGeoJson(layer: LayerEntity, onReady: (ByteArray) -> Unit) = viewModelScope.launch {
         onReady(repo.layerGeoJson(layer))
     }

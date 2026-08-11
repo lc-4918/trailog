@@ -71,9 +71,14 @@ La force de l'ombrage se règle dans sa fiche.
 ## 5. Cartes hors ligne
 
 - **Cache ambiant** MapLibre : les tuiles déjà consultées restent disponibles (taille réglable).
-- **Zone téléchargée** : emprise dessinée sur la carte, plage de zoom choisie, puis téléchargement dans un
-  **MBTiles** produit par l'application, qui devient un fond local. Vaut pour tous les types de fonds.
-  L'écran de configuration annonce le nombre de tuiles et la taille avant de lancer.
+- **Zone téléchargée** : deux façons de dire ce qu'on emporte, proposées au départ. Une **emprise
+  rectangulaire** dessinée sur la carte - pour un massif, une vallée, un secteur qu'on ne connaît pas
+  encore. Ou **le long d'une trace** : seules les tuiles qui bordent le parcours, sur une largeur réglable
+  de chaque côté ; une trace qui revient sur elle-même ne fait pas retélécharger les mêmes tuiles. Sur une
+  diagonale, le rectangle emporte l'essentiel pour rien.
+  Puis plage de zoom choisie, et téléchargement dans un **MBTiles** produit par l'application, qui devient
+  un fond local. Vaut pour tous les types de fonds. L'écran de configuration annonce le nombre de tuiles et
+  la taille avant de lancer, et les deux suivent la largeur du couloir.
 - Les traces, elles, sont toujours disponibles : elles vivent en base et en fichiers.
 
 ## 6. Import et rangement

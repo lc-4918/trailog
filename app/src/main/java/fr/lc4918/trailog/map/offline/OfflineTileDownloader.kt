@@ -36,7 +36,13 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
         writer: MbtilesWriter,
         onProgress: (done: Int, failed: Int) -> Unit,
     ): Outcome {
-        val tiles = (req.minZoom..req.maxZoom).flatMap { TileMath.tilesFor(req.bbox, it) }
+        // Couloir : seules les tuiles qui bordent le parcours, sans doublon quand il revient sur lui-meme
+        // (cf. TileMath.tilesAlong). Sinon, tout le rectangle.
+        val corridor = req.corridor
+        val tiles = (req.minZoom..req.maxZoom).flatMap { z ->
+            if (corridor != null) TileMath.tilesAlong(corridor.points, z, corridor.radiusM)
+            else TileMath.tilesFor(req.bbox, z)
+        }
 
         val done = AtomicInteger(0)
         val failed = AtomicInteger(0)

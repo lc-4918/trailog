@@ -65,6 +65,77 @@ object TileMath {
     fun totalTileCount(bbox: Bbox, minZoom: Int, maxZoom: Int): Long =
         (minZoom..maxZoom).sumOf { tileCount(bbox, it) }
 
+    /** Cote d'une tuile au sol, en metres, a la latitude et au zoom donnes. */
+    private fun tileMeters(lat: Double, zoom: Int): Double =
+        40_075_016.686 * cos(Math.toRadians(lat.coerceIn(-85.0511, 85.0511))) / (1L shl zoom)
+
+    /**
+     * Tuiles a moins de [radiusM] du parcours [points], au zoom donne : le **couloir** qui le borde.
+     *
+     * Une randonnee de soixante kilometres en diagonale tient dans un rectangle dont on ne verra jamais
+     * les trois quarts. Le couloir ne prend que ce qui borde le trace, pour la meme sortie et une fraction
+     * du telechargement.
+     *
+     * Le parcours est parcouru par pas d'une DEMI-TUILE : deux sommets distants de plusieurs kilometres -
+     * une ligne droite tracee a la regle - sauteraient sinon toutes les tuiles entre eux. Chaque position
+     * marque sa tuile et celles qui l'entourent dans le rayon demande.
+     *
+     * Le resultat est un ENSEMBLE : une trace qui revient sur elle-meme, un lacet, une boucle passent
+     * plusieurs fois sur les memes tuiles, et chacune ne doit etre comptee - donc telechargee - qu'une fois.
+     */
+    fun tilesAlong(
+        points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double,
+    ): List<Triple<Int, Int, Int>> {
+        if (points.isEmpty()) return emptyList()
+        val n = 1 shl zoom
+        val seen = LinkedHashSet<Long>()
+        val out = ArrayList<Triple<Int, Int, Int>>()
+
+        fun mark(lon: Double, lat: Double) {
+            val side = tileMeters(lat, zoom).coerceAtLeast(1.0)
+            val reach = kotlin.math.ceil(radiusM / side).toInt().coerceAtLeast(0)
+            val (cx, cy) = tileAt(lon, lat, zoom)
+            for (x in (cx - reach)..(cx + reach)) {
+                for (y in (cy - reach)..(cy + reach)) {
+                    if (x < 0 || y < 0 || x >= n || y >= n) continue
+                    if (seen.add(x.toLong() * n + y)) out.add(Triple(x, y, zoom))
+                }
+            }
+        }
+
+        mark(points[0].first, points[0].second)
+        for (i in 0 until points.size - 1) {
+            val (lon1, lat1) = points[i]
+            val (lon2, lat2) = points[i + 1]
+            val step = tileMeters((lat1 + lat2) / 2, zoom).coerceAtLeast(1.0) / 2
+            val length = haversine(lon1, lat1, lon2, lat2)
+            val steps = kotlin.math.ceil(length / step).toInt().coerceAtLeast(1)
+            for (k in 1..steps) {
+                val t = k.toDouble() / steps
+                mark(lon1 + (lon2 - lon1) * t, lat1 + (lat2 - lat1) * t)
+            }
+        }
+        return out
+    }
+
+    /** Tuiles du couloir sur toute la plage de zoom. Chaque niveau a son propre ensemble : une meme tuile
+     *  ne peut pas exister a deux zooms differents. */
+    fun totalTileCountAlong(
+        points: List<Pair<Double, Double>>, minZoom: Int, maxZoom: Int, radiusM: Double,
+    ): Long = (minZoom..maxZoom).sumOf { tilesAlong(points, it, radiusM).size.toLong() }
+
+    /** Distance entre deux points, en metres. Recopiee ici plutot qu'empruntee a `domain/geo` : ce module
+     *  ne depend de rien, et c'est ce qui lui permet d'etre teste sans le reste. */
+    private fun haversine(lon1: Double, lat1: Double, lon2: Double, lat2: Double): Double {
+        val r = 6_371_000.0
+        val la1 = Math.toRadians(lat1); val la2 = Math.toRadians(lat2)
+        val dLa = la2 - la1
+        val dLo = Math.toRadians(lon2 - lon1)
+        val h = kotlin.math.sin(dLa / 2).let { it * it } +
+            cos(la1) * cos(la2) * kotlin.math.sin(dLo / 2).let { it * it }
+        return 2 * r * kotlin.math.atan2(kotlin.math.sqrt(h), kotlin.math.sqrt(1 - h))
+    }
+
     fun estimateSizeBytes(tileCount: Long): Long = tileCount * AVG_TILE_BYTES
 
     /** Formate un nombre d'octets en Ko/Mo/Go lisible (ex. "12,3 Mo"). */
