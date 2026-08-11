@@ -11,6 +11,7 @@
     <string name="dialog_delete_folder_title">Supprimer le dossier</string>
     <string name="dialog_delete_folder_text">Supprimer aussi le contenu du dossier ?</string>
     <string name="import_in_progress">Import en cours...</string>
+    <string name="elevation_in_progress">Calcul de l\'altimétrie...</string>
     <string name="action_close_menu">Fermer le menu</string>
     <string name="action_collapse">Replier</string>
     <string name="action_color">Couleur</string>
@@ -382,5 +383,11 @@
     <string name="settings_sw_buttons_bg">Fond derrière les boutons</string>
     <string name="settings_sw_status_bar_sub">La carte passe dessous</string>
     <string name="settings_sw_simplify_sub">Affichage plus rapide</string>
+    <string name="settings_section_elevation_fill">Altimétrie manquante</string>
+    <string name="settings_label_fill_elevation">Compléter à l\'import</string>
+    <string name="settings_fill_elevation_hint">Les fichiers sans altitude reçoivent celle d\'un modèle de terrain : l\'IGN en France, OpenTopography ailleurs. Une trace n\'est complétée que si tous ses points le sont.</string>
+    <string name="settings_label_elevation_france">Service France</string>
+    <string name="settings_label_elevation_world">Service monde</string>
+    <string name="settings_label_elevation_world_key">Clé du service monde</string>
     <string name="settings_services_hint">Laisser vide pour utiliser les serveurs publics par défaut.</string>
 </resources>

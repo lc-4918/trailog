@@ -83,6 +83,15 @@ La force de l'ombrage se règle dans sa fiche.
 - Destination : dossier existant, ou nouveau dossier (racine ou sous-dossier).
 - Les **photos des waypoints GPX** (OruxMaps, OsmAnd, Locus, Garmin) sont récupérées et copiées dans le
   stockage de l'application.
+- **Altimétrie manquante** (réglage, désactivé par défaut) : un fichier sans altitude en reçoit une, tirée
+  d'un modèle de terrain - l'**IGN** sur la France (RGE ALTI, au mètre), **OpenTopography** ailleurs
+  (Copernicus GLO-90, à 90 m). Aucune frontière n'est
+  codée : on demande d'abord à l'IGN, qui répond lui-même là où il ne sait pas. Une trace est complétée
+  **entièrement ou pas du tout** - un profil auquel il manque des points plongerait au niveau de la mer et
+  fausserait le D+ ; les waypoints, eux, se complètent chacun pour son compte. Un échec (service muet,
+  réseau absent) laisse la couche s'importer telle quelle, sans altitude. Pendant cette attente - la seule
+  de l'import qui dépende du réseau - la ligne du dossier annonce **"Calcul de l'altimétrie"** au lieu de
+  l'import : un import qui semble bloqué n'est alors qu'un import qui attend une réponse.
 - Renommer, déplacer, supprimer dossiers et couches. Une action de dossier - l'oeil, la couleur commune,
   le cadrage - porte sur **tout** ce qu'il contient, sous-dossiers compris.
 
@@ -251,7 +260,8 @@ Quatre onglets :
   boutons sont **actifs par défaut** ; la recherche de lieu et la mesure sur trace ne le sont pas.
 - **Tuiles** : fond par défaut, catalogue des fournisseurs et composites, import/export
   (cf. [`BASEMAPS.md`](BASEMAPS.md)).
-- **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut.
+- **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, calcul du profil, et
+  le complètement de l'altimétrie manquante avec ses deux services (cf. section 6).
 - **Système** : dossiers d'import et des MBTiles, menu latéral, tolérances de tap, simplification du rendu,
   unités, mises à jour, langue, thème, avatar, remise à zéro.
 

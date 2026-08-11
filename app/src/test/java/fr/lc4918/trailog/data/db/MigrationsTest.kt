@@ -409,6 +409,25 @@ class MigrationsTest {
         db.execSQL("INSERT INTO settings (${cols.joinToString(", ") { it.first }}) VALUES ($row)")
     }
 
+    // ---------- 39 -> 40 : completement des altitudes manquantes ----------
+
+    /** Desactive sur une base deja en place, comme le geocodage avant lui : une mise a jour n'ouvre pas
+     *  d'elle-meme un dialogue avec un service tiers. Les trois champs de service restent vides, c'est-a-dire
+     *  aux valeurs du code (cf. ElevationServices) : les figer en base les laisserait perimes ici le jour ou
+     *  le defaut change. */
+    @Test fun `39 vers 40 ajoute le completement altimetrique eteint et sans url figee`() {
+        val db = freshDb("m3940"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_FILL_MISSING_ELEVATION)
+        db.execSQL(MigrationSql.ADD_ELEVATION_IGN_URL)
+        db.execSQL(MigrationSql.ADD_ELEVATION_WORLD_URL)
+        db.execSQL(MigrationSql.ADD_ELEVATION_WORLD_KEY)
+        assertEquals(0, scalar(db, "SELECT fillMissingElevation FROM settings") { it.getInt(0) })
+        assertEquals("", scalar(db, "SELECT elevationIgnUrl FROM settings") { it.getString(0) })
+        assertEquals("", scalar(db, "SELECT elevationWorldUrl FROM settings") { it.getString(0) })
+        assertEquals("", scalar(db, "SELECT elevationWorldKey FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -421,7 +440,8 @@ class MigrationsTest {
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
             "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
-            "mapButtonSizeDp", "hillshadeOn")
+            "mapButtonSizeDp", "hillshadeOn", "fillMissingElevation", "elevationIgnUrl",
+            "elevationWorldUrl", "elevationWorldKey")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

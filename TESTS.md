@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**352 tests, 38 fichiers**, tous verts.
+**397 tests, 41 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -138,7 +138,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 27 | les 23 migrations, rejouées sur un vrai SQLite |
+| `MigrationsTest` | 28 | les 24 migrations, rejouées sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -293,6 +293,41 @@ Valhalla encode au **millionième** de degré là où l'algorithme d'origine tra
 décoder au mauvais facteur ne lève rien - le tracé s'affiche, dix fois trop loin de l'équateur. Le test
 décode l'exemple canonique de la documentation Google en précision 5, puis vérifie que le défaut du code
 vaut bien dix fois cela.
+
+### `elevation` - altimétrie manquante
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `AsciiGridTest` | 9 | lecture d'une grille de terrain et interpolation entre ses cellules |
+| `ElevationSourcesTest` | 14 | requêtes et réponses des services IGN et OpenTopography, calcul des emprises |
+| `ElevationFillerTest` | 21 | qui est interrogé, dans quel ordre, et ce qui est écrit au bout |
+
+Toute faute y est **muette** : la couche s'importe alors sans altitude, ce qui est exactement ce qui
+arrive quand le fichier n'en portait pas.
+
+`AsciiGridTest` garde la géométrie de la grille. Une grille lue à l'envers, ou décalée d'une
+demi-cellule, ne lève rien : elle pose des altitudes voisines, et rend un profil plausible et faux. Le
+test verrouille donc le sens du nord (la première ligne du fichier est la plus haute), le demi-pas qui
+sépare le coin déclaré du centre de sa cellule, et le refus des trous du modèle - y compris quand la
+grille ne déclare pas sa valeur d'absence, ce qui est le cas courant : les grilles Copernicus servies par
+OpenTopography arrivent **sans ligne `NODATA_value`**, et un vide y passerait pour une altitude de trente
+mille mètres sous la mer.
+
+`ElevationFillerTest` remplace les services par des réponses écrites dans le test. Ce qu'il vérifie n'est
+pas qu'ils répondent, mais les deux règles qui ne se voient pas à l'usage et se paient cher :
+
+- **Le tout ou rien d'une trace.** Un point sans altitude vaut zéro dans le calcul du profil
+  (`TrackMath.compute`) : une trace à laquelle il manque trois points plongerait au niveau de la mer trois
+  fois, et son D+ deviendrait absurde. Une trace incomplète est donc laissée telle quelle - sans entraîner
+  les traces voisines, ni les waypoints, qui se complètent chacun pour son compte.
+- **L'abandon de l'IGN dès le premier paquet vide.** Le service ne connaît pas ses frontières autrement
+  qu'en répondant "pas de donnée" : sans cette règle, une trace étrangère de mille points lui coûterait
+  cinq requêtes pour rien avant de passer au modèle mondial.
+
+Il verrouille aussi ce qui n'est **pas** demandé : les points qui portent déjà une altitude, le fichier
+déjà complet qui ne déclenche aucune requête, et la trace trop longue pour le découpage en emprises, qui
+renonce avant le premier appel plutôt que d'épuiser le quota de la clé pour un profil que la règle du tout
+ou rien refuserait au bout.
 
 ### `net` - portée des services
 

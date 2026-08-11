@@ -140,6 +140,8 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.elevation.IgnElevation
+import fr.lc4918.trailog.elevation.OpenTopo
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.routing.Valhalla
 import fr.lc4918.trailog.map.compositeBasemapId
@@ -842,6 +844,38 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
         CardAction(stringResource(R.string.action_reset_defaults)) {
             vm.save(cur.copy(profileSmoothingM = 5, profileVerticalScaleMPerCm = 0))
+        }
+    }
+
+    // Dans cet onglet et non dans "Carte" : c'est de la matiere du profil qu'il s'agit, comme le lissage
+    // au-dessus, et non de ce qui s'affiche. Les deux services ne s'ouvrent qu'une fois le completement
+    // demande - trois champs d'URL sous un interrupteur eteint n'auraient rien a regler.
+    SectionTitle(stringResource(R.string.settings_section_elevation_fill))
+    SettingsCard {
+        SwitchLine(
+            stringResource(R.string.settings_label_fill_elevation), cur.fillMissingElevation,
+        ) { vm.save(cur.copy(fillMissingElevation = it)) }
+        Hint(stringResource(R.string.settings_fill_elevation_hint))
+        if (cur.fillMissingElevation) {
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_france)) {
+                SettingsTextField(cur.elevationIgnUrl, IgnElevation.DEFAULT_URL) {
+                    vm.save(cur.copy(elevationIgnUrl = it.trim()))
+                }
+            }
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_world)) {
+                SettingsTextField(cur.elevationWorldUrl, OpenTopo.DEFAULT_URL) {
+                    vm.save(cur.copy(elevationWorldUrl = it.trim()))
+                }
+            }
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_world_key)) {
+                SettingsTextField(cur.elevationWorldKey, OpenTopo.DEFAULT_KEY) {
+                    vm.save(cur.copy(elevationWorldKey = it.trim()))
+                }
+            }
+            Hint(stringResource(R.string.settings_services_hint))
         }
     }
 }

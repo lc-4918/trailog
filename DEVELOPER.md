@@ -40,6 +40,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  ├─ seed/Providers.kt         Fonds de carte par défaut
 │  ├─ imp/                      LayerImporter (GPX/GeoJSON/KML), PropertyDetector
 │  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
+├─ elevation/                   altitudes manquantes : IGN en France, OpenTopography ailleurs
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
 ├─ net/                         ServiceUrl (reseau local ou service externe)
 ├─ routing/                     Valhalla (itineraire, duree, trace ; 5 disciplines), Polyline

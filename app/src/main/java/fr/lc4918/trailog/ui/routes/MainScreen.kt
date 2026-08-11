@@ -2034,7 +2034,8 @@ private fun LegendContent(
 
     // Dossiers avec un import en cours (null = racine) : spinner ; et confirmation de suppression de dossier.
     val importing by vm.importing.collectAsState()
-    val importingIds = importing.keys
+    val elevating by vm.elevating.collectAsState()
+    val importingIds = ImportSpinners(importing.keys, elevating.keys)
     var deleteFolderTarget by remember { mutableStateOf<FolderEntity?>(null) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -2098,7 +2099,7 @@ private fun LegendContent(
 
         // Seule la liste défile verticalement ; le header reste fixe (SPEC menu latéral).
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 6.dp)) {
-            if (null in importingIds) ImportSpinnerRow(0)
+            importingIds.state(null)?.let { ImportSpinnerRow(0, it) }
             combinedChildren(null, folders, layers).forEach { item ->
                 when (item) {
                     is FolderEntity -> key("folder", item.id) {
@@ -2180,7 +2181,7 @@ private fun FolderNode(
     folder: FolderEntity, allFolders: List<FolderEntity>, allLayers: List<LayerEntity>,
     depth: Int, vm: MainViewModel, dctx: DragCtx,
     onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onNewFolder: (Long?) -> Unit, onZoom: (String, Long) -> Unit,
-    importingIds: Set<Long?>, onDeleteFolder: (FolderEntity) -> Unit,
+    importingIds: ImportSpinners, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
     var showColor by remember { mutableStateOf(false) }
@@ -2250,7 +2251,7 @@ private fun FolderNode(
     }
     if (expanded) {
         // Spinner d'import entre la ligne du dossier et sa première couche (SPEC).
-        if (folder.id in importingIds) ImportSpinnerRow(depth + 1)
+        importingIds.state(folder.id)?.let { ImportSpinnerRow(depth + 1, it) }
         combinedChildren(folder.id, allFolders, allLayers).forEach { item ->
             when (item) {
                 is FolderEntity -> key("folder", item.id) {
@@ -2264,16 +2265,34 @@ private fun FolderNode(
 
 /** Ligne « import en cours » : petit spinner, indenté comme les couches du dossier. */
 @Composable
-private fun ImportSpinnerRow(depth: Int) {
+private fun ImportSpinnerRow(depth: Int, elevation: Boolean) {
     Row(
         Modifier.fillMaxWidth().padding(start = (4 + depth * 20).dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.import_in_progress), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Le libelle dit CE QU'ON ATTEND, et non ce qu'on a demande : l'altimetrie interroge deux services
+        // distants et peut durer, la ou le reste de l'import ne tient qu'a la machine. Sans cette
+        // distinction, un import qui semble bloque n'est qu'un import qui attend le reseau.
+        Text(
+            stringResource(if (elevation) R.string.elevation_in_progress else R.string.import_in_progress),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+}
+
+/**
+ * Dossiers dont un import est en cours, et ceux dont l'import en est au calcul de l'altimetrie.
+ *
+ * Un porteur plutot que deux ensembles traverses cote a cote : l'arborescence les passe de dossier en
+ * dossier sur toute sa profondeur, et le second aurait suivi le premier a chaque appel.
+ */
+class ImportSpinners(private val importing: Set<Long?>, private val elevating: Set<Long?>) {
+    /** Null quand ce dossier n'attend rien ; sinon, vrai si ce qu'il attend est l'altimetrie. */
+    fun state(folderId: Long?): Boolean? =
+        if (folderId !in importing) null else folderId in elevating
 }
 
 /** Icône globe si la couche a des points ET des lignes, ligne (trace) si lignes seules, sinon point. */

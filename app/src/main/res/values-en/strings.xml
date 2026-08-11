@@ -11,6 +11,7 @@
     <string name="dialog_delete_folder_title">Delete folder</string>
     <string name="dialog_delete_folder_text">Also delete the folder\'s contents?</string>
     <string name="import_in_progress">Importing...</string>
+    <string name="elevation_in_progress">Computing elevation...</string>
     <string name="action_close_menu">Close menu</string>
     <string name="action_collapse">Collapse</string>
     <string name="action_color">Color</string>
@@ -380,5 +381,11 @@
     <string name="settings_sw_buttons_bg">Background behind buttons</string>
     <string name="settings_sw_status_bar_sub">The map runs underneath</string>
     <string name="settings_sw_simplify_sub">Faster display</string>
+    <string name="settings_section_elevation_fill">Missing elevation</string>
+    <string name="settings_label_fill_elevation">Fill in on import</string>
+    <string name="settings_fill_elevation_hint">Files without elevation get it from a terrain model: IGN in France, OpenTopography elsewhere. A track is only filled in if every one of its points is.</string>
+    <string name="settings_label_elevation_france">France service</string>
+    <string name="settings_label_elevation_world">World service</string>
+    <string name="settings_label_elevation_world_key">World service key</string>
     <string name="settings_services_hint">Leave empty to use the default public servers.</string>
 </resources>

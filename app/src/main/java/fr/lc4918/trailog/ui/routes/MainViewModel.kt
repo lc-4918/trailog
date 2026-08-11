@@ -445,15 +445,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _importFailures = MutableStateFlow<List<ImportFailure>>(emptyList())
     val importFailures = _importFailures.asStateFlow()
 
+    /** Imports arrêtés sur l'attente des services altimétriques, par dossier de destination : l'écran y
+     *  annonce le calcul plutôt que l'import, le temps que celui-ci dure (cf. ImportSpinnerRow). Un compte
+     *  et non un booléen, comme les imports eux-mêmes : plusieurs fichiers peuvent viser le même dossier. */
+    private val _elevating = MutableStateFlow<Map<Long?, Int>>(emptyMap())
+    val elevating: StateFlow<Map<Long?, Int>> = _elevating.asStateFlow()
+
     private fun bumpImporting(folderId: Long?, delta: Int) {
         _importing.update { m -> (m + (folderId to ((m[folderId] ?: 0) + delta))).filterValues { it > 0 } }
+    }
+
+    private fun bumpElevating(folderId: Long?, delta: Int) {
+        _elevating.update { m -> (m + (folderId to ((m[folderId] ?: 0) + delta))).filterValues { it > 0 } }
     }
 
     fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?) =
         viewModelScope.launch {
             bumpImporting(folderId, +1)
             try {
-                unionPendingFit(repo.importLayer(bytes, fileName, folderId))
+                unionPendingFit(repo.importLayer(bytes, fileName, folderId) { active ->
+                    bumpElevating(folderId, if (active) +1 else -1)
+                })
             } catch (e: EmptyLayerException) {
                 _importFailures.update { it + ImportFailure(fileName, ImportError.EMPTY) }
             } catch (e: CancellationException) {

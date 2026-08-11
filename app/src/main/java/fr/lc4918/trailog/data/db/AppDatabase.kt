@@ -198,6 +198,17 @@ internal object MigrationSql {
         `trackMeasureEnabled` INTEGER NOT NULL, `mapButtonSizeDp` INTEGER NOT NULL, PRIMARY KEY(`id`))
         """.trimIndent().replace('\n', ' ')
 
+    // Completement des altitudes manquantes : desactive sur une base deja en place, comme le geocodage
+    // avant lui. Les trois champs de service restent vides, donc aux defauts du code (cf. ElevationServices).
+    const val ADD_FILL_MISSING_ELEVATION =
+        "ALTER TABLE settings ADD COLUMN fillMissingElevation INTEGER NOT NULL DEFAULT 0"
+    const val ADD_ELEVATION_IGN_URL =
+        "ALTER TABLE settings ADD COLUMN elevationIgnUrl TEXT NOT NULL DEFAULT ''"
+    const val ADD_ELEVATION_WORLD_URL =
+        "ALTER TABLE settings ADD COLUMN elevationWorldUrl TEXT NOT NULL DEFAULT ''"
+    const val ADD_ELEVATION_WORLD_KEY =
+        "ALTER TABLE settings ADD COLUMN elevationWorldKey TEXT NOT NULL DEFAULT ''"
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -212,7 +223,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 39,
+    version = 40,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -398,11 +409,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_FILL_MISSING_ELEVATION)
+                db.execSQL(MigrationSql.ADD_ELEVATION_IGN_URL)
+                db.execSQL(MigrationSql.ADD_ELEVATION_WORLD_URL)
+                db.execSQL(MigrationSql.ADD_ELEVATION_WORLD_KEY)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

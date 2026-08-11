@@ -11,6 +11,7 @@
     <string name="dialog_delete_folder_title">Elimina la carpeta</string>
     <string name="dialog_delete_folder_text">Voleu eliminar també el contingut de la carpeta?</string>
     <string name="import_in_progress">S\'està important...</string>
+    <string name="elevation_in_progress">S\'està calculant l\'altimetria...</string>
     <string name="action_close_menu">Tanca el menú</string>
     <string name="action_collapse">Replega</string>
     <string name="action_color">Color</string>
@@ -380,5 +381,11 @@
     <string name="settings_sw_buttons_bg">Fons darrere dels botons</string>
     <string name="settings_sw_status_bar_sub">El mapa passa per sota</string>
     <string name="settings_sw_simplify_sub">Visualització més ràpida</string>
+    <string name="settings_section_elevation_fill">Altimetria absent</string>
+    <string name="settings_label_fill_elevation">Completa en importar</string>
+    <string name="settings_fill_elevation_hint">Els fitxers sense altitud la reben d\'un model del terreny: IGN a França, OpenTopography a la resta. Una traça només es completa si ho són tots els seus punts.</string>
+    <string name="settings_label_elevation_france">Servei França</string>
+    <string name="settings_label_elevation_world">Servei món</string>
+    <string name="settings_label_elevation_world_key">Clau del servei món</string>
     <string name="settings_services_hint">Deixeu-ho buit per utilitzar els servidors públics per defecte.</string>
 </resources>

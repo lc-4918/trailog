@@ -11,6 +11,9 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.imp.LayerImporter
+import fr.lc4918.trailog.data.imp.ParsedLayer
+import fr.lc4918.trailog.elevation.ElevationFiller
+import fr.lc4918.trailog.elevation.ElevationServices
 import fr.lc4918.trailog.data.seed.Composites
 import fr.lc4918.trailog.data.seed.DemoData
 import fr.lc4918.trailog.data.seed.Providers
@@ -76,6 +79,40 @@ class TrailogRepository(private val ctx: Context) {
 
     /** Lissage du profil (m), réglage utilisateur (5 m par défaut si non lu). */
     private suspend fun profileSmoothing(): Double = (db.settings().get()?.profileSmoothingM ?: 5).toDouble()
+
+    /**
+     * Complète les altitudes que le fichier ne portait pas, quand le réglage l'autorise.
+     *
+     * Ici et non dans [LayerImporter] : la lecture d'un fichier est un calcul pur, qui n'attend rien du
+     * réseau et se vérifie sans lui. Ici et non plus tard non plus - stats, D+/D-, profil précalculé et
+     * drapeau `hasZ` sont tous établis dans la foulée, sur les points tels qu'ils sont à cet instant.
+     *
+     * Un échec (service muet, réseau absent, couverture manquante) rend la couche telle quelle : l'import
+     * réussit, sans Z, exactement comme avant que cette fonction existe.
+     *
+     * [onElevation] encadre la seule partie qui attend le réseau, et elle seule : c'est ce qui permet à
+     * l'écran d'annoncer le calcul d'altimétrie pendant qu'il a lieu, et l'import le reste du temps. Il
+     * n'est pas appelé quand il n'y a rien à compléter - un fichier déjà pourvu ferait clignoter le
+     * libellé pour un travail qui n'aura pas lieu - et sa retombée passe par un `finally` : une exception
+     * en cours de calcul laisserait sinon l'écran sur une attente qui n'attend plus rien.
+     */
+    private suspend fun fillMissingElevation(
+        layer: ParsedLayer, onElevation: (Boolean) -> Unit,
+    ): ParsedLayer {
+        val s = db.settings().get() ?: return layer
+        if (!s.fillMissingElevation) return layer
+        if (!ElevationFiller.hasHoles(layer.points, layer.lines)) return layer
+        onElevation(true)
+        val filled = try {
+            ElevationFiller.fill(
+                layer.points, layer.lines,
+                ElevationServices(s.elevationIgnUrl, s.elevationWorldUrl, s.elevationWorldKey),
+            )
+        } finally {
+            onElevation(false)
+        }
+        return layer.copy(points = filled.points, lines = filled.lines)
+    }
 
     suspend fun ensureSeed() = withContext(Dispatchers.IO) {
         // Les composites suivent le semis des fournisseurs, et ne sont pas testés sur leur propre table :
@@ -154,8 +191,11 @@ class TrailogRepository(private val ctx: Context) {
 
     /** Importe une couche (gpx/kml/kmz/geojson) : peut contenir des points et/ou des traces.
      *  Lève [EmptyLayerException] si le fichier, bien que lisible, ne contient ni trace ni point ;
-     *  toute autre exception signale un fichier illisible (cf. MainViewModel.importLayer). */
-    suspend fun importLayer(bytes: ByteArray, fileName: String, folderId: Long?): DoubleArray =
+     *  toute autre exception signale un fichier illisible (cf. MainViewModel.importLayer).
+     *  [onElevation] encadre le seul temps d'attente des services altimétriques (cf. fillMissingElevation). */
+    suspend fun importLayer(
+        bytes: ByteArray, fileName: String, folderId: Long?, onElevation: (Boolean) -> Unit = {},
+    ): DoubleArray =
         withContext(Dispatchers.IO) {
             val parsedRaw = LayerImporter.parse(bytes, fileName)
             // Rien à importer : une couche vide n'apparaîtrait nulle part sur la carte et polluerait
@@ -164,7 +204,9 @@ class TrailogRepository(private val ctx: Context) {
             // les champs image détectés qui pointent vers un fichier local (photo de waypoint GPX, cf. section 4.3)
             // sont copiés dans le stockage privé de l'app : le chemin d'origine peut disparaître (stockage
             // amovible/temporaire) ou nécessiter une permission qu'on ne conservera pas après l'import.
-            val parsed = parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) })
+            val parsed = fillMissingElevation(
+                parsedRaw.copy(points = parsedRaw.points.map { resolveLocalImages(it) }), onElevation,
+            )
             val hasLine = parsed.lines.isNotEmpty()
             val simplify = simplifyRender()
             val smoothingM = profileSmoothing()

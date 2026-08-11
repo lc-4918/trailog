@@ -11,6 +11,7 @@
     <string name="dialog_delete_folder_title">Eliminar carpeta</string>
     <string name="dialog_delete_folder_text">¿Eliminar también el contenido de la carpeta?</string>
     <string name="import_in_progress">Importando...</string>
+    <string name="elevation_in_progress">Calculando la altimetría...</string>
     <string name="action_close_menu">Cerrar el menú</string>
     <string name="action_collapse">Contraer</string>
     <string name="action_color">Color</string>
@@ -380,5 +381,11 @@
     <string name="settings_sw_buttons_bg">Fondo detrás de los botones</string>
     <string name="settings_sw_status_bar_sub">El mapa pasa por debajo</string>
     <string name="settings_sw_simplify_sub">Visualización más rápida</string>
+    <string name="settings_section_elevation_fill">Altimetría ausente</string>
+    <string name="settings_label_fill_elevation">Completar al importar</string>
+    <string name="settings_fill_elevation_hint">Los archivos sin altitud la reciben de un modelo del terreno: IGN en Francia, OpenTopography en el resto. Una traza solo se completa si lo son todos sus puntos.</string>
+    <string name="settings_label_elevation_france">Servicio Francia</string>
+    <string name="settings_label_elevation_world">Servicio mundial</string>
+    <string name="settings_label_elevation_world_key">Clave del servicio mundial</string>
     <string name="settings_services_hint">Dejar vacío para usar los servidores públicos predeterminados.</string>
 </resources>

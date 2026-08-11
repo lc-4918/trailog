@@ -197,6 +197,16 @@ data class SettingsEntity(
     val routingUrl: String = "",
     // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",
+    // Completer a l'import les altitudes que le fichier ne porte pas (cf. elevation/ElevationFiller).
+    // Desactive par defaut, comme le geocodage : c'est la seule autre fonction qui fait partir des requetes
+    // vers un service tiers sans qu'on l'ait demandee sur le moment.
+    val fillMissingElevation: Boolean = false,
+    // Service altimetrique francais (API Geoplateforme). Vide = instance publique (IgnElevation.DEFAULT_URL).
+    val elevationIgnUrl: String = "",
+    // Service altimetrique mondial (API OpenTopography). Vide = instance publique (OpenTopo.DEFAULT_URL).
+    val elevationWorldUrl: String = "",
+    // Cle du service mondial. Vide = celle livree avec l'application (OpenTopo.DEFAULT_KEY).
+    val elevationWorldKey: String = "",
     // Bouton du planificateur d'itineraire sur la carte. Affiche par defaut : preparer un trajet est
     // l'une des raisons d'ouvrir l'application, et le bouton ne lance rien tout seul - ce sont les
     // etapes saisies qui font partir une requete, geste explicite s'il en est.
