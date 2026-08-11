@@ -97,7 +97,6 @@
     <string name="planner_title">Ibilbide-planifikatzailea</string>
     <string name="planner_collapse">Txikitu</string>
     <string name="planner_expand">Ireki berriro planifikatzailea</string>
-    <string name="planner_toggle_theme">Aldatu barraren gaia</string>
     <string name="planner_start">Irteera</string>
     <string name="planner_end">Helmuga</string>
     <string name="planner_via">Etapa</string>

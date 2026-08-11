@@ -201,10 +201,6 @@ data class SettingsEntity(
     // l'une des raisons d'ouvrir l'application, et le bouton ne lance rien tout seul - ce sont les
     // etapes saisies qui font partir une requete, geste explicite s'il en est.
     val routePlannerEnabled: Boolean = true,
-    // Theme de la seule bande du planificateur : "system" suit le theme de l'application, "light" et
-    // "dark" l'imposent. Trois valeurs et non un booleen : tant que l'utilisateur n'a pas touche au
-    // bouton soleil/lune, la bande doit continuer de suivre l'application, y compris si celle-ci change.
-    val plannerBandTheme: String = "system",
     // Fond blanc translucide derriere les boutons poses sur la carte. Actif par defaut : sans lui les
     // boutons flottent nus au-dessus de la carte, ce qui est plus leger mais devient illisible sur une
     // orthophoto ou un relief clair - et l'on ne choisit pas son fond de carte pour ses boutons.

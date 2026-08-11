@@ -97,7 +97,6 @@
     <string name="planner_title">Planificador de rutas</string>
     <string name="planner_collapse">Reducir</string>
     <string name="planner_expand">Reabrir el planificador</string>
-    <string name="planner_toggle_theme">Cambiar el tema de la barra</string>
     <string name="planner_start">Salida</string>
     <string name="planner_end">Llegada</string>
     <string name="planner_via">Punto intermedio</string>

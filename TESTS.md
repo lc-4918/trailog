@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**342 tests, 37 fichiers**, tous verts.
+**352 tests, 38 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -138,7 +138,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 25 | les 18 migrations, rejouées sur un vrai SQLite |
+| `MigrationsTest` | 27 | les 23 migrations, rejouées sur un vrai SQLite |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -159,6 +159,11 @@ Points vérifiés :
   dans le gestionnaire. L'ordre des trois requêtes compte : la reprise de l'état lit le `enabled` que la
   suivante écrase. Le test rejoue les deux états de départ, et le cas d'une base sans fond DEM - un
   `SELECT` sans résultat y laisserait un NULL dans une colonne `NOT NULL`.
+- **38 vers 39** retire la colonne du thème de la bande du planificateur. La seule migration qui
+  **refasse une table** : SQLite ne sait supprimer une colonne qu'à partir d'Android 14, et
+  l'application descend jusqu'à Android 7. Le test part donc d'une table v38 **remplie** et relit de
+  part et d'autre une colonne de chaque type - une recopie qui oublie une colonne ne se voit qu'à
+  l'usage, sur un réglage revenu à sa valeur par défaut.
 - **30 vers 31** affiche d'office les trois commandes de carte (bouton GPS, planificateur, fond des
   boutons) et donne aux fonds leur force de rendu. Le test verrouille que les TROIS réglages y passent :
   en oublier un ne casserait rien de visible, et personne ne le remarquerait avant de chercher le bouton

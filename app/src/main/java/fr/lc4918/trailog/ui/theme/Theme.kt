@@ -7,10 +7,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-/** Les deux palettes de l'application. Exposees : la bande du planificateur porte son propre theme, et
- *  doit pouvoir prendre l'autre palette que celle de l'ecran sans redeclarer ces couleurs. */
-internal val TrailogLight = lightColorScheme(primary = Color(0xFF1F6FB2), secondary = Color(0xFF2D867C))
-internal val TrailogDark = darkColorScheme(primary = Color(0xFF6FB6E8), secondary = Color(0xFF7FC8BD))
+/** Les deux palettes de l'application, posees par [TrailogTheme] et par lui seul : aucun ecran ne prend
+ *  l'autre que celle en cours. */
+private val TrailogLight = lightColorScheme(primary = Color(0xFF1F6FB2), secondary = Color(0xFF2D867C))
+private val TrailogDark = darkColorScheme(primary = Color(0xFF6FB6E8), secondary = Color(0xFF7FC8BD))
 
 /** themePref : "system" | "light" | "dark". */
 @Composable

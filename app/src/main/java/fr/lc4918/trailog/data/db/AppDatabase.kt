@@ -67,6 +67,8 @@ internal object MigrationSql {
     const val ADD_ROUTE_PLANNER_ENABLED =
         "ALTER TABLE settings ADD COLUMN routePlannerEnabled INTEGER NOT NULL DEFAULT 0"
     // "system" : la bande du planificateur suit le theme de l'application tant qu'on n'a rien impose.
+    // Colonne retiree depuis (cf. DROP_PLANNER_BAND_THEME), la bande ayant perdu son theme propre ; l'ajout
+    // reste ici, comme toute migration deja jouee sur une base en place.
     const val ADD_PLANNER_BAND_THEME =
         "ALTER TABLE settings ADD COLUMN plannerBandTheme TEXT NOT NULL DEFAULT 'system'"
     const val ADD_CONTROL_BUTTONS_BACKGROUND =
@@ -136,6 +138,66 @@ internal object MigrationSql {
         "UPDATE settings SET basemapControlWidthPct = 70 WHERE basemapControlWidthPct = 50"
     const val OPACIFY_BASEMAP_CONTROL =
         "UPDATE settings SET basemapControlOpacityPct = 90 WHERE basemapControlOpacityPct = 80"
+
+    /** Colonnes de settings en version 39, dans l'ordre de SettingsEntity : la recopie ci-dessous les nomme
+     *  une a une, un `SELECT *` reprenant la colonne dont on veut se defaire. */
+    private const val SETTINGS_COLUMNS_V39 =
+        "`id`, `units`, `sideMenuMode`, `tapToleranceDp`, `lineTapToleranceDp`, `terrain3d`, `hillshadeOn`, " +
+        "`ambientCacheMb`, `defaultBasemapId`, `mbtilesDir`, `theme`, `profileGrid`, `profileSlope`, " +
+        "`profileSlopeLegend`, `bubbleFont`, `profAxisFont`, `profTitleFont`, `profBarFont`, `profLegendFont`, " +
+        "`profCursorFont`, `titleInfos`, `cursorInfos`, `statusBarTransparent`, `markerSize`, `importDir`, " +
+        "`lastLat`, `lastLon`, `lastZoom`, `hasCamera`, `showScale`, `rotateGesturesEnabled`, `showGpsButton`, " +
+        "`bubbleBold`, `profAxisBold`, `profTitleBold`, `profBarBold`, `profLegendBold`, `profCursorBold`, " +
+        "`customTitle`, `avatarSource`, `showBasemapControlButton`, `basemapControlWidthPct`, " +
+        "`basemapControlOpacityPct`, `bubbleTitleFont`, `bubbleTitleBold`, `simplifyRender`, `profileSmoothingM`, " +
+        "`verticalExaggeration`, `bubblePosition`, `bubbleOpacityPct`, `updateCheckMode`, `demoSeeded`, " +
+        "`geocodingEnabled`, `geocodingUrl`, `routingUrl`, `routingProfile`, `routePlannerEnabled`, " +
+        "`controlButtonsBackground`, `trackMeasureEnabled`, `mapButtonSizeDp`"
+
+    /**
+     * Retrait de settings.plannerBandTheme : la bande du planificateur prend le theme de l'application.
+     *
+     * Par recopie dans une table neuve, et non par un `ALTER TABLE ... DROP COLUMN` que SQLite ne connait
+     * qu'a partir de sa version 3.35 - Android 14 -, la ou l'application descend jusqu'a Android 7.
+     *
+     * Le schema et la liste de colonnes sont FIGES a ce qu'ils valent ici, comme les valeurs d'un fond
+     * insere par migration : ils decrivent la base en version 39, et une colonne ajoutee plus tard le sera
+     * par sa propre migration, pas en retouchant celle-ci.
+     */
+    val DROP_PLANNER_BAND_THEME: List<String> = listOf(
+        settingsTableV39("settings_new"),
+        "INSERT INTO `settings_new` ($SETTINGS_COLUMNS_V39) SELECT $SETTINGS_COLUMNS_V39 FROM `settings`",
+        "DROP TABLE `settings`",
+        "ALTER TABLE `settings_new` RENAME TO `settings`",
+    )
+
+    /** Le schema de settings en version 39, sous le nom demande : la migration s'en sert pour la table de
+     *  destination, et le test pour se donner la table d'origine. */
+    fun settingsTableV39(table: String): String =
+        """
+        CREATE TABLE `$table` (`id` INTEGER NOT NULL, `units` TEXT NOT NULL, `sideMenuMode` TEXT NOT
+        NULL, `tapToleranceDp` INTEGER NOT NULL, `lineTapToleranceDp` INTEGER NOT NULL, `terrain3d` INTEGER
+        NOT NULL, `hillshadeOn` INTEGER NOT NULL, `ambientCacheMb` INTEGER NOT NULL, `defaultBasemapId` TEXT
+        NOT NULL, `mbtilesDir` TEXT NOT NULL, `theme` TEXT NOT NULL, `profileGrid` INTEGER NOT NULL,
+        `profileSlope` INTEGER NOT NULL, `profileSlopeLegend` INTEGER NOT NULL, `bubbleFont` INTEGER NOT NULL,
+        `profAxisFont` INTEGER NOT NULL, `profTitleFont` INTEGER NOT NULL, `profBarFont` INTEGER NOT NULL,
+        `profLegendFont` INTEGER NOT NULL, `profCursorFont` INTEGER NOT NULL, `titleInfos` TEXT NOT NULL,
+        `cursorInfos` TEXT NOT NULL, `statusBarTransparent` INTEGER NOT NULL, `markerSize` INTEGER NOT NULL,
+        `importDir` TEXT NOT NULL, `lastLat` REAL NOT NULL, `lastLon` REAL NOT NULL, `lastZoom` REAL NOT NULL,
+        `hasCamera` INTEGER NOT NULL, `showScale` INTEGER NOT NULL, `rotateGesturesEnabled` INTEGER NOT NULL,
+        `showGpsButton` INTEGER NOT NULL, `bubbleBold` INTEGER NOT NULL, `profAxisBold` INTEGER NOT NULL,
+        `profTitleBold` INTEGER NOT NULL, `profBarBold` INTEGER NOT NULL, `profLegendBold` INTEGER NOT NULL,
+        `profCursorBold` INTEGER NOT NULL, `customTitle` TEXT NOT NULL, `avatarSource` TEXT NOT NULL,
+        `showBasemapControlButton` INTEGER NOT NULL, `basemapControlWidthPct` INTEGER NOT NULL,
+        `basemapControlOpacityPct` INTEGER NOT NULL, `bubbleTitleFont` INTEGER NOT NULL, `bubbleTitleBold`
+        INTEGER NOT NULL, `simplifyRender` INTEGER NOT NULL, `profileSmoothingM` INTEGER NOT NULL,
+        `verticalExaggeration` INTEGER NOT NULL, `bubblePosition` TEXT NOT NULL, `bubbleOpacityPct` INTEGER
+        NOT NULL, `updateCheckMode` TEXT NOT NULL, `demoSeeded` INTEGER NOT NULL, `geocodingEnabled` INTEGER
+        NOT NULL, `geocodingUrl` TEXT NOT NULL, `routingUrl` TEXT NOT NULL, `routingProfile` TEXT NOT NULL,
+        `routePlannerEnabled` INTEGER NOT NULL, `controlButtonsBackground` INTEGER NOT NULL,
+        `trackMeasureEnabled` INTEGER NOT NULL, `mapButtonSizeDp` INTEGER NOT NULL, PRIMARY KEY(`id`))
+        """.trimIndent().replace('\n', ' ')
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -150,7 +212,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 38,
+    version = 39,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -328,11 +390,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // La bande du planificateur perd son theme propre, donc la colonne qui le retenait. Migration
+        // explicite plutot que destructive, comme la 16->17 : une base en place garde ses couches.
+        private val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.DROP_PLANNER_BAND_THEME.forEach { db.execSQL(it) }
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

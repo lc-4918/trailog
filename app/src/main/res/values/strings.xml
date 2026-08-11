@@ -97,7 +97,6 @@
     <string name="planner_title">Planificateur d\'itinéraire</string>
     <string name="planner_collapse">Réduire</string>
     <string name="planner_expand">Rouvrir le planificateur</string>
-    <string name="planner_toggle_theme">Changer le thème de la bande</string>
     <string name="planner_start">Départ</string>
     <string name="planner_end">Arrivée</string>
     <string name="planner_via">Étape</string>

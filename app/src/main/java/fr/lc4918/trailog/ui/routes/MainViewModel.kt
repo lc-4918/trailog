@@ -586,18 +586,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (s.showGpsButton != show) db.settings().upsert(s.copy(showGpsButton = show))
     }
 
-    /** Thème de la seule bande du planificateur : "system", "light" ou "dark". Mémorisé d'une ouverture à
-     *  l'autre, le choix valant pour la façon de travailler et non pour un trajet. */
     /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
      *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
     fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         if (s.profileSlopeLegend != shown) db.settings().upsert(s.copy(profileSlopeLegend = shown))
-    }
-
-    fun setPlannerBandTheme(pref: String) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
-        if (s.plannerBandTheme != pref) db.settings().upsert(s.copy(plannerBandTheme = pref))
     }
 
     /** Active/désactive le relief (tap sur son entrée dans le gestionnaire de couches) : contrairement aux

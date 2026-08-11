@@ -461,9 +461,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // ---------- planificateur d'itinéraire ----------
     val planner = remember { RoutePlannerState() }
-    // Thème de la bande : le réglage l'emporte, "system" suivant celui de l'application.
-    val bandThemePref = settings?.plannerBandTheme ?: "system"
-    val bandDark = isDarkTheme(if (bandThemePref == "system") settings?.theme else bandThemePref)
     var importDialog by remember { mutableStateOf(false) }
     /**
      * Fond des boutons poses sur la carte, quand le reglage le demande.
@@ -1375,16 +1372,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 if (planner.open) {
                     RoutePlannerBand(
                         state = planner,
-                        dark = bandDark,
                         imperial = imperialUnits,
                         settings = settings,
                         lastLabelInsetPx = 0f,
                         maxHeight = plannerMaxHeight,
-                        onToggleTheme = {
-                            // Le premier appui fige une valeur explicite, opposée à ce qu'on voit : tant
-                            // qu'on n'y a pas touché, la bande suivait l'application.
-                            vm.setPlannerBandTheme(if (bandDark) "light" else "dark")
-                        },
                         onPickCurrentPosition = { step -> planner.choose(step, StepTarget.CurrentPosition) },
                         gpsActive = gpsActive,
                         geocoding = GeocodingParams(geocodingBase,

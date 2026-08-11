@@ -373,6 +373,42 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 38 -> 39 : la bande du planificateur perd son theme propre ----------
+
+    /**
+     * La colonne s'en va par recopie de la table entiere, faute d'un DROP COLUMN sur les SQLite d'avant
+     * Android 14. C'est le genre de migration qui perd des reglages sans rien dire : on part donc d'une
+     * table v38 REMPLIE, et on relit de part et d'autre des colonnes de chaque type.
+     */
+    @Test fun `38 vers 39 retire le theme de la bande sans perdre les reglages`() {
+        val db = freshDb("m3839")
+        // Table en v38 : le schema fige de la v39, plus la colonne que la migration retire.
+        db.execSQL(MigrationSql.settingsTableV39("settings"))
+        db.execSQL(MigrationSql.ADD_PLANNER_BAND_THEME)
+        fillSettings(db, mapOf("theme" to "'dark'", "importDir" to "'/sdcard/traces'",
+            "lastZoom" to "12.5", "markerSize" to "22", "plannerBandTheme" to "'light'"))
+        MigrationSql.DROP_PLANNER_BAND_THEME.forEach { db.execSQL(it) }
+        assertTrue("plannerBandTheme" !in columns(db, "settings"))
+        assertEquals(1, scalar(db, "SELECT COUNT(*) FROM settings") { it.getInt(0) })
+        assertEquals("dark", scalar(db, "SELECT theme FROM settings") { it.getString(0) })
+        assertEquals("/sdcard/traces", scalar(db, "SELECT importDir FROM settings") { it.getString(0) })
+        assertEquals(12.5, scalar(db, "SELECT lastZoom FROM settings") { it.getDouble(0) }, 0.0)
+        assertEquals(22, scalar(db, "SELECT markerSize FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    /** Insere la ligne de reglages, toutes colonnes servies : aucune n'a de valeur par defaut dans le schema
+     *  de Room, et [values] ne nomme que celles que le test relit ensuite. */
+    private fun fillSettings(db: SQLiteDatabase, values: Map<String, String>) {
+        val cols = db.rawQuery("PRAGMA table_info(settings)", null).use { c ->
+            generateSequence { if (c.moveToNext()) c.getString(1) to c.getString(2) else null }.toList()
+        }
+        val row = cols.joinToString(", ") { (name, type) ->
+            values[name] ?: when (type) { "TEXT" -> "''"; "REAL" -> "0.0"; else -> "0" }
+        }
+        db.execSQL("INSERT INTO settings (${cols.joinToString(", ") { it.first }}) VALUES ($row)")
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -384,9 +420,12 @@ class MigrationsTest {
         }
         listOf("bubblePosition", "updateCheckMode", "basemapControlOpacityPct", "verticalExaggeration", "demoSeeded",
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
-            "routePlannerEnabled", "plannerBandTheme", "controlButtonsBackground", "trackMeasureEnabled",
+            "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
             "mapButtonSizeDp", "hillshadeOn")
             .forEach { assertTrue("colonne $it absente", it in cols) }
+        // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
+        // ce que verifie aussi, cote SQL, la migration 38 -> 39.
+        assertTrue("colonne plannerBandTheme encore la", "plannerBandTheme" !in cols)
         val pcols = s.query("PRAGMA table_info(providers)").use { c ->
             generateSequence { if (c.moveToNext()) c.getString(1) else null }.toList()
         }

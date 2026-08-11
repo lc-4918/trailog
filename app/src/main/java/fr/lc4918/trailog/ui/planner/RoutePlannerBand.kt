@@ -25,14 +25,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Save
@@ -54,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.border
@@ -80,16 +77,14 @@ import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.routeInfos
 import fr.lc4918.trailog.ui.settings.RoutingProfilePicker
-import fr.lc4918.trailog.ui.theme.TrailogDark
-import fr.lc4918.trailog.ui.theme.TrailogLight
 import kotlinx.coroutines.delay
 
 /** Hauteur minimale de la bande : le double de celle des barres de consigne existantes, qui n'affichent
  *  qu'une ligne de texte. Le planificateur porte au moins la discipline et deux champs. */
 private val BandMinHeight = 96.dp
 
-/** Fond de la bande, dans son propre theme. Opaque a 94 % : la carte transparait juste assez pour qu'on
- *  garde le sentiment de la survoler, sans nuire a la lecture des champs. */
+/** Fond de la bande. Opaque a 94 % : la carte transparait juste assez pour qu'on garde le sentiment de la
+ *  survoler, sans nuire a la lecture des champs. */
 private const val BandAlpha = 0.94f
 
 /** Gabarit du champ d'une etape, partage entre le champ de saisie et l'affichage replie qui le remplace
@@ -117,9 +112,10 @@ private const val CollapsedAlpha = 0.85f
 /**
  * Bande du planificateur d'itineraire, posee au bas de l'ecran.
  *
- * Elle porte son propre theme ([dark]), independant de celui de l'application : on planifie souvent en
- * plein jour devant une carte claire, et l'inverse le soir. Le bouton soleil/lune de son en-tete la
- * bascule sans rien changer au reste de l'ecran.
+ * Elle prend le theme de l'application, comme tout ce qui se pose sur la carte : elle a longtemps porte le
+ * sien, bascule par un bouton soleil/lune de son en-tete, mais une bande claire devant une carte sombre -
+ * ou l'inverse - se lisait comme un morceau d'une autre application, et le bouton occupait la place d'une
+ * commande du parcours pour un reglage qui n'en est pas un.
  *
  * Reduite, elle se retire dans un simple bouton du coin bas-gauche : la carte redevient entierement
  * visible, ce qui est le geste attendu quand on veut regarder le trace qu'on vient de calculer.
@@ -127,12 +123,10 @@ private const val CollapsedAlpha = 0.85f
 @Composable
 fun RoutePlannerBand(
     state: RoutePlannerState,
-    dark: Boolean,
     imperial: Boolean,
     settings: SettingsEntity?,
     lastLabelInsetPx: Float,
     maxHeight: Dp,
-    onToggleTheme: () -> Unit,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
     geocoding: GeocodingParams,
@@ -140,67 +134,52 @@ fun RoutePlannerBand(
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Le theme s'applique a la bande ET a tout ce qu'elle contient (champs, menus, profil) : c'est bien
-    // l'ensemble qui bascule, pas seulement son fond.
-    androidx.compose.material3.MaterialTheme(colorScheme = if (dark) TrailogDark else TrailogLight) {
-        if (state.collapsed) {
-            CollapsedButton(onExpand = { state.collapse(false) }, modifier = modifier)
-        } else {
-            Surface(
-                modifier = modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                shadowElevation = 8.dp,
+    if (state.collapsed) {
+        CollapsedButton(onExpand = { state.collapse(false) }, modifier = modifier)
+    } else {
+        Surface(
+            modifier = modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 8.dp,
+        ) {
+            // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle sert a
+            // composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les disciplines et les
+            // resultats gardant leur hauteur propre - une etape de plus fait donc defiler la liste plutot
+            // que grandir la bande.
+            Column(
+                // Le plancher cede devant le plafond : sur un petit ecran, un clavier haut peut ne laisser
+                // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
+                // nouveau deborder la bande hors de l'ecran.
+                Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
-                // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle
-                // sert a composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les
-                // disciplines et les resultats gardant leur hauteur propre - une etape de plus fait donc
-                // defiler la liste plutot que grandir la bande.
-                Column(
-                    // Le plancher cede devant le plafond : sur un petit ecran, un clavier haut peut ne
-                    // laisser moins que [BandMinHeight], et une hauteur minimale superieure au maximum
-                    // ferait a nouveau deborder la bande hors de l'ecran.
-                    Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                ) {
-                    BandHeader(
-                        dark = dark,
-                        recomputing = state.recomputing,
-                        onCollapse = { state.collapse(true) },
-                        onToggleTheme = onToggleTheme,
-                        onClose = { state.close() },
-                    )
-                    RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
-                    StepList(state, onPickCurrentPosition, gpsActive, dark, geocoding,
-                        onImport, onDownload,
-                        Modifier.weight(1f, fill = false).padding(top = 10.dp))
-                    ResultsZone(state, imperial, settings, lastLabelInsetPx)
-                }
+                BandHeader(
+                    recomputing = state.recomputing,
+                    onCollapse = { state.collapse(true) },
+                    onClose = { state.close() },
+                )
+                RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
+                StepList(state, onPickCurrentPosition, gpsActive, geocoding,
+                    onImport, onDownload,
+                    Modifier.weight(1f, fill = false).padding(top = 10.dp))
+                ResultsZone(state, imperial, settings, lastLabelInsetPx)
             }
         }
     }
 }
 
-/** En-tete : reduire a gauche, basculer le theme juste a sa droite, fermer a l'oppose. */
+/** En-tete : reduire a gauche, fermer a l'oppose. */
 @Composable
 private fun BandHeader(
-    dark: Boolean,
     recomputing: Boolean,
     onCollapse: () -> Unit,
-    onToggleTheme: () -> Unit,
     onClose: () -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onCollapse, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Filled.ExpandMore, stringResource(R.string.planner_collapse), Modifier.size(20.dp))
-            }
-            // L'icone montre ce vers quoi on bascule, non l'etat courant : en clair on propose la lune.
-            IconButton(onClick = onToggleTheme, modifier = Modifier.size(28.dp)) {
-                Icon(
-                    if (dark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                    stringResource(R.string.planner_toggle_theme), Modifier.size(18.dp),
-                )
             }
             Text(stringResource(R.string.planner_title), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -247,7 +226,6 @@ private fun StepList(
     state: RoutePlannerState,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
-    dark: Boolean,
     geocoding: GeocodingParams,
     onImport: () -> Unit,
     onDownload: () -> Unit,
@@ -266,7 +244,6 @@ private fun StepList(
                 ),
                 onPickCurrentPosition = onPickCurrentPosition,
                 gpsActive = gpsActive,
-                dark = dark,
                 geocoding = geocoding,
             )
         }
@@ -314,7 +291,6 @@ private fun StepRow(
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
-    dark: Boolean,
     geocoding: GeocodingParams,
 ) {
     var focused by remember(step.id) { mutableStateOf(false) }
@@ -400,16 +376,19 @@ private fun StepRow(
                         CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 2.dp)
                     }
                     if (shown.isNotEmpty()) {
+                        // Pastille et croix prises aux roles du theme, et non a deux couleurs fixes
+                        // choisies par theme : elles s'echangent d'elles-memes en sombre, la pastille
+                        // restant le contraire du fond sur lequel elle se pose.
                         Box(
                             Modifier.size(15.dp)
                                 .background(
-                                    (if (dark) Color.White else Color(0xFF9E9E9E)).copy(alpha = 0.6f),
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     CircleShape)
                                 .clickable { state.clearStep(step) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Filled.Close, stringResource(R.string.planner_clear_step),
-                                Modifier.size(11.dp), tint = if (dark) Color.Black else Color.White)
+                                Modifier.size(11.dp), tint = MaterialTheme.colorScheme.surface)
                         }
                     }
                 }

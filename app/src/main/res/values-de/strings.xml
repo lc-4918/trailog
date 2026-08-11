@@ -97,7 +97,6 @@
     <string name="planner_title">Routenplaner</string>
     <string name="planner_collapse">Einklappen</string>
     <string name="planner_expand">Planer wieder öffnen</string>
-    <string name="planner_toggle_theme">Design der Leiste wechseln</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Ziel</string>
     <string name="planner_via">Zwischenziel</string>
