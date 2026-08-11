@@ -18,7 +18,6 @@
     <string name="action_create">Create</string>
     <string name="action_create_and_import">Create and import</string>
     <string name="action_decrease">-</string>
-    <string name="action_export_gpx">Export as GPX</string>
     <string name="action_share">Share</string>
     <string name="action_reverse_track">Reverse direction</string>
     <string name="action_split_track">Split at cursor</string>
@@ -72,6 +71,12 @@
     <string name="stats_layers">Layers</string>
     <string name="stats_tracks">Tracks</string>
     <string name="stats_marker_layers">Marker layers</string>
+    <string name="action_export">Export</string>
+    <string name="action_export_layer">Export...</string>
+    <string name="export_format_gpx">GPX</string>
+    <string name="export_format_geojson">GeoJSON</string>
+    <string name="export_format_gpx_hint">Read everywhere: watches, hiking apps, sharing sites. Keeps only the standard fields - photos, links and custom fields have no place in it.</string>
+    <string name="export_format_geojson_hint">The app\'s own storage format: it keeps every property, including custom fields and the pinned image. Read by GIS software (QGIS), less common in hiking apps. Photos are local paths in it: only the backup carries them.</string>
     <string name="action_delete">Delete</string>
     <string name="action_drag_to_move">Drag to move</string>
     <string name="action_edit">Edit</string>
@@ -81,7 +86,6 @@
     <string name="action_hide">Hide</string>
     <string name="action_hide_folder">Hide folder</string>
     <string name="action_import">Import</string>
-    <string name="action_export">Export</string>
     <string name="action_import_mbtiles">Import an .mbtiles file</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>

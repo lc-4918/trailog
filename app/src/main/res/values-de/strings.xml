@@ -18,7 +18,6 @@
     <string name="action_create">Erstellen</string>
     <string name="action_create_and_import">Erstellen und importieren</string>
     <string name="action_decrease">-</string>
-    <string name="action_export_gpx">Als GPX exportieren</string>
     <string name="action_share">Teilen</string>
     <string name="action_reverse_track">Richtung umkehren</string>
     <string name="action_split_track">Am Cursor teilen</string>
@@ -72,6 +71,12 @@
     <string name="stats_layers">Ebenen</string>
     <string name="stats_tracks">Spuren</string>
     <string name="stats_marker_layers">Markerebenen</string>
+    <string name="action_export">Exportieren</string>
+    <string name="action_export_layer">Exportieren...</string>
+    <string name="export_format_gpx">GPX</string>
+    <string name="export_format_geojson">GeoJSON</string>
+    <string name="export_format_gpx_hint">Überall lesbar: Uhren, Wander-Apps, Tourenportale. Behält nur die Standardfelder - Fotos, Links und freie Felder haben darin keinen Platz.</string>
+    <string name="export_format_geojson_hint">Das Speicherformat der App: es behält alle Eigenschaften, auch freie Felder und das Titelbild. Von GIS-Software (QGIS) gelesen, in Wander-Apps seltener. Fotos sind darin lokale Pfade: nur die Sicherung nimmt sie mit.</string>
     <string name="action_delete">Löschen</string>
     <string name="action_drag_to_move">Ziehen zum Verschieben</string>
     <string name="action_edit">Bearbeiten</string>
@@ -81,7 +86,6 @@
     <string name="action_hide">Ausblenden</string>
     <string name="action_hide_folder">Ordner ausblenden</string>
     <string name="action_import">Importieren</string>
-    <string name="action_export">Exportieren</string>
     <string name="action_import_mbtiles">.mbtiles-Datei importieren</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menü</string>

@@ -18,7 +18,6 @@
     <string name="action_create">Crea</string>
     <string name="action_create_and_import">Crea e importa</string>
     <string name="action_decrease">-</string>
-    <string name="action_export_gpx">Esporta in GPX</string>
     <string name="action_share">Condividi</string>
     <string name="action_reverse_track">Inverti il senso</string>
     <string name="action_split_track">Taglia al cursore</string>
@@ -72,6 +71,12 @@
     <string name="stats_layers">Livelli</string>
     <string name="stats_tracks">Tracce</string>
     <string name="stats_marker_layers">Livelli di marcatori</string>
+    <string name="action_export">Esporta</string>
+    <string name="action_export_layer">Esporta...</string>
+    <string name="export_format_gpx">GPX</string>
+    <string name="export_format_geojson">GeoJSON</string>
+    <string name="export_format_gpx_hint">Letto ovunque: orologi, app di escursionismo, siti di condivisione. Conserva solo i campi standard: foto, link e campi liberi non ci stanno.</string>
+    <string name="export_format_geojson_hint">Il formato di archiviazione dell\'app: conserva tutte le proprietà, compresi i campi liberi e l\'immagine in evidenza. Letto dai GIS (QGIS), meno diffuso nelle app di escursionismo. Le foto sono percorsi locali: solo il backup le porta con sé.</string>
     <string name="action_delete">Elimina</string>
     <string name="action_drag_to_move">Trascina per spostare</string>
     <string name="action_edit">Modifica</string>
@@ -81,7 +86,6 @@
     <string name="action_hide">Nascondi</string>
     <string name="action_hide_folder">Nascondi cartella</string>
     <string name="action_import">Importa</string>
-    <string name="action_export">Esporta</string>
     <string name="action_import_mbtiles">Importa un file .mbtiles</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>

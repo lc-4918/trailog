@@ -18,7 +18,6 @@
     <string name="action_create">Criar</string>
     <string name="action_create_and_import">Criar e importar</string>
     <string name="action_decrease">-</string>
-    <string name="action_export_gpx">Exportar em GPX</string>
     <string name="action_share">Partilhar</string>
     <string name="action_reverse_track">Inverter o sentido</string>
     <string name="action_split_track">Cortar no cursor</string>
@@ -72,6 +71,12 @@
     <string name="stats_layers">Camadas</string>
     <string name="stats_tracks">Trilhos</string>
     <string name="stats_marker_layers">Camadas de marcadores</string>
+    <string name="action_export">Exportar</string>
+    <string name="action_export_layer">Exportar...</string>
+    <string name="export_format_gpx">GPX</string>
+    <string name="export_format_geojson">GeoJSON</string>
+    <string name="export_format_gpx_hint">Lido em todo o lado: relógios, aplicações de caminhada, sites de partilha. Guarda apenas os campos padrão - as fotos, as ligações e os campos livres não cabem.</string>
+    <string name="export_format_geojson_hint">O formato de armazenamento da aplicação: guarda todas as propriedades, incluindo campos livres e a imagem de capa. Lido por SIG (QGIS), menos comum nas aplicações de caminhada. As fotos são caminhos locais: só a cópia de segurança as leva.</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_drag_to_move">Arrastar para mover</string>
     <string name="action_edit">Editar</string>
@@ -81,7 +86,6 @@
     <string name="action_hide">Ocultar</string>
     <string name="action_hide_folder">Ocultar pasta</string>
     <string name="action_import">Importar</string>
-    <string name="action_export">Exportar</string>
     <string name="action_import_mbtiles">Importar um ficheiro .mbtiles</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>

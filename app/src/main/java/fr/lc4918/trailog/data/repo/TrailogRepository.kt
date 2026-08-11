@@ -346,6 +346,19 @@ class TrailogRepository(private val ctx: Context) {
     }
 
     /**
+     * La couche en GeoJSON, telle qu'elle est stockée.
+     *
+     * Le fichier de géométrie EST déjà du GeoJSON : l'export est donc une copie, et il est le seul à ne
+     * rien perdre - liens, champs libres et image de garde n'ont pas de place dans le GPX (cf.
+     * [GpxWriter.writeLayer]). Les photos, elles, y figurent par leur chemin dans le stockage de
+     * l'application : le fichier seul ne les emporte pas, c'est la sauvegarde qui joue ce rôle.
+     */
+    suspend fun layerGeoJson(layer: LayerEntity): ByteArray = withContext(Dispatchers.IO) {
+        val f = File(layersDir, layer.geometryFile)
+        if (f.exists()) f.readBytes() else ByteArray(0)
+    }
+
+    /**
      * Écrit [bytes] dans un fichier du cache de partage et rend son URI `content://`.
      *
      * Un `file://` serait refusé par Android depuis la version 7 : une application qui reçoit un fichier

@@ -2373,7 +2373,7 @@ private fun LegendContent(
     val drawerCtx = LocalContext.current
     var gpxPending by remember { mutableStateOf<ByteArray?>(null) }
     val gpxExporter = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/gpx+xml")
+        ActivityResultContracts.CreateDocument("*/*")
     ) { uri ->
         val bytes = gpxPending
         gpxPending = null
@@ -2381,9 +2381,11 @@ private fun LegendContent(
             runCatching { drawerCtx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
         }
     }
-    val onExportLayer: (LayerEntity) -> Unit = { layer ->
-        vm.layerGpx(layer) { bytes -> gpxPending = bytes; gpxExporter.launch(GpxWriter.fileName(layer.name)) }
-    }
+    // L'export se fait en DEUX temps : on choisit d'abord le format, on nomme le fichier ensuite. Les deux
+    // formats ne portent pas la meme chose (cf. ExportFormatDialog), et ce choix ne se devine pas depuis le
+    // selecteur de fichier du systeme, qui ne montre qu'un nom et un dossier.
+    var exportTarget by remember { mutableStateOf<LayerEntity?>(null) }
+    val onExportLayer: (LayerEntity) -> Unit = { layer -> exportTarget = layer }
     val shareLabel = stringResource(R.string.action_share)
     val onShareLayer: (LayerEntity) -> Unit = { layer ->
         vm.shareLayerGpx(layer) { uri ->
@@ -2548,6 +2550,30 @@ private fun LegendContent(
                 }
             }
         }
+    }
+
+    exportTarget?.let { layer ->
+        ExportFormatDialog(
+            dark = isDarkTheme(settings?.theme),
+            onDismiss = { exportTarget = null },
+            onPick = { geoJson ->
+                exportTarget = null
+                val extension = if (geoJson) "geojson" else "gpx"
+                val ready: (ByteArray) -> Unit = { bytes ->
+                    gpxPending = bytes
+                    gpxExporter.launch(GpxWriter.fileName(layer.name, extension))
+                }
+                if (geoJson) vm.layerGeoJson(layer, ready) else vm.layerGpx(layer, ready)
+            },
+        )
+    }
+
+    statsTarget?.let { f ->
+        FolderStatsDialog(
+            folder = f, folders = folders, layers = layers,
+            imperial = settings?.units == "imperial", dark = isDarkTheme(settings?.theme),
+            onDismiss = { statsTarget = null },
+        )
     }
 
     deleteFolderTarget?.let { f ->
@@ -3104,6 +3130,45 @@ private fun FolderStatsDialog(
     }
 }
 
+/**
+ * Choix du format d'export : ce que chacun garde, et ce qu'il perd.
+ *
+ * Un sous-menu de plus dans la ligne de la couche aurait suffi a lancer l'export, mais pas a CHOISIR : les
+ * deux formats ne portent pas la meme chose, et l'ecart ne se devine ni du nom du format ni du selecteur de
+ * fichier du systeme, qui ne montre qu'un nom et un dossier. D'ou une etape a part, ou chaque format dit ce
+ * qu'il vaut.
+ *
+ * Meme grammaire que les reglages - carte, ligne, texte d'aide dessous : c'est le meme genre d'objet, un
+ * choix explique.
+ */
+@Composable
+private fun ExportFormatDialog(dark: Boolean, onDismiss: () -> Unit, onPick: (geoJson: Boolean) -> Unit) {
+    ProvideSettingsPalette(dark = dark) {
+        val p = settingsPalette
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = p.screen,
+            title = { Text(stringResource(R.string.action_export_layer), color = p.label) },
+            text = {
+                SettingsCard {
+                    SetRow(stringResource(R.string.export_format_gpx), onClick = { onPick(false) }) {
+                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
+                    }
+                    Hint(stringResource(R.string.export_format_gpx_hint))
+                    RowDivider()
+                    SetRow(stringResource(R.string.export_format_geojson), onClick = { onPick(true) }) {
+                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
+                    }
+                    Hint(stringResource(R.string.export_format_geojson_hint))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), color = p.accent) }
+            },
+        )
+    }
+}
+
 @Composable
 private fun DropIndicatorLine() {
     Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
@@ -3609,7 +3674,7 @@ private fun RowMenu(
             // d'outils de la carte : elles agissent sur un segment, parfois sur deux, et designer un
             // segment se fait du doigt sur la carte - pas dans le menu d'une ligne d'arborescence.
             if (layer != null && layerActions != null) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_export_gpx)) },
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_export_layer)) },
                     onClick = { open = false; layerActions.onExport(layer) })
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) },
                     onClick = { open = false; layerActions.onShare(layer) })

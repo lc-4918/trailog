@@ -18,7 +18,6 @@
     <string name="action_create">Sortu</string>
     <string name="action_create_and_import">Sortu eta inportatu</string>
     <string name="action_decrease">-</string>
-    <string name="action_export_gpx">Esportatu GPX gisa</string>
     <string name="action_share">Partekatu</string>
     <string name="action_reverse_track">Alderantzikatu noranzkoa</string>
     <string name="action_split_track">Moztu kurtsorean</string>
@@ -72,6 +71,12 @@
     <string name="stats_layers">Geruzak</string>
     <string name="stats_tracks">Ibilbideak</string>
     <string name="stats_marker_layers">Markatzaile-geruzak</string>
+    <string name="action_export">Esportatu</string>
+    <string name="action_export_layer">Esportatu...</string>
+    <string name="export_format_gpx">GPX</string>
+    <string name="export_format_geojson">GeoJSON</string>
+    <string name="export_format_gpx_hint">Nonahi irakurtzen da: erlojuak, mendi-aplikazioak, partekatze-guneak. Eremu estandarrak baino ez ditu gordetzen: argazkiek, estekek eta eremu askeek ez dute lekurik.</string>
+    <string name="export_format_geojson_hint">Aplikazioaren biltegiratze-formatua: propietate guztiak gordetzen ditu, eremu askeak eta azaleko irudia barne. GIS softwareak (QGIS) irakurtzen du, mendi-aplikazioetan gutxiago. Argazkiak bide lokalak dira: babeskopiak soilik eramaten ditu.</string>
     <string name="action_delete">Ezabatu</string>
     <string name="action_drag_to_move">Arrastatu mugitzeko</string>
     <string name="action_edit">Editatu</string>
@@ -81,7 +86,6 @@
     <string name="action_hide">Ezkutatu</string>
     <string name="action_hide_folder">Ezkutatu karpeta</string>
     <string name="action_import">Inportatu</string>
-    <string name="action_export">Esportatu</string>
     <string name="action_import_mbtiles">Inportatu .mbtiles fitxategi bat</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menua</string>

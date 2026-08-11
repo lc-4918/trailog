@@ -21,7 +21,7 @@ altimétrique synchronisé, et sait travailler sans réseau.
 Ce qu'elle fait :
 
 - consulter des traces importées (carte + profil), rangées en dossiers ;
-- importer GPX, GeoJSON, KML/KMZ ; exporter en GeoJSON ;
+- importer GPX, GeoJSON, KML/KMZ ; exporter en GPX ou en GeoJSON ;
 - afficher un large choix de fonds de carte, y compris hors ligne ;
 - télécharger une zone pour l'emporter sans réseau ;
 - décrire un point : adresse, distances, mesures le long d'une trace ;
@@ -94,9 +94,10 @@ La force de l'ombrage se règle dans sa fiche.
   l'import : un import qui semble bloqué n'est alors qu'un import qui attend une réponse.
 - Renommer, déplacer, supprimer dossiers et couches. Une action de dossier - l'oeil, la couleur commune,
   le cadrage - porte sur **tout** ce qu'il contient, sous-dossiers compris.
-- **Exporter une couche en GPX**, l'enregistrer où l'on veut ou l'**envoyer** à une autre application
-  (montre, messagerie). Les champs standard d'un waypoint sortent ; les photos, les liens et les champs
-  libres n'ont pas de place dans le format et restent dans l'application.
+- **Exporter une couche**, l'enregistrer où l'on veut ou l'**envoyer** à une autre application (montre,
+  messagerie). Le format se choisit à part, chacun disant ce qu'il vaut : le **GPX** est lu partout mais ne
+  garde que les champs standard d'un waypoint - photos, liens et champs libres n'y ont pas de place - ; le
+  **GeoJSON** est le format de stockage de l'application et ne perd rien, au prix d'une diffusion moindre.
 - **Retoucher une trace** : voir la section 6 bis. Ce ne sont pas des outils de dessin - ce sont les
   gestes qu'on fait sur un fichier reçu.
 

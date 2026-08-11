@@ -386,6 +386,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         onReady(repo.layerGpx(layer))
     }
 
+    fun layerGeoJson(layer: LayerEntity, onReady: (ByteArray) -> Unit) = viewModelScope.launch {
+        onReady(repo.layerGeoJson(layer))
+    }
+
     /** La couche en GPX, posée dans un fichier qu'une autre application a le droit de lire. */
     fun shareLayerGpx(layer: LayerEntity, onReady: (Uri) -> Unit) = viewModelScope.launch {
         onReady(repo.shareableFile(repo.layerGpx(layer), GpxWriter.fileName(layer.name)))
