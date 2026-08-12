@@ -13,7 +13,20 @@ Trailog is a native Android application for viewing, importing and organising GP
 (hiking, cycling, mountain biking, exploring), on customisable basemaps, and built for
 offline use.
 
-> *Screenshots to come.*
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="docs/screenshots/1.jpg" alt="A track on the map" width="180"><br><sub>A track on the map</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/2.jpg" alt="Synchronised elevation profile" width="180"><br><sub>Elevation profile, synchronised</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/3.jpg" alt="Marker info bubble with a photo" width="180"><br><sub>Marker bubble, photo included</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/4.jpg" alt="Library of folders and layers" width="180"><br><sub>Library of folders and layers</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/5.jpg" alt="Route planner" width="180"><br><sub>Route planner</sub></td>
+    <td align="center"><img src="docs/screenshots/6.jpg" alt="Basemap manager" width="180"><br><sub>Basemap manager</sub></td>
+    <td align="center"><img src="docs/screenshots/7.jpg" alt="Settings, Map tab" width="180"><br><sub>Settings, Map tab</sub></td>
+    <td></td>
+  </tr>
+</table>
 
 > The project's working documents (specification, design notes, tests) are written in French.
 > This README is their English counterpart.

@@ -13,7 +13,20 @@ Trailog est une application Android native pour consulter, importer et organiser
 traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,
 avec un fonctionnement pensé pour le hors-ligne.
 
-> *Captures d'écran à venir.*
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="docs/screenshots/1.jpg" alt="Une trace sur la carte" width="180"><br><sub>Une trace sur la carte</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/2.jpg" alt="Profil altimétrique synchronisé" width="180"><br><sub>Le profil, synchronisé</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/3.jpg" alt="Infobulle d'un marqueur avec photo" width="180"><br><sub>Infobulle, photo comprise</sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/4.jpg" alt="Bibliothèque de dossiers et de couches" width="180"><br><sub>Bibliothèque des couches</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/5.jpg" alt="Planificateur d'itinéraire" width="180"><br><sub>Calcul d'itinéraire</sub></td>
+    <td align="center"><img src="docs/screenshots/6.jpg" alt="Gestionnaire de fonds de carte" width="180"><br><sub>Gestionnaire de fonds</sub></td>
+    <td align="center"><img src="docs/screenshots/7.jpg" alt="Réglages, onglet Carte" width="180"><br><sub>Réglages, onglet Carte</sub></td>
+    <td></td>
+  </tr>
+</table>
 
 ---
 
