@@ -231,6 +231,14 @@ data class SettingsEntity(
     // discret (le carre ne fait alors que la taille de l'icone) au bouton Material plein, qui occupe toute
     // sa zone tactile.
     val mapButtonSizeDp: Int = DefaultMapButtonSizeDp,
+    // Symbole de la position GPS sur la carte (cf. GpsMarkerStyle) : la puce par defaut, deux fleches qui
+    // suivent l'orientation du telephone, ou une croix de visee.
+    val gpsMarkerStyle: String = "dot",
+    // Couleur du symbole. Vide = celle propre au symbole choisi (cf. GpsMarkerStyle.defaultColor) : la
+    // couleur suit alors le symbole quand on en change, au lieu de figer le bleu de la puce sur une fleche.
+    val gpsMarkerColor: String = "",
+    // Cote du symbole de position (dp) - diametre de la puce, hauteur de la fleche ou de la croix.
+    val gpsMarkerSizeDp: Int = DefaultGpsMarkerSizeDp,
 )
 
 /** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */
@@ -239,3 +247,10 @@ const val MaxMapButtonSizeDp = 48
 
 /** Taille par defaut : entre les deux bornes, assez large pour se voir sans etaler un aplat de 48 dp. */
 const val DefaultMapButtonSizeDp = 42
+
+/** Bornes du symbole de position (dp) : du point discret au repere qu'on retrouve d'un coup d'oeil. */
+const val MinGpsMarkerSizeDp = 12
+const val MaxGpsMarkerSizeDp = 48
+
+/** Taille par defaut : celle de la puce d'origine (rayon 7 + contour 2,5), inchangee pour qui n'y touche pas. */
+const val DefaultGpsMarkerSizeDp = 20

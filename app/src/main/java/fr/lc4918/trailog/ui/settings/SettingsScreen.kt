@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -125,6 +126,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -133,13 +135,16 @@ import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.CompositeSortOrder
 import fr.lc4918.trailog.data.db.DefaultDemOpacityPct
+import fr.lc4918.trailog.data.db.MaxGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
+import fr.lc4918.trailog.data.db.MinGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
+import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.elevation.IgnElevation
 import fr.lc4918.trailog.elevation.OpenTopo
@@ -150,6 +155,7 @@ import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.map.flagCodeFor
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.ui.components.Avatar
+import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.update.ReleaseInfo
 import fr.lc4918.trailog.update.UpdateCheck
@@ -387,6 +393,8 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         )
     }
 
+    GpsMarkerSettings(cur, vm)
+
     SectionTitle(stringResource(R.string.settings_section_basemap_control))
     SettingsCard {
         SwitchLine(stringResource(R.string.settings_label_show_button), cur.showBasemapControlButton) {
@@ -525,6 +533,61 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         }
     }
 }
+
+/**
+ * Repere de position GPS : son symbole, sa couleur, sa taille.
+ *
+ * Juste apres les boutons de la carte, et non avec les marqueurs des points d'interet : ce repere n'est
+ * pas un point pose sur la carte mais l'etat du capteur qu'allume le bouton juste au-dessus.
+ *
+ * La couleur affichee est la couleur EFFECTIVE - celle reglee, ou celle propre au symbole tant qu'on n'a
+ * rien choisi -, si bien que la pastille dit toujours ce qu'on verra sur la carte.
+ */
+@Composable private fun GpsMarkerSettings(cur: SettingsEntity, vm: SettingsViewModel) {
+    val marker = GpsMarkerStyle.of(cur.gpsMarkerStyle)
+    val color = cur.gpsMarkerColor.takeIf { it.isNotBlank() } ?: marker.defaultColor
+    var pickColor by remember { mutableStateOf(false) }
+    SectionTitle(stringResource(R.string.settings_section_gps_marker))
+    SettingsCard {
+        // Changer de symbole rend sa couleur au nouveau : chacun a la sienne (bleu pour la puce, rouge pour
+        // les fleches et la croix), et l'heriter du precedent donnerait une fleche bleue a qui vient de
+        // quitter la puce sans jamais avoir choisi de couleur.
+        PickRow(
+            stringResource(R.string.settings_label_gps_marker_style),
+            marker, GpsMarkerStyle.entries, optionLabel = { gpsMarkerLabel(it) },
+        ) { vm.save(cur.copy(gpsMarkerStyle = it.key, gpsMarkerColor = "")) }
+        RowDivider()
+        SetRow(stringResource(R.string.settings_label_gps_marker_color), onClick = { pickColor = true }) {
+            Box(Modifier.size(24.dp).clip(CircleShape).background(Color(color.toColorInt())))
+        }
+        RowDivider()
+        SliderRow(
+            label = stringResource(R.string.settings_label_gps_marker_size),
+            value = "${cur.gpsMarkerSizeDp} dp",
+            fraction = fractionOf(cur.gpsMarkerSizeDp, MinGpsMarkerSizeDp, MaxGpsMarkerSizeDp),
+            steps = MaxGpsMarkerSizeDp - MinGpsMarkerSizeDp - 1,
+            onFraction = { vm.save(cur.copy(gpsMarkerSizeDp = valueOf(it, MinGpsMarkerSizeDp, MaxGpsMarkerSizeDp))) },
+        )
+        if (marker.oriented) Hint(stringResource(R.string.settings_gps_marker_heading_hint))
+    }
+    if (pickColor) {
+        ColorPickerDialog(
+            current = color,
+            onPick = { vm.save(cur.copy(gpsMarkerColor = it)); pickColor = false },
+            onDismiss = { pickColor = false },
+        )
+    }
+}
+
+/** Libelle traduit d'un symbole de position. */
+@Composable private fun gpsMarkerLabel(m: GpsMarkerStyle): String = stringResource(
+    when (m) {
+        GpsMarkerStyle.DOT -> R.string.gps_marker_dot
+        GpsMarkerStyle.ARROW_OUTLINE -> R.string.gps_marker_arrow_outline
+        GpsMarkerStyle.ARROW_FILLED -> R.string.gps_marker_arrow_filled
+        GpsMarkerStyle.CROSSHAIR -> R.string.gps_marker_crosshair
+    }
+)
 
 /** Libellé traduit d'un placement d'infobulle. */
 @Composable private fun bubblePositionLabel(p: BubblePosition): String = stringResource(

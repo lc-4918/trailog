@@ -163,6 +163,15 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
 - Les boutons posés sur la carte portent un fond blanc translucide dont la **taille se règle**, du carré
   qui ne fait que la taille de l'icône au bouton Material plein. Seul le carré dessiné change : la zone
   tactile reste aux 48 dp que Material impose, quel que soit le réglage.
+- **Un bouton allumé se lit à la couleur de son dessin**, jamais à un aplat qui le distinguerait de ses
+  voisins, et cette couleur est le bleu du repère de position - la même pour le GPS, la retouche et ses
+  outils. L'accent du thème, un vert sombre, allumait un trait de 2 dp sans qu'on le remarque au-dessus
+  d'une carte, là où ce bleu ne se confond avec aucun fond topographique.
+- Le **repère de position** se choisit : la puce bleue à contour blanc (par défaut), une flèche de
+  navigation au trait, la même pleine, ou une croix traversante à cercle central. Couleur et taille
+  réglables ; les deux flèches suivent l'orientation du téléphone, dans le repère de la carte - elles
+  visent le nord vrai, déclinaison magnétique corrigée, et tournent donc avec la carte. Le halo de
+  l'imprécision reste dans tous les cas, à la couleur du symbole : c'est l'imprécision de CE repère-là.
 - Le bouton de **recentrage sur la position** n'apparaît que lorsque la position n'est pas au milieu de la
   carte : centrée, il n'a rien à faire et s'efface plutôt que de proposer un geste sans effet - il
   disparaît donc de lui-même au bout du recentrage qu'on vient de lui demander. Le disque au centre de son
@@ -319,8 +328,8 @@ temps, et c'est la question qu'on se pose devant une trace inconnue.
 
 Quatre onglets :
 
-- **Carte** : boutons affichés sur la carte, échelle, rotation, gestionnaire de fonds, marqueurs et
-  infobulles, apparence du profil. Quatre boutons sont posés sur la carte **par défaut** : le burger, le
+- **Carte** : boutons affichés sur la carte, échelle, rotation, repère de position, gestionnaire de fonds,
+  marqueurs et infobulles, apparence du profil. Quatre boutons sont posés sur la carte **par défaut** : le burger, le
   GPS, le gestionnaire de fonds et le planificateur - plus le fond blanc translucide qui les porte. La
   recherche de lieu et la mesure sur trace, elles, ne le sont pas : ce sont les deux seules à s'ajouter
   volontairement.

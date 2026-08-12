@@ -5,6 +5,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.GeomagneticField
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
@@ -15,6 +20,8 @@ import android.os.VibratorManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.view.Surface
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContract
@@ -87,6 +94,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -109,6 +117,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
@@ -131,6 +140,7 @@ import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
@@ -143,6 +153,7 @@ import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
+import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
@@ -195,6 +206,7 @@ import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.cursorInfos
 import fr.lc4918.trailog.ui.profile.titleInfos
+import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.log10
@@ -301,6 +313,57 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             lastUserLocation = loc.latitude to loc.longitude
             if (pendingCenter) { controller.centerOn(loc.latitude, loc.longitude); pendingCenter = false }
         }
+    }
+
+    // Symbole du repère de position et sa couleur : celle réglée, sinon celle propre au symbole (le bleu de
+    // la puce, le rouge des flèches et de la croix) - une couleur vide n'est pas un choix, c'est l'absence
+    // de choix, et elle doit suivre le symbole quand on en change.
+    val gpsMarker = GpsMarkerStyle.of(settings?.gpsMarkerStyle)
+    val gpsMarkerColor = settings?.gpsMarkerColor?.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
+    val gpsMarkerSizeDp = (settings?.gpsMarkerSizeDp ?: DefaultGpsMarkerSizeDp).toFloat()
+
+    /*
+     * Orientation du téléphone, pour les symboles qui en portent une (les deux flèches).
+     *
+     * Le capteur n'est écouté que quand la position est affichée ET que le symbole a une direction à
+     * montrer : une boussole tourne en permanence, elle n'a pas à le faire pour une puce ronde.
+     *
+     * Le vecteur de rotation plutôt que l'accéléromètre et le magnétomètre bruts : le système en tire déjà
+     * une orientation fusionnée et lissée, là où recombiner les deux à la main donne une flèche qui tremble.
+     */
+    val declination = remember(lastUserLocation) {
+        // Le capteur donne le nord MAGNÉTIQUE, la carte est orientée au nord vrai : l'écart entre les deux
+        // dépend du lieu, et atteint plusieurs degrés en Europe. Recalculé à chaque position reçue, ce qui
+        // le laisse hors de la boucle du capteur - il ne varie pas d'un pas à l'autre.
+        lastUserLocation?.let { (la, lo) ->
+            GeomagneticField(la.toFloat(), lo.toFloat(), 0f, System.currentTimeMillis()).declination
+        } ?: 0f
+    }
+    val currentDeclination by rememberUpdatedState(declination)
+    val displayRotation = rememberDisplayRotation()
+    val headingNeeded = gpsActive && gpsMarker.oriented
+    DisposableEffect(headingNeeded, displayRotation) {
+        val sensors = (ctx.getSystemService(Context.SENSOR_SERVICE) as? SensorManager)
+            ?.takeIf { headingNeeded }
+        // Aucun capteur d'orientation : la fleche reste alors pointee au nord, ce que fait deja tout le
+        // reste de la carte - un appareil sans boussole n'a rien d'autre a montrer.
+        val sensor = sensors?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        if (sensors == null || sensor == null) return@DisposableEffect onDispose { }
+        val listener = object : SensorEventListener {
+            private var last = Float.NaN
+            override fun onSensorChanged(e: SensorEvent) {
+                val deg = azimuthDegrees(e.values, displayRotation) + currentDeclination
+                val heading = ((deg % 360f) + 360f) % 360f
+                // Sous le degré, le symbole ne bougerait pas d'un pixel : on épargne à MapLibre un
+                // redessin par mesure, à 60 ms d'intervalle.
+                if (!last.isNaN() && angleGap(heading, last) < 1f) return
+                last = heading
+                controller.setUserHeading(heading)
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        sensors.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+        onDispose { sensors.unregisterListener(listener) }
     }
 
     fun hasLocationPermission() =
@@ -860,6 +923,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(mapPoint.markers, styleTick, markerPx) {
         controller.setMapPointMarkers(mapPoint.markers, markerPx)
     }
+    // Symbole du repère de position, tel que les réglages le décrivent. Rejoué sur styleTick : un
+    // changement de fond recharge le style, qui emporte sources et couches - le repère est reposé avec la
+    // dernière position connue, sans attendre que le capteur en donne une nouvelle.
+    LaunchedEffect(gpsMarker, gpsMarkerColor, gpsMarkerSizeDp, styleTick) {
+        controller.setUserMarker(gpsMarker, gpsMarkerColor, gpsMarkerSizeDp)
+    }
     LaunchedEffect(cursor, computed) {
         val along = cursor; val s = computed?.samples
         val p = if (along != null && s != null) TrackMath.sampleAt(s, along) else null
@@ -1068,7 +1137,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 // des ornements de carte.
                                 modifier = controlBg,
                             ) {
-                                val gpsTint = if (gpsActive) MaterialTheme.colorScheme.primary else chromeFg
+                                val gpsTint = if (gpsActive) MapChromeActive else chromeFg
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Outlined.Place, stringResource(R.string.content_desc_gps_position),
                                         modifier = Modifier.size(GpsIconSize), tint = gpsTint)
@@ -1117,7 +1186,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 // Un crayon plutot qu'un marteau : deux traits contre une silhouette
                                 // pleine d'outils croises, illisible a 22 dp au-dessus d'une carte.
                                 Icons.Outlined.Edit, stringResource(R.string.edit_toolbar),
-                                tint = if (edit.open) MaterialTheme.colorScheme.primary else chromeFg,
+                                tint = if (edit.open) MapChromeActive else chromeFg,
                             )
                         }
                     }
@@ -3097,7 +3166,7 @@ private fun EditToolButton(
             icon, label, Modifier.size(20.dp),
             tint = when {
                 !enabled -> chromeFg.copy(alpha = 0.3f)
-                active -> MaterialTheme.colorScheme.primary
+                active -> MapChromeActive
                 else -> chromeFg
             },
         )
@@ -3286,6 +3355,69 @@ private const val ControlButtonBgAlpha = 0.9f
  * comme un objet POSE dessus mais comme un trou dedans, et ses angles arrondis disparaissent.
  */
 private val MapChromeDarkBg = Color(0xFF202124)
+
+/**
+ * Le dessin d'un bouton de carte ALLUME.
+ *
+ * Le bleu de la puce de position, et non l'accent du theme : celui-ci est un vert sombre, qui allume un
+ * trait de 2 dp sans qu'on le remarque au-dessus d'une carte - or c'est le seul signe qui distingue un
+ * bouton actif d'un bouton au repos. Le bleu du repere GPS, lui, ne se confond avec aucun fond
+ * topographique, et l'ecran gagne au passage une couleur d'etat unique : ce qui est en marche est bleu.
+ */
+private val MapChromeActive = Color(GpsMarkerStyle.DOT.defaultColor.toColorInt())
+
+/**
+ * Rotation de l'ECRAN par rapport a l'orientation naturelle de l'appareil (cf. [azimuthDegrees]).
+ *
+ * Relue a chaque changement de configuration, seul signal dont dispose Compose pour dire qu'on vient de
+ * tourner le telephone : le capteur, lui, parle toujours dans le repere de l'appareil, pas dans celui de
+ * l'ecran, et la difference entre les deux est exactement ce quart de tour.
+ */
+@Composable
+private fun rememberDisplayRotation(): Int {
+    val ctx = LocalContext.current
+    val configuration = LocalConfiguration.current
+    return remember(configuration) {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ctx.display!!.rotation
+            else @Suppress("DEPRECATION")
+            (ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
+        }.getOrDefault(Surface.ROTATION_0)
+    }
+}
+
+/**
+ * Cap du telephone, en degres depuis le nord magnetique, tire du vecteur de rotation du systeme.
+ *
+ * Le repere du capteur est celui de l'APPAREIL dans son orientation naturelle ; [displayRotation] le
+ * ramene a celui de l'ecran tel qu'il est tenu, faute de quoi la fleche serait a un quart de tour de la
+ * verite des qu'on passe en paysage.
+ *
+ * Le vecteur est tronque a ses quatre premieres composantes : certains appareils en publient cinq, que
+ * getRotationMatrixFromVector refuse.
+ */
+private fun azimuthDegrees(rotationVector: FloatArray, displayRotation: Int): Float {
+    val v = if (rotationVector.size > 4) rotationVector.copyOf(4) else rotationVector
+    val m = FloatArray(9)
+    SensorManager.getRotationMatrixFromVector(m, v)
+    val (axisX, axisY) = when (displayRotation) {
+        Surface.ROTATION_90 -> SensorManager.AXIS_Y to SensorManager.AXIS_MINUS_X
+        Surface.ROTATION_180 -> SensorManager.AXIS_MINUS_X to SensorManager.AXIS_MINUS_Y
+        Surface.ROTATION_270 -> SensorManager.AXIS_MINUS_Y to SensorManager.AXIS_X
+        else -> SensorManager.AXIS_X to SensorManager.AXIS_Y
+    }
+    val screen = FloatArray(9)
+    SensorManager.remapCoordinateSystem(m, axisX, axisY, screen)
+    val orientation = FloatArray(3)
+    SensorManager.getOrientation(screen, orientation)
+    return Math.toDegrees(orientation[0].toDouble()).toFloat()
+}
+
+/** Ecart entre deux caps, par le plus court des deux chemins : 359 et 1 sont a 2 degres l'un de l'autre. */
+private fun angleGap(a: Float, b: Float): Float {
+    val d = abs(a - b) % 360f
+    return if (d > 180f) 360f - d else d
+}
 
 /** Le fond d'un ornement de carte selon le theme. */
 private fun mapChromeBg(dark: Boolean): Color = if (dark) MapChromeDarkBg else Color.White
@@ -3569,38 +3701,6 @@ private fun BasemapLegend(legends: List<String>, visible: Boolean, anchor: IntOf
             }
         }
     }
-}
-
-private val PALETTE = listOf(
-    "#1F6FB2", "#1098AD", "#2F9E44", "#7CB342", "#F4B400", "#F08C00", "#E8590C", "#E03131",
-    "#C2185B", "#9C36B5", "#6741D9", "#3949AB", "#00897B", "#6D4C41", "#546E7A", "#212121",
-)
-
-@Composable
-private fun ColorPickerDialog(current: String, onPick: (String) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.dialog_color_title)) },
-        text = {
-            Column {
-                PALETTE.chunked(4).forEach { row ->
-                    Row {
-                        row.forEach { hex ->
-                            Box(
-                                Modifier.padding(6.dp).size(40.dp).clip(CircleShape)
-                                    .background(Color(hex.toColorInt()))
-                                    .clickable { onPick(hex) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (hex.equals(current, true)) Icon(Icons.Filled.Check, null, tint = Color.White)
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
-    )
 }
 
 /** Action de l'en-tete du menu : cible de 38 dp, dessin de 18 - un cran au-dessus de la maquette, comme

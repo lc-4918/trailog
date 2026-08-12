@@ -22,7 +22,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.ui.profile.SlopeRamp
 import org.maplibre.android.MapLibre
@@ -92,6 +94,18 @@ class MapController {
     // son propre thread de travail, jamais conservee en String cote JVM (revision = horodatage ^ taille).
     private val applied = HashMap<String, Pair<Long, String>>()
     private val pinImages = hashSetOf<String>()
+    private val gpsImages = hashSetOf<String>()
+
+    // ---- repere de position GPS (cf. setUserMarker) ----
+    private var userMarker = GpsMarkerStyle.DOT
+    private var userMarkerColor = GpsMarkerStyle.DOT.defaultColor
+    private var userMarkerSizeDp = DefaultGpsMarkerSizeDp.toFloat()
+    /** Derniere orientation connue du telephone (degres, nord vrai), ou null tant que rien n'a ete mesure. */
+    private var userHeading: Float? = null
+    /** Derniere position recue : (lon, lat, precision en metres). */
+    private var lastUserFix: Triple<Double, Double, Float>? = null
+    /** Description du symbole reellement pose sur la carte, pour ne le refaire que s'il change. */
+    private var appliedUserMarker: String? = null
 
     // style en attente / appliqué (évite le rechargement à chaque recomposition)
     private var desiredJson: String? = null
@@ -241,7 +255,9 @@ class MapController {
         val b = if (desiredUrl != null) Style.Builder().fromUri(desiredUrl!!) else Style.Builder().fromJson(desiredJson!!)
         m.setStyle(b) { st ->
             style = st
-            layerKeys.clear(); pinImages.clear(); applied.clear()  // le nouveau style a vidé sources/couches
+            // le nouveau style a vidé sources, couches et images
+            layerKeys.clear(); pinImages.clear(); gpsImages.clear(); applied.clear()
+            appliedUserMarker = null
             onStyleApplied?.invoke()
         }
     }
@@ -254,6 +270,10 @@ class MapController {
     private val SEL_SHADOW = "sel-marker-shadow"
     private val SEL_TOP = "sel-marker-top"
     private val SEL_SRC = "sel-marker-src"
+    /** Source et couches du repere de position GPS : le cercle de precision, puis le symbole par-dessus. */
+    private val USER_SRC = "user-location"
+    private val USER_ACCURACY = "user-location-accuracy"
+    private val USER_DOT = "user-location-dot"
     private fun addLayerSafe(layer: org.maplibre.android.style.layers.Layer) {
         val s = style ?: return
         if (s.getLayer("cursor-dot") != null) s.addLayerBelow(layer, "cursor-dot") else s.addLayer(layer)
@@ -362,7 +382,7 @@ class MapController {
                 PropertyFactory.iconAnchor("bottom"),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
                 .withFilter(pointGeometryFilter)
-            val headOverlays = setOf("user-location-accuracy", "user-location-dot", "cursor-dot")
+            val headOverlays = setOf(USER_ACCURACY, USER_DOT, "cursor-dot")
             val lowestOverlay = s.layers.firstOrNull { it.id in headOverlays }?.id
             if (lowestOverlay != null) s.addLayerBelow(topPin, lowestOverlay) else s.addLayer(topPin)
         } else {
@@ -645,7 +665,9 @@ class MapController {
      *  (un viseur à cercle vide laisserait le point lui-même invisible), et le petit cercle marque
      *  l'intersection au milieu des lignes de la carte, qui autrement se confondent avec la croix. */
     private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {
-        val size = sizePx.coerceIn(16, 128)
+        // Meme borne haute que les epingles (256) : sur un ecran tres dense, un cote demande en dp depasse
+        // vite 128 px, et la croix se retrouvait alors dessinee plus petite que la taille demandee.
+        val size = sizePx.coerceIn(16, 256)
         val bmp = createBitmap(size, size)
         val c = AndroidCanvas(bmp)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -754,20 +776,18 @@ class MapController {
     }
     fun clearCursor() { style?.getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(emptyFc()) }
 
-    /** Point de position GPS de l'utilisateur : même style que le repère "ma position" de Google Maps
-     *  (rond bleu à contour blanc, entouré d'un cercle de précision semi-transparent dimensionné en mètres réels). */
+    /**
+     * Repère de position GPS : le symbole choisi (cf. [setUserMarker]), entouré du cercle de précision
+     * semi-transparent dimensionné en mètres réels.
+     *
+     * La dernière position reçue est CONSERVÉE : un changement de symbole, comme un rechargement de style
+     * (qui vide sources et couches), doit pouvoir replacer le repère sans attendre le point suivant - le
+     * capteur ne parle que toutes les deux secondes, et seulement si l'on bouge.
+     */
     fun setUserLocation(lon: Double, lat: Double, accuracyMeters: Float) {
+        lastUserFix = Triple(lon, lat, accuracyMeters)
         val s = style ?: return
-        if (s.getSourceAs<GeoJsonSource>("user-location") == null) {
-            s.addSource(GeoJsonSource("user-location", emptyFc()))
-            s.addLayer(CircleLayer("user-location-accuracy", "user-location").withProperties(
-                PropertyFactory.circleColor("#4285F4"), PropertyFactory.circleOpacity(0.16f),
-                PropertyFactory.circleStrokeColor("#4285F4"), PropertyFactory.circleStrokeOpacity(0.5f),
-                PropertyFactory.circleStrokeWidth(1f)))
-            s.addLayer(CircleLayer("user-location-dot", "user-location").withProperties(
-                PropertyFactory.circleRadius(7f), PropertyFactory.circleColor("#4285F4"),
-                PropertyFactory.circleStrokeColor("#ffffff"), PropertyFactory.circleStrokeWidth(2.5f)))
-        }
+        ensureUserLayers(s)
         // rayon du cercle de précision en pixels écran, recalculé pour rester exact à tout niveau de zoom :
         // à échelle Web Mercator, mètres/pixel double à chaque niveau de zoom, donc rayon(z) = rayon(0) * 2^z ;
         // une interpolation exponentielle de base 2 entre deux points quelconques de cette courbe la reproduit
@@ -777,15 +797,145 @@ class MapController {
         if (mpp > 0.0 && zoom != null && accuracyMeters > 0f) {
             val r0 = (accuracyMeters / mpp / 2.0.pow(zoom)).toFloat()
             val r22 = (r0 * 2.0.pow(22.0)).toFloat()
-            (s.getLayer("user-location-accuracy") as? CircleLayer)?.setProperties(
+            (s.getLayer(USER_ACCURACY) as? CircleLayer)?.setProperties(
                 PropertyFactory.circleRadius(Expression.interpolate(
                     Expression.exponential(2f), Expression.zoom(),
                     Expression.stop(0f, r0), Expression.stop(22f, r22))))
         }
-        s.getSourceAs<GeoJsonSource>("user-location")?.setGeoJson(
+        s.getSourceAs<GeoJsonSource>(USER_SRC)?.setGeoJson(
             "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}")
     }
-    fun clearUserLocation() { style?.getSourceAs<GeoJsonSource>("user-location")?.setGeoJson(emptyFc()) }
+    fun clearUserLocation() {
+        lastUserFix = null
+        style?.getSourceAs<GeoJsonSource>(USER_SRC)?.setGeoJson(emptyFc())
+    }
+
+    /**
+     * Symbole du repère de position, sa couleur et sa taille (dp) - réglage utilisateur.
+     *
+     * Le repère déjà à l'écran est redessiné sur-le-champ, sans attendre la prochaine position : on règle
+     * son symbole en le regardant. Appelé aussi après un rechargement de style, qui a emporté ses couches.
+     */
+    fun setUserMarker(marker: GpsMarkerStyle, colorHex: String, sizeDp: Float) {
+        userMarker = marker
+        userMarkerColor = colorHex
+        userMarkerSizeDp = sizeDp
+        val (lon, lat, acc) = lastUserFix ?: return
+        setUserLocation(lon, lat, acc)
+    }
+
+    /**
+     * Orientation du téléphone, en degrés depuis le nord VRAI (celui de la carte, pas celui de la boussole
+     * : la déclinaison est corrigée en amont).
+     *
+     * Retenue même quand le symbole du moment n'en fait rien : le capteur ne redonne pas d'orientation à la
+     * demande, et une flèche choisie entre deux mesures doit partir dans la bonne direction.
+     */
+    fun setUserHeading(deg: Float) {
+        userHeading = deg
+        if (!userMarker.oriented) return
+        (style?.getLayer(USER_DOT) as? SymbolLayer)?.setProperties(PropertyFactory.iconRotate(deg))
+    }
+
+    /**
+     * Source et couches du repère, (re)posées telles que le réglage les demande.
+     *
+     * Le symbole est refait quand sa description change - style, couleur, taille - et lui seul : le cercle
+     * de précision garde sa couche, donc le rayon déjà calculé pour le zoom courant. Il reprend en revanche
+     * la couleur du symbole : c'est l'imprécision DE CE repère-là qu'il dessine, pas un halo indépendant.
+     */
+    private fun ensureUserLayers(s: Style) {
+        val colorInt = runCatching { userMarkerColor.toColorInt() }
+            .getOrElse { GpsMarkerStyle.DOT.defaultColor.toColorInt() }
+        if (s.getSourceAs<GeoJsonSource>(USER_SRC) == null) {
+            s.addSource(GeoJsonSource(USER_SRC, emptyFc()))
+            s.addLayer(CircleLayer(USER_ACCURACY, USER_SRC).withProperties(
+                PropertyFactory.circleOpacity(0.16f),
+                PropertyFactory.circleStrokeOpacity(0.5f), PropertyFactory.circleStrokeWidth(1f)))
+        }
+        val key = "${userMarker.key}|$userMarkerColor|$userMarkerSizeDp"
+        if (key == appliedUserMarker && s.getLayer(USER_DOT) != null) return
+        appliedUserMarker = key
+        (s.getLayer(USER_ACCURACY) as? CircleLayer)?.setProperties(
+            PropertyFactory.circleColor(colorInt), PropertyFactory.circleStrokeColor(colorInt))
+        // Retiree avant d'etre refaite : d'une puce a une fleche, ce n'est meme plus le meme type de
+        // couche, un setProperties ne saurait pas passer de l'une a l'autre.
+        s.getLayer(USER_DOT)?.let { s.removeLayer(it) }
+        s.addLayer(userMarkerLayer(s, colorInt))
+    }
+
+    /** La couche du symbole : un cercle pour la puce, une image pour les trois autres. */
+    private fun userMarkerLayer(s: Style, colorInt: Int): org.maplibre.android.style.layers.Layer {
+        val dp = userMarkerSizeDp
+        if (userMarker == GpsMarkerStyle.DOT) {
+            // Proportions de la puce d'origine (rayon 7, contour 2,5 pour 20 dp de cote), reprises en
+            // fractions du cote : elle grandit sans que son contour blanc ne l'etrangle ni ne la noie.
+            return CircleLayer(USER_DOT, USER_SRC).withProperties(
+                PropertyFactory.circleRadius(dp * 0.35f), PropertyFactory.circleColor(colorInt),
+                PropertyFactory.circleStrokeColor("#ffffff"), PropertyFactory.circleStrokeWidth(dp * 0.125f))
+        }
+        val px = (dp * density).toInt().coerceIn(16, 256)
+        val name = "gps_${userMarker.key}_${userMarkerColor.removePrefix("#")}_$px"
+        if (gpsImages.add(name)) {
+            s.addImage(name, when (userMarker) {
+                GpsMarkerStyle.CROSSHAIR -> crosshairBitmap(colorInt, px)
+                else -> navigationArrowBitmap(colorInt, px, filled = userMarker == GpsMarkerStyle.ARROW_FILLED)
+            })
+        }
+        return SymbolLayer(USER_DOT, USER_SRC).withProperties(
+            PropertyFactory.iconImage(name), PropertyFactory.iconSize(1f), PropertyFactory.iconAnchor("center"),
+            PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+            // Rotation prise DANS LE REPERE DE LA CARTE : la fleche vise le nord vrai, et suit donc la
+            // carte quand celle-ci tourne, au lieu de pointer une direction de l'ecran.
+            PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+            PropertyFactory.iconRotate(if (userMarker.oriented) userHeading ?: 0f else 0f))
+    }
+
+    /**
+     * Fleche de navigation : pointe en haut, deux ailes vers le bas, encochee en son milieu - le dessin
+     * qu'on lit d'emblee comme "je suis la, et je regarde par la".
+     *
+     * [filled] la remplit de la couleur et lui pose un contour blanc, comme la puce : un aplat de couleur
+     * sur une orthophoto de la meme teinte disparaitrait sans lui. Au trait, elle reste creuse : le fond de
+     * carte se lit AU TRAVERS du repere, ce qui est tout l'interet de ce symbole-la.
+     */
+    private fun navigationArrowBitmap(colorInt: Int, sizePx: Int, filled: Boolean): Bitmap {
+        val size = sizePx.coerceIn(16, 256)
+        val bmp = createBitmap(size, size)
+        val c = AndroidCanvas(bmp)
+        val stroke = size * 0.11f
+        val inset = stroke                       // de quoi loger le trait, dedans comme dehors
+        val cx = size / 2f
+        val top = inset
+        val bottom = size - inset
+        val half = (size / 2f - inset) * 0.72f   // demi-envergure : plus etroite que haute, comme un chevron
+        val notch = (bottom - top) * 0.28f       // profondeur de l'encoche du talon
+        val path = android.graphics.Path().apply {
+            moveTo(cx, top)
+            lineTo(cx + half, bottom)
+            lineTo(cx, bottom - notch)
+            lineTo(cx - half, bottom)
+            close()
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            strokeJoin = Paint.Join.ROUND; strokeCap = Paint.Cap.ROUND
+        }
+        if (filled) {
+            paint.color = android.graphics.Color.WHITE
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = stroke
+            c.drawPath(path, paint)
+            paint.color = colorInt
+            paint.style = Paint.Style.FILL
+            c.drawPath(path, paint)
+        } else {
+            paint.color = colorInt
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = stroke
+            c.drawPath(path, paint)
+        }
+        return bmp
+    }
 
     fun screenOf(lon: Double, lat: Double): PointF? = map?.projection?.toScreenLocation(LatLng(lat, lon))
 

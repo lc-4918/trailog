@@ -236,6 +236,16 @@ internal object MigrationSql {
     const val ADD_ELEVATION_WORLD_KEY =
         "ALTER TABLE settings ADD COLUMN elevationWorldKey TEXT NOT NULL DEFAULT ''"
 
+    // Symbole de la position GPS : la puce sur une base deja en place, comme sur une installation neuve -
+    // c'est le repere que l'utilisateur y voit deja, changer de dessin sous ses yeux n'aurait aucun sens.
+    // La couleur reste vide, donc celle propre au symbole (cf. GpsMarkerStyle.defaultColor).
+    const val ADD_GPS_MARKER_STYLE =
+        "ALTER TABLE settings ADD COLUMN gpsMarkerStyle TEXT NOT NULL DEFAULT 'dot'"
+    const val ADD_GPS_MARKER_COLOR =
+        "ALTER TABLE settings ADD COLUMN gpsMarkerColor TEXT NOT NULL DEFAULT ''"
+    const val ADD_GPS_MARKER_SIZE =
+        "ALTER TABLE settings ADD COLUMN gpsMarkerSizeDp INTEGER NOT NULL DEFAULT $DefaultGpsMarkerSizeDp"
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -250,7 +260,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 43,
+    version = 44,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -463,11 +473,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_GPS_MARKER_STYLE)
+                db.execSQL(MigrationSql.ADD_GPS_MARKER_COLOR)
+                db.execSQL(MigrationSql.ADD_GPS_MARKER_SIZE)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }
