@@ -246,6 +246,20 @@ internal object MigrationSql {
     const val ADD_GPS_MARKER_SIZE =
         "ALTER TABLE settings ADD COLUMN gpsMarkerSizeDp INTEGER NOT NULL DEFAULT $DefaultGpsMarkerSizeDp"
 
+    // Alerte d'eloignement : eteinte sur une base deja en place, comme toute commande qui ne sert qu'a qui
+    // la demande. Elle ne se contente pas d'occuper un bouton - elle projette la position sur une trace a
+    // chaque mesure du capteur, et peut sonner. Rien de tout cela ne doit arriver sans l'avoir demande.
+    const val ADD_OFF_TRACK_ALERT_ENABLED =
+        "ALTER TABLE settings ADD COLUMN offTrackAlertEnabled INTEGER NOT NULL DEFAULT 0"
+    const val ADD_OFF_TRACK_ALERT_DISTANCE =
+        "ALTER TABLE settings ADD COLUMN offTrackAlertDistanceM INTEGER NOT NULL DEFAULT $DefaultOffTrackAlertM"
+    const val ADD_OFF_TRACK_ALERT_SOUND =
+        "ALTER TABLE settings ADD COLUMN offTrackAlertSound INTEGER NOT NULL DEFAULT 0"
+    // Vide = le son de notification du telephone, resolu a l'usage : figer son URI en base la laisserait
+    // pointer un fichier que l'utilisateur peut changer dans les reglages du systeme.
+    const val ADD_OFF_TRACK_ALERT_SOUND_URI =
+        "ALTER TABLE settings ADD COLUMN offTrackAlertSoundUri TEXT NOT NULL DEFAULT ''"
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -260,7 +274,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 44,
+    version = 45,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -481,11 +495,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_ENABLED)
+                db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_DISTANCE)
+                db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_SOUND)
+                db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_SOUND_URI)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

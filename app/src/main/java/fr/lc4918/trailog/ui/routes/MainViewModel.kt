@@ -14,6 +14,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.repo.TrailogRepository
+import fr.lc4918.trailog.domain.geo.OffTrack
 import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.geo.TrackMeasure
@@ -28,6 +29,7 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadResult
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
+import fr.lc4918.trailog.ui.alert.TrackCandidate
 import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.ui.measure.MeasurePoint
 import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
@@ -72,6 +74,12 @@ internal fun sameStyleSettings(a: SettingsEntity?, b: SettingsEntity?): Boolean 
 
 /** Position de dépose lors d'un drag & drop dans la légende : avant/après un sibling, ou dedans (dossier cible). */
 enum class DropPosition { BEFORE, INTO, AFTER }
+
+/** Couches réellement lues pour chercher la trace la plus proche, et segments proposés au bout du compte
+ *  (cf. [MainViewModel.nearestTracks]). Douze couches parce qu'une poignée de traces se recouvrent au même
+ *  endroit ; huit propositions parce qu'au-delà on ne choisit plus, on cherche. */
+private const val NearestScanLayers = 12
+private const val NearestTrackCount = 8
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
@@ -292,6 +300,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } ?: return@launch
         val (p, path) = computed
         onResult(start.copy(lon = p.lon, lat = p.lat, alongM = p.alongM), path)
+    }
+
+    /**
+     * Les traces visibles qui passent le plus pres de (lat, lon) : de quoi choisir celle qu'on suit.
+     *
+     * Deux passes, parce qu'une seule serait intenable. La premiere ne lit RIEN : elle classe les couches
+     * sur la distance a leur rectangle englobant (cf. OffTrack.bboxDistanceM), qui est en base. La seconde
+     * ne lit que les [NearestScanLayers] premieres et projette la position sur chacun de leurs segments.
+     * Une bibliotheque de deux cents traces coute donc douze fichiers de profils, et non deux cents.
+     *
+     * Le pre-tri est SUR : la distance au rectangle minore celle a la trace qu'il contient, une couche
+     * ecartee ne pouvait donc pas gagner sur une couche lue... sauf a etre a la fois lointaine et immense.
+     * Le cas existe (une trace qui traverse un pays), et c'est le prix de ne pas tout relire.
+     *
+     * Les couches masquees sont hors jeu : suivre une trace qu'on ne voit pas sur la carte n'aurait pas de
+     * sens - c'est le meme parti pris que le premier point de la mesure sur trace.
+     */
+    fun nearestTracks(lat: Double, lon: Double, onResult: (List<TrackCandidate>) -> Unit) = viewModelScope.launch {
+        val near = layers.value.filter { it.visible && it.hasLine }
+            .sortedBy { OffTrack.bboxDistanceM(lat, lon, it.west, it.south, it.east, it.north) }
+            .take(NearestScanLayers)
+        if (near.isEmpty()) { onResult(emptyList()); return@launch }
+        val found = near.map { ly ->
+            async {
+                val profiles = repo.loadProfiles(ly)
+                withContext(Dispatchers.Default) {
+                    profiles.mapIndexedNotNull { i, ct ->
+                        TrackMeasure.project(ct.samples, lon, lat)?.let { p ->
+                            TrackCandidate(ly.id, ly.name, i, profiles.size, p.awayM, ct.samples)
+                        }
+                    }
+                }
+            }
+        }.awaitAll().flatten().sortedBy { it.awayM }.take(NearestTrackCount)
+        onResult(found)
     }
 
     fun closeProfile() {

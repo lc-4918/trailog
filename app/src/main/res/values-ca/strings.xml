@@ -463,4 +463,18 @@
     <string name="settings_label_elevation_world">Servei món</string>
     <string name="settings_label_elevation_world_key">Clau del servei món</string>
     <string name="settings_services_hint">Deixeu-ho buit per utilitzar els servidors públics per defecte.</string>
+    <string name="content_desc_off_track_alert">Alerta d\'allunyament</string>
+    <string name="alert_pick_track_title">Traça a seguir</string>
+    <string name="alert_pick_track_empty">Cap traça visible a prop.</string>
+    <string name="alert_track_away">a %1$s</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Deixar de seguir</string>
+    <string name="alert_off_track_banner">Ets a %1$s de la traça \"%2$s\"</string>
+    <string name="alert_needs_gps_text">L\'alerta d\'allunyament necessita la teva posició. Vols activar la localització GPS?</string>
+    <string name="settings_section_off_track">Alerta d\'allunyament</string>
+    <string name="settings_label_off_track_distance">Distància d\'avís</string>
+    <string name="settings_sw_off_track_sound">Emetre un so</string>
+    <string name="settings_label_off_track_sound">So de notificació</string>
+    <string name="settings_off_track_sound_default">Per defecte</string>
+    <string name="settings_off_track_hint">La campana apareix sota el càlcul d\'itinerari: demana la traça a seguir i avisa tan bon punt te\'n allunyes. No va sense la localització GPS, que activar-la també mostra.</string>
 </resources>

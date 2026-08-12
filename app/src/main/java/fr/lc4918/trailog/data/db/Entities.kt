@@ -239,6 +239,20 @@ data class SettingsEntity(
     val gpsMarkerColor: String = "",
     // Cote du symbole de position (dp) - diametre de la puce, hauteur de la fleche ou de la croix.
     val gpsMarkerSizeDp: Int = DefaultGpsMarkerSizeDp,
+    // Bouton de l'alerte d'eloignement (la cloche, sous le planificateur). Eteint par defaut, comme les
+    // autres commandes qui ne servent qu'a qui les demande.
+    //
+    // Il ne va JAMAIS sans le bouton de localisation : une alerte a la position pour seule matiere, et
+    // l'allumer sans que rien ne montre ni ne coupe le capteur serait une position qui tourne en cachette.
+    // Les reglages tiennent le lien dans les deux sens (cf. SettingsScreen.MapTab).
+    val offTrackAlertEnabled: Boolean = false,
+    // Ecart a la trace suivie (m) au-dela duquel l'alerte s'affiche en bas de l'ecran.
+    val offTrackAlertDistanceM: Int = DefaultOffTrackAlertM,
+    // Emettre un son en plus de la banniere.
+    val offTrackAlertSound: Boolean = false,
+    // Son retenu, parmi les notifications du telephone (URI du selecteur systeme). Vide = celui que le
+    // telephone donne pour ses notifications : un son n'a pas a etre choisi pour etre entendu.
+    val offTrackAlertSoundUri: String = "",
 )
 
 /** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */
@@ -254,3 +268,28 @@ const val MaxGpsMarkerSizeDp = 48
 
 /** Taille par defaut : celle de la puce d'origine (rayon 7 + contour 2,5), inchangee pour qui n'y touche pas. */
 const val DefaultGpsMarkerSizeDp = 20
+
+/**
+ * La cloche de l'alerte d'eloignement s'affiche-t-elle sur la carte ?
+ *
+ * Les deux reglages, et non le seul interrupteur de l'alerte : elle n'existe pas sans le bouton de
+ * localisation (cf. [SettingsEntity.offTrackAlertEnabled]). L'ecran des reglages tient deja le lien dans
+ * les deux sens, mais la carte ne s'y fie pas - une base restauree, ou ecrite par une version anterieure,
+ * peut porter la combinaison interdite, et c'est la carte qui aurait tort de l'afficher.
+ */
+val SettingsEntity.offTrackAlertVisible: Boolean
+    get() = offTrackAlertEnabled && showGpsButton
+
+/**
+ * Bornes de l'ecart declenchant l'alerte d'eloignement (m), et son pas de reglage.
+ *
+ * Vingt metres est le plancher utile : en dessous, l'imprecision d'un GPS de telephone declencherait
+ * l'alerte alors qu'on marche sur la trace. Cinq cents metres est le plafond : au-dela, on ne s'est plus
+ * ecarte, on est ailleurs, et l'alerte arriverait trop tard pour servir.
+ */
+const val MinOffTrackAlertM = 20
+const val MaxOffTrackAlertM = 500
+const val OffTrackAlertStepM = 10
+
+/** Ecart par defaut : celui a partir duquel le profil dit deja l'ecart a la trace, sous les totaux. */
+const val DefaultOffTrackAlertM = 50

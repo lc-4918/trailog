@@ -72,7 +72,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**487 tests, 48 fichiers**, tous verts.
+**499 tests, 49 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -82,6 +82,7 @@ test unitaire.
 | `TrackEditTest` | 20 | couper, joindre, fusionner et inverser une trace importée |
 | `FormatTest` | 14 | formatage des durées, distances et altitudes affichées dans le profil et sur les mesures de géocodage |
 | `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, échantillonnage du parcours mesuré |
+| `OffTrackTest` | 10 | pré-tri des couches sur leur emprise, et bascule de l'alerte d'éloignement |
 
 `TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas à viser la ligne
 au pixel (projeté orthogonal, borné aux extrémités), et le parcours mesuré est rendu à pas constant en
@@ -92,6 +93,11 @@ l'infobulle vient s'ancrer.
 sa position, son altitude et son horaire interpolés. Sans lui, le point sautait d'un échantillon à l'autre
 - jusqu'à plusieurs dizaines de mètres sur une longue trace, dont le profil n'affiche que deux mille points
 - et la coupe qui s'y fiait ne pouvait tomber qu'entre deux points déjà présents.
+
+`OffTrackTest` verrouille la **zone morte** de l'alerte d'éloignement : elle s'allume à l'écart réglé, mais
+ne se lâche qu'à 80 % de celui-ci. Un test y fait osciller la position autour du seuil et compte les
+bascules : une seule est admise. Sans cette marge, une position qui tremble - le lot d'un GPS de téléphone
+sous couvert - rallumerait la bannière et son son toutes les deux secondes.
 
 `TrackEditTest` couvre les seules opérations qui **modifient** une trace reçue : une faute n'y est pas
 réparable, le fichier d'origine n'est plus là. Il verrouille que le point de coupe appartient aux **deux**
@@ -180,7 +186,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 33 | les 27 migrations, et les défauts d'une installation neuve |
+| `MigrationsTest` | 35 | les 28 migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.

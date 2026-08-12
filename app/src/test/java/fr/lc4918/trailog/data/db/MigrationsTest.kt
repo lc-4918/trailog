@@ -485,6 +485,29 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 44 -> 45 : alerte d'eloignement ----------
+
+    /**
+     * Eteinte sur une base deja en place, comme toute commande qui ne sert qu'a qui la demande - et pour
+     * une raison de plus que les autres : allumee, elle projette la position sur une trace a chaque mesure
+     * du capteur, et peut sonner.
+     *
+     * L'ecart par defaut est celui a partir duquel le profil dit deja l'ecart a la trace, et le son reste
+     * vide, donc celui du telephone (cf. AlertSound).
+     */
+    @Test fun `44 vers 45 ajoute l'alerte d'eloignement, eteinte`() {
+        val db = freshDb("m4445"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_ENABLED)
+        db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_DISTANCE)
+        db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_SOUND)
+        db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_SOUND_URI)
+        assertEquals(0, scalar(db, "SELECT offTrackAlertEnabled FROM settings") { it.getInt(0) })
+        assertEquals(DefaultOffTrackAlertM, scalar(db, "SELECT offTrackAlertDistanceM FROM settings") { it.getInt(0) })
+        assertEquals(0, scalar(db, "SELECT offTrackAlertSound FROM settings") { it.getInt(0) })
+        assertEquals("", scalar(db, "SELECT offTrackAlertSoundUri FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -507,6 +530,23 @@ class MigrationsTest {
         assertFalse("geocodage", neuf.geocodingEnabled)
         assertFalse("mesure sur trace", neuf.trackMeasureEnabled)
         assertFalse("retouche des traces", neuf.trackEditEnabled)
+        assertFalse("alerte d'eloignement", neuf.offTrackAlertEnabled)
+    }
+
+    /**
+     * L'alerte d'eloignement ne peut pas s'afficher seule : sa cloche demande le bouton de localisation.
+     *
+     * Les reglages tiennent le lien dans les deux sens (cf. SettingsScreen.MapTab), mais la carte ne s'y
+     * fie pas : elle recoupe les deux avant d'afficher la cloche. C'est ce recoupement qu'on verrouille
+     * ici - une base restauree, ou ecrite par une version anterieure, peut porter la combinaison interdite.
+     */
+    @Test fun `la cloche de l'alerte ne s'affiche jamais sans le bouton GPS`() {
+        assertTrue("les deux allumes",
+            SettingsEntity(offTrackAlertEnabled = true, showGpsButton = true).offTrackAlertVisible)
+        assertFalse("l'alerte seule, combinaison interdite",
+            SettingsEntity(offTrackAlertEnabled = true, showGpsButton = false).offTrackAlertVisible)
+        assertFalse("le GPS seul, cas ordinaire",
+            SettingsEntity(offTrackAlertEnabled = false, showGpsButton = true).offTrackAlertVisible)
     }
 
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
@@ -520,7 +560,8 @@ class MigrationsTest {
             "lineTapToleranceDp", "geocodingEnabled", "geocodingUrl", "routingUrl", "routingProfile",
             "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
             "mapButtonSizeDp", "hillshadeOn", "trackEditEnabled", "fillMissingElevation", "elevationIgnUrl",
-            "elevationWorldUrl", "elevationWorldKey")
+            "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
+            "offTrackAlertSound", "offTrackAlertSoundUri")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

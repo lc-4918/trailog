@@ -66,6 +66,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Directions
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
@@ -118,9 +119,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
+import fr.lc4918.trailog.data.db.DefaultOffTrackAlertM
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
+import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.SettingsEntity
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Autorenew
@@ -151,6 +154,10 @@ import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.legendAssetModel
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflinePhase
+import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
+import fr.lc4918.trailog.ui.alert.OffTrackAlertState
+import fr.lc4918.trailog.ui.alert.TrackChooserDialog
+import fr.lc4918.trailog.ui.alert.playAlertSound
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.ColorPickerDialog
@@ -427,6 +434,69 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         if (settings?.showGpsButton == false && gpsActive) stopGps()
     }
     DisposableEffect(Unit) { onDispose { locationManager.removeUpdates(locationListener) } }
+
+    // ---------- alerte d'éloignement de la trace suivie ----------
+    /*
+     * Une trace choisie, la position projetée dessus à chaque mesure du capteur, et une bannière rouge
+     * quand l'écart passe le seuil réglé.
+     *
+     * Tout est suspendu au capteur : sans position, il n'y a rien à projeter. La cloche demande donc de
+     * l'allumer avant d'ouvrir son choix de traces, et le suivi s'arrête de lui-même dès qu'il s'éteint -
+     * une trace suivie sans position ne dirait plus rien, et se réveillerait au hasard d'un rallumage.
+     */
+    val alert = remember { OffTrackAlertState() }
+    val alertEnabled = settings?.offTrackAlertVisible == true
+    val alertDistanceM = settings?.offTrackAlertDistanceM ?: DefaultOffTrackAlertM
+    var showAlertNeedsGpsDialog by remember { mutableStateOf(false) }
+    // Choix demandé alors que le capteur était éteint : il s'ouvrira dès qu'il sera allumé, et non au
+    // retour de la boîte de dialogue - l'utilisateur passe par les réglages du système entre-temps.
+    var alertChooserPending by remember { mutableStateOf(false) }
+
+    fun onAlertButtonTap() {
+        if (gpsActive) alert.openChooser() else showAlertNeedsGpsDialog = true
+    }
+
+    LaunchedEffect(gpsActive, alertChooserPending) {
+        if (alertChooserPending && gpsActive) { alertChooserPending = false; alert.openChooser() }
+    }
+    // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
+    // couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
+    LaunchedEffect(alert.chooserOpen, alert.candidates, lastUserLocation) {
+        if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
+        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
+        vm.nearestTracks(la, lo) { alert.candidates = it }
+    }
+    // Écart à la trace suivie, une position de plus. Sur Default : c'est un balayage de toute la trace,
+    // celui-là même que fait déjà la ligne du restant du profil, et il ne tient pas sur le fil principal.
+    LaunchedEffect(lastUserLocation, alert.followed, alertDistanceM) {
+        val followed = alert.followed ?: return@LaunchedEffect
+        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
+        val away = withContext(Dispatchers.Default) {
+            TrackMeasure.project(followed.samples, lo, la)?.awayM
+        } ?: return@LaunchedEffect
+        alert.update(away, alertDistanceM.toDouble())
+    }
+    // Le son accompagne l'entrée en alerte, une fois : il annonce le franchissement, il ne sonne pas tant
+    // qu'on est loin. Le retour sous le seuil réarme la suivante (cf. OffTrackAlertState.update).
+    val alertSoundOn = settings?.offTrackAlertSound == true
+    val alertSoundUri = settings?.offTrackAlertSoundUri.orEmpty()
+    LaunchedEffect(alert.alerting) {
+        if (alert.alerting && alertSoundOn) playAlertSound(ctx, alertSoundUri)
+    }
+    // Le réglage éteint, ou le capteur coupé : plus rien à suivre. La liste ouverte se referme avec.
+    LaunchedEffect(alertEnabled, gpsActive) {
+        if (!alertEnabled || !gpsActive) {
+            alert.stop()
+            alert.closeChooser()
+            alertChooserPending = false
+            showAlertNeedsGpsDialog = false
+        }
+    }
+    // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
+    LaunchedEffect(layers, alert.followed) {
+        val followed = alert.followed ?: return@LaunchedEffect
+        if (layers.none { it.id == followed.layerId && it.visible }) alert.stop()
+    }
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
     val geo = remember { GeocodeSearchState() }
@@ -1512,6 +1582,26 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             }
                         }
                     }
+                    // Cloche de l'alerte d'éloignement, juste au-dessus du planificateur : la fonction sert
+                    // PENDANT la sortie, et le pouce la trouve au même endroit que le reste.
+                    //
+                    // Elle se lit à la couleur de son dessin, comme les autres commandes de la carte : gris
+                    // tant qu'aucune trace n'est suivie, bleu dès qu'on en suit une, rouge quand on s'en est
+                    // écarté - la bannière du bas dit alors de combien, mais la cloche l'annonce déjà à qui
+                    // regarde la carte.
+                    if (alertEnabled) {
+                        IconButton(onClick = { onAlertButtonTap() }, modifier = controlBg) {
+                            Icon(
+                                Icons.Outlined.NotificationsNone,
+                                stringResource(R.string.content_desc_off_track_alert),
+                                tint = when {
+                                    alert.alerting -> OffTrackAlertColor
+                                    alert.followed != null -> MapChromeActive
+                                    else -> chromeFg
+                                },
+                            )
+                        }
+                    }
                     // Masqué tant que sa bande est ouverte, qu'il ne servirait qu'à rouvrir.
                     if (settings?.routePlannerEnabled == true && !planner.open) {
                         IconButton(onClick = {
@@ -2026,6 +2116,24 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                     }
                 }
+                /*
+                 * Bannière de l'alerte d'éloignement, posée EN DERNIER : elle passe donc par-dessus tout ce
+                 * qui occupe le bas de l'écran - profil, bande du planificateur, consignes de saisie.
+                 *
+                 * C'est la seule barre du bas à s'accorder ce droit, et c'est ce qui la distingue : les
+                 * autres accompagnent un geste qu'on vient de faire et peuvent attendre leur tour, celle-ci
+                 * dit qu'on ne suit plus le chemin prévu. Une alerte qu'un panneau recouvre n'alerte
+                 * personne, et la refermer d'un tap sur sa croix reste à un doigt.
+                 */
+                alert.followed?.takeIf { alert.banner }?.let { followed ->
+                    OffTrackAlertBar(
+                        trackName = followed.layerName,
+                        awayM = alert.awayM ?: alertDistanceM.toDouble(),
+                        imperial = imperialUnits,
+                        onClose = { alert.silence() },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                    )
+                }
             }
             // ouverture du menu par swipe depuis le bord gauche
             if (mode != "burger") {
@@ -2303,6 +2411,39 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // oui fait aussi apparaître le bouton GPS sur la carte, sans quoi la position s'allumerait sans que
     // rien ne le montre ni ne permette de l'éteindre. La suite du parcours (permission, capteur éteint)
     // est celle du bouton lui-même, et la distance s'affiche dès la première position reçue.
+
+    // Cloche tapée capteur éteint : l'alerte n'a rien à surveiller tant qu'aucune position n'arrive. On
+    // propose donc de l'allumer, et répondre oui emprunte exactement le chemin du bouton GPS - permission,
+    // puis réglages du système si le capteur est coupé, puis démarrage. Le choix de la trace attend la fin
+    // de ce parcours (alertChooserPending), qui passe par des écrans hors de l'application.
+    if (showAlertNeedsGpsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlertNeedsGpsDialog = false },
+            title = { Text(stringResource(R.string.dialog_location_off_title)) },
+            text = { Text(stringResource(R.string.alert_needs_gps_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAlertNeedsGpsDialog = false
+                    alertChooserPending = true
+                    onGpsButtonTap()
+                }) { Text(stringResource(R.string.action_enable)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAlertNeedsGpsDialog = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    if (alert.chooserOpen) {
+        TrackChooserDialog(
+            candidates = alert.candidates,
+            followed = alert.followed,
+            imperial = imperialUnits,
+            onPick = { alert.follow(it, alertDistanceM.toDouble()) },
+            onStop = { alert.stop(); alert.closeChooser() },
+            onDismiss = { alert.closeChooser() },
+        )
+    }
 
     if (showLocationDisabledDialog) {
         AlertDialog(
@@ -3365,6 +3506,15 @@ private val MapChromeDarkBg = Color(0xFF202124)
  * topographique, et l'ecran gagne au passage une couleur d'etat unique : ce qui est en marche est bleu.
  */
 private val MapChromeActive = Color(GpsMarkerStyle.DOT.defaultColor.toColorInt())
+
+/**
+ * Cloche allumee ET en alerte : le rouge de la banniere du bas, pas le bleu des commandes en marche.
+ *
+ * C'est la seule entorse a la couleur d'etat unique, et elle se justifie : suivre une trace est un etat
+ * comme un autre (bleu), s'en etre ecarte est un evenement, et les deux doivent se distinguer sur le meme
+ * bouton. La cloche est d'ailleurs souvent le seul signe visible quand la banniere vient d'etre tue.
+ */
+private val OffTrackAlertColor = Color(0xFFB3261E)
 
 /**
  * Rotation de l'ECRAN par rapport a l'orientation naturelle de l'appareil (cf. [azimuthDegrees]).

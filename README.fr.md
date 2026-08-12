@@ -77,6 +77,9 @@ sans dépendre d'un service en ligne.
   ou depuis un second point que vous désignez.
 - **Mesure sur une trace** (à activer dans les réglages) : deux points posés du doigt sur une trace
   affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
+- **Alerte d'éloignement** (à activer dans les réglages) : choisissez la trace que vous suivez parmi
+  les plus proches de vous, et Trailog vous prévient - bandeau en bas de l'écran, et son au choix -
+  dès que vous vous en écartez de plus que la distance réglée.
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.

@@ -2,6 +2,8 @@ package fr.lc4918.trailog.ui.settings
 
 import android.app.Activity
 import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -94,6 +96,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import fr.lc4918.trailog.ui.alert.alertSoundTitle
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -136,9 +139,12 @@ import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.CompositeSortOrder
 import fr.lc4918.trailog.data.db.DefaultDemOpacityPct
 import fr.lc4918.trailog.data.db.MaxGpsMarkerSizeDp
+import fr.lc4918.trailog.data.db.MaxOffTrackAlertM
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MinGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
+import fr.lc4918.trailog.data.db.MinOffTrackAlertM
+import fr.lc4918.trailog.data.db.OffTrackAlertStepM
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.backup.BackupFileName
@@ -363,7 +369,12 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
 @Composable private fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
     SectionTitle(stringResource(R.string.settings_section_map_controls), tight = true)
     SettingsCard {
-        SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) { vm.save(cur.copy(showGpsButton = it)) }
+        // Éteindre la localisation éteint l'alerte d'éloignement avec elle : celle-ci n'a que la position
+        // pour matière, et sa cloche resterait sur la carte sans rien pour allumer ni couper le capteur.
+        // Le lien inverse est tenu par le réglage de l'alerte, plus bas.
+        SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
+            vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
+        }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
@@ -392,6 +403,8 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
         )
     }
+
+    OffTrackAlertSettings(cur, vm)
 
     GpsMarkerSettings(cur, vm)
 
@@ -533,6 +546,77 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
         }
     }
 }
+
+/**
+ * Alerte d'eloignement : la cloche sur la carte, l'ecart qui la declenche, et le son qui l'accompagne.
+ *
+ * L'interrupteur allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
+ * position, et la cloche sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper. Le lien
+ * inverse est tenu la-haut, dans la ligne du bouton GPS - eteindre l'un eteint l'autre.
+ *
+ * Le son ne montre son choix que s'il est actif : une ligne de reglage qui ne sert a rien vaut mieux
+ * absente que grisee.
+ */
+@Composable private fun OffTrackAlertSettings(cur: SettingsEntity, vm: SettingsViewModel) {
+    val ctx = LocalContext.current
+    // Le selecteur de sonnerie du systeme : c'est lui qui liste les notifications du telephone et les fait
+    // ecouter. En livrer un dans l'application reviendrait a redessiner un ecran que l'utilisateur connait.
+    val soundPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+        if (res.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
+        val picked: Uri? = res.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        vm.save(cur.copy(offTrackAlertSoundUri = picked?.toString().orEmpty()))
+    }
+    val soundLabel = remember(cur.offTrackAlertSoundUri) { alertSoundTitle(ctx, cur.offTrackAlertSoundUri) }
+    val defaultSoundLabel = stringResource(R.string.settings_off_track_sound_default)
+
+    SectionTitle(stringResource(R.string.settings_section_off_track))
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_label_show_button), cur.offTrackAlertEnabled) {
+            vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
+        }
+        RowDivider()
+        // Le curseur va par pas de dix metres : au metre pres, on reglerait la precision du capteur, pas
+        // la distance a laquelle on veut etre prevenu.
+        SliderRow(
+            label = stringResource(R.string.settings_label_off_track_distance),
+            value = "${cur.offTrackAlertDistanceM} m",
+            fraction = fractionOf(cur.offTrackAlertDistanceM / OffTrackAlertStepM,
+                MinOffTrackAlertM / OffTrackAlertStepM, MaxOffTrackAlertM / OffTrackAlertStepM),
+            steps = (MaxOffTrackAlertM - MinOffTrackAlertM) / OffTrackAlertStepM - 1,
+            onFraction = {
+                val steps = valueOf(it, MinOffTrackAlertM / OffTrackAlertStepM, MaxOffTrackAlertM / OffTrackAlertStepM)
+                vm.save(cur.copy(offTrackAlertDistanceM = steps * OffTrackAlertStepM))
+            },
+        )
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_sw_off_track_sound), cur.offTrackAlertSound) {
+            vm.save(cur.copy(offTrackAlertSound = it))
+        }
+        if (cur.offTrackAlertSound) {
+            RowDivider()
+            SetRow(
+                stringResource(R.string.settings_label_off_track_sound),
+                onClick = { soundPicker.launch(ringtonePickerIntent(ctx, cur.offTrackAlertSoundUri)) },
+            ) {
+                ValueText(soundLabel ?: defaultSoundLabel)
+            }
+        }
+        Hint(stringResource(R.string.settings_off_track_hint))
+    }
+}
+
+/** Intention du selecteur de sonnerie, limite aux notifications, ouvert sur le son deja retenu. */
+private fun ringtonePickerIntent(ctx: android.content.Context, current: String): Intent =
+    Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ctx.getString(R.string.settings_label_off_track_sound))
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
+            current.takeIf { it.isNotBlank() }?.toUri())
+    }
 
 /**
  * Repere de position GPS : son symbole, sa couleur, sa taille.

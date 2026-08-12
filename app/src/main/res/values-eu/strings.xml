@@ -463,4 +463,18 @@
     <string name="settings_label_elevation_world">Munduko zerbitzua</string>
     <string name="settings_label_elevation_world_key">Munduko zerbitzuaren gakoa</string>
     <string name="settings_services_hint">Utzi hutsik lehenetsitako zerbitzari publikoak erabiltzeko.</string>
+    <string name="content_desc_off_track_alert">Urruntze-alerta</string>
+    <string name="alert_pick_track_title">Jarraitu beharreko arrastoa</string>
+    <string name="alert_pick_track_empty">Ez dago arrasto ikusgairik inguruan.</string>
+    <string name="alert_track_away">%1$s-ra</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Utzi jarraitzeari</string>
+    <string name="alert_off_track_banner">\"%2$s\" arrastotik %1$s-ra zaude</string>
+    <string name="alert_needs_gps_text">Urruntze-alertak zure kokapena behar du. GPS kokapena aktibatu nahi duzu?</string>
+    <string name="settings_section_off_track">Urruntze-alerta</string>
+    <string name="settings_label_off_track_distance">Abisu-tartea</string>
+    <string name="settings_sw_off_track_sound">Soinua jo</string>
+    <string name="settings_label_off_track_sound">Jakinarazpen-soinua</string>
+    <string name="settings_off_track_sound_default">Lehenetsia</string>
+    <string name="settings_off_track_hint">Kanpaia ibilbide-kalkuluaren azpian agertzen da: jarraitu beharreko arrastoa eskatzen du, eta urruntzen zarenean abisatzen du. Ezin da GPS kokapenik gabe joan, eta hura ere aktibatzen da.</string>
 </resources>

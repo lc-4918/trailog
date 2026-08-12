@@ -463,4 +463,18 @@
     <string name="settings_label_elevation_world">World service</string>
     <string name="settings_label_elevation_world_key">World service key</string>
     <string name="settings_services_hint">Leave empty to use the default public servers.</string>
+    <string name="content_desc_off_track_alert">Off-track alert</string>
+    <string name="alert_pick_track_title">Track to follow</string>
+    <string name="alert_pick_track_empty">No visible track nearby.</string>
+    <string name="alert_track_away">%1$s away</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Stop following</string>
+    <string name="alert_off_track_banner">You are %1$s from the track \"%2$s\"</string>
+    <string name="alert_needs_gps_text">The off-track alert needs your position. Turn GPS location on?</string>
+    <string name="settings_section_off_track">Off-track alert</string>
+    <string name="settings_label_off_track_distance">Triggering gap</string>
+    <string name="settings_sw_off_track_sound">Play a sound</string>
+    <string name="settings_label_off_track_sound">Notification sound</string>
+    <string name="settings_off_track_sound_default">Default</string>
+    <string name="settings_off_track_hint">The bell sits below the route planner: it asks which track to follow, then warns as soon as you stray from it. It cannot go without GPS location, which turning it on also shows.</string>
 </resources>

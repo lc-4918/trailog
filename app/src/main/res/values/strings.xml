@@ -465,4 +465,18 @@
     <string name="settings_label_elevation_world">Service monde</string>
     <string name="settings_label_elevation_world_key">Clé du service monde</string>
     <string name="settings_services_hint">Laisser vide pour utiliser les serveurs publics par défaut.</string>
+    <string name="content_desc_off_track_alert">Alerte d\'éloignement</string>
+    <string name="alert_pick_track_title">Trace à suivre</string>
+    <string name="alert_pick_track_empty">Aucune trace visible à proximité.</string>
+    <string name="alert_track_away">à %1$s</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Ne plus suivre</string>
+    <string name="alert_off_track_banner">Vous êtes à %1$s de la trace \"%2$s\"</string>
+    <string name="alert_needs_gps_text">L\'alerte d\'éloignement a besoin de la position. Voulez-vous activer la localisation GPS ?</string>
+    <string name="settings_section_off_track">Alerte d\'éloignement</string>
+    <string name="settings_label_off_track_distance">Écart déclencheur</string>
+    <string name="settings_sw_off_track_sound">Émettre un son</string>
+    <string name="settings_label_off_track_sound">Son de notification</string>
+    <string name="settings_off_track_sound_default">Par défaut</string>
+    <string name="settings_off_track_hint">La cloche s\'affiche sous le calcul d\'itinéraire : elle demande la trace à suivre, puis prévient dès que vous vous en écartez. Elle ne va pas sans la localisation GPS, que l\'activer affiche aussi.</string>
 </resources>

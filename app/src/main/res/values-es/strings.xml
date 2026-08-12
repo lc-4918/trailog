@@ -463,4 +463,18 @@
     <string name="settings_label_elevation_world">Servicio mundial</string>
     <string name="settings_label_elevation_world_key">Clave del servicio mundial</string>
     <string name="settings_services_hint">Dejar vacío para usar los servidores públicos predeterminados.</string>
+    <string name="content_desc_off_track_alert">Alerta de alejamiento</string>
+    <string name="alert_pick_track_title">Traza a seguir</string>
+    <string name="alert_pick_track_empty">Ninguna traza visible cerca.</string>
+    <string name="alert_track_away">a %1$s</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Dejar de seguir</string>
+    <string name="alert_off_track_banner">Estás a %1$s de la traza \"%2$s\"</string>
+    <string name="alert_needs_gps_text">La alerta de alejamiento necesita tu posición. ¿Activar la localización GPS?</string>
+    <string name="settings_section_off_track">Alerta de alejamiento</string>
+    <string name="settings_label_off_track_distance">Distancia de aviso</string>
+    <string name="settings_sw_off_track_sound">Emitir un sonido</string>
+    <string name="settings_label_off_track_sound">Sonido de notificación</string>
+    <string name="settings_off_track_sound_default">Predeterminado</string>
+    <string name="settings_off_track_hint">La campana aparece bajo el cálculo de ruta: pide la traza a seguir y avisa en cuanto te alejas de ella. No funciona sin la localización GPS, que se muestra también al activarla.</string>
 </resources>

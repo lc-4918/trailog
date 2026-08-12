@@ -79,6 +79,9 @@ them on a map with a synchronised elevation profile, without depending on any on
   second point you pick.
 - **Measuring along a track** (to be enabled in settings): put two points on a displayed track and
   Trailog gives the distance between them **along the route**, with no network.
+- **Off-track alert** (to be enabled in the settings): pick the track you are following from the ones
+  nearest to you, and Trailog warns you - a banner at the bottom of the screen, and a sound if you
+  want one - as soon as you stray from it by more than the distance you set.
 - **Built-in updates**: the app tells you about a new version and installs it for you.
 - **Multilingual**: interface available in French, English, German, Spanish, Catalan, Basque,
   Italian and Portuguese.

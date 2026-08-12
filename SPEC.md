@@ -180,10 +180,10 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
   zoom. Le planificateur, sous lui, ne bouge pas pour autant : la colonne est alignée en bas.
 - **Les commandes se répartissent en trois coins.** En haut à gauche : le menu, l'interrupteur GPS, la
   recherche de lieu (dont la barre de saisie se déplie juste dessous, ce qui la retient là) et la mesure
-  sur trace. En bas à droite, à portée du pouce : le recentrage sur la position et le planificateur, ce
-  dernier au plus près du coin - c'est celui qui reste, l'autre n'apparaissant que le capteur allumé, et
-  un bouton qui change de place au gré du GPS se chercherait à chaque fois. En bas à gauche : l'échelle
-  graphique.
+  sur trace. En bas à droite, à portée du pouce : le recentrage sur la position, la cloche de l'alerte
+  d'éloignement et le planificateur, ce dernier au plus près du coin - c'est celui qui reste, les autres
+  n'apparaissant que le capteur allumé ou le réglage coché, et un bouton qui change de place au gré du GPS
+  se chercherait à chaque fois. En bas à gauche : l'échelle graphique.
 - **L'échelle se décale, les boutons non.** L'échelle se range au-dessus de la consigne de saisie qui
   occupe le bas, et s'efface quand le profil ou la bande du planificateur y sont : c'est une lecture, elle
   doit rester lisible. Les boutons du coin bas-droit gardent leur place, à la barre de navigation près, et
@@ -324,15 +324,43 @@ Une trace **sans horodatage** reçoit un temps de marche estimé, marqué d'un `
 (fonction de Tobler) : cinq kilomètres de plat et cinq kilomètres de raide ne se marchent pas dans le même
 temps, et c'est la question qu'on se pose devant une trace inconnue.
 
+### Alerte d'éloignement
+
+Une cloche, sous le planificateur, pour être **prévenu** au lieu d'avoir à surveiller. Commandée par un
+réglage désactivé par défaut (onglet Carte > Alerte d'éloignement), elle ne s'affiche jamais sans le bouton
+de localisation : une alerte n'a que la position pour matière, et l'allumer sans que rien ne montre ni ne
+coupe le capteur serait une position qui tourne en cachette. Les deux réglages sont donc liés dans les deux
+sens - cocher l'alerte affiche le bouton GPS, décocher le bouton GPS éteint l'alerte.
+
+Un tap sur la cloche demande **quelle trace on suit**, en proposant celles qui passent le plus près de la
+position, chacune avec son écart. Ce n'est pas la bibliothèque : suivre une trace, c'est suivre celle sur
+laquelle on se tient, et un catalogue de deux cents entrées ne répondrait pas à la question. Les couches
+masquées n'y figurent pas, et une couche qui porte plusieurs segments les numérote. Le capteur éteint, la
+cloche propose d'abord de l'allumer, puis ouvre son choix une fois la position reçue.
+
+Ensuite, chaque position est projetée sur la trace suivie, et au-delà de l'**écart réglé** (de 20 à 500 m,
+par pas de 10) une bannière rouge s'affiche en bas de l'écran, avec la distance et le nom de la trace. Elle
+passe par-dessus tout ce qui occupe le bas - profil, bande du planificateur, consignes de saisie : c'est la
+seule barre à s'accorder ce droit, les autres accompagnant un geste qu'on vient de faire. Un **son** peut
+l'accompagner, choisi parmi les notifications du téléphone par le sélecteur du système ; il sonne à l'entrée
+en alerte, une fois, et non tant qu'on est loin.
+
+L'alerte s'allume à l'écart réglé mais ne se lâche qu'à 80 % de celui-ci : sans cette marge, une position
+qui oscille autour du seuil - le lot d'un GPS de téléphone sous couvert - rallumerait la bannière et son son
+toutes les deux secondes. La croix de la bannière tait l'écart du moment sans arrêter le suivi ; revenir sur
+la trace réarme l'alerte suivante. Le suivi, lui, s'arrête depuis la cloche, là où il a commencé - et de
+lui-même si le capteur s'éteint ou si la trace quitte la carte.
+
 ## 15. Réglages
 
 Quatre onglets :
 
-- **Carte** : boutons affichés sur la carte, échelle, rotation, repère de position, gestionnaire de fonds,
+- **Carte** : boutons affichés sur la carte, échelle, rotation, alerte d'éloignement (son bouton, l'écart
+  qui la déclenche, son son), repère de position, gestionnaire de fonds,
   marqueurs et infobulles, apparence du profil. Quatre boutons sont posés sur la carte **par défaut** : le burger, le
   GPS, le gestionnaire de fonds et le planificateur - plus le fond blanc translucide qui les porte. La
-  recherche de lieu et la mesure sur trace, elles, ne le sont pas : ce sont les deux seules à s'ajouter
-  volontairement.
+  recherche de lieu, la mesure sur trace, la retouche des traces et l'alerte d'éloignement, elles, ne le
+  sont pas : ce sont celles qui s'ajoutent volontairement.
 - **Tuiles** : fond par défaut, catalogue des fournisseurs et composites, import/export
   (cf. [`BASEMAPS.md`](BASEMAPS.md)).
 - **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, calcul du profil, et

@@ -463,4 +463,18 @@
     <string name="settings_label_elevation_world">Dienst weltweit</string>
     <string name="settings_label_elevation_world_key">Schlüssel weltweiter Dienst</string>
     <string name="settings_services_hint">Leer lassen, um die öffentlichen Standardserver zu verwenden.</string>
+    <string name="content_desc_off_track_alert">Abweichungsalarm</string>
+    <string name="alert_pick_track_title">Zu verfolgende Spur</string>
+    <string name="alert_pick_track_empty">Keine sichtbare Spur in der Nähe.</string>
+    <string name="alert_track_away">%1$s entfernt</string>
+    <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_stop_following">Nicht mehr verfolgen</string>
+    <string name="alert_off_track_banner">Sie sind %1$s von der Spur \"%2$s\" entfernt</string>
+    <string name="alert_needs_gps_text">Der Abweichungsalarm braucht Ihre Position. GPS-Standort einschalten?</string>
+    <string name="settings_section_off_track">Abweichungsalarm</string>
+    <string name="settings_label_off_track_distance">Auslösender Abstand</string>
+    <string name="settings_sw_off_track_sound">Ton abspielen</string>
+    <string name="settings_label_off_track_sound">Benachrichtigungston</string>
+    <string name="settings_off_track_sound_default">Standard</string>
+    <string name="settings_off_track_hint">Die Glocke sitzt unter dem Routenplaner: Sie fragt nach der zu verfolgenden Spur und warnt, sobald Sie davon abweichen. Sie geht nicht ohne den GPS-Standort, der damit ebenfalls eingeschaltet wird.</string>
 </resources>
