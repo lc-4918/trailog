@@ -260,6 +260,33 @@ internal object MigrationSql {
     const val ADD_OFF_TRACK_ALERT_SOUND_URI =
         "ALTER TABLE settings ADD COLUMN offTrackAlertSoundUri TEXT NOT NULL DEFAULT ''"
 
+    /**
+     * Preferences de trace, une colonne par discipline (cf. RoutingPrefs).
+     *
+     * Trois valeurs dans une seule colonne, comme les chips d'infos du profil : ce sont trois reponses a la
+     * meme question - "comment tracer, pour cette discipline" - qui se lisent, s'ecrivent et se remettent a
+     * zero ensemble. Quinze colonnes diraient la meme chose en quinze fois.
+     *
+     * Posees d'office sur une base en place, a la difference de l'alerte d'eloignement : celle-ci ajoutait
+     * un comportement qu'on n'avait pas demande, celles-la corrigent un calcul qui ignorait les voies
+     * vertes. Le defaut est le seul cas ou l'on preferait deja l'autre valeur sans pouvoir le dire.
+     */
+    private const val PREFS_ROAD = "soft,balanced,balanced"
+    private const val PREFS_GRAVEL = "soft,balanced,rough"
+    private const val PREFS_HYBRID = "soft,balanced,balanced"
+    private const val PREFS_MTB = "soft,seek,rough"
+    private const val PREFS_FOOT = "soft,balanced,rough"
+    const val ADD_ROUTE_PREFS_ROAD =
+        "ALTER TABLE settings ADD COLUMN routePrefsRoad TEXT NOT NULL DEFAULT '$PREFS_ROAD'"
+    const val ADD_ROUTE_PREFS_GRAVEL =
+        "ALTER TABLE settings ADD COLUMN routePrefsGravel TEXT NOT NULL DEFAULT '$PREFS_GRAVEL'"
+    const val ADD_ROUTE_PREFS_HYBRID =
+        "ALTER TABLE settings ADD COLUMN routePrefsHybrid TEXT NOT NULL DEFAULT '$PREFS_HYBRID'"
+    const val ADD_ROUTE_PREFS_MTB =
+        "ALTER TABLE settings ADD COLUMN routePrefsMtb TEXT NOT NULL DEFAULT '$PREFS_MTB'"
+    const val ADD_ROUTE_PREFS_FOOT =
+        "ALTER TABLE settings ADD COLUMN routePrefsFoot TEXT NOT NULL DEFAULT '$PREFS_FOOT'"
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -274,7 +301,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 45,
+    version = 46,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -504,11 +531,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_ROUTE_PREFS_ROAD)
+                db.execSQL(MigrationSql.ADD_ROUTE_PREFS_GRAVEL)
+                db.execSQL(MigrationSql.ADD_ROUTE_PREFS_HYBRID)
+                db.execSQL(MigrationSql.ADD_ROUTE_PREFS_MTB)
+                db.execSQL(MigrationSql.ADD_ROUTE_PREFS_FOOT)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

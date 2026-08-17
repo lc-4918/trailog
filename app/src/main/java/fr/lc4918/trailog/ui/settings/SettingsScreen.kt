@@ -151,6 +151,11 @@ import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
+import fr.lc4918.trailog.domain.model.HillPref
+import fr.lc4918.trailog.domain.model.SurfacePref
+import fr.lc4918.trailog.domain.model.WayPref
+import fr.lc4918.trailog.data.db.routePrefs
+import fr.lc4918.trailog.data.db.withRoutePrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.elevation.IgnElevation
 import fr.lc4918.trailog.elevation.OpenTopo
@@ -501,6 +506,37 @@ private fun valueOf(fraction: Float, min: Int, max: Int): Int =
         RoutingProfile.HYBRID_BIKE -> R.string.profile_hybrid_bike
         RoutingProfile.MOUNTAIN_BIKE -> R.string.profile_mtb
         RoutingProfile.FOOT -> R.string.profile_foot
+    }
+)
+
+/**
+ * Libellés des trois préférences de tracé, en mots de sortie et non en options de moteur.
+ *
+ * La position centrale des trois porte le MÊME libellé, "Sans préférence", parce qu'elle fait la même
+ * chose : ne rien demander au service (cf. Valhalla.costingOptionsOf). Trois formulations différentes
+ * laisseraient croire à trois comportements.
+ */
+@Composable private fun wayPrefLabel(p: WayPref): String = stringResource(
+    when (p) {
+        WayPref.ROADS -> R.string.route_ways_roads
+        WayPref.BALANCED -> R.string.route_pref_none
+        WayPref.SOFT -> R.string.route_ways_soft
+    }
+)
+
+@Composable private fun hillPrefLabel(p: HillPref): String = stringResource(
+    when (p) {
+        HillPref.AVOID -> R.string.route_hills_avoid
+        HillPref.BALANCED -> R.string.route_pref_none
+        HillPref.SEEK -> R.string.route_hills_seek
+    }
+)
+
+@Composable private fun surfacePrefLabel(p: SurfacePref): String = stringResource(
+    when (p) {
+        SurfacePref.PAVED -> R.string.route_surface_paved
+        SurfacePref.BALANCED -> R.string.route_pref_none
+        SurfacePref.ROUGH -> R.string.route_surface_rough
     }
 )
 
@@ -1028,6 +1064,41 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
     SectionTitle(stringResource(R.string.settings_section_default_discipline))
     SettingsCard {
         RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
+    }
+
+    /*
+     * Ce que le calcul doit privilégier - et qu'il ignorait jusqu'ici, d'où cette rubrique : sans elle, un
+     * VTC part sur la départementale quand la voie verte longe la même vallée.
+     *
+     * Discipline par discipline, et non un réglage unique : on ne demande pas la même chose à un vélo de
+     * route qu'à un VTT, et la mesure l'a confirmé - accepter les chemins fait gagner au VTT, et fait
+     * perdre au vélo de route, qu'un long détour éloigne alors des voies vertes qu'il aurait prises.
+     *
+     * La discipline réglée ici n'est PAS celle du dessus : celle du dessus est le défaut du planificateur,
+     * celle-ci désigne le jeu de préférences qu'on modifie. On peut donc régler le VTT sans rouler en VTT.
+     * Elle s'ouvre néanmoins sur la discipline par défaut, la plus probable, et la suit si on la change.
+     */
+    SectionTitle(stringResource(R.string.settings_section_route_prefs))
+    var tuned by remember(cur.routingProfile) { mutableStateOf(RoutingProfile.of(cur.routingProfile)) }
+    SettingsCard {
+        Hint(stringResource(R.string.settings_route_prefs_hint))
+        RoutingProfilePicker(tuned) { tuned = it }
+        RowDivider()
+        val prefs = cur.routePrefs(tuned)
+        PickRow(stringResource(R.string.settings_label_route_ways), prefs.ways,
+            WayPref.entries, optionLabel = { wayPrefLabel(it) }) {
+            vm.save(cur.withRoutePrefs(tuned, prefs.copy(ways = it)))
+        }
+        RowDivider()
+        PickRow(stringResource(R.string.settings_label_route_hills), prefs.hills,
+            HillPref.entries, optionLabel = { hillPrefLabel(it) }) {
+            vm.save(cur.withRoutePrefs(tuned, prefs.copy(hills = it)))
+        }
+        RowDivider()
+        PickRow(stringResource(R.string.settings_label_route_surface), prefs.surface,
+            SurfacePref.entries, optionLabel = { surfacePrefLabel(it) }) {
+            vm.save(cur.withRoutePrefs(tuned, prefs.copy(surface = it)))
+        }
     }
 
     // Le lissage et l'echelle verticale ont quitte l'onglet "Carte" pour celui-ci : ils ne decrivent pas

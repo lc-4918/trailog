@@ -477,4 +477,16 @@
     <string name="settings_label_off_track_sound">Benachrichtigungston</string>
     <string name="settings_off_track_sound_default">Standard</string>
     <string name="settings_off_track_hint">Die Glocke sitzt unter dem Routenplaner: Sie fragt nach der zu verfolgenden Spur und warnt, sobald Sie davon abweichen. Sie geht nicht ohne den GPS-Standort, der damit ebenfalls eingeschaltet wird.</string>
+    <string name="settings_section_route_prefs">Routenvorlieben</string>
+    <string name="settings_route_prefs_hint">Jede Disziplin hat ihre eigenen: wählen Sie die zu ändernde.</string>
+    <string name="settings_label_route_ways">Wege</string>
+    <string name="settings_label_route_hills">Gelände</string>
+    <string name="settings_label_route_surface">Belag</string>
+    <string name="route_pref_none">Keine Vorliebe</string>
+    <string name="route_ways_roads">Über Straßen</string>
+    <string name="route_ways_soft">Radwege und Pfade</string>
+    <string name="route_hills_avoid">Steigungen meiden</string>
+    <string name="route_hills_seek">Steigungen annehmen</string>
+    <string name="route_surface_paved">Auf Asphalt bleiben</string>
+    <string name="route_surface_rough">Unbefestigtes annehmen</string>
 </resources>

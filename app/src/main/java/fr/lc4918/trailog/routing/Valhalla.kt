@@ -1,7 +1,11 @@
 package fr.lc4918.trailog.routing
 
+import fr.lc4918.trailog.domain.model.HillPref
+import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.domain.model.SurfacePref
 import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.domain.model.WayPref
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,13 +57,62 @@ object Valhalla {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Modèle de coût et, pour le vélo, type de monture. Seule fonction à connaître le vocabulaire du moteur. */
+    /** Modèle de coût et, pour le vélo, type de monture. Avec [costingOptionsOf], la seule chose ici à
+     *  connaître le vocabulaire du moteur. */
     internal fun costingOf(profile: RoutingProfile): Pair<String, String?> = when (profile) {
         RoutingProfile.ROAD_BIKE -> "bicycle" to "Road"
         RoutingProfile.GRAVEL -> "bicycle" to "Cross"        // Valhalla nomme "Cross" le velo de cyclocross/gravel
         RoutingProfile.HYBRID_BIKE -> "bicycle" to "Hybrid"
         RoutingProfile.MOUNTAIN_BIKE -> "bicycle" to "Mountain"
         RoutingProfile.FOOT -> "pedestrian" to null
+    }
+
+    /**
+     * Ce que les trois préférences de l'utilisateur (cf. [RoutingPrefs]) deviennent dans le vocabulaire du
+     * moteur, pour la discipline [profile].
+     *
+     * Une même question ne se dit pas de la même façon selon qu'on roule ou qu'on marche : "privilégier les
+     * voies vertes" se demande par `use_roads` au vélo - sa propension à rouler avec les voitures - et par
+     * `walkway_factor` au marcheur, qui n'a pas de `use_roads`. De même le revêtement : le vélo a
+     * `avoid_bad_surfaces`, le marcheur a `use_tracks`, les chemins de terre étant ce qui le concerne.
+     *
+     * **Une position centrale n'émet rien**, et c'est la règle qui gouverne toute cette fonction : sur
+     * l'instance publique, renvoyer la valeur "par défaut" de la documentation ne redonne pas le
+     * comportement par défaut. Mesuré : en vélo de route sur Grenoble - Voiron, ne rien dire donne 59 % de
+     * voies douces, dire `use_roads: 0.5` - le prétendu défaut - tombe à 22 %. Le silence est donc la seule
+     * façon de laisser le service décider.
+     *
+     * Les valeurs ne sont pas choisies au jugé, chacune sort d'une mesure :
+     * - `use_roads` à 0,2 : le basculement vers la véloroute se fait entre 0,3 et 0,2, et descendre plus bas
+     *   ne change plus rien. Le VTT va à 0,1, seul type de monture que les chemins ruraux accueillent.
+     * - `walkway_factor` à 0,5 : de 23 à 85 % de voies douces sur un trajet urbain, pour 440 m de plus.
+     * - `use_hills` à 1 : ne cherche pas la difficulté, cesse de payer le détour qui l'évite - d'où un
+     *   trajet à la fois plus montagnard et plus court.
+     */
+    internal fun costingOptionsOf(profile: RoutingProfile, prefs: RoutingPrefs): Map<String, String> {
+        val foot = profile == RoutingProfile.FOOT
+        val o = linkedMapOf<String, String>()
+        costingOf(profile).second?.let { o["bicycle_type"] = "\"$it\"" }
+        when (prefs.ways) {
+            WayPref.ROADS -> o[if (foot) "walkway_factor" else "use_roads"] = if (foot) "1.5" else "0.8"
+            WayPref.BALANCED -> Unit
+            WayPref.SOFT -> when {
+                foot -> o["walkway_factor"] = "0.5"
+                profile == RoutingProfile.MOUNTAIN_BIKE -> o["use_roads"] = "0.1"
+                else -> o["use_roads"] = "0.2"
+            }
+        }
+        when (prefs.hills) {
+            HillPref.AVOID -> o["use_hills"] = "0.0"
+            HillPref.BALANCED -> Unit
+            HillPref.SEEK -> o["use_hills"] = "1.0"
+        }
+        when (prefs.surface) {
+            SurfacePref.PAVED -> o[if (foot) "use_tracks" else "avoid_bad_surfaces"] = if (foot) "0.0" else "1.0"
+            SurfacePref.BALANCED -> Unit
+            SurfacePref.ROUGH -> o[if (foot) "use_tracks" else "avoid_bad_surfaces"] = if (foot) "1.0" else "0.0"
+        }
+        return o
     }
 
     /**
@@ -80,11 +133,14 @@ object Valhalla {
      */
     fun url(
         base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
+        prefs: RoutingPrefs = RoutingPrefs.Balanced,
         elevationIntervalM: Int = ELEVATION_INTERVAL_M,
     ): String {
-        val (costing, bicycleType) = costingOf(profile)
-        val options = if (bicycleType == null) ""
-        else ""","costing_options":{"bicycle":{"bicycle_type":"$bicycleType"}}"""
+        val (costing, _) = costingOf(profile)
+        val opts = costingOptionsOf(profile, prefs)
+        val options = if (opts.isEmpty()) ""
+        else ""","costing_options":{"$costing":{""" +
+            opts.entries.joinToString(",") { (k, v) -> """"$k":$v""" } + "}}"
         val elevation = if (elevationIntervalM > 0) ""","elevation_interval":$elevationIntervalM""" else ""
         val locations = points.joinToString(",") { (lat, lon) -> """{"lat":$lat,"lon":$lon}""" }
         val body = """{"locations":[$locations],""" +
@@ -139,9 +195,10 @@ object Valhalla {
      */
     suspend fun route(
         base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
+        prefs: RoutingPrefs = RoutingPrefs.Balanced,
     ): RouteResult? = withContext(Dispatchers.IO) {
         if (points.size < 2) return@withContext null
-        val resp = TileHttp.fetch(url(base, points, profile), TIMEOUT_MS, TIMEOUT_MS)
+        val resp = TileHttp.fetch(url(base, points, profile, prefs), TIMEOUT_MS, TIMEOUT_MS)
         resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
     }
 

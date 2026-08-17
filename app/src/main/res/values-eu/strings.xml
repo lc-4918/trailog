@@ -477,4 +477,16 @@
     <string name="settings_label_off_track_sound">Jakinarazpen-soinua</string>
     <string name="settings_off_track_sound_default">Lehenetsia</string>
     <string name="settings_off_track_hint">Kanpaia ibilbide-kalkuluaren azpian agertzen da: jarraitu beharreko arrastoa eskatzen du, eta urruntzen zarenean abisatzen du. Ezin da GPS kokapenik gabe joan, eta hura ere aktibatzen da.</string>
+    <string name="settings_section_route_prefs">Ibilbide-hobespenak</string>
+    <string name="settings_route_prefs_hint">Diziplina bakoitzak bereak ditu: aukeratu doitu nahi duzuna.</string>
+    <string name="settings_label_route_ways">Bideak</string>
+    <string name="settings_label_route_hills">Erliebea</string>
+    <string name="settings_label_route_surface">Zorua</string>
+    <string name="route_pref_none">Hobespenik gabe</string>
+    <string name="route_ways_roads">Errepideetatik</string>
+    <string name="route_ways_soft">Bidegorriak eta bidexkak</string>
+    <string name="route_hills_avoid">Aldapak saihestu</string>
+    <string name="route_hills_seek">Aldapak onartu</string>
+    <string name="route_surface_paved">Asfaltoan segi</string>
+    <string name="route_surface_rough">Lur-bideak onartu</string>
 </resources>

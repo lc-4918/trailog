@@ -477,4 +477,16 @@
     <string name="settings_label_off_track_sound">So de notificació</string>
     <string name="settings_off_track_sound_default">Per defecte</string>
     <string name="settings_off_track_hint">La campana apareix sota el càlcul d\'itinerari: demana la traça a seguir i avisa tan bon punt te\'n allunyes. No va sense la localització GPS, que activar-la també mostra.</string>
+    <string name="settings_section_route_prefs">Preferències de traçat</string>
+    <string name="settings_route_prefs_hint">Cada disciplina guarda les seves: trieu la que voleu ajustar.</string>
+    <string name="settings_label_route_ways">Vies</string>
+    <string name="settings_label_route_hills">Relleu</string>
+    <string name="settings_label_route_surface">Ferm</string>
+    <string name="route_pref_none">Sense preferència</string>
+    <string name="route_ways_roads">Per carretera</string>
+    <string name="route_ways_soft">Vies verdes i camins</string>
+    <string name="route_hills_avoid">Evitar les pujades</string>
+    <string name="route_hills_seek">Acceptar el desnivell</string>
+    <string name="route_surface_paved">Mantenir l\'asfalt</string>
+    <string name="route_surface_rough">Acceptar els camins</string>
 </resources>

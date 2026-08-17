@@ -477,4 +477,16 @@
     <string name="settings_label_off_track_sound">Som de notificação</string>
     <string name="settings_off_track_sound_default">Predefinido</string>
     <string name="settings_off_track_hint">O sino aparece sob o cálculo de itinerário: pede o trilho a seguir e avisa assim que se afastar dele. Não funciona sem a localização GPS, que ao ativá-la também aparece.</string>
+    <string name="settings_section_route_prefs">Preferências de traçado</string>
+    <string name="settings_route_prefs_hint">Cada disciplina guarda as suas: escolha a que quer ajustar.</string>
+    <string name="settings_label_route_ways">Vias</string>
+    <string name="settings_label_route_hills">Relevo</string>
+    <string name="settings_label_route_surface">Piso</string>
+    <string name="route_pref_none">Sem preferência</string>
+    <string name="route_ways_roads">Pelas estradas</string>
+    <string name="route_ways_soft">Ecovias e caminhos</string>
+    <string name="route_hills_avoid">Evitar as subidas</string>
+    <string name="route_hills_seek">Aceitar o desnível</string>
+    <string name="route_surface_paved">Ficar no pavimentado</string>
+    <string name="route_surface_rough">Aceitar os caminhos</string>
 </resources>

@@ -21,6 +21,8 @@ import fr.lc4918.trailog.elevation.ElevationServices
 import fr.lc4918.trailog.data.seed.Composites
 import fr.lc4918.trailog.data.seed.DemoData
 import fr.lc4918.trailog.data.seed.Providers
+import fr.lc4918.trailog.data.db.routePrefs
+import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Valhalla
@@ -506,7 +508,11 @@ class TrailogRepository(private val ctx: Context) {
         val s = db.settings().get()
         val base = s?.routingUrl?.ifBlank { null } ?: Valhalla.DEFAULT_URL
         val profile = RoutingProfile.of(s?.routingProfile)
-        val route = Valhalla.route(base, listOf(from.lat to from.lon, to.lat to to.lon), profile) ?: return null
+        // Le pont emprunte les mêmes préférences que les mesures de la carte : c'est un bout de trajet
+        // réel, qui rejoint deux traces sur le terrain, pas une ligne droite de raccord.
+        val prefs = s?.routePrefs(profile) ?: RoutingPrefs.defaultFor(profile)
+        val route = Valhalla.route(base, listOf(from.lat to from.lon, to.lat to to.lon), profile, prefs)
+            ?: return null
         // Les deux extrémités sont déjà dans les segments qu'on relie : le pont ne garde que ce qu'il y a
         // entre elles, sans quoi la jointure porterait deux points au même endroit.
         return route.points.drop(1).dropLast(1).ifEmpty { null }

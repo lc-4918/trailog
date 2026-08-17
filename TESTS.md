@@ -226,6 +226,11 @@ Points vérifiés :
   boutons) et donne aux fonds leur force de rendu. Le test verrouille que les TROIS réglages y passent :
   en oublier un ne casserait rien de visible, et personne ne le remarquerait avant de chercher le bouton
   manquant.
+- **45 vers 46** pose les préférences de tracé, une colonne par discipline, **déjà réglées** sur les voies
+  vertes - à rebours des migrations qui posent une nouveauté éteinte, parce que celle-ci répare un calcul
+  qui envoyait sur la départementale longeant la voie verte. Le test compare colonne par colonne le défaut
+  du SQL et celui de Kotlin : s'ils divergeaient, une base migrée et une installation neuve calculeraient
+  deux itinéraires différents, et rien à l'écran ne le dirait.
 
 ### `data` - préférences
 

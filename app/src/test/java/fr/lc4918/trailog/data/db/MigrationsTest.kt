@@ -2,6 +2,11 @@ package fr.lc4918.trailog.data.db
 
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
+import fr.lc4918.trailog.domain.model.HillPref
+import fr.lc4918.trailog.domain.model.RoutingPrefs
+import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.domain.model.SurfacePref
+import fr.lc4918.trailog.domain.model.WayPref
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -508,6 +513,61 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 45 -> 46 : les preferences de trace, posees d'office ----------
+
+    /**
+     * Les cinq colonnes arrivent DEJA REGLEES sur les voies vertes, a rebours des migrations qui posent
+     * une nouveaute eteinte.
+     *
+     * La difference tient a ce qu'elles corrigent : l'alerte d'eloignement ajoutait un comportement que
+     * personne n'avait demande, celles-ci reparent un calcul qui envoyait sur la route a cote de la voie
+     * verte. Laisser les bases en place sur l'ancien defaut, c'est laisser le defaut a qui l'a signale.
+     */
+    @Test fun `45 vers 46 pose les preferences de trace sur les voies vertes`() {
+        val db = freshDb("m4546"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTE_PREFS_ROAD)
+        db.execSQL(MigrationSql.ADD_ROUTE_PREFS_GRAVEL)
+        db.execSQL(MigrationSql.ADD_ROUTE_PREFS_HYBRID)
+        db.execSQL(MigrationSql.ADD_ROUTE_PREFS_MTB)
+        db.execSQL(MigrationSql.ADD_ROUTE_PREFS_FOOT)
+        RoutingProfile.entries.forEach { p ->
+            val col = when (p) {
+                RoutingProfile.ROAD_BIKE -> "routePrefsRoad"
+                RoutingProfile.GRAVEL -> "routePrefsGravel"
+                RoutingProfile.HYBRID_BIKE -> "routePrefsHybrid"
+                RoutingProfile.MOUNTAIN_BIKE -> "routePrefsMtb"
+                RoutingProfile.FOOT -> "routePrefsFoot"
+            }
+            val csv = scalar(db, "SELECT $col FROM settings") { it.getString(0) }
+            // Le SQL de la migration et le defaut Kotlin doivent dire la meme chose : une base migree et une
+            // base neuve ne peuvent pas calculer deux itineraires differents.
+            assertEquals("$p : $col", RoutingPrefs.defaultFor(p).asCsv(), csv)
+            assertEquals("$p : voies vertes", WayPref.SOFT, RoutingPrefs.of(csv, p).ways)
+        }
+        db.close()
+    }
+
+    /** Ce que chaque discipline demande n'est pas ce que demande la voisine : le VTT cherche le denivele,
+     *  le velo de route ne dit rien du revetement (l'exiger le fait fuir les chemins par de longs detours). */
+    @Test fun `chaque discipline arrive avec ses propres preferences`() {
+        val neuf = SettingsEntity()
+        assertEquals(HillPref.SEEK, neuf.routePrefs(RoutingProfile.MOUNTAIN_BIKE).hills)
+        assertEquals(HillPref.BALANCED, neuf.routePrefs(RoutingProfile.ROAD_BIKE).hills)
+        assertEquals(SurfacePref.BALANCED, neuf.routePrefs(RoutingProfile.ROAD_BIKE).surface)
+        assertEquals(SurfacePref.ROUGH, neuf.routePrefs(RoutingProfile.FOOT).surface)
+    }
+
+    /** Ecrire une discipline ne doit pas toucher aux quatre autres : elles se reglent separement. */
+    @Test fun `regler une discipline laisse les autres en place`() {
+        val avant = SettingsEntity()
+        val apres = avant.withRoutePrefs(RoutingProfile.GRAVEL,
+            RoutingPrefs(WayPref.ROADS, HillPref.AVOID, SurfacePref.PAVED))
+        assertEquals("roads,avoid,paved", apres.routePrefsGravel)
+        RoutingProfile.entries.filter { it != RoutingProfile.GRAVEL }.forEach {
+            assertEquals("$it a bouge", avant.routePrefs(it), apres.routePrefs(it))
+        }
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -561,7 +621,8 @@ class MigrationsTest {
             "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
             "mapButtonSizeDp", "hillshadeOn", "trackEditEnabled", "fillMissingElevation", "elevationIgnUrl",
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
-            "offTrackAlertSound", "offTrackAlertSoundUri")
+            "offTrackAlertSound", "offTrackAlertSoundUri",
+            "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

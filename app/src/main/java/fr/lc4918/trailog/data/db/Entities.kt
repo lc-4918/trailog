@@ -3,6 +3,8 @@ package fr.lc4918.trailog.data.db
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import fr.lc4918.trailog.domain.model.RoutingPrefs
+import fr.lc4918.trailog.domain.model.RoutingProfile
 
 /** Dossier de l'arborescence. parentId null = dossier principal (racine). */
 @Entity(tableName = "folders")
@@ -201,6 +203,15 @@ data class SettingsEntity(
     val routingUrl: String = "",
     // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",
+    // Preferences de trace, une colonne par discipline : "voies,relief,revetement" (cf. RoutingPrefs, et
+    // routePrefs/withRoutePrefs plus bas pour y acceder sans repandre un when). Elles ne se partagent pas
+    // entre disciplines - on ne demande pas la meme chose a un velo de route et a un VTT - et c'est la
+    // raison des cinq colonnes.
+    val routePrefsRoad: String = "soft,balanced,balanced",
+    val routePrefsGravel: String = "soft,balanced,rough",
+    val routePrefsHybrid: String = "soft,balanced,balanced",
+    val routePrefsMtb: String = "soft,seek,rough",
+    val routePrefsFoot: String = "soft,balanced,rough",
     // Completer a l'import les altitudes que le fichier ne porte pas (cf. elevation/ElevationFiller).
     // Desactive par defaut, comme le geocodage : c'est la seule autre fonction qui fait partir des requetes
     // vers un service tiers sans qu'on l'ait demandee sur le moment.
@@ -293,3 +304,33 @@ const val OffTrackAlertStepM = 10
 
 /** Ecart par defaut : celui a partir duquel le profil dit deja l'ecart a la trace, sous les totaux. */
 const val DefaultOffTrackAlertM = 50
+
+/**
+ * Preferences de trace de la discipline [profile], relues de leur colonne.
+ *
+ * Ici et non chez l'appelant : la correspondance discipline -> colonne est la seule chose qui sache ou
+ * chacune est rangee, et trois lecteurs (le planificateur, la mesure depuis un point, le pont de jonction)
+ * la recopieraient sinon a l'identique - jusqu'au jour ou l'un d'eux oublierait une discipline.
+ */
+fun SettingsEntity.routePrefs(profile: RoutingProfile): RoutingPrefs = RoutingPrefs.of(
+    when (profile) {
+        RoutingProfile.ROAD_BIKE -> routePrefsRoad
+        RoutingProfile.GRAVEL -> routePrefsGravel
+        RoutingProfile.HYBRID_BIKE -> routePrefsHybrid
+        RoutingProfile.MOUNTAIN_BIKE -> routePrefsMtb
+        RoutingProfile.FOOT -> routePrefsFoot
+    },
+    profile,
+)
+
+/** La meme chose en ecriture : rend la copie des reglages ou seule la discipline [profile] a change. */
+fun SettingsEntity.withRoutePrefs(profile: RoutingProfile, prefs: RoutingPrefs): SettingsEntity {
+    val csv = prefs.asCsv()
+    return when (profile) {
+        RoutingProfile.ROAD_BIKE -> copy(routePrefsRoad = csv)
+        RoutingProfile.GRAVEL -> copy(routePrefsGravel = csv)
+        RoutingProfile.HYBRID_BIKE -> copy(routePrefsHybrid = csv)
+        RoutingProfile.MOUNTAIN_BIKE -> copy(routePrefsMtb = csv)
+        RoutingProfile.FOOT -> copy(routePrefsFoot = csv)
+    }
+}

@@ -125,6 +125,7 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.db.routePrefs
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ContentCut
@@ -185,6 +186,7 @@ import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.points.computeGeocodePlacement
+import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Valhalla
@@ -555,6 +557,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Discipline des mesures : celle réglée dans les réglages, et non celle du planificateur, qui la choisit
     // pour le trajet qu'on y compose. Une distance demandée sur la carte n'a pas de composition derrière elle.
     val routingProfile = RoutingProfile.of(settings?.routingProfile)
+    // Préférences de tracé de cette discipline (voies, relief, revêtement). Prises aux réglages, comme la
+    // discipline elle-même ; sans réglages chargés, celles que la discipline porte par défaut.
+    val measurePrefs = settings?.routePrefs(routingProfile) ?: RoutingPrefs.defaultFor(routingProfile)
 
     /**
      * Adresse du point désigné (géocodage inverse).
@@ -589,8 +594,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché.
      */
     suspend fun measureTo(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): MeasureState {
-        val r = Valhalla.route(routingUrl, listOf(fromLat to fromLon, toLat to toLon), routingProfile)
-            ?: return MeasureState.Failed
+        val r = Valhalla.route(routingUrl, listOf(fromLat to fromLon, toLat to toLon), routingProfile,
+            measurePrefs) ?: return MeasureState.Failed
         val track = withContext(Dispatchers.Default) {
             if (r.points.size < 2) null
             else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
@@ -612,13 +617,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             mapPoint.publishPositionMeasure(MeasureState.Failed)
         }
     }
-    LaunchedEffect(mapPoint.point, mapPoint.positionOrigin, routingUrl, routingProfile) {
+    LaunchedEffect(mapPoint.point, mapPoint.positionOrigin, routingUrl, routingProfile, measurePrefs) {
         val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
         val (la, lo) = mapPoint.positionOrigin ?: return@LaunchedEffect
         mapPoint.publishPositionMeasure(MeasureState.Loading)
         mapPoint.publishPositionMeasure(measureTo(la, lo, lat, lon))
     }
-    LaunchedEffect(mapPoint.point, mapPoint.refPoint, routingUrl, routingProfile) {
+    LaunchedEffect(mapPoint.point, mapPoint.refPoint, routingUrl, routingProfile, measurePrefs) {
         val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
         val (refLon, refLat) = mapPoint.refPoint ?: return@LaunchedEffect
         mapPoint.publishPointMeasure(MeasureState.Loading)
@@ -732,7 +737,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * desormais la sienne, et rien ne doit plus la lui reprendre.
      */
     var autoFramed by remember { mutableStateOf(false) }
-    LaunchedEffect(planner.revision, routingUrl, planner.profile, profileSmoothingM) {
+    // Les préférences suivent la discipline CHOISIE DANS LA BANDE, non celle des réglages : le planificateur
+    // change de discipline sans quitter la carte, et passer au VTT doit amener avec lui ce qu'on demande à
+    // un VTT. Changer un réglage pendant qu'un parcours est affiché le recalcule (la clé de l'effet).
+    val plannerPrefs = settings?.routePrefs(planner.profile) ?: RoutingPrefs.defaultFor(planner.profile)
+    LaunchedEffect(planner.revision, routingUrl, planner.profile, plannerPrefs, profileSmoothingM) {
         val targets = planner.targets
         if (targets.size < 2) {
             planner.publish(RouteState.Idle); routeFramed = false; framePending = false
@@ -747,7 +756,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
         }
-        val r = Valhalla.route(routingUrl, pts, planner.profile)
+        val r = Valhalla.route(routingUrl, pts, planner.profile, plannerPrefs)
         if (r == null || r.points.size < 2) {
             planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
         }

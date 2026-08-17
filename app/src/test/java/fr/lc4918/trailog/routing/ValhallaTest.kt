@@ -1,6 +1,10 @@
 package fr.lc4918.trailog.routing
 
+import fr.lc4918.trailog.domain.model.HillPref
+import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.domain.model.SurfacePref
+import fr.lc4918.trailog.domain.model.WayPref
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -55,6 +59,79 @@ class ValhallaTest {
         assertTrue(""""bicycle_type":"Cross"""" in body(RoutingProfile.GRAVEL))
         assertTrue(""""costing":"pedestrian"""" in body(RoutingProfile.FOOT))
         assertTrue("la marche n'a pas de monture", "bicycle_type" !in body(RoutingProfile.FOOT))
+    }
+
+    // ---------- Preferences de trace ----------
+
+    private fun body(profile: RoutingProfile, prefs: RoutingPrefs): String {
+        val u = Valhalla.url(Valhalla.DEFAULT_URL, listOf(44.56 to 6.08, 45.18 to 5.72), profile, prefs)
+        return URLDecoder.decode(u.substringAfter("json="), "UTF-8")
+    }
+
+    /**
+     * LA regle de cette traduction : la position centrale n'emet rien.
+     *
+     * Mesure a l'appui - en velo de route sur Grenoble - Voiron, ne rien dire donne 59 % de voies douces,
+     * envoyer use_roads:0.5, le defaut documente, tombe a 22 %. Emettre un defaut n'est donc pas neutre, et
+     * un jour ou l'autre quelqu'un voudra "expliciter" ces valeurs : ce test est la pour l'en empecher.
+     */
+    @Test fun `les positions centrales n'emettent aucune option`() {
+        RoutingProfile.entries.forEach { p ->
+            val b = body(p, RoutingPrefs.Balanced)
+            assertTrue("$p : ${b}", "use_roads" !in b && "use_hills" !in b &&
+                "avoid_bad_surfaces" !in b && "walkway_factor" !in b && "use_tracks" !in b)
+        }
+        // La monture, elle, n'est pas une preference : elle reste envoyee.
+        assertTrue(""""bicycle_type":"Cross"""" in body(RoutingProfile.GRAVEL, RoutingPrefs.Balanced))
+    }
+
+    /** Les options se posent sous le modele de cout du moment, non sous un "bicycle" fige. */
+    @Test fun `les options vont sous le modele de cout de la discipline`() {
+        assertTrue(""""costing_options":{"bicycle":{""" in body(RoutingProfile.HYBRID_BIKE,
+            RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.BALANCED)))
+        assertTrue(""""costing_options":{"pedestrian":{""" in body(RoutingProfile.FOOT,
+            RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.BALANCED)))
+    }
+
+    /** La meme question ne se dit pas pareil a un cycliste et a un marcheur, qui n'a pas de use_roads. */
+    @Test fun `privilegier les voies douces se dit use_roads a velo, walkway_factor a pied`() {
+        val velo = body(RoutingProfile.HYBRID_BIKE, RoutingPrefs(ways = WayPref.SOFT))
+        assertTrue(velo, """"use_roads":0.2""" in velo)
+        val pied = body(RoutingProfile.FOOT, RoutingPrefs(ways = WayPref.SOFT))
+        assertTrue(pied, """"walkway_factor":0.5""" in pied)
+        assertTrue("le marcheur n'a pas de use_roads", "use_roads" !in pied)
+    }
+
+    /** Le VTT descend plus bas que les autres montures : c'est la seule que les chemins ruraux accueillent. */
+    @Test fun `le vtt demande les chemins plus fort que les autres velos`() {
+        assertTrue(""""use_roads":0.1""" in body(RoutingProfile.MOUNTAIN_BIKE, RoutingPrefs(ways = WayPref.SOFT)))
+        assertTrue(""""use_roads":0.2""" in body(RoutingProfile.GRAVEL, RoutingPrefs(ways = WayPref.SOFT)))
+    }
+
+    /** Le revetement : avoid_bad_surfaces a velo, use_tracks a pied - et les deux vont en sens INVERSE. */
+    @Test fun `accepter les chemins s'ecrit a l'envers selon la discipline`() {
+        val velo = body(RoutingProfile.GRAVEL, RoutingPrefs(surface = SurfacePref.ROUGH))
+        assertTrue(velo, """"avoid_bad_surfaces":0.0""" in velo)
+        val pied = body(RoutingProfile.FOOT, RoutingPrefs(surface = SurfacePref.ROUGH))
+        assertTrue(pied, """"use_tracks":1.0""" in pied)
+        assertTrue(body(RoutingProfile.GRAVEL, RoutingPrefs(surface = SurfacePref.PAVED)),
+            """"avoid_bad_surfaces":1.0""" in body(RoutingProfile.GRAVEL, RoutingPrefs(surface = SurfacePref.PAVED)))
+        assertTrue(""""use_tracks":0.0""" in body(RoutingProfile.FOOT, RoutingPrefs(surface = SurfacePref.PAVED)))
+    }
+
+    @Test fun `les trois preferences tiennent dans la meme requete`() {
+        val b = body(RoutingProfile.MOUNTAIN_BIKE, RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH))
+        assertTrue(b, """"bicycle_type":"Mountain"""" in b)
+        assertTrue(b, """"use_roads":0.1""" in b)
+        assertTrue(b, """"use_hills":1.0""" in b)
+        assertTrue(b, """"avoid_bad_surfaces":0.0""" in b)
+    }
+
+    /** Le JSON doit rester valide une fois les options posees : c'est la faute qui ne se verrait pas. */
+    @Test fun `la requete reste un json valide avec toutes les options`() {
+        val b = body(RoutingProfile.FOOT, RoutingPrefs(WayPref.ROADS, HillPref.AVOID, SurfacePref.PAVED))
+        assertEquals("accolades appariees", b.count { it == '{' }, b.count { it == '}' })
+        assertTrue(b, """{"walkway_factor":1.5,"use_hills":0.0,"use_tracks":0.0}""" in b)
     }
 
     /** Le guidage virage par virage represente l'essentiel du poids de la reponse, et on ne veut qu'un total. */
