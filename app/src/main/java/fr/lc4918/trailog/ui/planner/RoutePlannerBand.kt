@@ -309,6 +309,11 @@ private fun StepRow(
     geocoding: GeocodingParams,
 ) {
     var focused by remember(step.id) { mutableStateOf(false) }
+    // Le clic sur l'affichage replie ne peut PAS demander le focus lui-meme : tant qu'il tient la place du
+    // champ, celui-ci n'est pas compose et son FocusRequester n'a aucun noeud a saisir - la demande levait
+    // une exception, et l'application se fermait des qu'on revenait sur une etape deja remplie. Le clic
+    // reclame donc le champ, et le focus lui est donne a la composition suivante, une fois qu'il existe.
+    var wantsFocus by remember(step.id) { mutableStateOf(false) }
     // La liste des etapes defile sur elle-meme : un champ situe en bas peut voir ses propositions naitre
     // hors de la zone visible. On les y ramene des qu'elles apparaissent, faute de quoi la premiere ligne
     // - la position actuelle, ou le spinner - resterait invisible sous le bord.
@@ -340,32 +345,47 @@ private fun StepRow(
         step.failed = found == null
         step.searching = false
     }
-    // Ce que le champ montre : le lieu retenu s'il y en a un, sinon la frappe en cours. Un lieu retenu
-    // n'est pas modifiable en place - on tape par-dessus, ce qui le remplace (cf. RoutePlannerState.type).
+    // Ce que l'etape AFFICHE au repos : le lieu retenu s'il y en a un, sinon la frappe en cours. Un lieu
+    // retenu n'est pas modifiable en place - on tape par-dessus, ce qui le remplace (cf.
+    // RoutePlannerState.type) : le champ de saisie, lui, ne porte donc jamais que [PlannerStep.query].
     val shown = when (val t = step.target) {
         is StepTarget.Place -> t.place.label
         StepTarget.CurrentPosition -> stringResource(R.string.planner_current_position)
         null -> step.query
     }
+    // Le champ vient d'apparaitre a la demande d'un clic : il est desormais compose, on peut lui donner le
+    // focus. Sous garde malgre tout - un focus refuse doit rendre la main a l'affichage replie, pas fermer
+    // l'application.
+    LaunchedEffect(wantsFocus) {
+        if (wantsFocus) {
+            runCatching { focusRequester.requestFocus() }
+            wantsFocus = false
+        }
+    }
     Column(Modifier.bringIntoViewRequester(bringIntoView)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
-                if (step.target != null && !focused) {
+                if (step.target != null && !focused && !wantsFocus) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie
                     // ne sait pas abreger - il fait defiler son texte et le coupe net au bord, sans dire
                     // qu'il en reste. Le champ reel reprend sa place des qu'on le touche.
                     Box(
                         Modifier.fillMaxSize()
                             .border(1.dp, MaterialTheme.colorScheme.outline, FieldShape)
-                            .clickable { focusRequester.requestFocus() }
+                            .clickable { wantsFocus = true }
                             .padding(horizontal = FieldTextPadding),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = FieldTextSp.sp)
                     }
                 } else {
+                    // La saisie, et elle seule : y poser le libelle du lieu retenu ferait ecrire la
+                    // nouvelle frappe A COTE de lui plutot qu'a sa place, et c'est le tout - "VoiGrenoble,
+                    // Isere, France" - qui partait au geocodeur. Le champ s'ouvre donc vide sur une etape
+                    // deja remplie, son intitule ("Depart", "Arrivee") rappelant de quelle etape il s'agit ;
+                    // le lieu reste pose tant qu'on n'a rien tape, et revient si l'on ressort du champ.
                     CompactOutlinedTextField(
-                        value = shown,
+                        value = step.query,
                         onValueChange = { state.type(step, it) },
                         singleLine = true,
                         shape = FieldShape,
