@@ -568,6 +568,27 @@ class MigrationsTest {
         }
     }
 
+    // ---------- 46 -> 47 : la carte suit la position ----------
+
+    /**
+     * Le suivi arrive ALLUME sur une base en place, ce qui n'est le cas d'aucune autre commande ajoutee
+     * recemment.
+     *
+     * La raison tient a ce qu'il coute : rien. Il ne se declenche que le capteur en marche - donc a un
+     * moment ou l'on a deja demande a etre localise - et il ne fait que deplacer la carte avec des
+     * positions qui arrivaient de toute facon. L'alerte d'eloignement, elle, projette la position sur une
+     * trace et peut sonner : d'ou son extinction.
+     */
+    @Test fun `46 vers 47 allume le suivi de position`() {
+        val db = freshDb("m4647"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_MAP_FOLLOW_POSITION)
+        assertEquals(1, scalar(db, "SELECT mapFollowPosition FROM settings") { it.getInt(0) })
+        // Le SQL et le defaut Kotlin doivent dire la meme chose : sinon une base migree et une installation
+        // neuve se comporteraient differemment, l'une suivant la position et l'autre non.
+        assertTrue("defaut de l'entite", SettingsEntity().mapFollowPosition)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -622,7 +643,8 @@ class MigrationsTest {
             "mapButtonSizeDp", "hillshadeOn", "trackEditEnabled", "fillMissingElevation", "elevationIgnUrl",
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
-            "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot")
+            "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
+            "mapFollowPosition")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

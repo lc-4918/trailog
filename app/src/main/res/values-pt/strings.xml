@@ -489,4 +489,6 @@
     <string name="route_hills_seek">Aceitar o desnível</string>
     <string name="route_surface_paved">Ficar no pavimentado</string>
     <string name="route_surface_rough">Aceitar os caminhos</string>
+    <string name="settings_sw_follow_position">Seguir a minha posição</string>
+    <string name="settings_sw_follow_position_sub">O mapa recentra 5 s após o último gesto</string>
 </resources>

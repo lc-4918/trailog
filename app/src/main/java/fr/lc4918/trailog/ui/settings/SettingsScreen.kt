@@ -381,6 +381,13 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
         }
         RowDivider()
+        // Juste sous la localisation, dont il ne dit que le comportement : il ne déclenche rien de son côté
+        // et ne coûte rien capteur éteint, d'où l'absence du lien croisé que l'alerte, elle, impose.
+        SwitchLine(
+            stringResource(R.string.settings_sw_follow_position), cur.mapFollowPosition,
+            sub = stringResource(R.string.settings_sw_follow_position_sub),
+        ) { vm.save(cur.copy(mapFollowPosition = it)) }
+        RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }

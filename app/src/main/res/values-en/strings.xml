@@ -489,4 +489,6 @@
     <string name="route_hills_seek">Accept climbs</string>
     <string name="route_surface_paved">Stay on paved</string>
     <string name="route_surface_rough">Accept unpaved</string>
+    <string name="settings_sw_follow_position">Follow my position</string>
+    <string name="settings_sw_follow_position_sub">The map recentres 5 s after the last gesture</string>
 </resources>

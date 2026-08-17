@@ -491,4 +491,6 @@
     <string name="route_hills_seek">Accepter le dénivelé</string>
     <string name="route_surface_paved">Rester sur le revêtu</string>
     <string name="route_surface_rough">Accepter les chemins</string>
+    <string name="settings_sw_follow_position">Suivre ma position</string>
+    <string name="settings_sw_follow_position_sub">La carte se recentre 5 s après le dernier geste</string>
 </resources>

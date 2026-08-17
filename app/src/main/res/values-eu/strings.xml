@@ -489,4 +489,6 @@
     <string name="route_hills_seek">Aldapak onartu</string>
     <string name="route_surface_paved">Asfaltoan segi</string>
     <string name="route_surface_rough">Lur-bideak onartu</string>
+    <string name="settings_sw_follow_position">Nire kokapena jarraitu</string>
+    <string name="settings_sw_follow_position_sub">Mapa 5 s-ra zentratzen da azken keinuaren ondoren</string>
 </resources>

@@ -489,4 +489,6 @@
     <string name="route_hills_seek">Accettare il dislivello</string>
     <string name="route_surface_paved">Restare sull\'asfalto</string>
     <string name="route_surface_rough">Accettare gli sterrati</string>
+    <string name="settings_sw_follow_position">Segui la mia posizione</string>
+    <string name="settings_sw_follow_position_sub">La mappa si ricentra 5 s dopo l\'ultimo gesto</string>
 </resources>

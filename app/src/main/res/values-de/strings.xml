@@ -489,4 +489,6 @@
     <string name="route_hills_seek">Steigungen annehmen</string>
     <string name="route_surface_paved">Auf Asphalt bleiben</string>
     <string name="route_surface_rough">Unbefestigtes annehmen</string>
+    <string name="settings_sw_follow_position">Meiner Position folgen</string>
+    <string name="settings_sw_follow_position_sub">Die Karte zentriert 5 s nach der letzten Geste</string>
 </resources>

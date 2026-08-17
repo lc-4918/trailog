@@ -14,6 +14,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -314,6 +315,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // consommé dès que la prochaine position arrive
     var pendingCenter by remember { mutableStateOf(false) }
     var lastUserLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) } // (lat, lon)
+    // Instant du dernier geste sur la carte (0 = aucun), en temps depuis le démarrage de l'appareil et non
+    // en heure murale : le suivi de position s'y réfère, et un changement d'heure - fuseau, mise à l'heure
+    // du réseau - ne doit pas le suspendre pour l'éternité ni le réveiller trop tôt.
+    var lastUserGestureAt by remember { mutableLongStateOf(0L) }
     var showLocationDisabledDialog by remember { mutableStateOf(false) }
     val locationManager = remember { ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
     val locationListener = remember {
@@ -892,10 +897,37 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         controller.onCameraMove = { moveTick++ }
         controller.onUserMoveBegin = {
             autoFramed = false
+            // Un geste rend la carte à son propriétaire : le suivi de position se tait le temps du silence
+            // (cf. MapFollow). Ce rappel ne se déclenche que sur un geste humain - centerOn et fitTo ne le
+            // font pas -, sans quoi le suivi s'interdirait lui-même à son premier recentrage.
+            lastUserGestureAt = SystemClock.elapsedRealtime()
         }
         // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
         // les modes de saisie exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point.
         controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
+    }
+
+    /*
+     * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
+     * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
+     *
+     * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher
+     * dans les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
+     * recentrage en cours de préparation pour repartir sur cinq secondes pleines. Le retour a donc lieu
+     * même immobile, l'attente du geste arrivant à son terme sans qu'aucune position nouvelle ne l'y aide.
+     */
+    val followsPosition = MapFollow.follows(
+        enabled = settings?.mapFollowPosition != false,
+        gpsActive = gpsActive,
+        plannerOpen = planner.open,
+        layerOpen = activeLayerId != null,
+    )
+    LaunchedEffect(followsPosition, lastUserLocation, lastUserGestureAt) {
+        if (!followsPosition) return@LaunchedEffect
+        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
+        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), lastUserGestureAt)
+        if (wait > 0L) delay(wait)
+        controller.centerOn(la, lo)
     }
     // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure, choix du
     // point de référence d'une distance) : tout tap leur revient, y compris sur une trace ou un marqueur,

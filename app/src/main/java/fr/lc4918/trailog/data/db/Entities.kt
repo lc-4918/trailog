@@ -212,6 +212,9 @@ data class SettingsEntity(
     val routePrefsHybrid: String = "soft,balanced,balanced",
     val routePrefsMtb: String = "soft,seek,rough",
     val routePrefsFoot: String = "soft,balanced,rough",
+    // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
+    // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
+    val mapFollowPosition: Boolean = true,
     // Completer a l'import les altitudes que le fichier ne porte pas (cf. elevation/ElevationFiller).
     // Desactive par defaut, comme le geocodage : c'est la seule autre fonction qui fait partir des requetes
     // vers un service tiers sans qu'on l'ait demandee sur le moment.
