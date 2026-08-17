@@ -27,9 +27,9 @@ le total.
 
 ## Tests à implémenter
 
-**36 tests d'instrumentation et 12 e2e** listés ci-dessous, un par réglage des 4 onglets de
-`SettingsScreen.kt` (28 rubriques recensées). Rien n'est implémenté au-delà du
-`MigrationInstrumentedTest`.
+**38 tests d'instrumentation et 12 e2e** listés ci-dessous : un par réglage des 4 onglets de
+`SettingsScreen.kt` (28 rubriques recensées), plus 2 sur le planificateur d'itinéraire, qui ne relève
+d'aucun onglet. Rien n'est implémenté au-delà du `MigrationInstrumentedTest`.
 
 Question ouverte : tout implémenter ou prioriser ? Certains (import .mbtiles, dossiers, langue,
 avatar) dépendent du sélecteur de fichiers système, donc d'UiAutomator et d'un appareil réel.
@@ -93,6 +93,25 @@ Origine des listes : les 4 premières rubriques de l'onglet Carte viennent de
 | S-9  | Langue                          | les 8 langues ; l'activité se recrée, l'interface change          |
 | S-10 | Thème                           | Système, Clair, Sombre                                            |
 | S-11 | Titre, avatar, réinitialisation | titre du menu, avatar par fichier ou URL, popup de reset          |
+
+### Instrumentation, planificateur d'itinéraire (2)
+
+Les deux seuls tests de cette liste nés d'un plantage réel, et non d'un inventaire de réglages : le
+17 août 2026, taper dans le champ de départ d'un itinéraire calculé fermait l'application. Les deux
+défauts ont été corrigés dans `RoutePlannerBand.kt` le jour même ; il manque toujours ce qui empêchera
+leur retour. Aucun test unitaire JVM ne peut les voir - la faute est dans la composition, pas dans
+`RoutePlannerState`. Ce seraient les premiers `createComposeRule` du dépôt (les dépendances
+`compose.ui.test.junit4` et `compose.ui.test.manifest` sont déjà déclarées, et inutilisées).
+
+| #   | Geste                            | Ce que vérifie le test                                                                        |
+|-----|----------------------------------|-----------------------------------------------------------------------------------------------|
+| I-1 | Clic sur une étape remplie       | le champ prend le focus au lieu de lever `FocusRequester is not initialized`                  |
+| I-2 | Frappe par-dessus un lieu retenu | le champ ne porte que la frappe ; le géocodeur reçoit "Voi", non "VoiGrenoble, Isère, France" |
+
+**Deux obstacles à lever d'abord.** `StepRow` est privé : le test passerait par `RoutePlannerBand`, donc
+par un `RoutePlannerState` monté à la main avec une étape dont le lieu est déjà choisi. Et la recherche
+appelle `Photon.search` directement depuis le composable : I-1 l'évite (il ne tape rien), mais I-2 part
+sur le réseau 350 ms après la frappe tant que le géocodeur n'est pas injecté plutôt qu'appelé en dur.
 
 ### e2e (12)
 
