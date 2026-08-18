@@ -490,14 +490,17 @@ exactement le cas que l'auto-hébergement sert à couvrir.
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `ReleaseInfoTest` | 3 | forme du manifeste écrit par la CI, calcul du versionCode |
+| `ReleaseInfoTest` | 8 | forme du manifeste écrit par la CI, calcul du versionCode, choix de l'APK selon l'architecture |
 | `SweepDownloadsTest` | 8 | ménage des APK de mise à jour laissés sur le disque |
 | `UpdateCheckTest` | 2 | inertie en debug, distinction des trois issues |
 
 `ReleaseInfoTest` garde un contrat entre **deux fichiers qui ne se compilent pas ensemble** : le `jq`
 du workflow et le parseur Kotlin. Une divergence n'y produirait aucune erreur visible, seulement des
 mises à jour qui cesseraient d'être proposées. Il vérifie aussi qu'un champ ajouté plus tard au
-manifeste est ignoré plutôt que fatal, et que l'ordre des `versionCode` est correct.
+manifeste est ignoré plutôt que fatal, et que l'ordre des `versionCode` est correct. Depuis les splits
+ABI, il verrouille aussi le choix de l'APK par architecture : une clé mal orthographiée côté workflow
+(`apkurls`) laisserait la lecture réussir, la table vide, et **tous** les appareils retomberaient à
+jamais sur l'APK universel - deux fois plus lourd - sans que rien ne le signale.
 
 `SweepDownloadsTest` répare une fuite du même genre, invisible depuis l'application : `DownloadManager`
 dépose l'APK d'une mise à jour dans le dossier privé, et rien ne l'en retirait. Relevé sur l'appareil

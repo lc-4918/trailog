@@ -22,8 +22,24 @@ data class ReleaseInfo(
     val versionCode: Int,
     val releaseDate: String,
     val apkUrl: String,
+    /**
+     * Une URL par architecture, depuis que la CI publie un APK par ABI (cf. le bloc `splits` de
+     * build.gradle.kts). Absent des manifestes d'avant, d'ou le defaut vide.
+     */
+    val apkUrls: Map<String, String> = emptyMap(),
     val changelog: String = "",
-)
+) {
+    /**
+     * L'APK a telecharger pour un appareil qui execute [abis], par ordre de preference
+     * (`Build.SUPPORTED_ABIS`).
+     *
+     * Un APK par architecture divise le telechargement par deux - 61,5 Mo en universel contre une
+     * trentaine pour l'architecture seule, le code natif de MapLibre pesant 71 % du total. Le repli sur
+     * [apkUrl], l'APK universel, couvre deux cas : un manifeste d'avant les splits, et une architecture
+     * qu'on ne publierait pas. Mieux vaut telecharger trop que rien.
+     */
+    fun urlFor(abis: List<String>): String = abis.firstNotNullOfOrNull { apkUrls[it] } ?: apkUrl
+}
 
 /** Issue d'une verification, pour que l'appelant distingue "rien de neuf" d'un echec reseau. */
 sealed interface UpdateCheck {
@@ -91,7 +107,8 @@ object UpdateManager {
      */
     fun enqueueDownload(context: Context, release: ReleaseInfo, title: String, description: String): Long {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request = DownloadManager.Request(release.apkUrl.toUri()).apply {
+        val url = release.urlFor(Build.SUPPORTED_ABIS.orEmpty().toList())
+        val request = DownloadManager.Request(url.toUri()).apply {
             setTitle(title)
             setDescription(description)
             setDestinationInExternalFilesDir(context, null, "trailog-${release.version}.apk")

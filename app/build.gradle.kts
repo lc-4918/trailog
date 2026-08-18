@@ -59,6 +59,26 @@ android {
         }
     }
 
+    /*
+     * Un APK par architecture, au lieu d'un seul qui les porte toutes les quatre.
+     *
+     * MapLibre pese 8 a 12 Mo de code natif PAR architecture, soit 43,6 Mo des 61,5 Mo de l'APK v0.10.0 -
+     * 71 % du poids - alors qu'un telephone n'en execute qu'UNE. Les deux variantes x86 ne servent qu'aux
+     * emulateurs et ne s'executeront jamais sur un appareil reel.
+     *
+     * L'APK universel reste produit, et c'est indispensable : c'est lui que designe le champ apkUrl du
+     * manifeste, donc celui que telechargent les versions deja installees, qui ne savent pas choisir. Les
+     * versions suivantes prennent celui de leur architecture (cf. ReleaseInfo.urlFor).
+     */
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -102,9 +122,14 @@ android {
 // que voit l'utilisateur en téléchargeant l'APK depuis la page GitHub Releases (§WORKFLOW.md §5).
 androidComponents {
     onVariants { variant ->
-        val fileName = if (variant.buildType == "release") "trailog-$gitVersion.apk" else "trailog-debug-$gitVersion.apk"
+        val base = if (variant.buildType == "release") "trailog-$gitVersion" else "trailog-debug-$gitVersion"
         variant.outputs.forEach { output ->
-            (output as com.android.build.api.variant.impl.VariantOutputImpl).outputFileName.set(fileName)
+            val impl = output as com.android.build.api.variant.impl.VariantOutputImpl
+            // Une sortie par architecture depuis les splits : sans le suffixe, les cinq s'ecriraient dans
+            // le meme fichier et la CI publierait la derniere arrivee, au hasard. L'APK universel, lui,
+            // garde le nom nu - c'est celui que le manifeste designe pour les versions deja installees.
+            val abi = impl.filters.find { it.filterType.name == "ABI" }?.identifier
+            impl.outputFileName.set(if (abi == null) "$base.apk" else "$base-$abi.apk")
         }
     }
 }

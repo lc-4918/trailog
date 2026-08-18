@@ -93,7 +93,10 @@ sans dépendre d'un service en ligne.
 ### Depuis GitHub Releases (recommandé)
 
 1. Ouvrir la page [Releases](https://github.com/lc-4918/trailog/releases) du dépôt.
-2. Télécharger le fichier `.apk` de la dernière version.
+2. Télécharger le `.apk` de la dernière version. Chaque release en propose plusieurs : prenez celui
+   de l'architecture de votre téléphone - `arm64-v8a` pour tout appareil récent, `armeabi-v7a` pour
+   un plus ancien - deux fois plus léger que le fichier `trailog-vX.Y.Z.apk` sans suffixe, qui les
+   contient toutes et fonctionne partout en cas de doute.
 3. Ouvrir le fichier téléchargé sur votre téléphone (autoriser l'installation depuis une
    source inconnue si demandé par Android).
 4. Confirmer l'installation.

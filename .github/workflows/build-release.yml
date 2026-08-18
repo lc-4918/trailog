@@ -93,10 +93,20 @@ jobs:
           VERSION="${TAG#v}"
           IFS='.' read -r MAJ MIN PATCH <<< "$VERSION"
           VERSION_CODE=$(( MAJ * 10000 + MIN * 100 + PATCH ))
-          # Nom d'APK fixe par androidComponents dans build.gradle.kts : trailog-<tag>.apk
-          APK_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${TAG}/trailog-${TAG}.apk"
-          # Le nom du fichier publie doit exister, sinon l'app telechargerait une URL morte.
+          # Noms d'APK fixes par androidComponents dans build.gradle.kts : trailog-<tag>.apk pour
+          # l'universel, trailog-<tag>-<abi>.apk pour chaque architecture (bloc splits).
+          BASE="${{ github.server_url }}/${{ github.repository }}/releases/download/${TAG}"
+          APK_URL="${BASE}/trailog-${TAG}.apk"
+          # Chaque fichier annonce doit exister, sinon l'app telechargerait une URL morte. L'universel
+          # d'abord : c'est lui que designe apkUrl, donc celui que prennent les versions deja installees,
+          # qui ne savent pas choisir leur architecture.
           test -f "app/build/outputs/apk/release/trailog-${TAG}.apk"
+          APK_URLS='{}'
+          for ABI in arm64-v8a armeabi-v7a x86 x86_64; do
+            test -f "app/build/outputs/apk/release/trailog-${TAG}-${ABI}.apk"
+            APK_URLS=$(jq -n --argjson m "$APK_URLS" --arg k "$ABI" \
+                             --arg v "${BASE}/trailog-${TAG}-${ABI}.apk" '$m + {($k): $v}')
+          done
 
           # Changelog affiche dans le dialogue in-app (cf. update/UpdateDialog) : sujets des commits depuis
           # le tag precedent, hors merges, en liste. Plafonne a 12 lignes pour tenir dans le dialogue ; si
@@ -107,8 +117,9 @@ jobs:
           CHANGELOG=$(git log --no-merges -n 12 --pretty=format:'- %s' "$RANGE")
 
           jq -n --arg v "$VERSION" --argjson c "$VERSION_CODE" \
-                --arg d "$(date -u +%Y-%m-%d)" --arg u "$APK_URL" --arg cl "$CHANGELOG" \
-                '{version:$v, versionCode:$c, releaseDate:$d, apkUrl:$u, changelog:$cl}' \
+                --arg d "$(date -u +%Y-%m-%d)" --arg u "$APK_URL" --argjson au "$APK_URLS" \
+                --arg cl "$CHANGELOG" \
+                '{version:$v, versionCode:$c, releaseDate:$d, apkUrl:$u, apkUrls:$au, changelog:$cl}' \
             > "$RUNNER_TEMP/latest-release.json"
           cat "$RUNNER_TEMP/latest-release.json"
 

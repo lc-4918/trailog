@@ -60,15 +60,29 @@ release officielle. L'APK debug n'est pas signé avec la clé de release.
 5. Suppression du keystore temporaire.
 6. Génération de **`latest-release.json`** dans un fichier temporaire (voir section 6).
 7. Création d'une **GitHub Release** portant le nom du tag, avec changelog généré
-   automatiquement à partir des commits, et deux pièces jointes téléchargeables : l'APK
+   automatiquement à partir des commits, et les pièces jointes téléchargeables : les APK
    release et le manifeste. La CI ne pousse **aucun commit** sur `main`.
 
 **Où trouver l'APK :** page **Releases** du dépôt (publique).
 
-**Nom de l'APK :** `trailog-vX.Y.Z.apk`, fixé par le bloc `androidComponents` de
-`app/build.gradle.kts`. L'étape 6 reconstruit ce nom pour composer l'URL de téléchargement et
-vérifie que le fichier existe avant de publier le manifeste : sans ce garde-fou, une
-divergence de nommage publierait une URL morte que l'app tenterait de télécharger.
+**Cinq APK par release, et non un seul.** Le bloc `splits` de `app/build.gradle.kts` produit un APK
+par architecture - `trailog-vX.Y.Z-arm64-v8a.apk` et ses trois voisins - plus un **universel**,
+`trailog-vX.Y.Z.apk`, qui les porte toutes. La raison est le poids : le code natif de MapLibre pèse
+8 à 12 Mo **par architecture**, soit 71 % de l'APK universel, alors qu'un appareil n'en exécute
+qu'une. L'APK d'architecture fait ainsi 29,6 Mo là où l'universel en fait 61,6.
+
+L'universel n'est pas un reliquat : c'est lui que désigne le champ `apkUrl` du manifeste, donc celui
+que téléchargent les **versions déjà installées**, qui ne savent pas choisir. Le supprimer couperait
+la mise à jour de tout ce qui existe aujourd'hui.
+
+**Qui prend quoi :** un appareil doté d'une version récente lit `apkUrls` et prend l'APK de son
+architecture (cf. `ReleaseInfo.urlFor`, qui suit l'ordre de préférence de `Build.SUPPORTED_ABIS`) ;
+à défaut, il retombe sur l'universel. Mieux vaut télécharger trop que rien.
+
+Les noms sont fixés par le bloc `androidComponents` de `app/build.gradle.kts`. L'étape 6 les
+reconstruit pour composer les URL de téléchargement et **vérifie que chaque fichier existe** avant de
+publier le manifeste : sans ce garde-fou, une divergence de nommage publierait une URL morte que
+l'app tenterait de télécharger.
 
 ## 4. Comment créer une Release
 
@@ -110,9 +124,19 @@ aux côtés de l'APK :
   "versionCode": 200,
   "releaseDate": "2026-07-15",
   "apkUrl": "https://github.com/lc-4918/trailog/releases/download/v0.2.0/trailog-v0.2.0.apk",
+  "apkUrls": {
+    "arm64-v8a": "https://github.com/lc-4918/trailog/releases/download/v0.2.0/trailog-v0.2.0-arm64-v8a.apk",
+    "armeabi-v7a": ".../trailog-v0.2.0-armeabi-v7a.apk",
+    "x86": ".../trailog-v0.2.0-x86.apk",
+    "x86_64": ".../trailog-v0.2.0-x86_64.apk"
+  },
   "changelog": "- import : un fichier fautif n'interrompt plus rien, et le dit\n- reglages : les deux sliders parlent d'opacite, comme le code"
 }
 ```
+
+`apkUrl` reste l'APK **universel** et ne bougera pas : les versions publiées avant les splits ne lisent
+que ce champ. `apkUrls` est lu par les suivantes, qui y prennent leur architecture et divisent le
+téléchargement par deux. Un manifeste sans `apkUrls` reste donc parfaitement installable.
 
 Le `changelog` reprend les sujets des commits (hors merges, 12 au plus) entre le tag précédent et
 celui en cours, en liste à puces, affichée telle quelle dans le dialogue in-app. Ce parcours de

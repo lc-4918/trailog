@@ -94,7 +94,10 @@ them on a map with a synchronised elevation profile, without depending on any on
 ### From GitHub Releases (recommended)
 
 1. Open the repository's [Releases](https://github.com/lc-4918/trailog/releases) page.
-2. Download the `.apk` file of the latest version.
+2. Download the `.apk` of the latest version. Each release offers several: pick the one matching
+   your phone's architecture - `arm64-v8a` for any recent device, `armeabi-v7a` for an older one -
+   half the size of the plain `trailog-vX.Y.Z.apk`, which carries them all and works anywhere if in
+   doubt.
 3. Open the downloaded file on your phone (allow installation from an unknown source if Android
    asks for it).
 4. Confirm the installation.
