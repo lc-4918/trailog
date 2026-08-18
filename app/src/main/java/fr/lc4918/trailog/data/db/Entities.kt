@@ -3,6 +3,7 @@ package fr.lc4918.trailog.data.db
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 
@@ -203,8 +204,16 @@ data class SettingsEntity(
     // disciplines et aux memes trois preferences, chacun dans sa langue - c'est ce qui rend la comparaison
     // honnete, et c'est pour comparer que ce reglage existe.
     val routeEngine: String = "brouter",
-    // Service d'itineraire. Vide = instance publique DU MOTEUR RETENU (cf. Router.baseOf).
+    // Service d'itineraire, UNE URL PAR MOTEUR (cf. routeUrl/withRouteUrl plus bas). Vide = instance
+    // publique du moteur (cf. Router.baseOf). Deux colonnes et non une : une seule adresse pour deux
+    // moteurs se paie a l'usage - reglee sur une instance Valhalla puis le moteur change, l'application
+    // deposerait un profil BRouter chez Valhalla, ce qui echoue en SILENCE, "Aucun itineraire" etant
+    // indiscernable de deux points non relies.
+    // routingUrl est celle de Valhalla, et garde son nom d'avant le second moteur : ce qu'elle contient
+    // sur une base en place EST une URL Valhalla, la renommer ne dirait rien de plus et couterait une
+    // refonte de table.
     val routingUrl: String = "",
+    val routingUrlBrouter: String = "",
     // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",
     // Preferences de trace, une colonne par discipline : "voies,relief,revetement" (cf. RoutingPrefs, et
@@ -329,6 +338,24 @@ fun SettingsEntity.routePrefs(profile: RoutingProfile): RoutingPrefs = RoutingPr
     },
     profile,
 )
+
+/**
+ * URL du service pour le moteur [engine], relue de sa colonne. Vide = son instance publique.
+ *
+ * Meme montage que les preferences ci-dessus, et pour la meme raison : la correspondance moteur -> colonne
+ * vit ici seule, plutot que recopiee chez les trois lecteurs jusqu'au jour ou l'un d'eux oublierait un
+ * moteur - et enverrait alors ses requetes a l'autre.
+ */
+fun SettingsEntity.routeUrl(engine: RouteEngine): String = when (engine) {
+    RouteEngine.VALHALLA -> routingUrl
+    RouteEngine.BROUTER -> routingUrlBrouter
+}
+
+/** La meme chose en ecriture : rend la copie des reglages ou seule l'URL de [engine] a change. */
+fun SettingsEntity.withRouteUrl(engine: RouteEngine, url: String): SettingsEntity = when (engine) {
+    RouteEngine.VALHALLA -> copy(routingUrl = url)
+    RouteEngine.BROUTER -> copy(routingUrlBrouter = url)
+}
 
 /** La meme chose en ecriture : rend la copie des reglages ou seule la discipline [profile] a change. */
 fun SettingsEntity.withRoutePrefs(profile: RoutingProfile, prefs: RoutingPrefs): SettingsEntity {

@@ -155,6 +155,8 @@ import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.HillPref
 import fr.lc4918.trailog.domain.model.SurfacePref
 import fr.lc4918.trailog.domain.model.WayPref
+import fr.lc4918.trailog.data.db.routeUrl
+import fr.lc4918.trailog.data.db.withRouteUrl
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.withRoutePrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
@@ -1070,10 +1072,12 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
         }
         RowDivider()
         FieldRow(stringResource(R.string.settings_section_routing_service)) {
-            // Le gabarit suit le moteur retenu : une URL vide designe SON instance publique, et afficher
-            // celle de l'autre moteur ferait croire qu'on interroge celui-la.
-            SettingsTextField(cur.routingUrl, Router.defaultUrlOf(RouteEngine.of(cur.routeEngine))) {
-                vm.save(cur.copy(routingUrl = it.trim()))
+            // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
+            // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie
+            // jamais la requete d'un moteur au serveur du voisin, faute qui echouerait en silence.
+            val moteur = RouteEngine.of(cur.routeEngine)
+            SettingsTextField(cur.routeUrl(moteur), Router.defaultUrlOf(moteur)) {
+                vm.save(cur.withRouteUrl(moteur, it.trim()))
             }
         }
         Hint(stringResource(R.string.settings_services_hint))

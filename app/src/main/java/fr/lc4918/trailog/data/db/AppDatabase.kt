@@ -335,6 +335,21 @@ internal object MigrationSql {
     const val ADD_ROUTE_ENGINE =
         "ALTER TABLE settings ADD COLUMN routeEngine TEXT NOT NULL DEFAULT 'brouter'"
 
+    /**
+     * Seconde URL de service : le moteur d'itineraire en a desormais UNE PAR MOTEUR.
+     *
+     * Une seule adresse pour deux moteurs se paie a l'usage. Reglee sur une instance Valhalla personnelle
+     * puis le moteur change, l'application deposerait un profil BRouter chez Valhalla - et l'echec est
+     * MUET, "Aucun itineraire" etant indiscernable de deux points non relies.
+     *
+     * Vide, comme toute URL de service ajoutee ici : figer l'instance publique en base la laisserait
+     * perimee le jour ou le defaut du code change. Et c'est routingUrl qui reste celle de Valhalla, sans
+     * renommage : ce qu'elle contient sur une base en place EST une URL Valhalla, le second moteur
+     * n'existant pas quand elle a ete reglee.
+     */
+    const val ADD_ROUTING_URL_BROUTER =
+        "ALTER TABLE settings ADD COLUMN routingUrlBrouter TEXT NOT NULL DEFAULT ''"
+
     // Suivi de la position par la carte, allume d'office y compris sur une base en place : il ne se
     // declenche que le capteur en marche, donc a un moment ou l'on a deja demande a etre localise, et il
     // n'ajoute alors aucune consommation - il deplace la carte avec des positions qui arrivaient de toute
@@ -356,7 +371,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 49,
+    version = 50,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -614,11 +629,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_49_50 = object : Migration(49, 50) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_ROUTING_URL_BROUTER)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

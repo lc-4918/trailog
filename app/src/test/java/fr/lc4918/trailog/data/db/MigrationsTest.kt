@@ -8,6 +8,9 @@ import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.domain.model.SurfacePref
 import fr.lc4918.trailog.domain.model.WayPref
+import fr.lc4918.trailog.routing.Brouter
+import fr.lc4918.trailog.routing.Router
+import fr.lc4918.trailog.routing.Valhalla
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -675,6 +678,57 @@ class MigrationsTest {
         assertEquals(RouteEngine.VALHALLA, RouteEngine.of("valhalla"))
     }
 
+    // ---------- 49 -> 50 : une URL de service par moteur ----------
+
+    /**
+     * Le second moteur recoit SA colonne d'URL, et celle deja en place reste a Valhalla.
+     *
+     * Une seule adresse pour deux moteurs se paie a l'usage : reglee sur une instance Valhalla puis le
+     * moteur change, l'application deposerait un profil BRouter chez Valhalla - et l'echec est MUET,
+     * "Aucun itineraire" etant indiscernable de deux points non relies. C'est la faute que cette colonne
+     * rend impossible.
+     */
+    @Test fun `49 vers 50 donne au second moteur sa propre url`() {
+        val db = freshDb("m4950"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTING_URL_BROUTER)
+        // Vide, comme toute URL de service : figer l'instance publique en base la laisserait perimee le
+        // jour ou le defaut du code change.
+        assertEquals("", scalar(db, "SELECT routingUrlBrouter FROM settings") { it.getString(0) })
+        assertEquals("", SettingsEntity().routingUrlBrouter)
+        db.close()
+    }
+
+    /**
+     * L'URL deja reglee reste celle de VALHALLA, sans reprise ni renommage : ce qu'elle contient sur une
+     * base en place est une adresse Valhalla, le second moteur n'existant pas quand elle a ete saisie.
+     * La deplacer serait la donner a un moteur qui ne sait pas la lire.
+     */
+    @Test fun `l'url deja reglee reste celle de valhalla`() {
+        val perso = SettingsEntity().withRouteUrl(RouteEngine.VALHALLA, "https://valhalla.chez-moi.fr/route")
+        assertEquals("https://valhalla.chez-moi.fr/route", perso.routeUrl(RouteEngine.VALHALLA))
+        assertEquals("", perso.routeUrl(RouteEngine.BROUTER))
+    }
+
+    /** Regler l'un ne doit pas toucher a l'autre : c'est toute la raison des deux colonnes, et ce qui
+     *  permet de basculer pour comparer sans perdre l'adresse qu'on avait saisie. */
+    @Test fun `regler l'url d'un moteur laisse l'autre en place`() {
+        val avant = SettingsEntity()
+            .withRouteUrl(RouteEngine.VALHALLA, "https://valhalla.chez-moi.fr/route")
+            .withRouteUrl(RouteEngine.BROUTER, "https://brouter.chez-moi.fr/brouter")
+        val apres = avant.withRouteUrl(RouteEngine.BROUTER, "https://autre.fr/brouter")
+        assertEquals("https://valhalla.chez-moi.fr/route", apres.routeUrl(RouteEngine.VALHALLA))
+        assertEquals("https://autre.fr/brouter", apres.routeUrl(RouteEngine.BROUTER))
+    }
+
+    /** Vide, l'URL designe l'instance publique DU MOTEUR RETENU, et non celle du voisin. */
+    @Test fun `une url vide designe l'instance publique du moteur retenu`() {
+        val neuf = SettingsEntity()
+        assertEquals(Valhalla.DEFAULT_URL,
+            Router.baseOf(RouteEngine.VALHALLA, neuf.routeUrl(RouteEngine.VALHALLA)))
+        assertEquals(Brouter.DEFAULT_URL,
+            Router.baseOf(RouteEngine.BROUTER, neuf.routeUrl(RouteEngine.BROUTER)))
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -730,7 +784,7 @@ class MigrationsTest {
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
-            "mapFollowPosition", "routeEngine")
+            "mapFollowPosition", "routeEngine", "routingUrlBrouter")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

@@ -261,7 +261,9 @@ s'attarde pas.
 
 Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
 d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied. Le moteur
-se règle lui aussi, entre **Valhalla** et **BRouter**, et son URL avec lui comme celle du géocodeur.
+se règle lui aussi, entre **Valhalla** et **BRouter**. Chacun garde **sa** propre URL de service, comme le
+géocodeur a la sienne : basculer pour comparer ne fait donc pas perdre l'adresse de l'autre, et n'envoie
+jamais la requête d'un moteur au serveur du voisin - une faute qui échouerait en silence.
 
 Valhalla est le moteur d'origine : ses cinq disciplines sortent d'une seule instance via `bicycle_type`
 (OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé). Son modèle de coût est figé

@@ -21,6 +21,7 @@ import fr.lc4918.trailog.elevation.ElevationServices
 import fr.lc4918.trailog.data.seed.Composites
 import fr.lc4918.trailog.data.seed.DemoData
 import fr.lc4918.trailog.data.seed.Providers
+import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
@@ -508,7 +509,7 @@ class TrailogRepository(private val ctx: Context) {
         val (from, to) = pairs.minBy { (p, q) -> TrackMath.haversine(p.lon, p.lat, q.lon, q.lat) }
         val s = db.settings().get()
         val engine = RouteEngine.of(s?.routeEngine)
-        val base = Router.baseOf(engine, s?.routingUrl)
+        val base = Router.baseOf(engine, s?.routeUrl(engine))
         val profile = RoutingProfile.of(s?.routingProfile)
         // Le pont emprunte les mêmes préférences que les mesures de la carte : c'est un bout de trajet
         // réel, qui rejoint deux traces sur le terrain, pas une ligne droite de raccord.

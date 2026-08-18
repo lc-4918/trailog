@@ -126,6 +126,7 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.data.db.routePrefs
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Autorenew
@@ -550,7 +551,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // ---------- services et réglages partagés (point de la carte, planificateur) ----------
     val imperialUnits = settings?.units == "imperial"
     val routeEngine = RouteEngine.of(settings?.routeEngine)
-    val routingUrl = Router.baseOf(routeEngine, settings?.routingUrl)
+    val routingUrl = Router.baseOf(routeEngine, settings?.routeUrl(routeEngine))
     val geocodingBase = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
     // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire calculé n'a pas de raison
     // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
