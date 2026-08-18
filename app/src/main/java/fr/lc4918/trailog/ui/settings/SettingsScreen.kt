@@ -685,13 +685,18 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
     var pickColor by remember { mutableStateOf(false) }
     SectionTitle(stringResource(R.string.settings_section_gps_marker))
     SettingsCard {
-        // Changer de symbole rend sa couleur au nouveau : chacun a la sienne (bleu pour la puce, rouge pour
-        // les fleches et la croix), et l'heriter du precedent donnerait une fleche bleue a qui vient de
-        // quitter la puce sans jamais avoir choisi de couleur.
+        // Changer de symbole rend sa couleur ET sa taille au nouveau : chacun a les siennes (bleu et 20 dp
+        // pour la puce, rouge et 30 dp pour les fleches, qui doivent montrer une direction), et les heriter
+        // du precedent donnerait une fleche bleue et minuscule a qui vient de quitter la puce sans avoir
+        // rien choisi.
         PickRow(
             stringResource(R.string.settings_label_gps_marker_style),
             marker, GpsMarkerStyle.entries, optionLabel = { gpsMarkerLabel(it) },
-        ) { vm.save(cur.copy(gpsMarkerStyle = it.key, gpsMarkerColor = "")) }
+        ) {
+            vm.save(cur.copy(
+                gpsMarkerStyle = it.key, gpsMarkerColor = "", gpsMarkerSizeDp = it.defaultSizeDp,
+            ))
+        }
         RowDivider()
         SetRow(stringResource(R.string.settings_label_gps_marker_color), onClick = { pickColor = true }) {
             Box(Modifier.size(24.dp).clip(CircleShape).background(Color(color.toColorInt())))

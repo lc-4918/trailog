@@ -293,7 +293,12 @@ const val DefaultMapButtonSizeDp = 42
 const val MinGpsMarkerSizeDp = 12
 const val MaxGpsMarkerSizeDp = 48
 
-/** Taille par defaut : celle de la puce d'origine (rayon 7 + contour 2,5), inchangee pour qui n'y touche pas. */
+/**
+ * Taille par defaut d'une installation neuve : celle de la puce d'origine (rayon 7 + contour 2,5),
+ * inchangee pour qui n'y touche pas. Les autres symboles ont la leur (cf. GpsMarkerStyle.defaultSizeDp),
+ * appliquee quand on en change ; la constante ne peut pas la citer, un `const` exigeant une valeur
+ * calculable a la compilation.
+ */
 const val DefaultGpsMarkerSizeDp = 20
 
 /**
