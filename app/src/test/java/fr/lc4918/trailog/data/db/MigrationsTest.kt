@@ -592,6 +592,58 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 47 -> 48 : les preferences de trace refaites ----------
+
+    /**
+     * Le defaut d'une colonne ne s'applique qu'a son AJOUT : changer RoutingPrefs.defaultFor ne touche
+     * aucune installation deja en place, qui continue de calculer comme avant, en SILENCE. C'est l'appareil
+     * qui l'a montre - le velo de route y restait sans exigence de revetement, le gravel et la marche sans
+     * denivele accepte, alors que le code disait le contraire.
+     */
+    @Test fun `47 vers 48 reprend les preferences restees sur leur premier defaut`() {
+        val db = freshDb("m4748"); settingsV16(db)
+        listOf(MigrationSql.ADD_ROUTE_PREFS_ROAD, MigrationSql.ADD_ROUTE_PREFS_GRAVEL,
+            MigrationSql.ADD_ROUTE_PREFS_HYBRID, MigrationSql.ADD_ROUTE_PREFS_MTB,
+            MigrationSql.ADD_ROUTE_PREFS_FOOT).forEach { db.execSQL(it) }
+        // Ce que porte une base v46 : les PREMIERS defauts, ceux d'avant la reprise.
+        db.execSQL("UPDATE settings SET routePrefsRoad = 'soft,balanced,balanced', " +
+            "routePrefsGravel = 'soft,balanced,rough', routePrefsHybrid = 'soft,balanced,balanced', " +
+            "routePrefsMtb = 'soft,seek,rough', routePrefsFoot = 'soft,balanced,rough'")
+        db.execSQL(MigrationSql.RESET_ROUTE_PREFS)
+        RoutingProfile.entries.forEach { p ->
+            val col = when (p) {
+                RoutingProfile.ROAD_BIKE -> "routePrefsRoad"
+                RoutingProfile.GRAVEL -> "routePrefsGravel"
+                RoutingProfile.HYBRID_BIKE -> "routePrefsHybrid"
+                RoutingProfile.MOUNTAIN_BIKE -> "routePrefsMtb"
+                RoutingProfile.FOOT -> "routePrefsFoot"
+            }
+            assertEquals("$p : $col", RoutingPrefs.defaultFor(p).asCsv(),
+                scalar(db, "SELECT $col FROM settings") { it.getString(0) })
+        }
+        db.close()
+    }
+
+    /**
+     * Et une discipline reglee A LA MAIN garde ce qu'on lui a demande : la reprise est conditionnelle,
+     * comme la taille du titre d'infobulle et celle des boutons. Le VTC de l'appareil en etait l'exemple
+     * vivant - son revetement avait ete change avant que ce SQL n'existe.
+     */
+    @Test fun `47 vers 48 ne touche pas une discipline reglee a la main`() {
+        val db = freshDb("m4748bis"); settingsV16(db)
+        listOf(MigrationSql.ADD_ROUTE_PREFS_ROAD, MigrationSql.ADD_ROUTE_PREFS_GRAVEL,
+            MigrationSql.ADD_ROUTE_PREFS_HYBRID, MigrationSql.ADD_ROUTE_PREFS_MTB,
+            MigrationSql.ADD_ROUTE_PREFS_FOOT).forEach { db.execSQL(it) }
+        db.execSQL("UPDATE settings SET routePrefsRoad = 'roads,avoid,paved', " +
+            "routePrefsFoot = 'soft,balanced,rough'")
+        db.execSQL(MigrationSql.RESET_ROUTE_PREFS)
+        assertEquals("roads,avoid,paved", scalar(db, "SELECT routePrefsRoad FROM settings") { it.getString(0) })
+        // ... pendant que la voisine, restee au premier defaut, est bien reprise.
+        assertEquals(RoutingPrefs.defaultFor(RoutingProfile.FOOT).asCsv(),
+            scalar(db, "SELECT routePrefsFoot FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

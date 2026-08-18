@@ -293,6 +293,32 @@ internal object MigrationSql {
     const val ADD_ROUTE_PREFS_FOOT =
         "ALTER TABLE settings ADD COLUMN routePrefsFoot TEXT NOT NULL DEFAULT '$PREFS_FOOT'"
 
+    /**
+     * Reprise des preferences de trace restees sur LEUR PREMIER DEFAUT.
+     *
+     * Les defauts par discipline ont ete refaits une fois (cf. RoutingPrefs.defaultFor), la premiere
+     * mouture laissant quatre disciplines sur cinq passer a cote des voies vertes. Changer la valeur par
+     * defaut ne suffisait pas : la colonne existe deja et porte l'ancienne, si bien qu'une installation
+     * mise a jour continuait de calculer comme avant, en silence. C'est l'appareil qui l'a montre - le
+     * velo de route y restait sans exigence de revetement, le gravel et la marche sans denivele accepte.
+     *
+     * Conditionnel, comme la taille du titre d'infobulle et celle des boutons : on ne reprend que ce qui
+     * est reste sur l'ancien defaut. Une discipline reglee a la main garde ce qu'on lui a demande, et le
+     * VTC de l'appareil en est l'exemple vivant - son revetement avait ete change avant que ce SQL
+     * n'existe, et il n'a pas bouge.
+     */
+    private const val PREFS_ROAD_V1 = "soft,balanced,balanced"
+    private const val PREFS_GRAVEL_V1 = "soft,balanced,rough"
+    private const val PREFS_HYBRID_V1 = "soft,balanced,balanced"
+    private const val PREFS_FOOT_V1 = "soft,balanced,rough"
+    val RESET_ROUTE_PREFS = """
+        UPDATE settings SET
+          routePrefsRoad   = CASE routePrefsRoad   WHEN '$PREFS_ROAD_V1'   THEN '$PREFS_ROAD'   ELSE routePrefsRoad   END,
+          routePrefsGravel = CASE routePrefsGravel WHEN '$PREFS_GRAVEL_V1' THEN '$PREFS_GRAVEL' ELSE routePrefsGravel END,
+          routePrefsHybrid = CASE routePrefsHybrid WHEN '$PREFS_HYBRID_V1' THEN '$PREFS_HYBRID' ELSE routePrefsHybrid END,
+          routePrefsFoot   = CASE routePrefsFoot   WHEN '$PREFS_FOOT_V1'   THEN '$PREFS_FOOT'   ELSE routePrefsFoot   END
+    """.trimIndent()
+
     // Suivi de la position par la carte, allume d'office y compris sur une base en place : il ne se
     // declenche que le capteur en marche, donc a un moment ou l'on a deja demande a etre localise, et il
     // n'ajoute alors aucune consommation - il deplace la carte avec des positions qui arrivaient de toute
@@ -314,7 +340,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 47,
+    version = 48,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -560,11 +586,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.RESET_ROUTE_PREFS)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }
