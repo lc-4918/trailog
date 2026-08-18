@@ -23,6 +23,7 @@ import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.map.BasemapKeyProbe
 import fr.lc4918.trailog.map.StyleBuilder
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
@@ -947,6 +948,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ?: provs.firstOrNull { it.type != "DEM" })
     }
 
+    /**
+     * Fonds dont le service a explicitement refuse notre cle, cette session-ci.
+     *
+     * En memoire et non en base : un quota se remet a zero et une cle se remplace, l'application doit donc
+     * revenir d'elle-meme sur le fond demande au lancement suivant. Ecrire le repli dans les reglages
+     * reviendrait a decider a la place de l'utilisateur, et definitivement.
+     */
+    private val refusedBasemaps = mutableSetOf<String>()
+
+    /**
+     * Le fond a afficher, avec repli sur OSM si son service refuse notre cle.
+     *
+     * Depuis que le fond de demarrage est Mapbox Outdoors, tout le premier ecran depend d'une cle tierce a
+     * quota : sans ce repli, le jour ou elle tombe, l'application s'ouvre sur une carte GRISE sans que rien
+     * ne dise pourquoi. OSM ne demande aucune cle - c'est le seul repli qui ne puisse pas tomber pour la
+     * meme raison.
+     *
+     * Le repli ne se declenche que sur un REFUS EXPLICITE (cf. BasemapKeyProbe) : hors ligne, les tuiles
+     * deja en cache s'affichent encore, et basculer sur OSM n'apporterait qu'une carte tout aussi vide.
+     */
+    private suspend fun withKeyFallback(base: ProviderEntity, provs: List<ProviderEntity>): ProviderEntity {
+        if (!BasemapKeyProbe.needsKey(base)) return base
+        val osm = provs.firstOrNull { it.id == "osm" } ?: return base
+        if (base.id in refusedBasemaps) return osm
+        return when (BasemapKeyProbe.probe(base)) {
+            BasemapKeyProbe.Verdict.REFUSED -> { refusedBasemaps += base.id; osm }
+            else -> base
+        }
+    }
+
     private suspend fun buildStyle(s: SettingsEntity, provs: List<ProviderEntity>, comps: List<CompositeEntity>): StyleBuilder.Result? {
         // Le relief n'est jamais un fond visuel en soi (tuiles DEM brutes illisibles telles quelles, cf.
         // StyleBuilder) : il n'apparaît que si l'ombrage est allumé (tap dans le gestionnaire de couches)
@@ -967,8 +998,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     overlayOpacities = if (fg != null && fg.type != "DEM") mapOf(fg.id to composite.foregroundOpacity) else emptyMap())
             }
         }
-        val base = provs.firstOrNull { it.id == s.defaultBasemapId && it.type != "DEM" }
+        val choisi = provs.firstOrNull { it.id == s.defaultBasemapId && it.type != "DEM" }
             ?: provs.firstOrNull { it.type != "DEM" } ?: return null
+        val base = withKeyFallback(choisi, provs)
         return StyleBuilder.build(base, emptyList(), toggledDem, repo.mbtilesDir(s))
     }
 }
