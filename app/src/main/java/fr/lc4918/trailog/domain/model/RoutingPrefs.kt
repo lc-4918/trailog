@@ -28,24 +28,33 @@ data class RoutingPrefs(
         /**
          * Ce que porte une discipline tant que l'utilisateur n'y a pas touché.
          *
-         * Chaque valeur sort d'une mesure, non d'une intuition (voir IMPLEMENTATION_TEST.md pour le
-         * détail des trajets) :
-         * - toutes les disciplines partent sur les voies douces : c'est le manque qui a motivé le réglage,
-         *   et là où le réseau cyclable n'existe pas, la demande ne coûte rien ;
-         * - le VTT cherche le dénivelé, seule discipline dans ce cas : sur Grenoble - Chamrousse, c'est
-         *   ce qui fait passer les voies douces de 33 à 52 % en RACCOURCISSANT le trajet ;
-         * - le gravel, le VTT et la marche acceptent les chemins, c'est leur raison d'être ;
-         * - le vélo de route, lui, ne demande RIEN sur le revêtement, contre l'intuition. Exiger le revêtu
-         *   ne le protège pas, il le fait fuir : sur Grenoble - Chamrousse, pour éviter 3 % de chemin, il
-         *   rallonge de 3,5 km et perd un tiers de ses voies douces. La position "rester sur le revêtu"
-         *   reste offerte à qui la veut, elle n'est simplement pas un défaut défendable.
+         * Une phrase par discipline, et le réglage qui la dit (les trajets qui ont servi à les fixer sont
+         * cités dans `Valhalla.bicycleTypeOf` et `Valhalla.costingOptionsOf`, au plus près des valeurs) :
+         * - **vélo de route** : uniquement sur la route. C'est la seule discipline à exiger le revêtu, et
+         *   c'est ce que veut dire "de route" - le moteur lui interdit alors ce qui est plus grossier que
+         *   la grave compactée. Ce n'est pas gratuit : sur Grenoble - Chamrousse, éviter 3 % de non revêtu
+         *   rallonge de 3,6 km. C'est le prix demandé, non un effet de bord ;
+         * - **gravel** : accepte les chemins et le dénivelé, et privilégie les chemins ;
+         * - **VTC** : accepte les chemins et privilégie les voies vertes, mais ne cherche pas le dénivelé -
+         *   c'est ce qui le sépare du gravel et du VTT ;
+         * - **VTT** : accepte et privilégie les chemins, plus fort que les autres (cf. `use_roads` à 0 dans
+         *   `Valhalla.costingOptionsOf`), et accepte le dénivelé ;
+         * - **à pied** : accepte les chemins, y compris les sentiers de montagne, et accepte le dénivelé -
+         *   ce dernier raccourcit la marche au lieu de l'allonger, le détour qui évite la côte coûtant plus
+         *   cher que la côte.
+         *
+         * Toutes partent sur les voies douces : c'est le manque qui a motivé le réglage, et là où le réseau
+         * cyclable n'existe pas, la demande ne coûte rien.
+         *
+         * Accepter les chemins n'est pas une nuance : c'est ce qui donne au vélo la monture qui sait rouler
+         * sur les voies vertes françaises, gravillonnées pour la plupart (cf. `Valhalla.bicycleTypeOf`).
          */
         fun defaultFor(profile: RoutingProfile): RoutingPrefs = when (profile) {
-            RoutingProfile.ROAD_BIKE -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.BALANCED)
-            RoutingProfile.GRAVEL -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.ROUGH)
-            RoutingProfile.HYBRID_BIKE -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.BALANCED)
+            RoutingProfile.ROAD_BIKE -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.PAVED)
+            RoutingProfile.GRAVEL -> RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH)
+            RoutingProfile.HYBRID_BIKE -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.ROUGH)
             RoutingProfile.MOUNTAIN_BIKE -> RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH)
-            RoutingProfile.FOOT -> RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.ROUGH)
+            RoutingProfile.FOOT -> RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH)
         }
 
         /**

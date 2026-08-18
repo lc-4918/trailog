@@ -547,14 +547,17 @@ class MigrationsTest {
         db.close()
     }
 
-    /** Ce que chaque discipline demande n'est pas ce que demande la voisine : le VTT cherche le denivele,
-     *  le velo de route ne dit rien du revetement (l'exiger le fait fuir les chemins par de longs detours). */
+    /** Ce que chaque discipline demande n'est pas ce que demande la voisine : le velo de route est le seul
+     *  a exiger le revetu, le VTC le seul a ne pas accepter le denivele. */
     @Test fun `chaque discipline arrive avec ses propres preferences`() {
         val neuf = SettingsEntity()
-        assertEquals(HillPref.SEEK, neuf.routePrefs(RoutingProfile.MOUNTAIN_BIKE).hills)
-        assertEquals(HillPref.BALANCED, neuf.routePrefs(RoutingProfile.ROAD_BIKE).hills)
-        assertEquals(SurfacePref.BALANCED, neuf.routePrefs(RoutingProfile.ROAD_BIKE).surface)
+        assertEquals(SurfacePref.PAVED, neuf.routePrefs(RoutingProfile.ROAD_BIKE).surface)
+        assertEquals(SurfacePref.ROUGH, neuf.routePrefs(RoutingProfile.HYBRID_BIKE).surface)
         assertEquals(SurfacePref.ROUGH, neuf.routePrefs(RoutingProfile.FOOT).surface)
+        assertEquals(HillPref.BALANCED, neuf.routePrefs(RoutingProfile.HYBRID_BIKE).hills)
+        assertEquals(HillPref.SEEK, neuf.routePrefs(RoutingProfile.GRAVEL).hills)
+        assertEquals(HillPref.SEEK, neuf.routePrefs(RoutingProfile.MOUNTAIN_BIKE).hills)
+        assertEquals(HillPref.SEEK, neuf.routePrefs(RoutingProfile.FOOT).hills)
     }
 
     /** Ecrire une discipline ne doit pas toucher aux quatre autres : elles se reglent separement. */

@@ -42,15 +42,26 @@ class RoutingPrefsTest {
         assertEquals(RoutingPrefs.defaultFor(RoutingProfile.FOOT).surface, p.surface)
     }
 
-    /** Les defauts sont ceux que la mesure a retenus ; les changer doit etre un geste conscient. */
+    /**
+     * Les defauts sont ceux que la mesure a retenus ; les changer doit etre un geste conscient.
+     *
+     * Une phrase par discipline, et c'est tout ce que ces trois champs disent :
+     * - le velo de route est le SEUL a exiger le revetu, et c'est ce que veut dire "de route". Le prix est
+     *   connu : +3,6 km sur Grenoble - Chamrousse pour eviter 3 % de non revetu ;
+     * - toutes les autres acceptent les chemins - c'est ce qui leur donne la monture capable de rouler sur
+     *   les voies vertes francaises, gravillonnees pour la plupart ;
+     * - le VTC est celui qui n'accepte pas le denivele : c'est ce qui le separe du gravel et du VTT.
+     */
     @Test fun `les defauts mesures sont ceux qu'on croit`() {
-        // Le velo de route ne demande rien sur le revetement : l'exiger le fait fuir les chemins par de
-        // longs detours (Grenoble - Chamrousse : +3,5 km pour eviter 3 % de non revetu).
-        assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.BALANCED),
+        assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.PAVED),
             RoutingPrefs.defaultFor(RoutingProfile.ROAD_BIKE))
         assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH),
-            RoutingPrefs.defaultFor(RoutingProfile.MOUNTAIN_BIKE))
+            RoutingPrefs.defaultFor(RoutingProfile.GRAVEL))
         assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.BALANCED, SurfacePref.ROUGH),
+            RoutingPrefs.defaultFor(RoutingProfile.HYBRID_BIKE))
+        assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH),
+            RoutingPrefs.defaultFor(RoutingProfile.MOUNTAIN_BIKE))
+        assertEquals(RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH),
             RoutingPrefs.defaultFor(RoutingProfile.FOOT))
     }
 

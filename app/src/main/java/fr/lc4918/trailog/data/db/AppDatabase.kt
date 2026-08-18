@@ -270,12 +270,18 @@ internal object MigrationSql {
      * Posees d'office sur une base en place, a la difference de l'alerte d'eloignement : celle-ci ajoutait
      * un comportement qu'on n'avait pas demande, celles-la corrigent un calcul qui ignorait les voies
      * vertes. Le defaut est le seul cas ou l'on preferait deja l'autre valeur sans pouvoir le dire.
+     *
+     * Les valeurs ci-dessous ont ete refaites une fois, la premiere mouture laissant encore quatre
+     * disciplines sur cinq passer a cote des voies vertes (cf. RoutingPrefs.defaultFor). Elles sont
+     * modifiees sur place, sans nouvelle migration : le defaut d'une colonne ajoutee ne sert qu'a remplir
+     * les lignes deja la au moment de l'ajout, et il doit dire la meme chose que le defaut Kotlin - c'est
+     * ce que verrouille MigrationsTest, colonne par colonne.
      */
-    private const val PREFS_ROAD = "soft,balanced,balanced"
-    private const val PREFS_GRAVEL = "soft,balanced,rough"
-    private const val PREFS_HYBRID = "soft,balanced,balanced"
+    private const val PREFS_ROAD = "soft,balanced,paved"
+    private const val PREFS_GRAVEL = "soft,seek,rough"
+    private const val PREFS_HYBRID = "soft,balanced,rough"
     private const val PREFS_MTB = "soft,seek,rough"
-    private const val PREFS_FOOT = "soft,balanced,rough"
+    private const val PREFS_FOOT = "soft,seek,rough"
     const val ADD_ROUTE_PREFS_ROAD =
         "ALTER TABLE settings ADD COLUMN routePrefsRoad TEXT NOT NULL DEFAULT '$PREFS_ROAD'"
     const val ADD_ROUTE_PREFS_GRAVEL =

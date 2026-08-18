@@ -57,14 +57,41 @@ object Valhalla {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Modèle de coût et, pour le vélo, type de monture. Avec [costingOptionsOf], la seule chose ici à
-     *  connaître le vocabulaire du moteur. */
-    internal fun costingOf(profile: RoutingProfile): Pair<String, String?> = when (profile) {
-        RoutingProfile.ROAD_BIKE -> "bicycle" to "Road"
-        RoutingProfile.GRAVEL -> "bicycle" to "Cross"        // Valhalla nomme "Cross" le velo de cyclocross/gravel
-        RoutingProfile.HYBRID_BIKE -> "bicycle" to "Hybrid"
-        RoutingProfile.MOUNTAIN_BIKE -> "bicycle" to "Mountain"
-        RoutingProfile.FOOT -> "pedestrian" to null
+    /** Modèle de coût du moteur. Avec [bicycleTypeOf] et [costingOptionsOf], la seule chose ici à connaître
+     *  le vocabulaire du moteur. */
+    internal fun costingOf(profile: RoutingProfile): String =
+        if (profile == RoutingProfile.FOOT) "pedestrian" else "bicycle"
+
+    /**
+     * Type de monture, null à pied.
+     *
+     * C'est **le** levier du revêtement, et non `avoid_bad_surfaces` : la monture fixe la vitesse que le
+     * moteur prête au cycliste selon ce qu'il a sous les roues, et cette vitesse-là ne se règle par aucune
+     * option. Sur du gravier, Valhalla roule à 30 % de la vitesse à plat en vélo de route, 40 % en VTC,
+     * 50 % en gravel, mais 75 % en VTT ; le coût d'un tronçon étant son temps, une voie verte gravillonnée
+     * coûte deux fois et demie sa longueur à un VTC, et le moindre détour par la départementale la bat.
+     * `avoid_bad_surfaces` ne touche qu'un facteur de coût par-dessus, jamais cette vitesse.
+     *
+     * Or les voies vertes françaises sont massivement tracées sur d'anciennes voies ferrées et taguées
+     * `surface=gravel` ou `fine_gravel` - que le moteur range toutes deux en "gravier" - quand elles ne
+     * sont pas taguées `highway=track`. D'où le symptôme qui a motivé cette table : sur Moulin-Neuf -
+     * Mirepoix, seul le VTT empruntait la voie verte, les quatre autres disciplines longeaient la route.
+     * Mesuré : en VTC, aucune valeur de `use_roads` ni d'`avoid_bad_surfaces` ne l'y ramène ; passer la
+     * monture en VTT l'y ramène d'un coup (14 % de voies douces avant, 88 % après).
+     *
+     * La monture ne suit donc pas la discipline seule mais la discipline **et** le revêtement demandé :
+     * "rester sur le revêtu" veut dire rouler en vélo de route, "accepter les chemins" veut dire rouler en
+     * VTT, quelle que soit la machine. Entre les deux, chacun garde la sienne. Le vélo de route, lui, ne
+     * change jamais de monture : c'est précisément ce qui en fait un vélo de route.
+     */
+    internal fun bicycleTypeOf(profile: RoutingProfile, surface: SurfacePref): String? = when {
+        profile == RoutingProfile.FOOT -> null
+        profile == RoutingProfile.ROAD_BIKE -> "Road"
+        surface == SurfacePref.PAVED -> "Road"
+        surface == SurfacePref.ROUGH -> "Mountain"
+        profile == RoutingProfile.GRAVEL -> "Cross"          // Valhalla nomme "Cross" le velo de cyclocross/gravel
+        profile == RoutingProfile.HYBRID_BIKE -> "Hybrid"
+        else -> "Mountain"
     }
 
     /**
@@ -73,8 +100,9 @@ object Valhalla {
      *
      * Une même question ne se dit pas de la même façon selon qu'on roule ou qu'on marche : "privilégier les
      * voies vertes" se demande par `use_roads` au vélo - sa propension à rouler avec les voitures - et par
-     * `walkway_factor` au marcheur, qui n'a pas de `use_roads`. De même le revêtement : le vélo a
-     * `avoid_bad_surfaces`, le marcheur a `use_tracks`, les chemins de terre étant ce qui le concerne.
+     * `walkway_factor` au marcheur, qui n'a pas de `use_roads`. De même le revêtement : le vélo le dit par
+     * sa monture (cf. [bicycleTypeOf]) et `avoid_bad_surfaces`, le marcheur par `use_tracks` et la
+     * difficulté de randonnée qu'il accepte.
      *
      * **Une position centrale n'émet rien**, et c'est la règle qui gouverne toute cette fonction : sur
      * l'instance publique, renvoyer la valeur "par défaut" de la documentation ne redonne pas le
@@ -83,23 +111,35 @@ object Valhalla {
      * façon de laisser le service décider.
      *
      * Les valeurs ne sont pas choisies au jugé, chacune sort d'une mesure :
-     * - `use_roads` à 0,2 : le basculement vers la véloroute se fait entre 0,3 et 0,2, et descendre plus bas
-     *   ne change plus rien. Le VTT va à 0,1, seul type de monture que les chemins ruraux accueillent.
+     * - `use_roads` vaut 0,1 pour le gravel et le VTC : c'est la marche d'escalier. À 0,2, l'itinéraire
+     *   Revel - Sorèze ignore la voie verte ; de 0,15 à 0, il la prend, sans plus rien changer au-dessous.
+     *   Le VTT descend à 0 - il est la discipline qui privilégie les chemins, et le dernier dixième les lui
+     *   donne (Revel - Sorèze : 39 % de chemins contre 25 %). Le vélo de route reste à 0,2 : descendre plus
+     *   bas lui coûte 3,2 km sur Grenoble - Voiron pour cinq points de voies douces.
      * - `walkway_factor` à 0,5 : de 23 à 85 % de voies douces sur un trajet urbain, pour 440 m de plus.
      * - `use_hills` à 1 : ne cherche pas la difficulté, cesse de payer le détour qui l'évite - d'où un
-     *   trajet à la fois plus montagnard et plus court.
+     *   trajet à la fois plus montagnard et plus court. À pied aussi : Grenoble - Chamrousse perd 1,6 km.
+     * - `max_hiking_difficulty` à 2 : sans lui, le moteur s'arrête à T1 et s'interdit les sentiers de
+     *   montagne, qui sont pourtant la randonnée (Grenoble - Chamrousse : 300 m et 8 min de moins). Au-delà
+     *   de 2, plus rien ne s'ouvre sur les trajets mesurés, et les cotations suivantes touchent à l'alpinisme.
+     *
+     * Ce que le moteur ne sait pas faire, et qu'il ne faut pas chercher ici : **rien ne privilégie un
+     * sentier au marcheur**. Sa table de facteurs ne connaît que les trottoirs, les chemins d'exploitation,
+     * les ruelles et les voies de desserte ; un `highway=path` et une départementale y pèsent pareil, et
+     * une voie verte aussi. `walkway_factor` ne porte que sur les trottoirs, pas sur les sentiers.
      */
     internal fun costingOptionsOf(profile: RoutingProfile, prefs: RoutingPrefs): Map<String, String> {
         val foot = profile == RoutingProfile.FOOT
         val o = linkedMapOf<String, String>()
-        costingOf(profile).second?.let { o["bicycle_type"] = "\"$it\"" }
+        bicycleTypeOf(profile, prefs.surface)?.let { o["bicycle_type"] = "\"$it\"" }
         when (prefs.ways) {
             WayPref.ROADS -> o[if (foot) "walkway_factor" else "use_roads"] = if (foot) "1.5" else "0.8"
             WayPref.BALANCED -> Unit
             WayPref.SOFT -> when {
                 foot -> o["walkway_factor"] = "0.5"
-                profile == RoutingProfile.MOUNTAIN_BIKE -> o["use_roads"] = "0.1"
-                else -> o["use_roads"] = "0.2"
+                profile == RoutingProfile.MOUNTAIN_BIKE -> o["use_roads"] = "0.0"
+                profile == RoutingProfile.ROAD_BIKE -> o["use_roads"] = "0.2"
+                else -> o["use_roads"] = "0.1"
             }
         }
         when (prefs.hills) {
@@ -110,7 +150,10 @@ object Valhalla {
         when (prefs.surface) {
             SurfacePref.PAVED -> o[if (foot) "use_tracks" else "avoid_bad_surfaces"] = if (foot) "0.0" else "1.0"
             SurfacePref.BALANCED -> Unit
-            SurfacePref.ROUGH -> o[if (foot) "use_tracks" else "avoid_bad_surfaces"] = if (foot) "1.0" else "0.0"
+            SurfacePref.ROUGH -> {
+                o[if (foot) "use_tracks" else "avoid_bad_surfaces"] = if (foot) "1.0" else "0.0"
+                if (foot) o["max_hiking_difficulty"] = "2"
+            }
         }
         return o
     }
@@ -136,7 +179,7 @@ object Valhalla {
         prefs: RoutingPrefs = RoutingPrefs.Balanced,
         elevationIntervalM: Int = ELEVATION_INTERVAL_M,
     ): String {
-        val (costing, _) = costingOf(profile)
+        val costing = costingOf(profile)
         val opts = costingOptionsOf(profile, prefs)
         val options = if (opts.isEmpty()) ""
         else ""","costing_options":{"$costing":{""" +

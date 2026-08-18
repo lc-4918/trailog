@@ -266,6 +266,19 @@ est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule inst
 celle du géocodeur. L'itinéraire calculé est tracé sur la carte, sous les épingles et teinté par classe de
 pente : sa géométrie arrive dans la même réponse que le total, encodée en polyligne.
 
+Chaque discipline arrive avec ce qu'elle demande, réglable en trois questions - quelles voies, quel
+relief, quel revêtement - mais déjà juste sans y toucher : le **vélo de route** reste sur la route et
+c'est la seule à exiger le revêtu ; le **gravel** accepte les chemins et le dénivelé et privilégie les
+chemins ; le **VTC** accepte les chemins et privilégie les voies vertes, sans chercher le dénivelé ; le
+**VTT** privilégie les chemins plus fort que tous, et accepte le dénivelé ; la **marche** accepte les
+chemins, y compris les sentiers de montagne, et le dénivelé - qui la raccourcit au lieu de l'allonger,
+le détour évitant la côte coûtant plus cher que la côte.
+
+Accepter les chemins n'est pas un détail de confort : c'est ce qui donne au vélo, dans le vocabulaire du
+moteur, la monture capable d'emprunter les voies vertes françaises. Tracées pour la plupart sur d'anciennes
+voies ferrées et déclarées gravillonnées dans OpenStreetMap, elles sont sinon fuies au profit de la
+départementale qui les longe - le moteur y prêtant au cycliste une vitesse dérisoire.
+
 La mesure depuis la position n'est proposée que le capteur allumé, et son origine est **figée** à la
 première position reçue : la suivre lancerait une requête toutes les deux secondes.
 

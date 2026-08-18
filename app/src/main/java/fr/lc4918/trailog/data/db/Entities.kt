@@ -207,11 +207,11 @@ data class SettingsEntity(
     // routePrefs/withRoutePrefs plus bas pour y acceder sans repandre un when). Elles ne se partagent pas
     // entre disciplines - on ne demande pas la meme chose a un velo de route et a un VTT - et c'est la
     // raison des cinq colonnes.
-    val routePrefsRoad: String = "soft,balanced,balanced",
-    val routePrefsGravel: String = "soft,balanced,rough",
-    val routePrefsHybrid: String = "soft,balanced,balanced",
+    val routePrefsRoad: String = "soft,balanced,paved",
+    val routePrefsGravel: String = "soft,seek,rough",
+    val routePrefsHybrid: String = "soft,balanced,rough",
     val routePrefsMtb: String = "soft,seek,rough",
-    val routePrefsFoot: String = "soft,balanced,rough",
+    val routePrefsFoot: String = "soft,seek,rough",
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

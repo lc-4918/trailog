@@ -348,7 +348,7 @@ des sous-dossiers d'une autre couleur.
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PhotonTest` | 21 | construction des requêtes (recherche et inverse), lecture de la réponse du géocodeur et découpage de l'adresse en morceaux |
-| `ValhallaTest` | 20 | construction de la requête et lecture de la réponse du moteur d'itinéraire |
+| `ValhallaTest` | 29 | construction de la requête et lecture de la réponse du moteur d'itinéraire |
 | `PolylineTest` | 5 | décodage des polylignes encodées, dont la précision propre à Valhalla |
 | `GpxWriterTest` | 11 | le seul format par lequel une trace ressort de l'application |
 
@@ -374,6 +374,12 @@ coordonnées passent par `toString()` et non `format()`, faute de quoi une local
 incomplet (longueur sans durée, ou l'inverse) doit valoir "aucun itinéraire" plutôt qu'une distance de
 zéro. Il verrouille aussi la correspondance des cinq disciplines avec les modèles de coût, seul endroit
 du code qui parle le vocabulaire du moteur.
+
+Il y garde surtout la **monture** demandée au moteur, qui ne suit pas la discipline seule mais la
+discipline et le revêtement accepté. C'est elle, et non l'option qui semble faite pour cela, qui décide
+si une voie verte gravillonnée est empruntée ou fuie : elle fixe la vitesse prêtée au cycliste, et cette
+vitesse-là ne se règle par aucune option. Les valeurs voisines ont été mesurées une à une, sur des
+trajets cités dans le code ; le test existe pour qu'on ne les "simplifie" pas sans refaire les mesures.
 
 `GpxWriterTest` garde la sortie. Sa faute type est muette **de l'autre côté** : le fichier s'écrit sans
 rien lever et ne se découvre qu'à l'ouverture, dans une autre application, souvent une fois le téléphone

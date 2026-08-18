@@ -48,11 +48,31 @@ class ValhallaTest {
 
     /** Les cinq disciplines sortent d'une seule instance : c'est la raison du choix de Valhalla. */
     @Test fun `chaque discipline a son modele de cout`() {
-        assertEquals("bicycle" to "Road", Valhalla.costingOf(RoutingProfile.ROAD_BIKE))
-        assertEquals("bicycle" to "Cross", Valhalla.costingOf(RoutingProfile.GRAVEL))
-        assertEquals("bicycle" to "Hybrid", Valhalla.costingOf(RoutingProfile.HYBRID_BIKE))
-        assertEquals("bicycle" to "Mountain", Valhalla.costingOf(RoutingProfile.MOUNTAIN_BIKE))
-        assertEquals("pedestrian" to null, Valhalla.costingOf(RoutingProfile.FOOT))
+        RoutingProfile.entries.filter { it != RoutingProfile.FOOT }
+            .forEach { assertEquals("$it", "bicycle", Valhalla.costingOf(it)) }
+        assertEquals("pedestrian", Valhalla.costingOf(RoutingProfile.FOOT))
+    }
+
+    /**
+     * La monture suit la discipline ET le revetement demande, parce qu'elle EST le levier du revetement :
+     * c'est elle qui fixe la vitesse pretee au cycliste sur du gravier, et cette vitesse ne se regle par
+     * aucune option. Les voies vertes francaises etant gravillonnees, seule la monture VTT les emprunte.
+     */
+    @Test fun `la monture suit la discipline et le revetement demande`() {
+        fun monture(p: RoutingProfile, s: SurfacePref) = Valhalla.bicycleTypeOf(p, s)
+        // Un velo de route reste un velo de route : c'est ce qui le definit.
+        SurfacePref.entries.forEach { assertEquals("$it", "Road", monture(RoutingProfile.ROAD_BIKE, it)) }
+        // "Rester sur le revetu" veut dire rouler en velo de route, quelle que soit la machine.
+        assertEquals("Road", monture(RoutingProfile.MOUNTAIN_BIKE, SurfacePref.PAVED))
+        assertEquals("Road", monture(RoutingProfile.HYBRID_BIKE, SurfacePref.PAVED))
+        // "Accepter les chemins" veut dire rouler en VTT - sans quoi la voie verte gravillonnee est fuie.
+        assertEquals("Mountain", monture(RoutingProfile.GRAVEL, SurfacePref.ROUGH))
+        assertEquals("Mountain", monture(RoutingProfile.HYBRID_BIKE, SurfacePref.ROUGH))
+        // Au milieu, chacun garde la sienne.
+        assertEquals("Cross", monture(RoutingProfile.GRAVEL, SurfacePref.BALANCED))
+        assertEquals("Hybrid", monture(RoutingProfile.HYBRID_BIKE, SurfacePref.BALANCED))
+        assertEquals("Mountain", monture(RoutingProfile.MOUNTAIN_BIKE, SurfacePref.BALANCED))
+        assertNull("la marche n'a pas de monture", monture(RoutingProfile.FOOT, SurfacePref.ROUGH))
     }
 
     @Test fun `le velo porte son type de monture, la marche n'en a pas`() {
@@ -79,7 +99,8 @@ class ValhallaTest {
         RoutingProfile.entries.forEach { p ->
             val b = body(p, RoutingPrefs.Balanced)
             assertTrue("$p : ${b}", "use_roads" !in b && "use_hills" !in b &&
-                "avoid_bad_surfaces" !in b && "walkway_factor" !in b && "use_tracks" !in b)
+                "avoid_bad_surfaces" !in b && "walkway_factor" !in b && "use_tracks" !in b &&
+                "max_hiking_difficulty" !in b)
         }
         // La monture, elle, n'est pas une preference : elle reste envoyee.
         assertTrue(""""bicycle_type":"Cross"""" in body(RoutingProfile.GRAVEL, RoutingPrefs.Balanced))
@@ -96,16 +117,40 @@ class ValhallaTest {
     /** La meme question ne se dit pas pareil a un cycliste et a un marcheur, qui n'a pas de use_roads. */
     @Test fun `privilegier les voies douces se dit use_roads a velo, walkway_factor a pied`() {
         val velo = body(RoutingProfile.HYBRID_BIKE, RoutingPrefs(ways = WayPref.SOFT))
-        assertTrue(velo, """"use_roads":0.2""" in velo)
+        assertTrue(velo, """"use_roads":0.1""" in velo)
         val pied = body(RoutingProfile.FOOT, RoutingPrefs(ways = WayPref.SOFT))
         assertTrue(pied, """"walkway_factor":0.5""" in pied)
         assertTrue("le marcheur n'a pas de use_roads", "use_roads" !in pied)
     }
 
-    /** Le VTT descend plus bas que les autres montures : c'est la seule que les chemins ruraux accueillent. */
-    @Test fun `le vtt demande les chemins plus fort que les autres velos`() {
-        assertTrue(""""use_roads":0.1""" in body(RoutingProfile.MOUNTAIN_BIKE, RoutingPrefs(ways = WayPref.SOFT)))
-        assertTrue(""""use_roads":0.2""" in body(RoutingProfile.GRAVEL, RoutingPrefs(ways = WayPref.SOFT)))
+    /**
+     * Trois valeurs pour une seule demande, chacune mesuree :
+     * - 0,1 au gravel et au VTC, parce que c'est la marche d'escalier : a 0,2 la voie verte de
+     *   Revel - Soreze est ignoree, de 0,15 a 0 elle est prise ;
+     * - 0 au VTT, la discipline qui privilegie les chemins (39 % de chemins contre 25 % a 0,1) ;
+     * - 0,2 au velo de route, a qui descendre plus bas coute 3,2 km sur Grenoble - Voiron pour cinq
+     *   points de voies douces.
+     */
+    @Test fun `privilegier les voies douces ne se paie pas au meme prix selon la monture`() {
+        fun ur(p: RoutingProfile) = body(p, RoutingPrefs(ways = WayPref.SOFT))
+        assertTrue(ur(RoutingProfile.MOUNTAIN_BIKE), """"use_roads":0.0""" in ur(RoutingProfile.MOUNTAIN_BIKE))
+        assertTrue(ur(RoutingProfile.GRAVEL), """"use_roads":0.1""" in ur(RoutingProfile.GRAVEL))
+        assertTrue(ur(RoutingProfile.HYBRID_BIKE), """"use_roads":0.1""" in ur(RoutingProfile.HYBRID_BIKE))
+        assertTrue(ur(RoutingProfile.ROAD_BIKE), """"use_roads":0.2""" in ur(RoutingProfile.ROAD_BIKE))
+    }
+
+    /**
+     * Sans cela le moteur s'arrete a T1 et s'interdit les sentiers de montagne, qui sont pourtant la
+     * randonnee : Grenoble - Chamrousse y gagne 300 m et 8 min. Au-dela de 2, plus rien ne s'ouvre sur les
+     * trajets mesures, et les cotations suivantes touchent a l'alpinisme.
+     */
+    @Test fun `accepter les chemins ouvre au marcheur les sentiers de montagne`() {
+        val pied = body(RoutingProfile.FOOT, RoutingPrefs(surface = SurfacePref.ROUGH))
+        assertTrue(pied, """"max_hiking_difficulty":2""" in pied)
+        assertTrue("le cycliste n'a pas de cotation de randonnee",
+            "max_hiking_difficulty" !in body(RoutingProfile.MOUNTAIN_BIKE, RoutingPrefs(surface = SurfacePref.ROUGH)))
+        assertTrue("hors de la position haute, on ne dit rien",
+            "max_hiking_difficulty" !in body(RoutingProfile.FOOT, RoutingPrefs(surface = SurfacePref.PAVED)))
     }
 
     /** Le revetement : avoid_bad_surfaces a velo, use_tracks a pied - et les deux vont en sens INVERSE. */
@@ -122,7 +167,7 @@ class ValhallaTest {
     @Test fun `les trois preferences tiennent dans la meme requete`() {
         val b = body(RoutingProfile.MOUNTAIN_BIKE, RoutingPrefs(WayPref.SOFT, HillPref.SEEK, SurfacePref.ROUGH))
         assertTrue(b, """"bicycle_type":"Mountain"""" in b)
-        assertTrue(b, """"use_roads":0.1""" in b)
+        assertTrue(b, """"use_roads":0.0""" in b)
         assertTrue(b, """"use_hills":1.0""" in b)
         assertTrue(b, """"avoid_bad_surfaces":0.0""" in b)
     }
