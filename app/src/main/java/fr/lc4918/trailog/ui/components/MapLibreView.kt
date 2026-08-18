@@ -56,6 +56,13 @@ data class RenderLayer(val key: String, val uri: String, val revision: Long, val
  *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
 private val LineSearchFactors = listOf(1f, 4f, 12f)
 
+/** Un point d'interet a poser sur la carte : ce que la couche a besoin d'en savoir, et rien de plus.
+ *  [iconRes] est le pictogramme de sa categorie (cf. `ui/poi/PoiIcons.kt`), [colorHex] la teinte de son
+ *  groupe. */
+data class PoiMarker(
+    val id: String, val lon: Double, val lat: Double, val colorHex: String, val iconRes: Int,
+)
+
 class MapController {
     var map: MapLibreMap? = null
     var style: Style? = null
@@ -64,6 +71,8 @@ class MapController {
     var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
+    /** Tap sur un marqueur de point d'interet : recoit (identifiant, lon, lat). */
+    var onPickPoi: ((String, Double, Double) -> Unit)? = null
     /** Appui long sur un endroit quelconque de la carte - hors trace et hors marqueur : reçoit (lon, lat).
      *  Un appui long qui tombe sur une trace ou un marqueur ne l'appelle pas : ceux-là se décrivent déjà
      *  eux-mêmes, par leur profil et leur infobulle. */
@@ -94,6 +103,7 @@ class MapController {
     // son propre thread de travail, jamais conservee en String cote JVM (revision = horodatage ^ taille).
     private val applied = HashMap<String, Pair<Long, String>>()
     private val pinImages = hashSetOf<String>()
+    private val poiImages = hashSetOf<String>()
     private val gpsImages = hashSetOf<String>()
 
     // ---- repere de position GPS (cf. setUserMarker) ----
@@ -167,6 +177,16 @@ class MapController {
         val m = map ?: return null
         val tol = tapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        // Les points d'interet d'abord, parce qu'ils sont dessines par-dessus : sous le doigt, c'est celui
+        // qu'on voit qui doit repondre. Ils ne sont la que si la couche est allumee, donc rien ne change
+        // pour qui ne s'en sert pas.
+        if (style?.getLayer(POI_LAYER) != null) {
+            m.queryRenderedFeatures(rect, POI_LAYER).firstOrNull()?.let { f ->
+                val id = f.getStringProperty("__id")
+                val g = f.geometry() as? org.maplibre.geojson.Point
+                if (id != null && g != null) return { onPickPoi?.invoke(id, g.longitude(), g.latitude()) }
+            }
+        }
         for (k in layerKeys) {
             val hit = m.queryRenderedFeatures(rect, pointLayerId(k)).firstOrNull()?.let { pickOf(k, it) }
             if (hit != null) return hit
@@ -270,6 +290,9 @@ class MapController {
     private val SEL_SHADOW = "sel-marker-shadow"
     private val SEL_TOP = "sel-marker-top"
     private val SEL_SRC = "sel-marker-src"
+    /** Source et couche des points d'interet (cf. [setPoiMarkers]). */
+    private val POI_SRC = "poi-src"
+    private val POI_LAYER = "poi-pt"
     /** Source et couches du repere de position GPS : le cercle de precision, puis le symbole par-dessus. */
     private val USER_SRC = "user-location"
     private val USER_ACCURACY = "user-location-accuracy"
@@ -344,7 +367,10 @@ class MapController {
      * passe DEVANT les marqueurs qui le chevauchent. Les deux partagent une source. Calques carte (et non
      * surcouche Compose) : ils suivent seuls la carte au pan/zoom. [lon]/[lat] nuls retirent tout.
      */
-    fun setSelectedMarker(lon: Double?, lat: Double?, belowKey: String?, colorHex: String?, heightPx: Float) {
+    fun setSelectedMarker(
+        lon: Double?, lat: Double?, belowKey: String?, colorHex: String?, heightPx: Float,
+        iconRes: Int? = null,
+    ) {
         val s = style ?: return
         if (lon == null || lat == null) {
             s.getLayer(SEL_TOP)?.let { s.removeLayer(it) }
@@ -354,7 +380,11 @@ class MapController {
         }
         val h = heightPx.toInt().coerceIn(24, 256)
         val shadowImg = ensureShadowImage(s, appContext, h)
-        val pinImg = ensurePin(s, appContext, colorHex ?: "#1F6FB2", heightPx)
+        // Un point d'interet reprend sa bulle a pictogramme, un marqueur de trace son pin : la copie
+        // posee au sommet doit etre celle du marqueur qu'on vient de toucher, sans quoi il changerait de
+        // dessin en s'ouvrant.
+        val pinImg = if (iconRes != null) ensurePoiBubble(s, appContext, colorHex ?: "#1F6FB2", iconRes, heightPx)
+        else ensurePin(s, appContext, colorHex ?: "#1F6FB2", heightPx)
         val geojson = "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}"
         val existingSrc = s.getSourceAs<GeoJsonSource>(SEL_SRC)
         if (existingSrc == null) s.addSource(GeoJsonSource(SEL_SRC, geojson)) else existingSrc.setGeoJson(geojson)
@@ -388,6 +418,90 @@ class MapController {
         } else {
             (s.getLayer(SEL_TOP) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(pinImg))
         }
+    }
+
+    /**
+     * Marqueurs des points d'interet, dessines par-dessus les traces. Liste vide : la couche disparait.
+     *
+     * Une seule source pour tous, et l'icone choisie PAR MARQUEUR via une expression de style
+     * (`iconImage(get("__icon"))`) : une couche par groupe couterait quatre interrogations a chaque tap et
+     * autant de sources a tenir a jour, pour un resultat identique a l'ecran.
+     *
+     * Le meme pin que les marqueurs de trace, teinte a la couleur du groupe : la carte garde une seule
+     * grammaire de marqueur, et un point d'interet se distingue par sa couleur, non par une forme etrangere
+     * au reste de l'application.
+     */
+    fun setPoiMarkers(markers: List<PoiMarker>, heightPx: Float) {
+        val s = style ?: return
+        if (markers.isEmpty()) {
+            s.getLayer(POI_LAYER)?.let { s.removeLayer(it) }
+            s.getSource(POI_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val features = markers.joinToString(",") { m ->
+            val icon = ensurePoiBubble(s, appContext, m.colorHex, m.iconRes, heightPx)
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lon},${m.lat}]},""" +
+                """"properties":{"__id":"${m.id}","__icon":"$icon"}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(POI_SRC)
+        if (existing == null) s.addSource(GeoJsonSource(POI_SRC, geojson)) else existing.setGeoJson(geojson)
+        if (s.getLayer(POI_LAYER) == null) {
+            val layer = SymbolLayer(POI_LAYER, POI_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("__icon")),
+                PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                // Les marqueurs se recouvrent en ville, et MapLibre en masque alors une partie. On les
+                // montre tous : un point d'interet absent se lit comme un lieu qui n'existe pas.
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+            ).withFilter(pointGeometryFilter)
+            // Sous les overlays de tete (position GPS, curseur du profil), comme le marqueur selectionne :
+            // une nuee de points d'interet ne doit pas cacher le repere de position.
+            val headOverlays = setOf(USER_ACCURACY, USER_DOT, "cursor-dot")
+            val lowest = s.layers.firstOrNull { it.id in headOverlays }?.id
+            if (lowest != null) s.addLayerBelow(layer, lowest) else s.addLayer(layer)
+        }
+    }
+
+    /**
+     * Bulle d'un point d'interet : une goutte pleine a la couleur du groupe, le pictogramme de la
+     * categorie en blanc dedans.
+     *
+     * La MEME silhouette que les marqueurs de trace (ic_pin_fill), et non une forme etrangere : la carte
+     * garde une seule grammaire de marqueur. Ce qui distingue un point d'interet, c'est son dessin.
+     *
+     * Le pictogramme occupe 44 % de la hauteur et se pose au centre de la TETE de la goutte, aux 38 % du
+     * haut - pas au milieu de l'image, ou il tomberait sur la pointe.
+     */
+    private fun ensurePoiBubble(s: Style, context: Context?, colorHex: String, iconRes: Int, heightPx: Float): String {
+        val h = heightPx.toInt().coerceIn(24, 256)
+        val name = "poi_${colorHex.removePrefix("#")}_${iconRes}_$h"
+        if (poiImages.add(name)) s.addImage(name, poiBubbleBitmap(context, colorHex.toColorInt(), iconRes, h))
+        return name
+    }
+
+    private fun poiBubbleBitmap(context: Context?, colorInt: Int, iconRes: Int, h: Int): Bitmap {
+        val bmp = createBitmap(h, h)
+        val c = AndroidCanvas(bmp)
+        if (context != null) {
+            ContextCompat.getDrawable(context, R.drawable.ic_pin_outline)?.apply {
+                setBounds(0, 0, h, h); draw(c)
+            }
+            // La goutte PLEINE, et non celle des traces : celle-ci porte un trou dans sa tete, qui
+            // masquait le pictogramme (cf. ic_poi_pin.xml).
+            ContextCompat.getDrawable(context, R.drawable.ic_poi_pin)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(colorInt); draw(c)
+            }
+            val g = (h * 0.44f).toInt()
+            val left = (h - g) / 2
+            val top = (h * 0.38f - g / 2f).toInt()
+            ContextCompat.getDrawable(context, iconRes)?.mutate()?.apply {
+                setBounds(left, top, left + g, top + g)
+                setTint(android.graphics.Color.WHITE)
+                draw(c)
+            }
+        }
+        return bmp
     }
 
     private fun ensureShadowImage(s: Style, context: Context?, h: Int): String {

@@ -60,6 +60,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Route
@@ -191,6 +192,16 @@ import fr.lc4918.trailog.ui.points.computeGeocodePlacement
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.data.db.AppDatabase
+import fr.lc4918.trailog.poi.Datatourisme
+import fr.lc4918.trailog.poi.PoiRepository
+import fr.lc4918.trailog.domain.model.PoiCategory
+import fr.lc4918.trailog.domain.model.PoiFilters
+import fr.lc4918.trailog.ui.poi.PoiState
+import fr.lc4918.trailog.ui.poi.PoiLoading
+import fr.lc4918.trailog.ui.poi.poiGroupColor
+import fr.lc4918.trailog.ui.poi.poiIcon
+import fr.lc4918.trailog.ui.components.PoiMarker
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.planner.GeocodingParams
@@ -1114,6 +1125,56 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             if (positioned) controller.cameraState()?.let { (la, lo, z) -> vm.saveCameraState(la, lo, z) }
         }
     }
+
+    /*
+     * ---------- Points d'interet (DATAtourisme) ----------
+     *
+     * Charges sur l'emprise visible, apres un temps d'arret : un deplacement de carte emet des dizaines
+     * d'evenements, et sans cette attente chacun partirait en requete. On ne redemande rien tant que la vue
+     * reste dans ce qui a deja ete charge - c'est ce qui tient les appels loin du quota du service, bien
+     * plus que le delai lui-meme (cf. PoiLoading).
+     */
+    val poi = remember { PoiState() }
+    val poiRepo = remember(ctx) { PoiRepository(AppDatabase.get(ctx).pois()) }
+    LaunchedEffect(settings?.poiEnabled) {
+        if (settings?.poiEnabled == false) poi.hide()
+    }
+    val poiFilters = remember(settings?.poiHiddenCategories, settings?.poiBikeGroups) {
+        PoiFilters.of(settings?.poiHiddenCategories, settings?.poiBikeGroups)
+    }
+    LaunchedEffect(poi.visible, idleTick, poiFilters) {
+        if (!poi.visible) return@LaunchedEffect
+        delay(PoiLoading.DEBOUNCE_MS)
+        val zoom = controller.cameraState()?.third ?: return@LaunchedEffect
+        if (zoom < PoiLoading.MIN_ZOOM) { poi.tooFar(); return@LaunchedEffect }
+        val vue = controller.visibleBounds() ?: return@LaunchedEffect
+        if (!poi.needsLoad(vue, poiFilters)) return@LaunchedEffect
+        val box = PoiLoading.grow(vue)
+        poi.beginLoad()
+        // Deux requetes au plus : celles qui se contentent du catalogue, et celles limitees au theme
+        // velo. Un groupe sans categorie cochee ne pese dans aucune des deux. Le depot se charge du
+        // cache - service d'abord, dernier connu si le reseau manque (cf. PoiRepository).
+        val (libres, velo) = poiFilters.queries()
+        val charge = poiRepo.load(Datatourisme.DEFAULT_URL, box, libres, velo)
+        // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a pas
+        // repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.
+        val horsLigne = charge.pois.isEmpty() && !NetworkStatus.hasInternet(ctx)
+        poi.publish(box, poiFilters, charge.pois, charge.fromCache, horsLigne)
+        poi.dropSelectionIfGone()
+    }
+    // Les marqueurs suivent la liste et l'extinction de la couche, et rien d'autre : les redessiner a
+    // chaque image d'un deplacement couterait un aller-retour vers MapLibre pour un resultat identique.
+    LaunchedEffect(poi.pois, poi.visible, markerPx) {
+        controller.setPoiMarkers(
+            if (poi.visible) poi.pois.map {
+                PoiMarker(it.uuid, it.lon, it.lat, poiGroupColor(it.category.group), poiIcon(it.category))
+            } else emptyList(),
+            markerPx,
+        )
+    }
+    LaunchedEffect(controller) {
+        controller.onPickPoi = { uuid, _, _ -> poi.selectById(uuid) }
+    }
     // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
     // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
     // Projetée pendant la composition et non dans un effet : un effet ne s'exécute qu'après la composition,
@@ -1132,7 +1193,16 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // sommet pour qu'il passe devant ceux qui le chevauchent. Position connue dès le tap ; retiré à la
     // désélection. Suit seul la carte.
     val markerLayerId by vm.markerLayerId.collectAsState()
-    LaunchedEffect(selectedMarkerPos, markerLayerId, markerPx, renderLayers) {
+    LaunchedEffect(selectedMarkerPos, markerLayerId, markerPx, renderLayers, poi.selected) {
+        // Un point d'interet ouvert prend la main : les deux infobulles ne peuvent pas etre ouvertes en
+        // meme temps, et les deux se disputeraient les memes calques d'ombre et de pin de tete.
+        val p = poi.selected
+        if (p != null) {
+            controller.setSelectedMarker(
+                p.lon, p.lat, null, poiGroupColor(p.category.group), markerPx, poiIcon(p.category),
+            )
+            return@LaunchedEffect
+        }
         val pos = selectedMarkerPos
         val key = markerLayerId?.let { "ly$it" }
         val color = renderLayers.firstOrNull { it.key == key }?.color
@@ -1643,6 +1713,21 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     alert.followed != null -> MapChromeActive
                                     else -> chromeFg
                                 },
+                            )
+                        }
+                    }
+                    // Points d'interet : la pastille s'allume quand la couche est affichee, comme le
+                    // suivi de position et l'alerte d'eloignement le font pour la leur.
+                    //
+                    // Un marque-page, et non l'epingle : celle-ci est deja le dessin des marqueurs que ce
+                    // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
+                    // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
+                    // qu'on retient le long du parcours.
+                    if (settings?.poiEnabled == true) {
+                        IconButton(onClick = { poi.toggle() }, modifier = controlBg) {
+                            Icon(
+                                Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
+                                tint = if (poi.visible) MapChromeActive else chromeFg,
                             )
                         }
                     }

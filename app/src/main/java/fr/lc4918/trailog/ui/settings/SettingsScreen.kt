@@ -398,6 +398,11 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
         SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
         RowDivider()
         SwitchLine(
+            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
+            sub = stringResource(R.string.settings_sw_poi_sub),
+        ) { vm.save(cur.copy(poiEnabled = it)) }
+        RowDivider()
+        SwitchLine(
             stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
             sub = stringResource(R.string.settings_sw_track_edit_sub),
         ) { vm.save(cur.copy(trackEditEnabled = it)) }

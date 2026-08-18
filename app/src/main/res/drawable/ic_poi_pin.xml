@@ -1,0 +1,11 @@
+<!-- Goutte PLEINE des marqueurs de points d'interet.
+     Le pin des traces (ic_pin_fill) porte un trou circulaire dans sa tete - c'est ce qui lui donne sa
+     forme d'epingle -, et ce trou masquait le pictogramme de la categorie. Meme silhouette exterieure,
+     donc, mais sans le second sous-chemin ni le fillType evenOdd qui l'evidait. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp" android:height="128dp"
+    android:viewportWidth="128" android:viewportHeight="128">
+    <path
+        android:fillColor="#464646"
+        android:pathData="M64.026,8.375c-18.864,0-34.565,16.334-34.565,34.054c0,7.973,4.487,18.102,7.729,25.102l26.709,51.287l26.581-51.287c3.242-7,7.856-16.621,7.856-25.102C98.335,24.709,82.886,8.375,64.026,8.375z" />
+</vector>
