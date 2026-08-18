@@ -52,6 +52,20 @@ object BrouterProfile {
      *   `path_preference` au VTT, et au marcheur `SAC_scale_limit` - la cotation de randonnée au-delà de
      *   laquelle un sentier lui est interdit, le pendant du `max_hiking_difficulty` demandé à Valhalla.
      *
+     * `unpavedPenalty` à 0 pour le VTC qui accepte les chemins, et non à une valeur intermédiaire : il ne
+     * pénalise pas les chemins mais leur **rugosité**, par palier de `tracktype` (grade1 +0,3, grade2 +0,9,
+     * grade5 +2, non tagué +4). L'éteindre laisserait craindre un VTC dans les ornières ; la mesure dit le
+     * contraire, parce que les chemins qu'il retient sont déjà roulants. Sur Grenoble - Voiron, ses 16,4 km
+     * de chemins sont à **92 % de l'asphalte** - des `highway=track` goudronnés, tels qu'on en trouve dans
+     * le Voironnais - et 8 % de gravier ; sur Revel - Sorèze, 95 % de gravier fin, c'est-à-dire la voie
+     * verte de la Rigole. Compter un `highway=track` pour un chemin sans regarder son revêtement est
+     * d'ailleurs l'erreur qui avait fait croire à un problème.
+     *
+     * Le seul trajet où il touche vraiment du rugueux est la montagne (Grenoble - Chamrousse : 28 % de
+     * terre), et le levier n'y sert à rien : la donnée manque sur 43 % du parcours, si bien que monter à 1
+     * rallonge de 3,2 km SANS réduire la part de terre. Rien ne vaut mieux qu'un réglage qui ne discrimine
+     * pas.
+     *
      * Le vélo de route n'a de ligne ni pour le revêtement ni pour les voies douces, et les deux silences
      * sont mesurés : `fastbike.brf` n'expose aucun levier de revêtement, et son levier de circulation
      * échange justement le trafic contre le revêtement - l'actionner l'envoie sur les chemins. Sans rien
