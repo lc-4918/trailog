@@ -403,6 +403,7 @@ private fun StepRow(
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester)
                             .onFocusChanged {
                                 focused = it.isFocused
+                                state.setEditing(step, it.isFocused)
                                 if (it.isFocused) state.focus(step)
                             },
                         textStyle = LocalTextStyle.current.copy(fontSize = FieldTextSp.sp),
@@ -625,7 +626,7 @@ private fun ResultsZone(
                     null, Modifier.size(18.dp),
                 )
             }
-            if (state.profileVisible) {
+            if (state.profileShown) {
                 if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
                     SlopeLegend(stats.maxAbsSlope, settings?.profLegendFont ?: 9,
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),

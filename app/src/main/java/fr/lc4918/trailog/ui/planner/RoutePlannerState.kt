@@ -120,7 +120,29 @@ class RoutePlannerState {
 
     fun toggleProfile() { profileVisible = !profileVisible }
 
+    /**
+     * Un champ d'etape a le focus : on est en train de saisir.
+     *
+     * Sert a rendre le profil altimetrique le temps de la saisie (cf. [profileShown]). Un identifiant et
+     * non un booleen : passer d'un champ a l'autre fait perdre le focus au premier APRES que le second
+     * l'ait pris, et un simple drapeau se serait rabaisse juste apres avoir ete leve.
+     */
+    var editingId by mutableStateOf<Long?>(null)
+        private set
 
+    fun setEditing(step: PlannerStep, focused: Boolean) {
+        if (focused) editingId = step.id
+        else if (editingId == step.id) editingId = null
+    }
+
+    /**
+     * Le profil s'affiche-t-il ?
+     *
+     * Il se retire le temps d'une saisie, sans que le reglage bouge : le clavier prend la moitie basse de
+     * l'ecran, et entre lui et le profil il ne restait plus de place pour les propositions - historique et
+     * position actuelle naissaient hors de la zone visible. Il revient des que le champ rend le focus.
+     */
+    val profileShown: Boolean get() = profileVisible && editingId == null
 
     /** Point courant sur le parcours, en metres depuis son debut (repere sur la carte + infos du point).
      *  Une abscisse et non un indice, comme pour le profil d'une trace : elle se pose entre deux sommets. */

@@ -80,6 +80,51 @@ class PlannerStepsTest {
         assertTrue("le focus le rend vierge a nouveau", depart.untouched)
     }
 
+    // ---------- Le profil s'efface le temps d'une saisie ----------
+
+    /**
+     * Le clavier prend la moitie basse de l'ecran : entre lui et le profil altimetrique, il ne restait
+     * plus de place pour les propositions, qui naissaient hors de la zone visible.
+     *
+     * Le REGLAGE ne bouge pas - le profil revient de lui-meme quand le champ rend le focus, sans que
+     * l'utilisateur ait a le redemander.
+     */
+    @Test fun `le profil se retire le temps d'une saisie`() {
+        val etat = RoutePlannerState()
+        etat.toggleProfile()
+        assertTrue(etat.profileShown)
+        etat.setEditing(etat.steps.first(), true)
+        assertFalse("le profil laisse la place", etat.profileShown)
+        assertTrue("mais le reglage tient", etat.profileVisible)
+        etat.setEditing(etat.steps.first(), false)
+        assertTrue("et il revient seul", etat.profileShown)
+    }
+
+    /**
+     * Passer d'un champ a l'autre : le premier perd le focus APRES que le second l'ait pris. Un simple
+     * drapeau se serait rabaisse juste apres avoir ete leve, et le profil aurait reparu sous le clavier.
+     */
+    @Test fun `passer d'un champ a l'autre garde le profil retire`() {
+        val etat = RoutePlannerState()
+        etat.toggleProfile()
+        val depart = etat.steps.first()
+        val arrivee = etat.steps.last()
+        etat.setEditing(depart, true)
+        etat.setEditing(arrivee, true)
+        etat.setEditing(depart, false)      // l'ancien rend le focus en dernier
+        assertFalse(etat.profileShown)
+        etat.setEditing(arrivee, false)
+        assertTrue(etat.profileShown)
+    }
+
+    /** Profil non demande : la saisie n'y change rien, il n'y a rien a retirer. */
+    @Test fun `sans profil demande, la saisie ne change rien`() {
+        val etat = RoutePlannerState()
+        assertFalse(etat.profileShown)
+        etat.setEditing(etat.steps.first(), true)
+        assertFalse(etat.profileShown)
+    }
+
     /**
      * Ce qui reste exclu : le champ vide APRES UNE FRAPPE. Efface caractere par caractere, il n'est pas
      * vierge pour autant - voir la liste ressurgir sous les doigts au dernier retour arriere serait une
