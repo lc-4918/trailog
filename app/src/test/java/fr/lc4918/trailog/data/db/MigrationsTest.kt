@@ -756,6 +756,37 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 54 -> 55 : le fond par defaut passe a Mapbox Outdoors ----------
+
+    /**
+     * OSM standard est une carte de VILLE ; Mapbox Outdoors est un fond de randonnee - relief ombre,
+     * sentiers, courbes de niveau. Le premier ecran d'une application de trace doit montrer le terrain.
+     */
+    @Test fun `54 vers 55 fait passer le fond par defaut a Mapbox Outdoors`() {
+        val db = freshDb("m5455"); settingsV16(db)
+        db.execSQL("UPDATE settings SET defaultBasemapId = 'osm'")
+        db.execSQL(MigrationSql.DEFAULT_BASEMAP_TO_MAPBOX)
+        assertEquals("mapbox_outdoors",
+            scalar(db, "SELECT defaultBasemapId FROM settings") { it.getString(0) })
+        // Le SQL et le defaut Kotlin doivent dire la meme chose : sinon une base migree et une
+        // installation neuve s'ouvriraient sur deux fonds differents.
+        assertEquals(SettingsEntity().defaultBasemapId,
+            scalar(db, "SELECT defaultBasemapId FROM settings") { it.getString(0) })
+        db.close()
+    }
+
+    /**
+     * Mais un fond CHOISI reste : c'est le premier reglage qu'on touche dans cette application, et
+     * l'ecraser serait la pire des surprises.
+     */
+    @Test fun `54 vers 55 ne touche pas a un fond choisi`() {
+        val db = freshDb("m5455bis"); settingsV16(db)
+        db.execSQL("UPDATE settings SET defaultBasemapId = 'ign_fr'")
+        db.execSQL(MigrationSql.DEFAULT_BASEMAP_TO_MAPBOX)
+        assertEquals("ign_fr", scalar(db, "SELECT defaultBasemapId FROM settings") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

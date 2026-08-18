@@ -126,7 +126,10 @@ data class SettingsEntity(
     // gestionnaire au tap qui l'eteignait, sans plus aucun moyen de le rallumer.
     val hillshadeOn: Boolean = false,
     val ambientCacheMb: Int = 200,
-    val defaultBasemapId: String = "osm",
+    // Fond affiche au demarrage. Mapbox Outdoors plutot qu'OSM : c'est un fond de RANDONNEE - relief
+    // ombre, sentiers, courbes de niveau - la ou la tuile OSM standard est une carte de ville. Le premier
+    // ecran d'une application de trace doit montrer le terrain.
+    val defaultBasemapId: String = "mapbox_outdoors",
     val mbtilesDir: String = "",           // chemin réel ; vide = dossier privé de l'app
     val theme: String = "system",          // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil

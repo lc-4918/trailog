@@ -6,9 +6,9 @@ import fr.lc4918.trailog.data.db.ProviderEntity
  * Cle de l'API DATAtourisme, en clair et assume, comme les cles de fonds de carte de ce fichier.
  *
  * Ici et non dans le client : c'est le seul endroit du depot ou vivent les cles en clair, et les regrouper
- * vaut mieux que d'en semer une par service. Le depot etant public, elles sont lisibles - c'est un choix,
- * pas un oubli : ce sont des cles personnelles a quota, revocables, et rien de ce qu'elles ouvrent n'est
- * prive. Une cle cachee derriere local.properties avec un defaut de secours committe ne cacherait rien du
+ * vaut mieux que d'en semer une par service. Le depot etant public, elles sont lisibles. C'est un choix,
+ * pas un oubli : ce sont des cles personnelles à quota, revocables, et rien de ce qu'elles ouvrent n'est
+ * privé. Une cle cachee derriere local.properties avec un defaut de secours committe ne cacherait rien du
  * tout, elle donnerait seulement l'illusion de le faire.
  */
 const val DATATOURISME_API_KEY = "e9db2b7f-a884-4c5d-9d84-eb7b1cc0bbe8"
@@ -20,7 +20,7 @@ const val DATATOURISME_API_KEY = "e9db2b7f-a884-4c5d-9d84-eb7b1cc0bbe8"
  * {KEY} est remplacé par apiKey ; {s} est étendu selon subdomains.
  *
  * Les fonds d'un pays portent le nom de leur couche d'origine, sans le pays devant : le drapeau le dit
- * deja, et le repeter volait la moitie de la ligne du gestionnaire ("France - IGN Scan").
+ * déjà, et le repeter volait la moitie de la ligne du gestionnaire ("France - IGN Scan").
  *
  * Seuls huit sont cochés d'entrée (OSM, Mapbox Outdoors, les trois Google, IGN Scan, IGN MTN, relief) : le Basemap Control
  * ne montre que les fonds activés, une liste de trente entrées y serait illisible. Les autres restent
