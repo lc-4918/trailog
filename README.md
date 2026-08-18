@@ -202,6 +202,9 @@ Development happens in the open on GitHub. The working documents are in French:
 
 Trailog is distributed under the **GPL v3** licence. See the [`LICENSE`](LICENSE) file.
 
+The routing profiles shipped in `app/src/main/assets/brouter/` are taken verbatim from the
+[BRouter](https://github.com/abrensch/brouter) project (MIT licence), which retains their authorship.
+
 ## Contact
 
 For any question, open a [discussion or an issue](https://github.com/lc-4918/trailog/issues) on the

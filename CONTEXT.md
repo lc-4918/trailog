@@ -168,6 +168,17 @@ ses cinq disciplines (route, gravel, VTC, VTT, marche) sortent d'une **seule** i
 GraphHopper n'offre pas d'instance publique sans clé. BRouter, seul à savoir router hors ligne, resterait
 le choix du jour où l'on voudrait s'affranchir du réseau : il faudrait alors gérer ses tuiles `.rd5`.
 
+BRouter l'a rejoint depuis, puis lui a pris la place de moteur par défaut, et pour une raison précise : le modèle de coût de
+Valhalla est compilé dans son code, et l'instance publique n'en expose qu'une poignée de curseurs. Deux
+choses s'y sont révélées impossibles, mesures à l'appui - privilégier un sentier au MARCHEUR, dont le
+modèle piéton ignore les relations d'itinéraire et ne connaît que trottoirs et chemins d'exploitation, et
+corriger la vitesse dérisoire qu'il prête au cycliste sur les voies vertes gravillonnées. BRouter reçoit
+au contraire le profil entier avec la requête ; ce qu'on ne peut pas dire à l'autre s'y écrit. Le prix
+est symétrique : cinq profils à tenir, repris du dépôt BRouter et réglés ligne par ligne, et une
+conversation en deux temps - déposer le profil, puis calculer sous l'identifiant rendu. Valhalla reste
+réglable d'un tap, et garde un avantage propre : son graphe hiérarchique répond plus vite sur les longues
+distances, là où BRouter explore à plat.
+
 Conséquence à connaître : une mesure de distance est une **requête réseau**, là où le vol d'oiseau ne
 coûtait rien. L'origine de la mesure depuis la position est donc figée à la première position reçue et ne
 suit pas le capteur : la suivre lancerait une requête toutes les deux secondes.

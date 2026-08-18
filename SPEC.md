@@ -261,9 +261,21 @@ s'attarde pas.
 
 Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
 d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied. Le moteur
-est **Valhalla**, retenu parce que ses cinq disciplines sortent d'une seule instance via `bicycle_type`
-(OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé). Son URL est un réglage, comme
-celle du géocodeur. L'itinéraire calculé est tracé sur la carte, sous les épingles et teinté par classe de
+se règle lui aussi, entre **Valhalla** et **BRouter**, et son URL avec lui comme celle du géocodeur.
+
+Valhalla est le moteur d'origine : ses cinq disciplines sortent d'une seule instance via `bicycle_type`
+(OSRM en exigerait cinq, GraphHopper n'a pas d'instance publique sans clé). Son modèle de coût est figé
+dans son code, dont il n'expose qu'une poignée de curseurs - et c'est ce qui plafonne le résultat.
+BRouter, lui, lit un **profil** envoyé avec la requête, un texte qui décrit le coût tag par tag :
+l'application dépose celui de la discipline, réglé sur les trois préférences, et calcule sous
+l'identifiant rendu. Il sait pour cette raison ce que l'autre ne peut pas dire - privilégier un sentier
+de randonnée au marcheur - et rend l'altitude avec la géométrie, sans second appel.
+
+**BRouter est le moteur par défaut**, non par préférence mais par mesure : à pied, Moulin-Neuf - Mirepoix
+passe de 15 à 87 % de voies douces, la voie verte étant enfin empruntée. Valhalla reste offert d'un tap -
+il calcule plus vite sur les longues distances, son graphe étant hiérarchique. Le réglage existe pour les
+**comparer sur le terrain** : on demande la même chose aux deux, dans le même vocabulaire de disciplines
+et de préférences, et l'on bascule sur le même trajet. L'itinéraire calculé est tracé sur la carte, sous les épingles et teinté par classe de
 pente : sa géométrie arrive dans la même réponse que le total, encodée en polyligne.
 
 Chaque discipline arrive avec ce qu'elle demande, réglable en trois questions - quelles voies, quel

@@ -186,7 +186,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 35 | les 28 migrations, et les défauts d'une installation neuve |
+| `MigrationsTest` | 41 | les 29 migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -348,7 +348,9 @@ des sous-dossiers d'une autre couleur.
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PhotonTest` | 21 | construction des requêtes (recherche et inverse), lecture de la réponse du géocodeur et découpage de l'adresse en morceaux |
-| `ValhallaTest` | 29 | construction de la requête et lecture de la réponse du moteur d'itinéraire |
+| `ValhallaTest` | 29 | construction de la requête et lecture de la réponse du premier moteur d'itinéraire |
+| `BrouterTest` | 22 | requête, réponse et table de traduction du second moteur |
+| `BrouterProfilesTest` | 5 | les cinq profils réellement livrés, confrontés à la table qui les règle |
 | `PolylineTest` | 5 | décodage des polylignes encodées, dont la précision propre à Valhalla |
 | `GpxWriterTest` | 11 | le seul format par lequel une trace ressort de l'application |
 
@@ -374,6 +376,13 @@ coordonnées passent par `toString()` et non `format()`, faute de quoi une local
 incomplet (longueur sans durée, ou l'inverse) doit valoir "aucun itinéraire" plutôt qu'une distance de
 zéro. Il verrouille aussi la correspondance des cinq disciplines avec les modèles de coût, seul endroit
 du code qui parle le vocabulaire du moteur.
+
+`BrouterTest` couvre la même surface pour le second moteur, plus deux pièges qui lui sont propres : ses
+coordonnées partent en **lon,lat**, l'ordre inverse de celui de toute l'application, et le réglage n'y
+tient pas dans la requête mais dans le **texte du profil** qu'elle accompagne. `BrouterProfilesTest`, lui,
+ne vérifie pas du code mais des **données** - comme `DemoAssetsTest`, et pour la même raison : une variable
+renommée en amont, ou mal orthographiée dans la table, laisse l'itinéraire se calculer. L'utilisateur bouge
+alors ses trois réglages sans que rien ne se passe, et rien à l'écran ne le dit.
 
 Il y garde surtout la **monture** demandée au moteur, qui ne suit pas la discipline seule mais la
 discipline et le revêtement accepté. C'est elle, et non l'option qui semble faite pour cela, qui décide

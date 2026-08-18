@@ -199,7 +199,11 @@ data class SettingsEntity(
     // Service d'autocompletion interroge (API Photon). Vide = instance publique (Photon.DEFAULT_URL) ;
     // renseignable pour viser sa propre instance, l'interet d'avoir choisi un geocodeur auto-hebergeable.
     val geocodingUrl: String = "",
-    // Service d'itineraire (API Valhalla). Vide = instance publique (Valhalla.DEFAULT_URL).
+    // Moteur d'itineraire : "valhalla" ou "brouter" (cf. RouteEngine). Les deux repondent aux memes cinq
+    // disciplines et aux memes trois preferences, chacun dans sa langue - c'est ce qui rend la comparaison
+    // honnete, et c'est pour comparer que ce reglage existe.
+    val routeEngine: String = "brouter",
+    // Service d'itineraire. Vide = instance publique DU MOTEUR RETENU (cf. Router.baseOf).
     val routingUrl: String = "",
     // Discipline retenue par defaut a l'ouverture du planificateur d'itineraire (cf. RoutingProfile).
     val routingProfile: String = "hybrid",

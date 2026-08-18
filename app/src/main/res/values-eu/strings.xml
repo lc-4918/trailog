@@ -291,6 +291,8 @@
     <string name="settings_enable_track_measure">Erakutsi neurtzeko botoia</string>
     <string name="settings_section_geocoding_service">Geokodetze-zerbitzua</string>
     <string name="settings_section_routing_service">Ibilbide-zerbitzua</string>
+    <string name="settings_section_route_engine">Ibilbide-motorra</string>
+    <string name="settings_route_engine_hint">Bi motorrek diziplina eta lehentasun berberei erantzuten diete. BRouter-ek bidegorriak eta mendi-bideak hobeto jarraitzen ditu; Valhalla da jatorrizkoa.</string>
     <string name="settings_section_default_discipline">Diziplina lehenetsia</string>
     <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>

@@ -291,6 +291,8 @@
     <string name="settings_enable_track_measure">Show measure button</string>
     <string name="settings_section_geocoding_service">Geocoding service</string>
     <string name="settings_section_routing_service">Routing service</string>
+    <string name="settings_section_route_engine">Routing engine</string>
+    <string name="settings_route_engine_hint">Both engines answer the same activities and the same preferences. BRouter follows greenways and hiking paths more closely; Valhalla is the original one.</string>
     <string name="settings_section_default_discipline">Default discipline</string>
     <string name="settings_enable_geocoding">Enable place and address search</string>
     <string name="settings_section_markers">Markers (map)</string>

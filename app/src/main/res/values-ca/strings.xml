@@ -291,6 +291,8 @@
     <string name="settings_enable_track_measure">Mostra el botó de mesura</string>
     <string name="settings_section_geocoding_service">Servei de geocodificació</string>
     <string name="settings_section_routing_service">Servei d\'itineraris</string>
+    <string name="settings_section_route_engine">Motor d\'itineraris</string>
+    <string name="settings_route_engine_hint">Els dos motors responen a les mateixes disciplines i a les mateixes preferències. BRouter segueix millor les vies verdes i els senders; Valhalla és l\'original.</string>
     <string name="settings_section_default_discipline">Disciplina per defecte</string>
     <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>

@@ -25,6 +25,38 @@ object TileHttp {
     /** Renvoie les octets de la tuile, ou null en cas d'échec (statut non 2xx, exception réseau). */
     fun get(url: String): ByteArray? = fetch(url).body
 
+    /**
+     * Envoi d'un corps en POST, même contrat de retour que [fetch].
+     *
+     * Un seul appelant à ce jour : le dépôt d'un profil de tracé chez BRouter, qui rend l'identifiant sous
+     * lequel le rappeler (cf. [fr.lc4918.trailog.routing.Brouter]). Le profil pèse une vingtaine de
+     * kilo-octets, bien au-delà de ce qu'une URL accepte - d'où le POST, et non un paramètre de plus.
+     */
+    fun post(
+        url: String, body: ByteArray, contentType: String = "text/plain",
+        connectTimeoutMs: Int = CONNECT_TIMEOUT_MS, readTimeoutMs: Int = READ_TIMEOUT_MS,
+    ): Response {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", USER_AGENT)
+            setRequestProperty("Content-Type", contentType)
+            requestMethod = "POST"
+            doOutput = true
+        }
+        return try {
+            conn.outputStream.use { it.write(body) }
+            val code = conn.responseCode
+            if (code in 200..299) Response(code, conn.inputStream.use { it.readBytes() })
+            else { conn.errorStream?.use { it.readBytes() }; Response(code, null) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            conn.disconnect()
+            Response(0, null)
+        }
+    }
+
     fun fetch(url: String, connectTimeoutMs: Int = CONNECT_TIMEOUT_MS, readTimeoutMs: Int = READ_TIMEOUT_MS): Response {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = connectTimeoutMs

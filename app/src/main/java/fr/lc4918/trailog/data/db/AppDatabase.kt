@@ -319,6 +319,22 @@ internal object MigrationSql {
           routePrefsFoot   = CASE routePrefsFoot   WHEN '$PREFS_FOOT_V1'   THEN '$PREFS_FOOT'   ELSE routePrefsFoot   END
     """.trimIndent()
 
+    /**
+     * Moteur d'itineraire (cf. RouteEngine), BRouter pour tout le monde - installations en place
+     * comprises, ce que ne fait aucune commande ajoutee recemment.
+     *
+     * La raison est la meme que pour les preferences ci-dessus, et c'est la seule qui vaille ici : ce
+     * n'est pas une fonction en plus, c'est le meme calcul rendu meilleur. Mesure sur les quatre trajets
+     * de reference : a pied, Moulin-Neuf - Mirepoix passe de 15 a 87 % de voies douces, la voie verte
+     * etant enfin empruntee ; sur Revel - Soreze, de 24 a 57 % de chemins. Laisser une base en place sur
+     * l'ancien moteur, c'est lui garder un calcul dont on sait qu'il passe a cote.
+     *
+     * L'URL du service ne bouge pas de colonne : vide, elle designe l'instance publique DU MOTEUR RETENU
+     * (cf. Router.baseOf).
+     */
+    const val ADD_ROUTE_ENGINE =
+        "ALTER TABLE settings ADD COLUMN routeEngine TEXT NOT NULL DEFAULT 'brouter'"
+
     // Suivi de la position par la carte, allume d'office y compris sur une base en place : il ne se
     // declenche que le capteur en marche, donc a un moment ou l'on a deja demande a etre localise, et il
     // n'ajoute alors aucune consommation - il deplace la carte avec des positions qui arrivaient de toute
@@ -340,7 +356,7 @@ internal object MigrationSql {
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class],
-    version = 48,
+    version = 49,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -592,11 +608,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_ROUTE_ENGINE)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

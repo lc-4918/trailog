@@ -3,6 +3,7 @@ package fr.lc4918.trailog.data.db
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.domain.model.HillPref
+import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.domain.model.SurfacePref
@@ -644,6 +645,36 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 48 -> 49 : le moteur d'itineraire ----------
+
+    /**
+     * BRouter arrive sur une base EN PLACE, ce que ne fait aucune commande ajoutee recemment.
+     *
+     * La raison est celle des preferences de la migration precedente : ce n'est pas une fonction en plus,
+     * c'est le meme calcul rendu meilleur. A pied, Moulin-Neuf - Mirepoix passe de 15 a 87 % de voies
+     * douces - la voie verte etant enfin empruntee, ce que le modele pieton de Valhalla ne sait pas
+     * faire. Garder l'ancien moteur, c'est garder un calcul dont on sait qu'il passe a cote.
+     */
+    @Test fun `48 vers 49 fait passer une base en place a brouter`() {
+        val db = freshDb("m4849"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_ROUTE_ENGINE)
+        val cle = scalar(db, "SELECT routeEngine FROM settings") { it.getString(0) }
+        assertEquals("brouter", cle)
+        assertEquals(RouteEngine.BROUTER, RouteEngine.of(cle))
+        // Le SQL et le defaut Kotlin doivent dire la meme chose, comme pour les preferences de trace :
+        // sinon une base migree et une installation neuve calculeraient avec deux moteurs differents.
+        assertEquals(cle, SettingsEntity().routeEngine)
+        db.close()
+    }
+
+    /** Une cle inconnue - reglage ecrit par une version plus recente, puis rouvert par une plus ancienne -
+     *  retombe sur le moteur par defaut plutot que de priver d'itineraire. */
+    @Test fun `un moteur inconnu retombe sur le defaut`() {
+        assertEquals(RouteEngine.BROUTER, RouteEngine.of("moteur_de_demain"))
+        assertEquals(RouteEngine.BROUTER, RouteEngine.of(null))
+        assertEquals(RouteEngine.VALHALLA, RouteEngine.of("valhalla"))
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -699,7 +730,7 @@ class MigrationsTest {
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
-            "mapFollowPosition")
+            "mapFollowPosition", "routeEngine")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

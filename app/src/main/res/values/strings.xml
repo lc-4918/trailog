@@ -293,6 +293,8 @@
     <string name="settings_enable_track_measure">Afficher le bouton de mesure</string>
     <string name="settings_section_geocoding_service">Service de géocodage</string>
     <string name="settings_section_routing_service">Service d\'itinéraire</string>
+    <string name="settings_section_route_engine">Moteur d\'itinéraire</string>
+    <string name="settings_route_engine_hint">Les deux moteurs répondent aux mêmes disciplines et aux mêmes préférences. BRouter suit mieux les voies vertes et les sentiers de randonnée ; Valhalla est celui d\'origine.</string>
     <string name="settings_section_default_discipline">Discipline par défaut</string>
     <string name="settings_enable_geocoding">Activer la recherche de lieu et d\'adresse</string>
     <string name="settings_section_markers">Marqueurs (carte)</string>

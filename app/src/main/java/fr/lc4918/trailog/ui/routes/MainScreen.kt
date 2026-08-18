@@ -187,10 +187,11 @@ import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.points.computeBubblePlacement
 import fr.lc4918.trailog.ui.points.computeGeocodePlacement
+import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.routing.GpxWriter
-import fr.lc4918.trailog.routing.Valhalla
+import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.PlannerStep
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
@@ -548,7 +549,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // ---------- services et réglages partagés (point de la carte, planificateur) ----------
     val imperialUnits = settings?.units == "imperial"
-    val routingUrl = settings?.routingUrl?.takeIf { it.isNotBlank() } ?: Valhalla.DEFAULT_URL
+    val routeEngine = RouteEngine.of(settings?.routeEngine)
+    val routingUrl = Router.baseOf(routeEngine, settings?.routingUrl)
     val geocodingBase = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
     // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire calculé n'a pas de raison
     // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
@@ -599,8 +601,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché.
      */
     suspend fun measureTo(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): MeasureState {
-        val r = Valhalla.route(routingUrl, listOf(fromLat to fromLon, toLat to toLon), routingProfile,
-            measurePrefs) ?: return MeasureState.Failed
+        val r = Router.route(ctx, routeEngine, routingUrl, listOf(fromLat to fromLon, toLat to toLon),
+            routingProfile, measurePrefs) ?: return MeasureState.Failed
         val track = withContext(Dispatchers.Default) {
             if (r.points.size < 2) null
             else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
@@ -761,7 +763,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
         }
-        val r = Valhalla.route(routingUrl, pts, planner.profile, plannerPrefs)
+        val r = Router.route(ctx, routeEngine, routingUrl, pts, planner.profile, plannerPrefs)
         if (r == null || r.points.size < 2) {
             planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
         }

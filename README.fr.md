@@ -204,6 +204,9 @@ Le développement se fait ouvertement sur GitHub :
 
 Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](LICENSE).
 
+Les profils de calcul d'itinéraire livrés dans `app/src/main/assets/brouter/` sont repris tels quels du
+projet [BRouter](https://github.com/abrensch/brouter) (licence MIT), qui en garde la paternité.
+
 ## Contact
 
 Pour toute question, ouvrez une [discussion ou une issue](https://github.com/lc-4918/trailog/issues)

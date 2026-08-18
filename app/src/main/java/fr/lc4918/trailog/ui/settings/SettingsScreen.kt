@@ -151,6 +151,7 @@ import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
+import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.HillPref
 import fr.lc4918.trailog.domain.model.SurfacePref
 import fr.lc4918.trailog.domain.model.WayPref
@@ -160,7 +161,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.elevation.IgnElevation
 import fr.lc4918.trailog.elevation.OpenTopo
 import fr.lc4918.trailog.geocode.Photon
-import fr.lc4918.trailog.routing.Valhalla
+import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.map.compositeBasemapId
 import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.map.flagCodeFor
@@ -504,6 +505,12 @@ private fun fractionOf(value: Int, min: Int, max: Int): Float =
 
 private fun valueOf(fraction: Float, min: Int, max: Int): Int =
     (min + fraction * (max - min)).roundToInt().coerceIn(min, max)
+
+/** Nom du moteur d'itinéraire. Pas de chaîne traduite : ce sont deux noms propres. */
+@Composable private fun routeEngineLabel(e: RouteEngine): String = when (e) {
+    RouteEngine.VALHALLA -> "Valhalla"
+    RouteEngine.BROUTER -> "BRouter"
+}
 
 /** Libellé traduit d'une discipline d'itinéraire. */
 @Composable fun routingProfileLabel(p: RoutingProfile): String = stringResource(
@@ -1063,9 +1070,26 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
         }
         RowDivider()
         FieldRow(stringResource(R.string.settings_section_routing_service)) {
-            SettingsTextField(cur.routingUrl, Valhalla.DEFAULT_URL) { vm.save(cur.copy(routingUrl = it.trim())) }
+            // Le gabarit suit le moteur retenu : une URL vide designe SON instance publique, et afficher
+            // celle de l'autre moteur ferait croire qu'on interroge celui-la.
+            SettingsTextField(cur.routingUrl, Router.defaultUrlOf(RouteEngine.of(cur.routeEngine))) {
+                vm.save(cur.copy(routingUrl = it.trim()))
+            }
         }
         Hint(stringResource(R.string.settings_services_hint))
+    }
+
+    /*
+     * Le moteur se regle sous l'URL qu'il commande, et en puces plutot qu'en menu : les deux valeurs
+     * restent lisibles d'un coup d'oeil, et basculer de l'une a l'autre est UN tap. C'est la raison
+     * d'etre du reglage - comparer deux moteurs sur le meme trajet, sans rien changer d'autre.
+     */
+    SectionTitle(stringResource(R.string.settings_section_route_engine))
+    SettingsCard {
+        SegChips(RouteEngine.entries.map { it.key to routeEngineLabel(it) }, cur.routeEngine) {
+            vm.save(cur.copy(routeEngine = it))
+        }
+        Hint(stringResource(R.string.settings_route_engine_hint))
     }
 
     SectionTitle(stringResource(R.string.settings_section_default_discipline))
