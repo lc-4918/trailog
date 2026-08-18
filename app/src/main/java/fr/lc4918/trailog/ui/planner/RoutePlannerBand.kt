@@ -463,7 +463,9 @@ private fun StepRow(
         // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
         // Seulement si le capteur tourne : sans position connue, le calcul echouerait sur un "Aucun
         // itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas honorer ne vaut rien.
-        if (gpsActive && focused && step.untouched && step.target == null) {
+        // Et seulement si elle ne sert pas DEJA ailleurs : partir d'ou l'on est pour y revenir donne un
+        // trajet de longueur nulle, et la proposer une seconde fois invitait a le demander.
+        if (gpsActive && focused && step.untouched && step.target == null && !state.usesCurrentPosition) {
             SuggestionRow(
                 label = stringResource(R.string.planner_current_position),
                 icon = true,

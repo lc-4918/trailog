@@ -174,6 +174,14 @@ class RoutePlannerState {
 
     val canAddStep: Boolean get() = steps.size < MaxPlannerSteps
 
+    /**
+     * La position du porteur est deja une etape du trajet.
+     *
+     * Elle ne peut en etre qu'une : un itineraire qui partirait d'ou l'on est pour y revenir n'a pas de
+     * longueur, et le moteur rendrait un trajet nul. Tant qu'elle sert, on cesse de la proposer.
+     */
+    val usesCurrentPosition: Boolean get() = steps.any { it.target == StepTarget.CurrentPosition }
+
     val done: RouteState.Done? get() = route as? RouteState.Done
 
     fun openPlanner() {
