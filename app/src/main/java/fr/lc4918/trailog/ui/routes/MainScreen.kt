@@ -1840,7 +1840,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
                     // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
                     // qu'on retient le long du parcours.
-                    if (settings?.poiEnabled == true) {
+                    //
+                    // Masque tant que la bande du planificateur est DEPLOYEE : son fond n'est pas tout a
+                    // fait opaque, et le bouton se devinait au travers. Il revient des qu'elle se reduit
+                    // ou se ferme - c'est deja ce que fait le bouton du planificateur lui-meme.
+                    if (settings?.poiEnabled == true && !(planner.open && !planner.collapsed)) {
                         IconButton(onClick = { poi.toggle() }, modifier = controlBg) {
                             Icon(
                                 Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
