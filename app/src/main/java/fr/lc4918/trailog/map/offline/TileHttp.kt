@@ -57,12 +57,18 @@ object TileHttp {
         }
     }
 
-    fun fetch(url: String, connectTimeoutMs: Int = CONNECT_TIMEOUT_MS, readTimeoutMs: Int = READ_TIMEOUT_MS): Response {
+    /** [headers] porte les en-têtes propres à un service - la clé d'API de DATAtourisme, seul appelant à
+     *  ce jour, qui l'attend en `X-API-Key` et non dans l'URL. */
+    fun fetch(
+        url: String, connectTimeoutMs: Int = CONNECT_TIMEOUT_MS, readTimeoutMs: Int = READ_TIMEOUT_MS,
+        headers: Map<String, String> = emptyMap(),
+    ): Response {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
             instanceFollowRedirects = true
             setRequestProperty("User-Agent", USER_AGENT)
+            headers.forEach { (k, v) -> setRequestProperty(k, v) }
         }
         return try {
             val code = conn.responseCode
