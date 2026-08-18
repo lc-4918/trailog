@@ -239,6 +239,36 @@ class RoutePlannerState {
         invalidate()
     }
 
+    /**
+     * Les trois gestes qui construisent un trajet depuis un point deja affiche sur la carte - un point
+     * d'interet, un resultat de recherche, une epingle posee.
+     *
+     * Ils vivent ici et non dans l'ecran qui les propose : il y en aura plusieurs a les offrir, et trois
+     * copies de la meme regle finiraient par diverger. Ils ne font que REMPLIR le planificateur ; c'est
+     * a l'appelant de l'ouvrir, parce que lui seul sait ce qu'il doit fermer pour laisser la place.
+     */
+    fun setStart(place: GeocodePlace) = choose(steps.first(), StepTarget.Place(place))
+
+    fun setEnd(place: GeocodePlace) = choose(steps.last(), StepTarget.Place(place))
+
+    /**
+     * Ajoute [place] comme etape. Faux quand le planificateur est plein (cf. [MaxPlannerSteps]) - le
+     * moteur refuse au-dela, et l'appelant doit le dire plutot que de laisser un tap sans effet.
+     *
+     * Une ligne vierge existante d'abord : c'est celle que l'utilisateur voit vide devant lui, et la
+     * remplir est ce qu'il attend. A defaut, l'etape s'insere AVANT l'arrivee - une etape ajoutee est un
+     * point de passage, pas une nouvelle destination.
+     */
+    fun addWaypoint(place: GeocodePlace): Boolean {
+        val vierge = steps.firstOrNull { it.target == null }
+        if (vierge != null) { choose(vierge, StepTarget.Place(place)); return true }
+        if (!canAddStep) return false
+        val etape = PlannerStep(nextId++)
+        steps.add(steps.size - 1, etape)
+        choose(etape, StepTarget.Place(place))
+        return true
+    }
+
     /** Frappe dans un champ : la saisie remplace le lieu qui y etait, le trajet perd donc ce point. */
     fun type(step: PlannerStep, text: String) {
         step.query = text

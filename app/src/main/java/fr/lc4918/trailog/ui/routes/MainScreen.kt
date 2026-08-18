@@ -198,6 +198,7 @@ import fr.lc4918.trailog.poi.PoiRepository
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.ui.poi.PoiState
+import fr.lc4918.trailog.ui.poi.PoiBubble
 import fr.lc4918.trailog.ui.poi.PoiLoading
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
@@ -1175,6 +1176,19 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(controller) {
         controller.onPickPoi = { uuid, _, _ -> poi.selectById(uuid) }
     }
+    // Un point d'interet devient une etape comme un lieu cherche : meme type, donc meme chemin dans le
+    // planificateur, et rien a dupliquer.
+    fun placeOf(p: fr.lc4918.trailog.poi.Poi) =
+        GeocodePlace(listOfNotNull(p.label, p.city), p.lon, p.lat)
+    // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
+    fun ouvrePlanificateur() {
+        if (planner.open) return
+        vm.closeProfile()
+        planner.openPlanner()
+        planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+    }
+    // Le planificateur refuse au-dela de 25 etapes : le dire, plutot que de laisser un tap sans effet.
+    var plannerFullMessage by remember { mutableStateOf(false) }
     // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
     // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
     // Projetée pendant la composition et non dans un effet : un effet ne s'exécute qu'après la composition,
@@ -1520,6 +1534,109 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         if (bubblePos == BubblePosition.AUTO || pannedFor == selectedMarkerId) return@LaunchedEffect
                         if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
                         pannedFor = selectedMarkerId
+                    }
+                }
+                /*
+                 * Infobulle d'un point d'interet, posee comme celle d'un lieu trouve : dans celui des
+                 * quatre coins qui deplace le moins la carte. Elle suit son marqueur a chaque image du
+                 * deplacement (moveTick), sans quoi elle resterait sur place puis le rejoindrait d'un saut.
+                 */
+                /*
+                 * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle
+                 * ne peut rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la
+                 * carte reste simplement vide, et l'on croit la couche cassee.
+                 */
+                if (poi.visible && (poi.tooFar || poi.needsNetwork || poi.fromCache)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .padding(top = with(density) { (topControlsHeightPx + 16).toDp() }),
+                    ) {
+                        Text(
+                            stringResource(
+                                when {
+                                    poi.tooFar -> R.string.poi_zoom_in
+                                    poi.needsNetwork -> R.string.poi_needs_network
+                                    else -> R.string.poi_from_cache
+                                }
+                            ),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        )
+                    }
+                }
+                val selPoi = poi.selected
+                if (selPoi != null) {
+                    // idleTick SEUL, sans moveTick : l'infobulle garde sa place pres de son point pendant
+                    // le geste, comme celle d'un waypoint, au lieu de courir apres la carte a chaque image.
+                    val pOff = remember(selPoi, idleTick) {
+                        controller.screenOf(selPoi.lon, selPoi.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
+                    }
+                    if (pOff != null) {
+                        val topInset = WindowInsets.statusBars.getTop(density)
+                        val margin = with(density) { 8.dp.roundToPx() }
+                        val gap = with(density) { 10.dp.roundToPx() }
+                        val posBulle = BubblePosition.of(settings?.bubblePosition)
+                        var placementPoi by remember(selPoi) { mutableStateOf<BubblePlacement?>(null) }
+                        Layout(
+                            content = {
+                                PoiBubble(
+                                    poi = selPoi,
+                                    onOpenWeb = { url ->
+                                        runCatching {
+                                            ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                        }
+                                    },
+                                    // Les trois actions remplissent le planificateur et l'ouvrent : c'est
+                                    // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
+                                    // pour lui laisser la place (cf. RoutePlannerState).
+                                    onSetStart = { ouvrePlanificateur(); planner.setStart(placeOf(selPoi)); poi.select(null) },
+                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOf(selPoi)); poi.select(null) },
+                                    onAddStep = {
+                                        ouvrePlanificateur()
+                                        if (planner.addWaypoint(placeOf(selPoi))) poi.select(null)
+                                        else plannerFullMessage = true
+                                    },
+                                    onClose = { poi.select(null) },
+                                    fontSp = settings?.bubbleFont ?: 14,
+                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                                )
+                            },
+                        ) { measurables, cs ->
+                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
+                            // La position reglee pour les infobulles (cf. BubblePosition), et non le coin
+                            // qui deplace le moins la carte : un point d'interet est un marqueur comme un
+                            // autre, son infobulle doit s'ouvrir la ou l'utilisateur l'attend.
+                            val pl = computeBubblePlacement(
+                                pos = posBulle,
+                                markerX = pOff.x, markerY = pOff.y,
+                                bubbleW = p.width, bubbleH = p.height,
+                                viewW = cs.maxWidth, viewH = cs.maxHeight,
+                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
+                            )
+                            if (placementPoi != pl) placementPoi = pl
+                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
+                        }
+                        /*
+                         * Recadrage de la carte quand la position demandee ne tient pas a l'ecran, comme
+                         * pour l'infobulle d'un waypoint - et c'est ce qui manquait : sans lui, le
+                         * placement etait simplement rogne dans l'ecran, et la bulle paraissait ignorer le
+                         * reglage des qu'un marqueur touchait un bord.
+                         *
+                         * Une seule fois par point d'interet : la carte bouge, donc le marqueur bouge, donc
+                         * un nouveau placement arrive - qui tient, cette fois. Sans ce garde-fou les deux
+                         * se relanceraient l'un l'autre, et un deplacement fait a la main serait defait.
+                         */
+                        var recadrePour by remember { mutableStateOf<String?>(null) }
+                        LaunchedEffect(selPoi.uuid, placementPoi) {
+                            val pl = placementPoi ?: return@LaunchedEffect
+                            if (posBulle == BubblePosition.AUTO || recadrePour == selPoi.uuid) return@LaunchedEffect
+                            if (pl.panX != 0 || pl.panY != 0) {
+                                controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+                            }
+                            recadrePour = selPoi.uuid
+                        }
                     }
                 }
                 // Infobulle du lieu trouvé : posée dans celui des quatre coins du lieu qui déplace le moins
@@ -2520,6 +2637,18 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             },
             confirmButton = { TextButton(onClick = { importReport = emptyList() }) { Text(stringResource(R.string.action_ok)) } },
+        )
+    }
+
+    // Le planificateur refuse au-dela de 25 etapes : un tap sur "ajouter l'etape" doit le dire, sans quoi
+    // il reste sans effet et l'on croit l'infobulle cassee.
+    if (plannerFullMessage) {
+        AlertDialog(
+            onDismissRequest = { plannerFullMessage = false },
+            text = { Text(stringResource(R.string.poi_planner_full)) },
+            confirmButton = {
+                TextButton(onClick = { plannerFullMessage = false }) { Text(stringResource(R.string.action_ok)) }
+            },
         )
     }
 
