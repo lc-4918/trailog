@@ -729,6 +729,21 @@ class MigrationsTest {
             Router.baseOf(RouteEngine.BROUTER, neuf.routeUrl(RouteEngine.BROUTER)))
     }
 
+    // ---------- 50 -> 51 : le bouton des points d'interet ----------
+
+    /**
+     * Eteint sur une base en place ET sur une installation neuve, comme la recherche de lieu, la mesure et
+     * la retouche : ce sont les commandes qui s'ajoutent volontairement. Celle-ci interroge en plus un
+     * service tiers a chaque deplacement de carte, ce qui vaut bien d'etre demande.
+     */
+    @Test fun `50 vers 51 laisse les points d'interet eteints`() {
+        val db = freshDb("m5051"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_POI_ENABLED)
+        assertEquals(0, scalar(db, "SELECT poiEnabled FROM settings") { it.getInt(0) })
+        assertFalse("defaut de l'entite", SettingsEntity().poiEnabled)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -784,7 +799,7 @@ class MigrationsTest {
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
-            "mapFollowPosition", "routeEngine", "routingUrlBrouter")
+            "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

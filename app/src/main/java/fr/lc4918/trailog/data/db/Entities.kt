@@ -225,6 +225,13 @@ data class SettingsEntity(
     val routePrefsHybrid: String = "soft,balanced,rough",
     val routePrefsMtb: String = "soft,seek,rough",
     val routePrefsFoot: String = "soft,seek,rough",
+    // Bouton des points d'interet sur la carte (cf. poi/Datatourisme). Eteint par defaut : c'est une
+    // commande qui s'ajoute volontairement, et qui interroge un service tiers a chaque deplacement.
+    val poiEnabled: Boolean = false,
+    // Filtres des points d'interet : categories DECOCHEES et groupes limites au theme velo, en CSV de
+    // cles (cf. PoiFilters). Les decochees, pour qu'un reglage vide veuille dire "tout afficher".
+    val poiHiddenCategories: String = "",
+    val poiBikeGroups: String = "",
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,
