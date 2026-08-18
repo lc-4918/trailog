@@ -10,6 +10,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.svg.SvgDecoder
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.repo.TrailogRepository
+import fr.lc4918.trailog.update.UpdateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,6 +31,12 @@ class TrailogApp : Application(), SingletonImageLoader.Factory {
         MapLibre.getInstance(this)               // init du SDK carte
         repository = TrailogRepository(this)
         scope.launch { repository.ensureSeed() }  // providers + réglages au 1er lancement
+        // Ménage des APK de mise à jour : DownloadManager les dépose dans le dossier privé de
+        // l'application et rien ne les en retirait, si bien qu'il en restait un par mise à jour -
+        // 176 Mo relevés sur un téléphone, presque trois fois le poids de l'application. Au démarrage
+        // et non après l'installation : à ce moment-là l'installateur système lit encore le fichier, et
+        // l'application est de toute façon remplacée puis relancée (cf. UpdateManager.sweepDownloads).
+        scope.launch { UpdateManager.sweepDownloads(this@TrailogApp) }
     }
 
     /** Loader d'images partagé (avatar + champs image des infobulles) : SVG, GIF, chargement réseau. */

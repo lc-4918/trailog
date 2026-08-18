@@ -129,4 +129,50 @@ object UpdateManager {
         }
 
     private const val APK_MIME = "application/vnd.android.package-archive"
+
+    /**
+     * Nom des APK deposes par [enqueueDownload] : "trailog-0.10.0.apk", et parfois "trailog-0.10.0-1.apk"
+     * quand DownloadManager evite d'ecraser un fichier de meme nom.
+     */
+    private val APK_NAME = Regex("""^trailog-(\d+)\.(\d+)\.(\d+).*\.apk$""")
+
+    /**
+     * Le versionCode que porte le nom de fichier [name], ou null si ce n'en est pas un.
+     *
+     * Meme calcul que build.gradle.kts et que la CI - majeur*10000 + mineur*100 + correctif - et c'est la
+     * troisieme fois qu'il est ecrit. Le repeter n'est pas beau, mais les trois vivent dans des langages
+     * differents et aucun ne peut lire les deux autres.
+     *
+     * Null plutot qu'une valeur par defaut : un fichier dont on ne comprend pas le nom n'est pas a nous, et
+     * on ne supprime pas ce qu'on n'a pas depose.
+     */
+    internal fun versionCodeOf(name: String): Int? {
+        val m = APK_NAME.matchEntire(name) ?: return null
+        val (maj, min, patch) = m.destructured
+        return maj.toInt() * 10000 + min.toInt() * 100 + patch.toInt()
+    }
+
+    /**
+     * Supprime les APK de mise a jour devenus inutiles et rend le nombre d'octets liberes.
+     *
+     * Sans ce menage, il en reste UN PAR MISE A JOUR, indefiniment : DownloadManager depose l'APK dans le
+     * dossier prive de l'application et rien ne l'en retire, l'installation faite. Mesure sur l'appareil
+     * avant correction - trois APK, 176 Mo, soit pres de trois fois le poids de l'application, dont deux
+     * d'une version abandonnee depuis six jours.
+     *
+     * Est supprime ce qui n'est pas plus recent que la version qui tourne : l'APK qui vient d'etre installe
+     * (meme version) et tous les precedents. Un telechargement d'une version PLUS RECENTE est garde -
+     * c'est celui qu'on a demande et qu'on n'a pas encore installe, le jeter obligerait a le reprendre.
+     */
+    fun sweepDownloads(context: Context, currentVersionCode: Int = BuildConfig.VERSION_CODE): Long {
+        val dossier = context.getExternalFilesDir(null) ?: return 0L
+        var liberes = 0L
+        dossier.listFiles().orEmpty().forEach { f ->
+            val code = versionCodeOf(f.name) ?: return@forEach
+            if (code > currentVersionCode) return@forEach
+            val taille = f.length()
+            if (f.delete()) liberes += taille
+        }
+        return liberes
+    }
 }
