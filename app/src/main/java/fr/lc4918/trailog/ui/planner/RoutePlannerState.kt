@@ -120,6 +120,8 @@ class RoutePlannerState {
 
     fun toggleProfile() { profileVisible = !profileVisible }
 
+
+
     /** Point courant sur le parcours, en metres depuis son debut (repere sur la carte + infos du point).
      *  Une abscisse et non un indice, comme pour le profil d'une trace : elle se pose entre deux sommets. */
     var cursor by mutableStateOf<Double?>(null)
@@ -287,10 +289,32 @@ class RoutePlannerState {
         }
     }
 
-    /** Le champ prend le focus : s'il est vierge, la position actuelle peut y etre proposee. */
+    /**
+     * Le champ prend le focus : tant qu'il ne porte aucune frappe, les propositions d'un champ vierge -
+     * position actuelle et historique - peuvent s'y afficher.
+     *
+     * Y COMPRIS s'il porte deja un lieu : prendre le focus vide le champ a l'ecran, et l'utilisateur qui
+     * le voit vide attend qu'on lui propose de quoi le remplir. Il vient justement de taper dessus pour en
+     * changer.
+     *
+     * Ce qui reste exclu, c'est le champ VIDE APRES UNE FRAPPE : efface caractere par caractere, il n'est
+     * pas vierge pour autant, et voir ressurgir la liste sous les doigts au dernier retour arriere serait
+     * une surprise (cf. [PlannerStep.untouched], que [type] baisse et que rien ne releve avant le focus
+     * suivant).
+     */
     fun focus(step: PlannerStep) {
-        if (step.target == null && step.query.isEmpty()) step.untouched = true
+        if (step.query.isEmpty()) step.untouched = true
     }
+
+    /**
+     * Le lieu [label] est deja une etape du trajet, [except] mise a part.
+     *
+     * Sert a ne pas reproposer, dans l'historique d'un champ, un lieu qui est deja ailleurs dans le meme
+     * trajet : le choisir donnerait deux etapes au meme endroit, donc un troncon de longueur nulle.
+     * Compare sur le libelle, seul identifiant qu'un lieu de geocodeur porte de facon stable.
+     */
+    fun usesPlace(label: String, except: PlannerStep? = null): Boolean =
+        steps.any { it !== except && (it.target as? StepTarget.Place)?.place?.label == label }
 
     fun clearStep(step: PlannerStep) {
         val had = step.target != null

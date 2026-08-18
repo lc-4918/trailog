@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Save
@@ -69,8 +70,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.profile.ElevationProfile
@@ -145,6 +148,8 @@ fun RoutePlannerBand(
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
     geocoding: GeocodingParams,
+    history: PlannerHistory,
+    onPlaceChosen: (GeocodePlace) -> Unit,
     onImport: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
@@ -175,7 +180,7 @@ fun RoutePlannerBand(
                     onClose = { state.close() },
                 )
                 RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
-                StepList(state, onPickCurrentPosition, gpsActive, geocoding,
+                StepList(state, onPickCurrentPosition, gpsActive, geocoding, history, onPlaceChosen,
                     onImport, onDownload,
                     Modifier.weight(1f, fill = false).padding(top = 10.dp))
                 ResultsZone(state, imperial, settings, lastLabelInsetPx)
@@ -242,6 +247,8 @@ private fun StepList(
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
     geocoding: GeocodingParams,
+    history: PlannerHistory,
+    onPlaceChosen: (GeocodePlace) -> Unit,
     onImport: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
@@ -260,6 +267,8 @@ private fun StepList(
                 onPickCurrentPosition = onPickCurrentPosition,
                 gpsActive = gpsActive,
                 geocoding = geocoding,
+                history = history,
+                onPlaceChosen = onPlaceChosen,
             )
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -307,6 +316,8 @@ private fun StepRow(
     onPickCurrentPosition: (PlannerStep) -> Unit,
     gpsActive: Boolean,
     geocoding: GeocodingParams,
+    history: PlannerHistory,
+    onPlaceChosen: (GeocodePlace) -> Unit,
 ) {
     var focused by remember(step.id) { mutableStateOf(false) }
     // Le clic sur l'affichage replie ne peut PAS demander le focus lui-meme : tant qu'il tient la place du
@@ -454,8 +465,10 @@ private fun StepRow(
                 }
             }
         }
+        val vierge = focused && step.untouched
+        val rappels = if (vierge) history.places.filter { !state.usesPlace(it.label, step) } else emptyList()
         val suggesting = focused && (step.searching || step.results.isNotEmpty() ||
-            step.failed || (gpsActive && step.untouched && step.target == null))
+            step.failed || (gpsActive && vierge) || rappels.isNotEmpty())
         LaunchedEffect(suggesting, step.results.size, step.searching) {
             if (suggesting) bringIntoView.bringIntoView()
         }
@@ -465,12 +478,33 @@ private fun StepRow(
         // itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas honorer ne vaut rien.
         // Et seulement si elle ne sert pas DEJA ailleurs : partir d'ou l'on est pour y revenir donne un
         // trajet de longueur nulle, et la proposer une seconde fois invitait a le demander.
-        if (gpsActive && focused && step.untouched && step.target == null && !state.usesCurrentPosition) {
+        if (gpsActive && vierge && !state.usesCurrentPosition) {
             SuggestionRow(
                 label = stringResource(R.string.planner_current_position),
                 icon = true,
                 onClick = { onPickCurrentPosition(step); settle() },
             )
+        }
+        /*
+         * Historique : les trois derniers lieux retenus, proposes au focus d'un champ vide, comme la
+         * position actuelle et au meme moment.
+         *
+         * Ils s'effacent des la premiere frappe : ce qu'on tape prime toujours sur ce qu'on a fait hier,
+         * et deux listes superposees au-dessus d'un clavier ne se lisent pas.
+         *
+         * Un lieu DEJA POSE ailleurs dans le trajet n'y figure pas : le choisir donnerait deux etapes au
+         * meme endroit, donc un troncon de longueur nulle. Celui de l'etape courante, lui, reste offert -
+         * c'est elle qu'on est en train de remplacer.
+         */
+        if (rappels.isNotEmpty()) {
+            rappels.forEach { lieu ->
+                SuggestionRow(
+                    label = lieu.label,
+                    icon = true,
+                    image = Icons.Filled.History,
+                    onClick = { onPlaceChosen(lieu); state.choose(step, StepTarget.Place(lieu)); settle() },
+                )
+            }
         }
         // Echec du service : on le DIT, avec de quoi reessayer. Le silence laissait croire que le lieu
         // n'existait pas.
@@ -488,21 +522,25 @@ private fun StepRow(
         }
         step.results.forEach { place ->
             SuggestionRow(label = place.label, icon = false,
-                onClick = { state.choose(step, StepTarget.Place(place)); settle() })
+                onClick = { onPlaceChosen(place); state.choose(step, StepTarget.Place(place)); settle() })
         }
     }
 }
 
 /** Une proposition sous un champ : la position actuelle, ou un lieu rendu par le geocodeur. */
 @Composable
-private fun SuggestionRow(label: String, icon: Boolean, onClick: () -> Unit) {
+private fun SuggestionRow(
+    label: String,
+    icon: Boolean,
+    onClick: () -> Unit,
+    image: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.MyLocation,
+) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon) {
-            Icon(Icons.Filled.MyLocation, null, Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary)
+            Icon(image, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Text(label, fontSize = 13.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = if (icon) 6.dp else 0.dp))

@@ -195,6 +195,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.poi.Datatourisme
 import fr.lc4918.trailog.poi.PoiRepository
+import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.ui.poi.PoiState
@@ -1840,11 +1841,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
                     // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
                     // qu'on retient le long du parcours.
-                    //
-                    // Masque tant que la bande du planificateur est DEPLOYEE : son fond n'est pas tout a
-                    // fait opaque, et le bouton se devinait au travers. Il revient des qu'elle se reduit
-                    // ou se ferme - c'est deja ce que fait le bouton du planificateur lui-meme.
-                    if (settings?.poiEnabled == true && !(planner.open && !planner.collapsed)) {
+                    if (settings?.poiEnabled == true) {
                         IconButton(onClick = { poi.toggle() }, modifier = controlBg) {
                             Icon(
                                 Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
@@ -1922,6 +1919,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         gpsActive = gpsActive,
                         geocoding = GeocodingParams(geocodingBase,
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
+                        history = PlannerHistory.of(settings?.plannerHistory),
+                        // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
+                        onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },
                         onImport = { importDialog = true },
                         onDownload = {
                             val name = defaultRouteName(planner.targets, currentPositionLabel)

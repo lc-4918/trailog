@@ -777,6 +777,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (s.showGpsButton != show) db.settings().upsert(s.copy(showGpsButton = show))
     }
 
+    /**
+     * Retient un lieu dans l'historique du planificateur (cf. PlannerHistory).
+     *
+     * Ecrit ici et non dans la bande : le planificateur ne connait pas la base, et c'est deja par le
+     * ViewModel que passent les autres etats d'affichage retenus d'une fois sur l'autre.
+     */
+    fun rememberPlannerPlace(place: fr.lc4918.trailog.geocode.GeocodePlace) = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        val maj = (fr.lc4918.trailog.domain.model.PlannerHistory.of(s.plannerHistory) + place).asText()
+        if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
+    }
+
     /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
      *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
     fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {

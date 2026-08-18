@@ -387,6 +387,15 @@ internal object MigrationSql {
      * Vide a la creation, evidemment : un cache se remplit a l'usage, et une base migree n'a jamais vu ces
      * lieux. La seule chose qui compte ici est que la table existe avant la premiere requete.
      */
+    /**
+     * Cinq derniers lieux retenus dans le planificateur (cf. PlannerHistory).
+     *
+     * Vide au depart : un historique se remplit a l'usage, et proposer quoi que ce soit avant le premier
+     * trajet n'aurait aucun sens.
+     */
+    const val ADD_PLANNER_HISTORY =
+        "ALTER TABLE settings ADD COLUMN plannerHistory TEXT NOT NULL DEFAULT ''"
+
     val CREATE_POI_CACHE = """
         CREATE TABLE IF NOT EXISTS poi_cache (
             uuid TEXT NOT NULL PRIMARY KEY,
@@ -417,7 +426,7 @@ internal object MigrationSql {
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class,
         PoiCacheEntity::class],
-    version = 53,
+    version = 54,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -701,11 +710,17 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_53_54 = object : Migration(53, 54) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_PLANNER_HISTORY)
+            }
+        }
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53)
+            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54)
                 .fallbackToDestructiveMigration().build().also { INSTANCE = it }
         }
     }

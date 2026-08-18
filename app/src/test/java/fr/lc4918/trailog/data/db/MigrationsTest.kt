@@ -744,6 +744,18 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 53 -> 54 : l'historique du planificateur ----------
+
+    /** Vide au depart : un historique se remplit a l'usage, et proposer quoi que ce soit avant le premier
+     *  trajet n'aurait aucun sens. */
+    @Test fun `53 vers 54 pose un historique vide`() {
+        val db = freshDb("m5354"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_PLANNER_HISTORY)
+        assertEquals("", scalar(db, "SELECT plannerHistory FROM settings") { it.getString(0) })
+        assertEquals("", SettingsEntity().plannerHistory)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -799,7 +811,7 @@ class MigrationsTest {
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
-            "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled")
+            "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

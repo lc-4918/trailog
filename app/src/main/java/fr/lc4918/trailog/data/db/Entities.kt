@@ -225,6 +225,9 @@ data class SettingsEntity(
     val routePrefsHybrid: String = "soft,balanced,rough",
     val routePrefsMtb: String = "soft,seek,rough",
     val routePrefsFoot: String = "soft,seek,rough",
+    // Cinq derniers lieux retenus dans le planificateur, proposes quand un champ vide prend le focus
+    // (cf. PlannerHistory). Vide au depart : un historique se remplit a l'usage.
+    val plannerHistory: String = "",
     // Bouton des points d'interet sur la carte (cf. poi/Datatourisme). Eteint par defaut : c'est une
     // commande qui s'ajoute volontairement, et qui interroge un service tiers a chaque deplacement.
     val poiEnabled: Boolean = false,
