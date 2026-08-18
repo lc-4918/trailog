@@ -483,7 +483,6 @@
     <string name="settings_off_track_sound_default">Default</string>
     <string name="settings_off_track_hint">The bell sits below the route planner: it asks which track to follow, then warns as soon as you stray from it. It cannot go without GPS location, which turning it on also shows.</string>
     <string name="settings_section_route_prefs">Route preferences</string>
-    <string name="settings_route_prefs_hint">Each discipline keeps its own: pick the one to adjust.</string>
     <string name="settings_label_route_ways">Ways</string>
     <string name="settings_label_route_hills">Terrain</string>
     <string name="settings_label_route_surface">Surface</string>

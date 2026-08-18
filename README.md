@@ -70,6 +70,10 @@ them on a map with a synchronised elevation profile, without depending on any on
   track in a folder in one go.
 - **Points of interest**: markers with info bubbles you can edit (title, text, links, photos),
   including photos carried by GPX waypoints on your phone.
+- **Tourist points of interest** (enable in settings): lodging, food, leisure and services along the
+  way, from **DATAtourisme**. Filterable by category, with a photo and a link to the venue's website,
+  and three gestures to make it a start, an end or a waypoint. What has been seen once stays
+  available offline.
 - **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
   basemaps, and tiles already viewed stay in cache.
 - **Place and address search** (to be enabled in settings): the place found is pinned on the map,

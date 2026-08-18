@@ -197,6 +197,36 @@ Le prix à connaître : c'est le seul endroit où l'application interroge un ser
 l'utilisateur l'ait autorisé dans ses réglages. Il reste maître de l'instance visée (la même URL, sa
 terminaison changée) et, à défaut, du geste : on ne s'attarde pas par accident.
 
+### DATAtourisme : ce que l'API ne dit pas, et ce qu'elle ne sait pas
+
+Les points d'intérêt viennent de **DATAtourisme** parce que c'est la base publique française du tourisme,
+sous Licence Ouverte, sans clé facturée ni quota qui gêne un usage personnel. Le choix n'a rien coûté ; sa
+mise en oeuvre, si.
+
+**Sa documentation et sa réponse divergent**, et chaque écart se paie en silence - une requête mal formée ne
+lève pas, elle rend zéro lieu, et une carte sans marqueur ressemble à une carte sans marqueur. Quatre points
+ont dû être établis en interrogeant le service pour de vrai, et chacun est verrouillé par un test :
+
+- les conditions de filtre se combinent par ` AND `, jamais par une virgule ni un `&` (erreur 400) ;
+- le chemin d'un thème est `hasTheme.key` et non `hasTheme` - ce dernier rend **zéro résultat sans
+  protester**, la faute la plus coûteuse de tout ce client ;
+- le paramètre `fields` est nécessaire pour obtenir le thème et l'image, absents de la liste par défaut ;
+- `geo`, `address` et `hasContact` arrivent tantôt en objet, tantôt en tableau d'un objet. Lus en dur, ils
+  levaient, et l'exception emportait le point d'intérêt entier.
+
+**Le label Accueil Vélo n'existe pas dans cette API.** Le thésaurus `Label` est vide, et ni `Theme` (758
+valeurs) ni `Amenity` (312) n'en portent l'équivalent. Le rattachement à une véloroute ne marche pas non
+plus : les 212 thèmes `BikeRoute*` ne sont portés que par les tronçons d'itinéraire eux-mêmes - zéro
+hébergement en France entière. Le seul signal vélo que portent les services est le thème générique `Bike`,
+et c'est lui que l'application propose, sous ce nom-là plutôt que sous une marque qu'elle ne peut pas
+garantir.
+
+**Ses 384 classes ne sont pas des catégories.** Un même lieu en porte plusieurs - un hôtel-restaurant est
+`Hotel`, `Restaurant`, `Accommodation` et `LodgingBusiness` - et personne ne veut cocher 384 cases. D'où la
+table qui fait le pont entre les 27 catégories de France Vélo Tourisme et les classes qui les remplissent.
+Elle sert deux fois, et c'est pourquoi elle vit dans le domaine : elle **compose la requête** et **relit la
+réponse**.
+
 ### Mises à jour : manifeste en asset de Release
 
 La CI joint `latest-release.json` à la Release ; l'app le lit à l'URL stable

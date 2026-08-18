@@ -485,7 +485,6 @@
     <string name="settings_off_track_sound_default">Par défaut</string>
     <string name="settings_off_track_hint">La cloche s\'affiche sous le calcul d\'itinéraire : elle demande la trace à suivre, puis prévient dès que vous vous en écartez. Elle ne va pas sans la localisation GPS, que l\'activer affiche aussi.</string>
     <string name="settings_section_route_prefs">Préférences de tracé</string>
-    <string name="settings_route_prefs_hint">Chaque discipline garde les siennes : choisissez celle à régler.</string>
     <string name="settings_label_route_ways">Voies</string>
     <string name="settings_label_route_hills">Relief</string>
     <string name="settings_label_route_surface">Revêtement</string>

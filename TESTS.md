@@ -186,7 +186,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 45 | les 31 migrations, et les défauts d'une installation neuve |
+| `MigrationsTest` | 48 | les 33 migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -342,6 +342,32 @@ veut pas projeter des centaines de points à chaque mouvement de carte.
 commune, le cadrage - porte aussi sur ses sous-dossiers. S'arrêter aux couches directes ne casse rien
 et ne se voit pas en test : cela laisse seulement, sous un dossier qu'on vient de colorer d'un bloc,
 des sous-dossiers d'une autre couleur.
+
+### `poi` - points d'intérêt
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `DatatourismeTest` | 18 | requête et lecture de la réponse de DATAtourisme, table des 27 catégories |
+| `PoiFiltersTest` | 13 | ce qu'on coche, ce que le service reçoit, et la forme enregistrée |
+| `PoiLoadingTest` | 15 | quand redemander, et ce que la carte dit quand elle ne peut rien montrer |
+
+Ces trois-là gardent une fonction dont **aucune faute ne se voit** : un filtre mal traduit, une condition mal
+écrite ou un chemin de champ inexact ne lèvent rien - ils rendent zéro point d'intérêt, et une carte sans
+marqueur ressemble à une carte sans marqueur.
+
+`DatatourismeTest` verrouille les quatre écarts entre la documentation du service et sa réponse réelle
+(cf. [`CONTEXT.md`](CONTEXT.md)), chacun relevé sur un appel véritable : le ` AND ` entre conditions, le
+chemin `hasTheme.key`, le paramètre `fields` sans lequel ni le thème ni l'image n'arrivent, et les champs
+qui sont tantôt un objet, tantôt un tableau d'un objet. Ce dernier avait vidé la carte entière au premier
+essai, sans le moindre message.
+
+`PoiLoadingTest` garde les règles qui décident du **nombre d'appels au service** - le seul endroit d'où peut
+venir un dépassement de quota. La plus importante n'est pas le délai d'attente mais la comparaison
+d'emprises : tant que la vue reste dans ce qui a été chargé, il n'y a rien à redemander.
+
+`PoiFiltersTest` verrouille un choix qui se lit mal dans le code : ce sont les catégories **masquées** qui
+sont enregistrées. Un réglage vierge montre alors tout, et une catégorie ajoutée par une version ultérieure
+apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur aille la chercher.
 
 ### `geocode` - recherche de lieu
 

@@ -25,7 +25,8 @@ Ce qu'elle fait :
 - afficher un large choix de fonds de carte, y compris hors ligne ;
 - télécharger une zone pour l'emporter sans réseau ;
 - décrire un point : adresse, distances, mesures le long d'une trace ;
-- préparer un itinéraire par étapes.
+- préparer un itinéraire par étapes ;
+- afficher les points d'intérêt du parcours (hébergement, restauration, loisirs, services).
 
 Ce qu'elle n'est pas : un enregistreur de trace (pas de suivi GPS temps réel), un éditeur de tracé à la
 main, ni un service en ligne - aucun compte, aucune synchronisation, aucune télémétrie.
@@ -377,6 +378,34 @@ qui oscille autour du seuil - le lot d'un GPS de téléphone sous couvert - rall
 toutes les deux secondes. La croix de la bannière tait l'écart du moment sans arrêter le suivi ; revenir sur
 la trace réarme l'alerte suivante. Le suivi, lui, s'arrête depuis la cloche, là où il a commencé - et de
 lui-même si le capteur s'éteint ou si la trace quitte la carte.
+
+## 14 ter. Points d'intérêt
+
+Une couche de **points d'intérêt touristiques** se pose sur la carte, tirée de **DATAtourisme**, la base
+publique française (Licence Ouverte Etalab 2.0, mention dans l'onglet Trajets). Son bouton n'apparaît sur
+la carte que si un réglage l'y met - comme la recherche de lieu ou la mesure : c'est une commande qui
+s'ajoute volontairement, et elle interroge un service tiers à chaque déplacement de carte.
+
+**Vingt-sept catégories, en quatre groupes** - hébergement, restauration, loisirs, pratique - reprises du
+planificateur de France Vélo Tourisme. Le réglage les décline en cases à cocher par groupe, avec un « tout
+sélectionner » et un filtre **thème vélo** propre à chaque groupe : on veut des hébergements qui accueillent
+les cyclistes sans exiger la même chose des points d'eau. Ce sont les catégories **masquées** qui sont
+enregistrées, si bien qu'un réglage vierge montre tout, et qu'une catégorie ajoutée plus tard apparaît
+d'elle-même.
+
+Chaque lieu est un **marqueur en forme de goutte**, à la couleur de son groupe et portant le pictogramme de
+sa catégorie - une tente pour un camping, un panier pour un marché, une goutte pour un point d'eau. Un tap
+ouvre son infobulle : sa **photo en image de garde** quand il en publie une (un lieu sur trois environ), son
+nom par-dessus sur fond blanc, cliquable vers son site s'il en a un, et le badge de sa catégorie. Puis les
+**trois actions d'itinéraire** - définir comme point de départ, comme point d'arrivée, ajouter l'étape - qui
+remplissent le planificateur et l'ouvrent.
+
+Le chargement suit la carte : les lieux de la **zone visible**, un demi-instant après le dernier geste, et
+rien de redemandé tant que la vue reste dans ce qui a déjà été chargé. En deçà d'un certain zoom, rien n'est
+demandé du tout - l'écran porterait des milliers de lieux dont le service ne rendrait que les cent premiers,
+pris au hasard - et la carte le dit. Ce qui a été vu une fois est **gardé une semaine** : sans réseau, la
+couche montre les derniers points connus et l'annonce ; si elle ne connaît rien de cette zone, elle réclame
+une connexion plutôt que de laisser croire à une région sans un seul café.
 
 ## 15. Réglages
 

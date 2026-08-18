@@ -483,7 +483,6 @@
     <string name="settings_off_track_sound_default">Predeterminado</string>
     <string name="settings_off_track_hint">La campana aparece bajo el cálculo de ruta: pide la traza a seguir y avisa en cuanto te alejas de ella. No funciona sin la localización GPS, que se muestra también al activarla.</string>
     <string name="settings_section_route_prefs">Preferencias de trazado</string>
-    <string name="settings_route_prefs_hint">Cada disciplina guarda las suyas: elija la que desea ajustar.</string>
     <string name="settings_label_route_ways">Vías</string>
     <string name="settings_label_route_hills">Relieve</string>
     <string name="settings_label_route_surface">Firme</string>

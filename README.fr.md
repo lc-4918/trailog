@@ -68,6 +68,10 @@ sans dépendre d'un service en ligne.
   et donner d'un coup la même couleur à toutes les traces d'un dossier.
 - **Points d'intérêt** : marqueurs avec infobulles que vous pouvez modifier (titre, texte,
   liens, photos), y compris les photos des waypoints GPX de votre téléphone.
+- **Points d'intérêt touristiques** (à activer dans les réglages) : hébergements, restaurants,
+  loisirs et services le long du parcours, tirés de **DATAtourisme**. Filtrables par catégorie, avec
+  photo et lien vers le site du lieu, et trois gestes pour en faire un départ, une arrivée ou une
+  étape. Ce qui a été vu une fois reste consultable sans réseau.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
 - **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose

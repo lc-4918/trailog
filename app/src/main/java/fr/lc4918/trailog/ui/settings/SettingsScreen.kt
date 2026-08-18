@@ -151,6 +151,15 @@ import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
+import fr.lc4918.trailog.domain.model.GroupCheck
+import fr.lc4918.trailog.domain.model.PoiCategory
+import fr.lc4918.trailog.domain.model.PoiFilters
+import fr.lc4918.trailog.domain.model.PoiGroup
+import fr.lc4918.trailog.ui.poi.poiCategoryLabel
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
+import androidx.compose.material.icons.filled.IndeterminateCheckBox
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.HillPref
 import fr.lc4918.trailog.domain.model.SurfacePref
@@ -512,6 +521,38 @@ private fun fractionOf(value: Int, min: Int, max: Int): Float =
 
 private fun valueOf(fraction: Float, min: Int, max: Int): Int =
     (min + fraction * (max - min)).roundToInt().coerceIn(min, max)
+
+/**
+ * Ligne a cocher d'une categorie de point d'interet, avec son pictogramme.
+ *
+ * Trois etats et non deux : la ligne "tout selectionner" d'un groupe est a moitie cochee quand une partie
+ * seulement de ses categories l'est, comme n'importe quel "select all".
+ */
+@Composable private fun ColumnScopeMarker.CheckLine(
+    label: String, etat: GroupCheck, onToggle: () -> Unit,
+) {
+    SetRow(label, onClick = onToggle, role = Role.Checkbox) {
+        Icon(
+            when (etat) {
+                GroupCheck.ALL -> Icons.Filled.CheckBox
+                GroupCheck.SOME -> Icons.Filled.IndeterminateCheckBox
+                GroupCheck.NONE -> Icons.Filled.CheckBoxOutlineBlank
+            },
+            null,
+            tint = if (etat == GroupCheck.NONE) settingsPalette.subtle else MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** Nom traduit d'un groupe de points d'interet. */
+@Composable private fun poiGroupLabel(g: PoiGroup): String = stringResource(
+    when (g) {
+        PoiGroup.LODGING -> R.string.poi_group_lodging
+        PoiGroup.FOOD -> R.string.poi_group_food
+        PoiGroup.LEISURE -> R.string.poi_group_leisure
+        PoiGroup.PRACTICAL -> R.string.poi_group_practical
+    }
+)
 
 /** Nom du moteur d'itinéraire. Pas de chaîne traduite : ce sont deux noms propres. */
 @Composable private fun routeEngineLabel(e: RouteEngine): String = when (e) {
@@ -1126,7 +1167,6 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
     SectionTitle(stringResource(R.string.settings_section_route_prefs))
     var tuned by remember(cur.routingProfile) { mutableStateOf(RoutingProfile.of(cur.routingProfile)) }
     SettingsCard {
-        Hint(stringResource(R.string.settings_route_prefs_hint))
         RoutingProfilePicker(tuned) { tuned = it }
         RowDivider()
         val prefs = cur.routePrefs(tuned)
@@ -1144,6 +1184,61 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
             SurfacePref.entries, optionLabel = { surfacePrefLabel(it) }) {
             vm.save(cur.withRoutePrefs(tuned, prefs.copy(surface = it)))
         }
+    }
+
+    /*
+     * Points d'interet : un groupe par section depliable, ses categories en cases a cocher.
+     *
+     * Dans l'onglet Trajets et non dans "Carte" : l'interrupteur qui pose le BOUTON sur la carte est une
+     * commande d'ecran et reste la-bas, mais ce qu'on affiche dessous decrit un trajet - ou dormir, ou
+     * manger, ou reparer un velo - au meme titre que les preferences de trace juste au-dessus.
+     */
+    SectionTitle(stringResource(R.string.settings_section_poi))
+    val filtres = PoiFilters.of(cur.poiHiddenCategories, cur.poiBikeGroups)
+    fun sauve(f: PoiFilters) =
+        vm.save(cur.copy(poiHiddenCategories = f.hiddenCsv(), poiBikeGroups = f.bikeCsv()))
+    SettingsCard {
+        Hint(stringResource(R.string.settings_poi_hint))
+    }
+    PoiGroup.entries.forEach { groupe ->
+        var deplie by rememberSaveable(groupe) { mutableStateOf(false) }
+        SettingsCard {
+            SetRow(
+                poiGroupLabel(groupe),
+                sub = stringResource(R.string.settings_poi_group_count,
+                    PoiCategory.of(groupe).count { filtres.isShown(it) }, PoiCategory.of(groupe).size),
+                onClick = { deplie = !deplie },
+            ) {
+                Icon(
+                    if (deplie) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    null, tint = settingsPalette.subtle,
+                )
+            }
+            if (deplie) {
+                RowDivider()
+                // "Tout selectionner" en tete, avec son etat a trois valeurs : coche, vide, ou entre les
+                // deux quand une partie seulement du groupe est retenue.
+                CheckLine(
+                    stringResource(R.string.settings_poi_select_all), filtres.groupState(groupe),
+                ) { sauve(filtres.toggleGroup(groupe)) }
+                PoiCategory.of(groupe).forEach { cat ->
+                    CheckLine(
+                        poiCategoryLabel(cat),
+                        if (filtres.isShown(cat)) GroupCheck.ALL else GroupCheck.NONE,
+                    ) { sauve(filtres.toggle(cat)) }
+                }
+                RowDivider()
+                // Le filtre velo est par GROUPE : on veut des hebergements qui accueillent les cyclistes
+                // sans exiger la meme chose des points d'eau.
+                SwitchLine(
+                    stringResource(R.string.settings_poi_bike_only), filtres.isBikeOnly(groupe),
+                    sub = stringResource(R.string.settings_poi_bike_only_sub),
+                ) { sauve(filtres.toggleBike(groupe)) }
+            }
+        }
+    }
+    SettingsCard {
+        Hint(stringResource(R.string.settings_poi_attribution))
     }
 
     // Le lissage et l'echelle verticale ont quitte l'onglet "Carte" pour celui-ci : ils ne decrivent pas
