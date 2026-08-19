@@ -13,20 +13,34 @@ import org.junit.Test
  */
 class MapFollowTest {
 
+    /** Le cas nominal : reglage actif, capteur en marche, rien d'ouvert par-dessus la carte. */
+    private fun suit(
+        enabled: Boolean = true,
+        gpsActive: Boolean = true,
+        plannerOpen: Boolean = false,
+        layerOpen: Boolean = false,
+        bubbleOpen: Boolean = false,
+    ) = MapFollow.follows(enabled, gpsActive, plannerOpen, layerOpen, bubbleOpen)
+
     @Test fun `le suivi demande le reglage et le capteur`() {
-        assertTrue(MapFollow.follows(enabled = true, gpsActive = true, plannerOpen = false, layerOpen = false))
-        assertFalse("reglage eteint",
-            MapFollow.follows(enabled = false, gpsActive = true, plannerOpen = false, layerOpen = false))
-        assertFalse("capteur arrete",
-            MapFollow.follows(enabled = true, gpsActive = false, plannerOpen = false, layerOpen = false))
+        assertTrue(suit())
+        assertFalse("reglage eteint", suit(enabled = false))
+        assertFalse("capteur arrete", suit(gpsActive = false))
     }
 
-    /** Les deux ecrans qui se servent de la carte ailleurs qu'a l'endroit ou l'on se tient. */
+    /** Les ecrans qui se servent de la carte ailleurs qu'a l'endroit ou l'on se tient. */
     @Test fun `le planificateur et le profil d'une trace suspendent le suivi`() {
-        assertFalse("planificateur ouvert",
-            MapFollow.follows(enabled = true, gpsActive = true, plannerOpen = true, layerOpen = false))
-        assertFalse("profil d'une trace ouvert",
-            MapFollow.follows(enabled = true, gpsActive = true, plannerOpen = false, layerOpen = true))
+        assertFalse("planificateur ouvert", suit(plannerOpen = true))
+        assertFalse("profil d'une trace ouvert", suit(layerOpen = true))
+    }
+
+    /**
+     * Une infobulle decrit un point precis de la carte : la recentrer sur la position emporterait ce point
+     * hors de l'ecran, et l'infobulle avec, pendant qu'on la lit.
+     */
+    @Test fun `une infobulle ouverte suspend le suivi`() {
+        assertFalse("infobulle ouverte", suit(bubbleOpen = true))
+        assertTrue("infobulle refermee", suit(bubbleOpen = false))
     }
 
     @Test fun `sans geste, la carte suit sans attendre`() {
@@ -50,6 +64,17 @@ class MapFollowTest {
 
     @Test fun `un geste ancien n'attend plus`() {
         assertEquals(0L, MapFollow.waitMs(now = 100_000L, lastGestureAt = 10_000L, delayMs = 5_000L))
+    }
+
+    /**
+     * Fermeture d'une infobulle : l'ecran la releve comme un geste, et le silence repart entier. Sans quoi
+     * une infobulle lue longuement laissait un dernier geste vieux de plusieurs minutes, et la carte
+     * sautait sur la position a l'instant meme ou l'on refermait la bulle.
+     */
+    @Test fun `la fermeture d'une infobulle fait repartir le silence entier`() {
+        val fermeture = 100_000L
+        assertEquals(5_000L, MapFollow.waitMs(now = fermeture, lastGestureAt = fermeture, delayMs = 5_000L))
+        assertEquals(0L, MapFollow.waitMs(now = fermeture + 5_000L, fermeture, delayMs = 5_000L))
     }
 
     /** Horloge qui recule : le suivi ne doit pas rester suspendu pour l'eternite. */

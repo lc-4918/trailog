@@ -25,17 +25,27 @@ object MapFollow {
     /**
      * Le suivi a-t-il lieu d'être ?
      *
-     * Deux écrans le suspendent, et pour la même raison : ils sont posés SUR la carte et s'en servent
+     * Trois choses le suspendent, et pour la même raison : elles sont posées SUR la carte et s'en servent
      * ailleurs qu'à l'endroit où l'on se tient.
      * - le planificateur cadre le parcours qu'il vient de calculer, et composer un trajet avec une carte
      *   qui revient toutes les cinq secondes sur soi est impossible ;
      * - le profil d'une trace ouverte déplace la carte au curseur qu'on promène dessus, geste qui perdrait
-     *   son résultat de la même façon.
+     *   son résultat de la même façon ;
+     * - une infobulle ouverte est accrochée à un point précis - un waypoint, un point d'intérêt, un lieu
+     *   trouvé, l'endroit d'un appui long : le recentrage emporterait hors de l'écran le point qu'elle
+     *   décrit, et l'infobulle avec, au milieu de la lecture.
      *
-     * Aucun des deux n'éteint le réglage : ils le mettent en pause, et le suivi reprend en les fermant.
+     * Aucune des trois n'éteint le réglage : elles le mettent en pause, et le suivi reprend en les fermant.
+     * Le silence de [QuietDelayMs] repart alors de la fermeture, l'écran relevant l'heure à ce moment-là :
+     * refermer une infobulle ne doit pas faire sauter la carte dans la seconde.
      */
-    fun follows(enabled: Boolean, gpsActive: Boolean, plannerOpen: Boolean, layerOpen: Boolean): Boolean =
-        enabled && gpsActive && !plannerOpen && !layerOpen
+    fun follows(
+        enabled: Boolean,
+        gpsActive: Boolean,
+        plannerOpen: Boolean,
+        layerOpen: Boolean,
+        bubbleOpen: Boolean,
+    ): Boolean = enabled && gpsActive && !plannerOpen && !layerOpen && !bubbleOpen
 
     /**
      * Attente restante avant de pouvoir recentrer, en millisecondes ; 0 quand le dernier geste est assez

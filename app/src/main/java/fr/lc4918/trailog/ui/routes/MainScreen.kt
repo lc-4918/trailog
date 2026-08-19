@@ -1013,28 +1013,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
     }
 
-    /*
-     * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
-     * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
-     *
-     * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher
-     * dans les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
-     * recentrage en cours de préparation pour repartir sur cinq secondes pleines. Le retour a donc lieu
-     * même immobile, l'attente du geste arrivant à son terme sans qu'aucune position nouvelle ne l'y aide.
-     */
-    val followsPosition = MapFollow.follows(
-        enabled = settings?.mapFollowPosition != false,
-        gpsActive = gpsActive,
-        plannerOpen = planner.open,
-        layerOpen = activeLayerId != null,
-    )
-    LaunchedEffect(followsPosition, lastUserLocation, lastUserGestureAt) {
-        if (!followsPosition) return@LaunchedEffect
-        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
-        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), lastUserGestureAt)
-        if (wait > 0L) delay(wait)
-        controller.centerOn(la, lo)
-    }
     // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure, choix du
     // point de référence d'une distance) : tout tap leur revient, y compris sur une trace ou un marqueur,
     // qui n'ouvrent alors ni profil ni infobulle. Hors de ces modes, la sélection habituelle reprend.
@@ -1280,6 +1258,52 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
     // Le planificateur refuse au-dela de 25 etapes : le dire, plutot que de laisser un tap sans effet.
     var plannerFullMessage by remember { mutableStateOf(false) }
+
+    /*
+     * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
+     * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
+     *
+     * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher
+     * dans les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
+     * recentrage en cours de préparation pour repartir sur cinq secondes pleines. Le retour a donc lieu
+     * même immobile, l'attente du geste arrivant à son terme sans qu'aucune position nouvelle ne l'y aide.
+     *
+     * Placé ici, et non auprès des rappels de caméra : le suivi doit connaître les infobulles, dont celle
+     * des points d'intérêt, qui n'existent qu'à partir de cette ligne.
+     */
+    // Une infobulle est accrochée à un endroit précis de la carte : un recentrage l'emporterait hors de
+    // l'écran, avec son épingle, au milieu de la lecture. Les quatre comptent - waypoint (son éditeur de
+    // propriétés compris, qui garde le marqueur sélectionné), point d'intérêt, lieu trouvé, point d'un
+    // appui long. Ce dernier compte tant qu'il est POSÉ, même pendant le choix d'un point de référence,
+    // qui masque l'infobulle sans clore ce qui se joue.
+    val bubbleOpen = selectedMarkerId != null || poi.selected != null || geo.place != null ||
+        mapPoint.point != null
+    // La fermeture vaut geste : les cinq secondes de silence repartent de là, sans quoi la carte sauterait
+    // sur la position à l'instant même où l'on referme l'infobulle.
+    //
+    // Relevée dans un onDispose plutôt que dans un effet voisin : Compose délivre les oublis AVANT les
+    // lancements d'une même passe, si bien que l'heure est à jour quand l'effet du suivi, relancé par cette
+    // même fermeture, va la lire. Deux effets côte à côte n'auraient tenu que par l'ordre de déclaration.
+    if (bubbleOpen) {
+        DisposableEffect(Unit) {
+            onDispose { lastUserGestureAt = SystemClock.elapsedRealtime() }
+        }
+    }
+    val followsPosition = MapFollow.follows(
+        enabled = settings?.mapFollowPosition != false,
+        gpsActive = gpsActive,
+        plannerOpen = planner.open,
+        layerOpen = activeLayerId != null,
+        bubbleOpen = bubbleOpen,
+    )
+    LaunchedEffect(followsPosition, lastUserLocation, lastUserGestureAt) {
+        if (!followsPosition) return@LaunchedEffect
+        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
+        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), lastUserGestureAt)
+        if (wait > 0L) delay(wait)
+        controller.centerOn(la, lo)
+    }
+
     // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
     // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
     // Projetée pendant la composition et non dans un effet : un effet ne s'exécute qu'après la composition,
