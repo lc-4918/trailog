@@ -146,7 +146,7 @@ fun RoutePlannerBand(
     lastLabelInsetPx: Float,
     maxHeight: Dp,
     onPickCurrentPosition: (PlannerStep) -> Unit,
-    gpsActive: Boolean,
+    sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
@@ -180,7 +180,7 @@ fun RoutePlannerBand(
                     onClose = { state.close() },
                 )
                 RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
-                StepList(state, onPickCurrentPosition, gpsActive, geocoding, history, onPlaceChosen,
+                StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,
                     onImport, onDownload,
                     Modifier.weight(1f, fill = false).padding(top = 10.dp))
                 ResultsZone(state, imperial, settings, lastLabelInsetPx)
@@ -245,7 +245,7 @@ private fun CollapsedButton(onExpand: () -> Unit, modifier: Modifier = Modifier)
 private fun StepList(
     state: RoutePlannerState,
     onPickCurrentPosition: (PlannerStep) -> Unit,
-    gpsActive: Boolean,
+    sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
@@ -265,7 +265,7 @@ private fun StepList(
                     }
                 ),
                 onPickCurrentPosition = onPickCurrentPosition,
-                gpsActive = gpsActive,
+                sensorEnabled = sensorEnabled,
                 geocoding = geocoding,
                 history = history,
                 onPlaceChosen = onPlaceChosen,
@@ -314,7 +314,7 @@ private fun StepRow(
     index: Int,
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
-    gpsActive: Boolean,
+    sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
@@ -469,17 +469,19 @@ private fun StepRow(
         val vierge = focused && step.untouched
         val rappels = if (vierge) history.places.filter { !state.usesPlace(it.label, step) } else emptyList()
         val suggesting = focused && (step.searching || step.results.isNotEmpty() ||
-            step.failed || (gpsActive && vierge) || rappels.isNotEmpty())
+            step.failed || (sensorEnabled && vierge) || rappels.isNotEmpty())
         LaunchedEffect(suggesting, step.results.size, step.searching) {
             if (suggesting) bringIntoView.bringIntoView()
         }
         // Position actuelle : proposee au focus tant que rien n'a ete tape, et non offerte par un bouton
         // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
-        // Seulement si le capteur tourne : sans position connue, le calcul echouerait sur un "Aucun
-        // itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas honorer ne vaut rien.
+        // Seulement si la localisation est allumee dans le telephone : sans position connue, le calcul
+        // echouerait sur un "Aucun itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas
+        // honorer ne vaut rien. L'AFFICHAGE du repere sur la carte, lui, n'entre pas en compte - la
+        // position se demande au capteur le temps du calcul, sans rien poser sur la carte.
         // Et seulement si elle ne sert pas DEJA ailleurs : partir d'ou l'on est pour y revenir donne un
         // trajet de longueur nulle, et la proposer une seconde fois invitait a le demander.
-        if (gpsActive && vierge && !state.usesCurrentPosition) {
+        if (sensorEnabled && vierge && !state.usesCurrentPosition) {
             SuggestionRow(
                 label = stringResource(R.string.planner_current_position),
                 icon = true,

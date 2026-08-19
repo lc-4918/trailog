@@ -2,8 +2,10 @@ package fr.lc4918.trailog.ui.routes
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.hardware.GeomagneticField
 import android.hardware.Sensor
@@ -14,6 +16,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
+import android.os.CancellationSignal
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -117,6 +120,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.location.LocationManagerCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
@@ -225,12 +231,14 @@ import fr.lc4918.trailog.ui.settings.RowIcon
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.cursorInfos
 import fr.lc4918.trailog.ui.profile.titleInfos
+import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -399,6 +407,42 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
+    /*
+     * La localisation est-elle allumee dans le telephone.
+     *
+     * A ne pas confondre avec [gpsActive], qui dit seulement si le REPERE est pose sur la carte. Ce qui se
+     * CALCULE a partir de la position - partir d'ou l'on est dans le planificateur, mesurer une distance
+     * depuis la position - ne demande que le capteur : le reglage "Localisation GPS" et son bouton ne
+     * commandent, eux, que l'affichage du repere.
+     *
+     * Relu a chaque bascule de la localisation, que le systeme diffuse, et au retour au premier plan :
+     * sans cela, l'eteindre depuis le volet des reglages rapides laissait des propositions qui ne
+     * pouvaient plus aboutir, et l'allumer n'en ramenait aucune.
+     */
+    var sensorEnabled by remember { mutableStateOf(false) }
+    fun refreshSensorEnabled() { sensorEnabled = LocationManagerCompat.isLocationEnabled(locationManager) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        refreshSensorEnabled()
+        val observer = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) refreshSensorEnabled()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) { refreshSensorEnabled() }
+        }
+        // Les deux annonces : la bascule generale de la localisation, et l'allumage ou l'extinction d'un
+        // fournisseur en particulier - c'est celle-la que les anciennes versions d'Android envoient.
+        val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION).apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+        }
+        ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            runCatching { ctx.unregisterReceiver(receiver) }
+        }
+    }
+
     fun stopGps() {
         locationManager.removeUpdates(locationListener)
         controller.clearUserLocation()
@@ -407,13 +451,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         lastUserLocation = null
     }
 
+    /** Le fournisseur de position a interroger : le GPS s'il est allume, le reseau sinon, rien si les
+     *  deux sont eteints. */
+    fun enabledProvider(): String? = when {
+        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+        locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+        else -> null
+    }
+
     fun startGps() {
         if (!hasLocationPermission()) return
-        val provider = when {
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-            else -> null
-        } ?: return
+        val provider = enabledProvider() ?: return
         runCatching {
             locationManager.requestLocationUpdates(provider, 2000L, 5f, locationListener)
             gpsActive = true
@@ -432,21 +480,61 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     /** Recentre la carte sur la dernière position GPS connue (bouton de recentrage). */
     fun recenterOnGps() { lastUserLocation?.let { (la, lo) -> controller.centerOn(la, lo) } }
 
+    /**
+     * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
+     *
+     * Le repere affiche donne deja un flux de positions : on s'en sert telle quelle. Sinon on demande au
+     * systeme une position ponctuelle, qu'il rend tout de suite s'il en a une assez fraiche et qu'il va
+     * chercher au capteur autrement. C'est ce qui affranchit le planificateur et les mesures de
+     * l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
+     *
+     * Null si l'autorisation manque ou si la localisation est eteinte - et aussi si le capteur n'a rien
+     * rendu dans le delai que le systeme s'accorde, sous un toit ou dans un tunnel.
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun currentPosition(): Pair<Double, Double>? {
+        lastUserLocation?.let { return it }
+        if (!hasLocationPermission()) return null
+        val provider = enabledProvider() ?: return null
+        return suspendCancellableCoroutine { cont ->
+            val signal = CancellationSignal()
+            cont.invokeOnCancellation { signal.cancel() }
+            runCatching {
+                LocationManagerCompat.getCurrentLocation(
+                    locationManager, provider, signal, ContextCompat.getMainExecutor(ctx),
+                ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
+            }.onFailure { if (cont.isActive) cont.resume(null) }
+        }
+    }
+
     val locationSettingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        refreshSensorEnabled()
         if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
     }
+    // Geste mis en attente de l'autorisation : rejoue des qu'elle est accordee. L'autorisation se demande
+    // maintenant depuis plusieurs endroits (le bouton de position, mais aussi le planificateur et la
+    // mesure depuis la position), et chacun a sa propre suite a donner.
+    var pendingLocationAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps() else showLocationDisabledDialog = true
+        val action = pendingLocationAction
+        pendingLocationAction = null
+        if (granted) action?.invoke()
+    }
+
+    /** Fait [action] avec le capteur, en demandant d'abord l'autorisation si elle manque. */
+    fun withLocationPermission(action: () -> Unit) {
+        if (hasLocationPermission()) action()
+        else {
+            pendingLocationAction = action
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
     fun onGpsButtonTap() {
-        when {
-            gpsActive -> stopGps()
-            !hasLocationPermission() -> locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            !LocationManagerCompat.isLocationEnabled(locationManager) -> showLocationDisabledDialog = true
-            else -> startGps()
+        if (gpsActive) { stopGps(); return }
+        withLocationPermission {
+            if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
+            else showLocationDisabledDialog = true
         }
     }
 
@@ -624,19 +712,19 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         return MeasureState.Done(r.meters, r.seconds, track)
     }
 
-    // Origine de la mesure depuis la position, figée à la première position reçue après la demande : le
-    // capteur en livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
-    LaunchedEffect(mapPoint.positionMeasure, lastUserLocation) {
-        if (mapPoint.positionMeasure == MeasureState.Loading) {
-            lastUserLocation?.let { (la, lo) -> mapPoint.fixPositionOrigin(la, lo) }
-        }
-    }
-    // Capteur éteint alors qu'une mesure attendait encore sa position d'origine : elle ne partira jamais,
-    // et son spinner tournerait indéfiniment. On l'abandonne, ce qui est exactement ce qu'elle est devenue.
-    LaunchedEffect(gpsActive) {
-        if (!gpsActive && mapPoint.positionMeasure == MeasureState.Loading && mapPoint.positionOrigin == null) {
-            mapPoint.publishPositionMeasure(MeasureState.Failed)
-        }
+    // Origine de la mesure depuis la position, figée dès qu'une position est connue : le repère affiché en
+    // livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
+    //
+    // La position vient du capteur, éteint ou allumé côté affichage (cf. currentPosition) : mesurer d'où
+    // l'on est n'oblige plus à poser le repère sur la carte.
+    //
+    // Sans position - autorisation refusée, localisation éteinte, ou capteur muet jusqu'au bout du délai
+    // que le système s'accorde -, la mesure est abandonnée : son spinner tournerait indéfiniment.
+    LaunchedEffect(mapPoint.positionMeasure) {
+        if (mapPoint.positionMeasure != MeasureState.Loading || mapPoint.positionOrigin != null) return@LaunchedEffect
+        val fix = currentPosition()
+        if (fix == null) mapPoint.publishPositionMeasure(MeasureState.Failed)
+        else mapPoint.fixPositionOrigin(fix.first, fix.second)
     }
     LaunchedEffect(mapPoint.point, mapPoint.positionOrigin, routingUrl, routingProfile, measurePrefs) {
         val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
@@ -772,7 +860,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         val pts = targets.map { t ->
             when (t) {
                 is StepTarget.Place -> t.place.lat to t.place.lon
-                StepTarget.CurrentPosition -> lastUserLocation ?: run {
+                // Demandee au capteur, que le repere soit affiche ou non (cf. currentPosition) : composer
+                // un parcours depuis chez soi n'oblige pas a poser sa position sur la carte.
+                StepTarget.CurrentPosition -> currentPosition() ?: run {
                     planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
                 }
             }
@@ -871,7 +961,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      */
     fun onDistanceFromPositionTap() {
         if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
-        else mapPoint.requestDistanceFromPosition()
+        else withLocationPermission { mapPoint.requestDistanceFromPosition() }
     }
 
     /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
@@ -1720,11 +1810,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 MapPointBubble(
                                     address = mapPoint.address,
                                     profileLabel = routingProfileLabel(routingProfile),
-                                    // Le capteur éteint, la ligne disparaît : une mesure depuis une position
-                                    // inconnue ne partirait jamais (cf. MapPointBubble). Une mesure déjà
-                                    // demandée la retient, elle : son résultat vaut pour l'endroit d'où elle
-                                    // est partie, et son tracé est sur la carte - rien ne l'expliquerait plus.
-                                    showPositionRow = gpsActive || mapPoint.positionMeasure != null,
+                                    // La localisation éteinte dans le téléphone, la ligne disparaît : une
+                                    // mesure depuis une position inconnue ne partirait jamais (cf.
+                                    // MapPointBubble). L'affichage du repère, lui, n'y est pour rien - le
+                                    // capteur suffit. Une mesure déjà demandée retient la ligne : son
+                                    // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
+                                    // sur la carte - rien ne l'expliquerait plus.
+                                    showPositionRow = sensorEnabled || mapPoint.positionMeasure != null,
                                     positionMeasure = mapPoint.positionMeasure,
                                     pointMeasure = mapPoint.pointMeasure,
                                     imperial = imperialUnits,
@@ -1915,8 +2007,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         settings = settings,
                         lastLabelInsetPx = 0f,
                         maxHeight = plannerMaxHeight,
-                        onPickCurrentPosition = { step -> planner.choose(step, StepTarget.CurrentPosition) },
-                        gpsActive = gpsActive,
+                        onPickCurrentPosition = { step ->
+                            withLocationPermission { planner.choose(step, StepTarget.CurrentPosition) }
+                        },
+                        sensorEnabled = sensorEnabled,
                         geocoding = GeocodingParams(geocodingBase,
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
                         history = PlannerHistory.of(settings?.plannerHistory),
