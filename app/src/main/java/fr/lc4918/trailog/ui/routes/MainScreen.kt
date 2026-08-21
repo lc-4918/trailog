@@ -106,6 +106,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -1688,11 +1689,43 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                  * carte reste simplement vide, et l'on croit la couche cassee.
                  */
                 if (poi.visible && (poi.tooFar || poi.needsNetwork || poi.fromCache)) {
+                    /*
+                     * Le message du zoom se TAPE, et zoome. Les deux autres ne sont que des constats -
+                     * pas de reseau, points du cache - que rien ni personne ne leve d'un doigt, et les
+                     * rendre tapables promettrait une action qui n'existe pas.
+                     *
+                     * Une consigne qu'on peut executer soi-meme est une consigne de trop : "Zoomez pour
+                     * voir les points d'interet" dit exactement le geste que ce tap fait a notre place.
+                     */
+                    val zoomable = poi.tooFar
                     Surface(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        // Couleur de contenu imposee : un fond translucide n'est plus l'une des couleurs du
+                        // theme, et contentColorFor n'y reconnait donc rien. Sans elle le texte hérite du
+                        // LocalContentColor ambiant, dont le defaut est le noir - illisible sur le fond
+                        // sombre de ce meme bandeau en theme sombre (cf. GeocodeSearchBar, meme remede).
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.align(Alignment.TopCenter)
-                            .padding(top = with(density) { (topControlsHeightPx + 16).toDp() }),
+                            .padding(top = with(density) { (topControlsHeightPx + 16).toDp() })
+                            .then(
+                                if (!zoomable) Modifier
+                                else Modifier.clickable(role = Role.Button) {
+                                    // Le zoom minimum qui charge, pas un cran de plus : c'est le plus grand
+                                    // territoire que le service accepte de peupler, donc celui qui montre le
+                                    // plus de lieux d'un coup (cf. PoiLoading.MIN_ZOOM).
+                                    //
+                                    // Autour du centre courant, qu'on ne deplace pas : c'est la zone qu'on
+                                    // regarde qu'on veut voir peuplee, et une carte qui saute ailleurs au
+                                    // moment ou elle se remplit ferait perdre l'endroit qu'on tenait.
+                                    //
+                                    // Rien de plus a declencher : la camera qui s'immobilise relance le
+                                    // chargement, comme apres un geste de la main.
+                                    controller.cameraState()?.let { (la, lo, _) ->
+                                        controller.centerOnAtLeast(la, lo, PoiLoading.MIN_ZOOM)
+                                    }
+                                }
+                            ),
                     ) {
                         Text(
                             stringResource(
@@ -1703,6 +1736,11 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 }
                             ),
                             fontSize = 12.sp,
+                            // La couleur des commandes quand le message en est une, celle du texte ordinaire
+                            // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un
+                            // doigt des deux constats qu'on ne peut que lire.
+                            color = if (zoomable) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         )
                     }
