@@ -174,6 +174,11 @@ dependencies {
     // --- Tests unitaires (JVM + Robolectric) ---
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
+    // Tests d'interface : les memes que sur un appareil, joues par Robolectric sur la JVM. Le choix est
+    // explique dans TESTS.md - il tient a la CI, qui n'a pas d'emulateur, et a MapLibre, dont les
+    // bibliotheques natives ne se chargent nulle part hors d'un appareil.
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.junit)
@@ -189,7 +194,6 @@ dependencies {
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
-    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 // Couverture reelle des tests unitaires (JVM + Robolectric), plutot qu'une estimation.
