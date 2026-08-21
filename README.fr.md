@@ -76,6 +76,13 @@ sans dépendre d'un service en ligne.
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
 - **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
   sur la carte, avec son adresse.
+- **Calcul d'itinéraire** (à activer dans les réglages) : une bande où vous empilez vos étapes, de 2 à
+  25 - chacune cherchée par son nom, prise sur la carte, ou remplacée par **votre position**, résolue au
+  moment du calcul et non au moment du choix. Les étapes se réordonnent et se suppriment, le parcours se
+  recalcule à chaque changement pour la discipline réglée (vélo de route, gravel, VTC, VTT, à pied), se
+  dessine sur la carte et porte son propre profil altimétrique. Un champ vide vous repropose les **huit
+  derniers lieux** que vous avez rencontrés - une étape retenue, un lieu cherché, un point d'intérêt
+  consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder.
 - **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
   l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
   ou depuis un second point que vous désignez.

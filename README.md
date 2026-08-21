@@ -78,6 +78,13 @@ them on a map with a synchronised elevation profile, without depending on any on
   basemaps, and tiles already viewed stay in cache.
 - **Place and address search** (to be enabled in settings): the place found is pinned on the map,
   with its address.
+- **Route planning** (to be enabled in settings): a band where you stack your stops, from 2 to 25 - each
+  one searched by name, taken off the map, or replaced by **your own position**, resolved when the route
+  is computed rather than when you pick it. Stops can be reordered and removed, the route is recomputed on
+  every change for the activity you set (road bike, gravel, hybrid bike, mountain bike, on foot), is drawn
+  on the map and carries its own elevation profile. An empty field offers you the **last eight places** you
+  came across - a stop you kept, a place you searched for, a point of interest you opened, the address of a
+  long press - so you need not type again what you have just been looking at.
 - **Long press on the map**: anywhere off a track, an info bubble gives the address of the spot
   touched, and measures the distance and time to reach it - from your GPS position, or from a
   second point you pick.

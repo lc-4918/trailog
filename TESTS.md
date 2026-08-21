@@ -21,7 +21,7 @@ chiffre qu'elle affiche.
 
 ## Ce que couvre chaque niveau
 
-L'application fait 9100 lignes, dont **5293 (58 %) dans des fichiers `@Composable`**. Ces lignes sont
+L'application fait 16494 lignes, dont **9807 (59 %) dans des fichiers `@Composable`**. Ces lignes sont
 hors d'atteinte d'un test unitaire JVM par construction : elles n'existent qu'à l'exécution, dans un
 arbre de composition. Viser 90 % avec des tests unitaires est donc arithmétiquement impossible. La
 répartition est la suivante.
@@ -42,29 +42,43 @@ Chiffres réels, produits par Jacoco, non estimés.
 
 | Paquet | Lignes couvertes | % |
 |---|---|---|
-| `data/seed` | 67/67 | 100 % |
+| `net` | 12/12 | 100 % |
+| `data/seed` | 110/110 | 100 % |
 | `data` (LocalePrefs) | 26/26 | 100 % |
-| `domain/geo` | 98/101 | 97 % |
-| `data/imp` | 181/199 | 91 % |
-| `domain/model` | 52/59 | 88 % |
-| `data/db` | 115/142 | 81 % |
-| `map` (StyleBuilder) | 62/96 | 65 % |
-| `data/repo` | 249/425 | 59 % |
-| `map/offline` | 43/282 | 15 % |
-| `update` | 14/115 | 12 % |
-| `ui/points` | 26/367 | 7 % |
-| `ui/components` | 28/617 | 5 % |
-| `ui/offline` | 6/188 | 3 % |
-| `ui/routes`, `ui/settings`, `ui/profile`, `ui/nav`, `ui/theme` | 0/2473 | 0 % |
+| `data/backup` | 62/62 | 100 % |
+| `elevation` | 214/221 | 97 % |
+| `domain/model` | 220/228 | 96 % |
+| `data/imp` | 182/199 | 91 % |
+| `domain/geo` | 275/302 | 91 % |
+| `routing` | 253/309 | 82 % |
+| `geocode` | 48/67 | 72 % |
+| `data/db` | 236/353 | 67 % |
+| `poi` | 65/100 | 65 % |
+| `map` (StyleBuilder) | 121/189 | 64 % |
+| `data/repo` | 303/618 | 49 % |
+| `update` | 29/132 | 22 % |
+| `map/offline` | 76/349 | 22 % |
+| `ui/edit` | 63/96 | 66 % |
+| `ui/mappoint` | 56/140 | 40 % |
+| `ui/poi` | 48/210 | 23 % |
+| `ui/planner` | 59/427 | 14 % |
+| `ui/geocode` | 18/146 | 12 % |
+| `ui/points` | 54/495 | 11 % |
+| `ui/profile`, `ui/measure`, `ui/offline`, `ui/components` | 74/1711 | 4 % |
+| `ui/routes`, `ui/settings`, `ui/alert`, `ui/nav`, `ui/theme` | 66/4919 | 1 % |
+| racine (`MainActivity`, `TrailogApp`) | 0/32 | 0 % |
+
+Les paquets `ui` les mieux couverts le sont par leur **logique extraite** - placement d'infobulle,
+transitions d'état, règles de chargement - et non par leurs composables, qui restent hors d'atteinte.
 
 | Ensemble | Couvert | % |
 |---|---|---|
-| **Hors UI** (cible des tests unitaires) | 907/1543 | **58,8 %** |
-| UI Compose (cible de l'instrumentation) | 60/3645 | 1,6 % |
-| **Total du code source** | 967/5188 | **18,6 %** |
+| **Hors UI** (cible des tests unitaires) | 2232/3309 | **67,5 %** |
+| UI Compose (cible de l'instrumentation) | 438/8144 | 5,4 % |
+| **Total du code source** | 2670/11453 | **23,3 %** |
 
-Le chiffre à retenir est **58,8 %**, celui du code que les tests unitaires peuvent atteindre. Le total
-de 18,6 % ne dit rien de la qualité des tests : il mesure surtout la part de Compose dans l'app.
+Le chiffre à retenir est **67,5 %**, celui du code que les tests unitaires peuvent atteindre. Le total
+de 23,3 % ne dit rien de la qualité des tests : il mesure surtout la part de Compose dans l'app.
 
 Les paquets encore bas sont `map/offline` (le moteur de téléchargement, qui parle réseau et SQLite) et
 `update` (DownloadManager et installateur système). Les deux relèvent de l'instrumentation plus que du
@@ -72,7 +86,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**499 tests, 49 fichiers**, tous verts.
+**655 tests, 61 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -124,9 +138,21 @@ c'est ce qu'un mauvais signe dans la formule ferait disparaître sans rien casse
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `BubblePositionTest` | 3 | clés stables des 10 positions, repli sur AUTO si la clé est inconnue |
+| `PlannerHistoryTest` | 8 | historique des lieux du planificateur : ordre, plafond, forme enregistrée |
 
 Les clés sont persistées en base (`settings.bubblePosition`) : les changer casserait les réglages
 existants. Une valeur inconnue doit retomber sur AUTO plutôt que de planter.
+
+`PlannerHistoryTest` verrouille les trois règles qui font l'utilité de l'historique : le plus récent en
+tête, le même lieu qui **remonte** au lieu de se dupliquer - sans quoi quelques allers-retours entre chez
+soi et le col voisin rempliraient la liste de deux entrées répétées - et le plafond de huit, appliqué
+**des deux côtés**, à l'ajout comme à la relecture : une base écrite par une version au plafond plus
+généreux ne doit pas rendre une liste plus longue que ce que l'écran sait montrer.
+
+Le reste tient à la forme enregistrée, et c'est là que se joue la robustesse : le séparateur est la
+tabulation parce qu'une adresse porte toujours des virgules (« Mirepoix, 09500 Ariège, France »), et une
+ligne illisible est ignorée plutôt que fatale. L'historique est un confort ; il ne doit jamais empêcher le
+planificateur de s'ouvrir. Mieux vaut perdre l'historique que le trajet.
 
 ### `data/imp` - import de fichiers
 

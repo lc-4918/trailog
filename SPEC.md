@@ -247,7 +247,8 @@ Les propositions sont classées par importance du lieu, sans biais de proximité
 de recherche, mais il ferait remonter un hameau voisin devant la ville du même nom.
 
 Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12) pour qu'il reste situable
-depuis une vue à l'échelle d'un pays ; son infobulle en donne l'adresse, et rien de plus.
+depuis une vue à l'échelle d'un pays ; son infobulle en donne l'adresse, et rien de plus. Il entre aussi
+dans l'**historique du planificateur** (section 14) : l'avoir cherché est déjà dire qu'il nous intéresse.
 
 ## 12. Point quelconque de la carte (appui long)
 
@@ -259,6 +260,11 @@ L'adresse vient du **géocodage inverse** de Photon, servi par un chemin frère 
 là où celle-ci est `/api`) : même instance, même URL réglée. Ce géocodage-ci ne dépend pas de
 l'interrupteur de la recherche - il n'y a pas de bouton à cacher, et rien ne part tant que le doigt ne
 s'attarde pas.
+
+L'adresse trouvée entre dans l'**historique du planificateur** (section 14), aux coordonnées **désignées**
+et non à celles que rend le géocodeur : l'épingle est restée sur le point qu'on a montré, l'adresse n'en
+est que le nom. Un point sans adresse - plein champ, forêt, lac - n'y entre pas : « 44.56, 6.08 » ne dirait
+rien à personne trois jours plus tard.
 
 Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
 d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied. Le moteur
@@ -330,6 +336,29 @@ au moins deux, jusqu'à 25, au-delà desquelles le moteur refuse la requête. Ch
 cherché par son nom, ou **la position du porteur**, résolue au moment du calcul et non au moment du choix :
 on pose ses étapes, puis on part de là où l'on est.
 
+Un **historique des lieux** est proposé au focus d'un champ d'étape vide, au même moment et au même
+endroit que la position du porteur : jusqu'à **huit** endroits, le plus récent en tête. Il s'efface dès la
+première frappe - ce qu'on tape prime toujours sur ce qu'on a fait hier, et deux listes superposées
+au-dessus d'un clavier ne se lisent pas. Un lieu déjà posé ailleurs dans le trajet n'y figure pas : le
+choisir donnerait deux étapes au même endroit, donc un tronçon de longueur nulle.
+
+**Quatre gestes le remplissent**, et non la seule saisie d'étape : une étape retenue ici, un lieu trouvé
+par la recherche (section 11), un point d'intérêt dont on a ouvert l'infobulle (section 14 ter), l'adresse
+d'un appui long sur la carte (section 12). Tous disent la même chose - voilà un endroit qui intéresse celui
+qui tient le téléphone - et un trajet se compose rarement dans la foulée : on regarde la carte, on
+consulte, et c'est plus tard qu'on veut y aller. Réduire l'historique aux champs du planificateur, c'était
+ne se souvenir que des trajets déjà faits, jamais de celui qu'on prépare.
+
+Ce sont des **lieux**, jamais du texte frappé : ce qui entre là porte des coordonnées, et se repose donc
+dans une étape sans redemander quoi que ce soit au géocodeur. Une saisie abandonnée en cours de frappe n'y
+a rien à faire. L'historique survit à la fermeture de l'application (colonne `settings.plannerHistory`, une
+ligne par lieu, séparateurs tabulés - une adresse porte toujours des virgules, jamais de tabulation).
+
+Le plafond de huit est un compromis d'écran : la liste s'affiche sous un champ, au-dessus du clavier, et
+au-delà elle chasserait de l'écran les propositions du géocodeur. Il était de cinq quand seules les saisies
+d'étape le remplissaient ; les quatre sources l'épuisent bien plus vite - parcourir la carte avec la couche
+des points d'intérêt allumée chassait cinq entrées en autant de taps.
+
 Les étapes se réordonnent et se suppriment ; le parcours se recalcule à chaque changement, pour la
 discipline réglée. Le résultat se dessine sur la carte et porte son propre profil altimétrique, avec le
 même zoom et le même curseur que celui d'une trace.
@@ -398,12 +427,18 @@ sa catégorie - une tente pour un camping, un panier pour un marché, une goutte
 ouvre son infobulle : sa **photo en image de garde** quand il en publie une (un lieu sur trois environ), son
 nom par-dessus sur fond blanc, cliquable vers son site s'il en a un, et le badge de sa catégorie. Puis les
 **trois actions d'itinéraire** - définir comme point de départ, comme point d'arrivée, ajouter l'étape - qui
-remplissent le planificateur et l'ouvrent.
+remplissent le planificateur et l'ouvrent. **Ouvrir l'infobulle suffit** à inscrire le lieu dans
+l'historique du planificateur (section 14), sans attendre l'une des trois : on regarde d'abord, on compose
+ensuite, parfois bien plus tard.
 
 Le chargement suit la carte : les lieux de la **zone visible**, un demi-instant après le dernier geste, et
 rien de redemandé tant que la vue reste dans ce qui a déjà été chargé. En deçà d'un certain zoom, rien n'est
 demandé du tout - l'écran porterait des milliers de lieux dont le service ne rendrait que les cent premiers,
-pris au hasard - et la carte le dit. Ce qui a été vu une fois est **gardé une semaine** : sans réseau, la
+pris au hasard - et la carte le dit. **Ce message-là se tape**, et amène la carte au zoom minimum qui
+charge, autour du centre courant : une consigne qu'on peut exécuter soi-même est une consigne de trop.
+Il porte pour cette raison la couleur des commandes, là où les deux autres messages du même bandeau - pas
+de réseau, points du cache - restent en texte ordinaire : ce sont des constats, que rien ni personne ne
+lève d'un doigt. Ce qui a été vu une fois est **gardé une semaine** : sans réseau, la
 couche montre les derniers points connus et l'annonce ; si elle ne connaît rien de cette zone, elle réclame
 une connexion plutôt que de laisser croire à une région sans un seul café.
 
