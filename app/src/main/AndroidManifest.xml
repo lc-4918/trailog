@@ -14,6 +14,20 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Suivi de position ecran eteint (cf. location/LocationService). Un service de premier plan de type
+         "location" est le seul moyen qu'Android offre de tenir le capteur ouvert quand l'ecran s'endort,
+         et c'est la condition de l'alerte d'eloignement comme d'un futur enregistreur de trace. Pas de
+         ACCESS_BACKGROUND_LOCATION : un tel service, demarre pendant que l'application est visible, lit le
+         capteur sans elle, et le suivi ne demarre jamais que d'un geste. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Verrou processeur pendant le suivi seulement : le premier plan empeche qu'on nous tue, il ne
+         garantit pas que l'appareil endormi traite les positions autrement que par salves. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Depuis Android 13, la notification du service ne s'affiche qu'avec cette autorisation. Le service
+         tourne meme si elle est refusee ; c'est alors une position qui tourne sans rien pour le dire, ce
+         qu'on demande donc en meme temps que la localisation. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
@@ -51,14 +65,84 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!--
+            Suivi de position hors de l'ecran (cf. location/LocationService).
+
+            foregroundServiceType="location" est exige depuis Android 10 pour qu'un service lise le capteur
+            sans que l'application soit visible, et Android 14 refuse le demarrage sans lui. Non exporte :
+            personne d'autre que l'application n'a a l'allumer.
+        -->
+        <service
+            android:name=".location.LocationService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.TrailogApp.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Ouvrir un fichier de trace depuis ailleurs : gestionnaire de fichiers, courriel, navigateur,
+                ou "Partager vers" d'une autre application. Le sens sortant existait deja (partage d'une
+                trace en GPX) ; sans ces filtres, l'entrant passait obligatoirement par le bouton Importer.
+
+                Deux filtres et non un, parce que les fournisseurs de fichiers ne s'accordent pas : les uns
+                annoncent un type MIME propre (premier filtre), les autres retombent sur octet-stream ou
+                text/xml et ne laissent que l'extension pour trancher (second filtre). Le second n'est PAS
+                un */* general : sans son pathPattern, Trailog se proposerait pour tout fichier du telephone.
+
+                launchMode="singleTask" sur l'activite : sans lui, un fichier ouvert pendant que
+                l'application tourne en empilerait une seconde instance, carte et position recreees a cote
+                de celles qui tournent deja.
+            -->
+            <intent-filter android:label="@string/action_import">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/x-gpx+xml" />
+                <data android:mimeType="application/vnd.google-earth.kml+xml" />
+                <data android:mimeType="application/vnd.google-earth.kmz" />
+                <data android:mimeType="application/geo+json" />
+            </intent-filter>
+            <intent-filter android:label="@string/action_import">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.gpx" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.GPX" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.kml" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.KML" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.kmz" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.KMZ" />
+                <data android:scheme="content" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.geojson" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.gpx" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.GPX" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.kml" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.KML" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.kmz" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.KMZ" />
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.geojson" />
+            </intent-filter>
+            <!-- "Partager vers Trailog" : un seul fichier, ou plusieurs d'un coup. -->
+            <intent-filter android:label="@string/action_import">
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/x-gpx+xml" />
+                <data android:mimeType="application/vnd.google-earth.kml+xml" />
+                <data android:mimeType="application/vnd.google-earth.kmz" />
+                <data android:mimeType="application/geo+json" />
             </intent-filter>
         </activity>
     </application>

@@ -492,6 +492,11 @@
     <string name="settings_label_off_track_sound">Notification sound</string>
     <string name="settings_off_track_sound_default">Default</string>
     <string name="settings_off_track_hint">The bell sits below the route planner: it asks which track to follow, then warns as soon as you stray from it. It cannot go without GPS location, which turning it on also shows.</string>
+    <string name="location_channel_name">Location tracking</string>
+    <string name="location_notice_title">Location tracking</string>
+    <string name="location_notice_idle">Tracking continues with the screen off.</string>
+    <string name="location_notice_following">%1$s - %2$s off the track</string>
+    <string name="location_notice_stop">Stop</string>
     <string name="settings_section_route_prefs">Route preferences</string>
     <string name="settings_label_route_ways">Ways</string>
     <string name="settings_label_route_hills">Terrain</string>
@@ -505,6 +510,8 @@
     <string name="route_surface_rough">Accept unpaved</string>
     <string name="settings_sw_follow_position">Follow my position</string>
     <string name="settings_sw_follow_position_sub">The map recentres 5 s after the last gesture</string>
+    <string name="settings_sw_keep_screen_on">Keep the screen on</string>
+    <string name="settings_sw_keep_screen_on_sub">While location is being tracked only; tracking carries on with the screen off anyway</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
     <string name="poi_cat_campings">Campsites and motorhome areas</string>
     <string name="poi_cat_guesthouses">Bed and breakfast</string>
@@ -549,7 +556,13 @@
     <string name="settings_poi_select_all">Select all</string>
     <string name="settings_poi_bike_only">Cycling theme only</string>
     <string name="settings_poi_bike_only_sub">Only shows places that declare themselves cyclist-friendly</string>
-    <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0.</string>
+    <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0, and OpenStreetMap, ODbL licence.</string>
+    <string name="settings_clear_poi_cache">Clear the points of interest cache</string>
+    <string name="settings_poi_cache_empty">No cached venue</string>
+    <string name="settings_poi_cache_count">%1$d venues kept</string>
+    <string name="settings_poi_cache_pinned">%1$d venues taken along with an offline area are kept</string>
+    <string name="settings_poi_cache_hint">Venues seen once stay available offline for a week. Clearing them forces Trailog to ask again, for instance when an entry is wrong.</string>
     <string name="poi_from_cache">Last known points (offline)</string>
+    <string name="poi_partial">Too many venues here: not all are shown</string>
     <string name="poi_needs_network">Connection required to load points of interest for this area</string>
 </resources>

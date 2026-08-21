@@ -179,8 +179,12 @@ fun PoiBubble(
 @Composable
 private fun Nom(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
     val url = poi.webUrl
+    // Sans nom, la categorie en tient lieu : une fontaine, des toilettes ou une aire de pique-nique n'en
+    // portent presque jamais dans OpenStreetMap, et ce sont justement les lieux qu'on cherche. Un titre
+    // vide laisserait l'infobulle s'ouvrir sur rien.
+    val nom = poi.label.ifBlank { poiCategoryLabel(poi.category) }
     Text(
-        poi.label,
+        nom,
         fontSize = fontSp.sp, fontWeight = FontWeight.Bold, color = Color.Black,
         maxLines = 2, overflow = TextOverflow.Ellipsis,
         textDecoration = if (url != null) TextDecoration.Underline else null,

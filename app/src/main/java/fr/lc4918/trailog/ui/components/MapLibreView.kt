@@ -275,8 +275,17 @@ class MapController {
         val b = if (desiredUrl != null) Style.Builder().fromUri(desiredUrl!!) else Style.Builder().fromJson(desiredJson!!)
         m.setStyle(b) { st ->
             style = st
-            // le nouveau style a vidé sources, couches et images
-            layerKeys.clear(); pinImages.clear(); gpsImages.clear(); applied.clear()
+            /*
+             * Le nouveau style a vide sources, couches ET IMAGES : les caches qui retiennent ce qui y a
+             * ete pose doivent repartir a zero, TOUS.
+             *
+             * Deux y manquaient - celui des points d'interet et celui de l'ombre du marqueur selectionne -
+             * et l'oubli ne se voyait qu'en changeant de fond de carte : le cache disait l'image posee, le
+             * style ne la portait plus, et la couche renvoyait a une image absente. Les marqueurs
+             * disparaissaient sans que rien ne le signale, et aucun geste ne les ramenait.
+             */
+            layerKeys.clear(); applied.clear()
+            pinImages.clear(); gpsImages.clear(); poiImages.clear(); shadowImages.clear()
             appliedUserMarker = null
             onStyleApplied?.invoke()
         }

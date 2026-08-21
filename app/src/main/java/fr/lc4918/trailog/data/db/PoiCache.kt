@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Un point d'interet garde en base, tel qu'il a ete rendu par le service.
@@ -66,6 +67,28 @@ interface PoiDao {
     /** Les lignes emportees avec une zone hors ligne, comptees pour le dire a l'utilisateur. */
     @Query("SELECT COUNT(*) FROM poi_cache WHERE pinned = 1")
     suspend fun countPinned(): Int
+
+    /**
+     * Ce que le cache retient, et ce qu'on a emporte, comptes pour l'ecran des reglages.
+     *
+     * En flux et non en fonction suspendue : le compte se lit dans un ecran ouvert, et doit tomber a zero
+     * sous les yeux de qui vient d'appuyer sur le bouton, sans qu'on ait a le rafraichir a la main.
+     */
+    @Query("SELECT COUNT(*) FROM poi_cache WHERE pinned = 0")
+    fun countCachedFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM poi_cache WHERE pinned = 1")
+    fun countPinnedFlow(): Flow<Int>
+
+    /**
+     * Vide le cache **sans toucher aux lieux emportes**.
+     *
+     * La meme frontiere que le menage hebdomadaire (cf. [deleteOlderThan]) : un cache se refait tout seul
+     * a la premiere zone survolee avec du reseau, une provision non. Effacer les deux d'un meme bouton
+     * viderait une zone hors ligne preparee pour partir, sans moyen de la refaire sur place.
+     */
+    @Query("DELETE FROM poi_cache WHERE pinned = 0")
+    suspend fun clearUnpinned()
 
     @Query("DELETE FROM poi_cache")
     suspend fun clear()

@@ -821,6 +821,26 @@ class MigrationsTest {
         db.close()
     }
 
+    /**
+     * Le bouton des reglages efface le cache, et lui seul.
+     *
+     * La meme frontiere que le menage hebdomadaire, et pour la meme raison : un cache se refait tout seul a
+     * la premiere zone survolee avec du reseau, une provision non. Les effacer d'un meme geste viderait une
+     * zone hors ligne preparee pour partir, sans aucun moyen de la refaire sur place.
+     */
+    @Test fun `vider le cache epargne les lieux emportes`() {
+        val db = freshDb("m5556ter")
+        db.execSQL(MigrationSql.CREATE_POI_CACHE)
+        db.execSQL("INSERT INTO poi_cache VALUES ('croise', 'Croise en passant', 43.0, 1.8, 'camping', " +
+            "null, null, null, 0, 1000, 0)")
+        db.execSQL("INSERT INTO poi_cache VALUES ('emporte', 'Emporte expres', 43.0, 1.8, 'camping', " +
+            "null, null, null, 0, 1000, 1)")
+        db.execSQL("DELETE FROM poi_cache WHERE pinned = 0")
+        assertEquals(1, scalar(db, "SELECT COUNT(*) FROM poi_cache") { it.getInt(0) })
+        assertEquals("emporte", scalar(db, "SELECT uuid FROM poi_cache") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -862,6 +882,22 @@ class MigrationsTest {
             SettingsEntity(offTrackAlertEnabled = false, showGpsButton = true).offTrackAlertVisible)
     }
 
+    // ---------- 56 -> 57 : garder l'ecran allume ----------
+
+    /**
+     * Eteint sur une base deja en place comme sur une neuve.
+     *
+     * Une mise a jour qui se met a garder l'ecran allume sans qu'on l'ait demande, c'est une batterie vide
+     * au retour d'une sortie - et rien a l'ecran pour dire d'ou cela vient.
+     */
+    @Test fun `56 vers 57 laisse l'ecran libre de s'eteindre`() {
+        val db = freshDb("m5657"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_KEEP_SCREEN_ON)
+        assertEquals(0, scalar(db, "SELECT keepScreenOn FROM settings") { it.getInt(0) })
+        assertFalse("defaut de l'entite", SettingsEntity().keepScreenOn)
+        db.close()
+    }
+
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
         val db = AppDatabase.get(ctx)
         val s = db.openHelper.writableDatabase
@@ -876,7 +912,8 @@ class MigrationsTest {
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
-            "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory")
+            "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
+            "keepScreenOn")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

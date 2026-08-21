@@ -288,6 +288,11 @@ data class SettingsEntity(
     val offTrackAlertEnabled: Boolean = false,
     // Ecart a la trace suivie (m) au-dela duquel l'alerte s'affiche en bas de l'ecran.
     val offTrackAlertDistanceM: Int = DefaultOffTrackAlertM,
+    // Garder l'ecran allume TANT QUE LE SUIVI TOURNE, et pas plus : le suivi survit desormais a la veille
+    // (cf. location/LocationService), et ce reglage ne sert donc plus a le maintenir en vie mais a garder la
+    // carte LISIBLE - telephone sur un guidon, ou consulte d'un coup d'oeil sans y toucher. Eteint par
+    // defaut : c'est de la batterie, et l'ecran d'un telephone en poche n'a aucune raison de rester allume.
+    val keepScreenOn: Boolean = false,
     // Emettre un son en plus de la banniere.
     val offTrackAlertSound: Boolean = false,
     // Son retenu, parmi les notifications du telephone (URI du selecteur systeme). Vide = celui que le

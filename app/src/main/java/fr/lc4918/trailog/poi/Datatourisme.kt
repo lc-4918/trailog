@@ -69,9 +69,20 @@ object Datatourisme {
      */
     private const val FIELDS = "uuid,label,type,isLocatedAt,hasTheme,hasMainRepresentation,hasContact"
 
-    /** 100 par écran de carte, là où l'API en autorise 250 : au-delà, les marqueurs se recouvrent et la
-     *  carte devient illisible bien avant que le quota ne devienne un souci. */
-    const val PAGE_SIZE = 100
+    /**
+     * Le maximum que l'API accorde.
+     *
+     * Il était de 100, choisi pour la lisibilité de la carte - et c'était une **perte silencieuse** : sur
+     * un écran de carte autour de Souillac, le service connaît **149 lieux**, l'application n'en demandait
+     * que 100, et les 49 autres étaient écartés dans un ordre que rien ne fixe. D'un déplacement de carte au
+     * suivant, ce n'étaient pas les mêmes : un loueur de canoës s'affichait, puis disparaissait, sans que
+     * rien ne l'explique. Relevé sur le terrain, et c'est le pire genre de faute - la carte avait l'air
+     * juste.
+     *
+     * Au-delà de ce plafond, on ne se tait plus : la carte annonce qu'elle ne montre pas tout
+     * (cf. `PoiState.partial`).
+     */
+    const val PAGE_SIZE = 250
 
     private const val TIMEOUT_MS = 15_000
 

@@ -492,6 +492,11 @@
     <string name="settings_label_off_track_sound">Jakinarazpen-soinua</string>
     <string name="settings_off_track_sound_default">Lehenetsia</string>
     <string name="settings_off_track_hint">Kanpaia ibilbide-kalkuluaren azpian agertzen da: jarraitu beharreko arrastoa eskatzen du, eta urruntzen zarenean abisatzen du. Ezin da GPS kokapenik gabe joan, eta hura ere aktibatzen da.</string>
+    <string name="location_channel_name">Kokapenaren jarraipena</string>
+    <string name="location_notice_title">Kokapenaren jarraipena</string>
+    <string name="location_notice_idle">Jarraipenak aurrera darrai pantaila itzalita ere.</string>
+    <string name="location_notice_following">%1$s - ibilbidetik %2$s</string>
+    <string name="location_notice_stop">Gelditu</string>
     <string name="settings_section_route_prefs">Ibilbide-hobespenak</string>
     <string name="settings_label_route_ways">Bideak</string>
     <string name="settings_label_route_hills">Erliebea</string>
@@ -505,6 +510,8 @@
     <string name="route_surface_rough">Lur-bideak onartu</string>
     <string name="settings_sw_follow_position">Nire kokapena jarraitu</string>
     <string name="settings_sw_follow_position_sub">Mapa 5 s-ra zentratzen da azken keinuaren ondoren</string>
+    <string name="settings_sw_keep_screen_on">Pantaila piztuta mantendu</string>
+    <string name="settings_sw_keep_screen_on_sub">Kokapenaren jarraipenean soilik; jarraipenak aurrera darrai pantaila itzalita ere</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
     <string name="poi_cat_campings">Kanpinak eta autokarabana-guneak</string>
     <string name="poi_cat_guesthouses">Landa-etxeak</string>
@@ -549,7 +556,13 @@
     <string name="settings_poi_select_all">Hautatu dena</string>
     <string name="settings_poi_bike_only">Bizikleta-gaia soilik</string>
     <string name="settings_poi_bike_only_sub">Txirrindularientzat egokitzat jotzen diren lekuak soilik erakusten ditu</string>
-    <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0.</string>
+    <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
+    <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
+    <string name="settings_poi_cache_empty">Cachean lekurik ez</string>
+    <string name="settings_poi_cache_count">Gordetako %1$d leku</string>
+    <string name="settings_poi_cache_pinned">Lineaz kanpoko eremu batekin eramandako %1$d leku gordeta geratzen dira</string>
+    <string name="settings_poi_cache_hint">Behin ikusitako lekuak astebetez daude eskuragarri sarerik gabe. Hustean, Trailogek berriro eskatuko ditu, adibidez fitxa bat okerra bada.</string>
     <string name="poi_from_cache">Azken puntu ezagunak (lineaz kanpo)</string>
+    <string name="poi_partial">Leku gehiegi hemen: ez dira guztiak erakusten</string>
     <string name="poi_needs_network">Konexioa behar da eremu honetako interesguneak kargatzeko</string>
 </resources>

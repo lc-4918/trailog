@@ -492,6 +492,11 @@
     <string name="settings_label_off_track_sound">Som de notificação</string>
     <string name="settings_off_track_sound_default">Predefinido</string>
     <string name="settings_off_track_hint">O sino aparece sob o cálculo de itinerário: pede o trilho a seguir e avisa assim que se afastar dele. Não funciona sem a localização GPS, que ao ativá-la também aparece.</string>
+    <string name="location_channel_name">Seguimento de posição</string>
+    <string name="location_notice_title">Seguimento de posição</string>
+    <string name="location_notice_idle">O seguimento continua com o ecrã desligado.</string>
+    <string name="location_notice_following">%1$s - a %2$s do trajeto</string>
+    <string name="location_notice_stop">Parar</string>
     <string name="settings_section_route_prefs">Preferências de traçado</string>
     <string name="settings_label_route_ways">Vias</string>
     <string name="settings_label_route_hills">Relevo</string>
@@ -505,6 +510,8 @@
     <string name="route_surface_rough">Aceitar os caminhos</string>
     <string name="settings_sw_follow_position">Seguir a minha posição</string>
     <string name="settings_sw_follow_position_sub">O mapa recentra 5 s após o último gesto</string>
+    <string name="settings_sw_keep_screen_on">Manter o ecrã ligado</string>
+    <string name="settings_sw_keep_screen_on_sub">Apenas durante o seguimento de posição; este continua na mesma com o ecrã desligado</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
     <string name="poi_cat_campings">Campismo e áreas de autocaravanas</string>
     <string name="poi_cat_guesthouses">Quartos de hóspedes</string>
@@ -549,7 +556,13 @@
     <string name="settings_poi_select_all">Selecionar tudo</string>
     <string name="settings_poi_bike_only">Apenas tema bicicleta</string>
     <string name="settings_poi_bike_only_sub">Mostra apenas locais que se declaram adaptados a ciclistas</string>
-    <string name="settings_poi_attribution">Dados: DATAtourisme, Licença Aberta Etalab 2.0.</string>
+    <string name="settings_poi_attribution">Dados: DATAtourisme, Licença Aberta Etalab 2.0, e OpenStreetMap, licença ODbL.</string>
+    <string name="settings_clear_poi_cache">Esvaziar a cache dos pontos de interesse</string>
+    <string name="settings_poi_cache_empty">Nenhum local em cache</string>
+    <string name="settings_poi_cache_count">%1$d locais guardados</string>
+    <string name="settings_poi_cache_pinned">%1$d locais levados com uma zona sem ligação são conservados</string>
+    <string name="settings_poi_cache_hint">Os locais vistos uma vez continuam disponíveis sem rede durante uma semana. Esvaziá-los obriga o Trailog a pedi-los de novo, por exemplo se uma ficha estiver errada.</string>
     <string name="poi_from_cache">Últimos pontos conhecidos (offline)</string>
+    <string name="poi_partial">Demasiados locais aqui: não são todos mostrados</string>
     <string name="poi_needs_network">Ligação necessária para carregar os pontos de interesse desta zona</string>
 </resources>

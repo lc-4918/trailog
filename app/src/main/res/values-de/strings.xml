@@ -492,6 +492,11 @@
     <string name="settings_label_off_track_sound">Benachrichtigungston</string>
     <string name="settings_off_track_sound_default">Standard</string>
     <string name="settings_off_track_hint">Die Glocke sitzt unter dem Routenplaner: Sie fragt nach der zu verfolgenden Spur und warnt, sobald Sie davon abweichen. Sie geht nicht ohne den GPS-Standort, der damit ebenfalls eingeschaltet wird.</string>
+    <string name="location_channel_name">Positionsverfolgung</string>
+    <string name="location_notice_title">Positionsverfolgung</string>
+    <string name="location_notice_idle">Die Verfolgung läuft auch bei ausgeschaltetem Bildschirm weiter.</string>
+    <string name="location_notice_following">%1$s - %2$s von der Strecke entfernt</string>
+    <string name="location_notice_stop">Beenden</string>
     <string name="settings_section_route_prefs">Routenvorlieben</string>
     <string name="settings_label_route_ways">Wege</string>
     <string name="settings_label_route_hills">Gelände</string>
@@ -505,6 +510,8 @@
     <string name="route_surface_rough">Unbefestigtes annehmen</string>
     <string name="settings_sw_follow_position">Meiner Position folgen</string>
     <string name="settings_sw_follow_position_sub">Die Karte zentriert 5 s nach der letzten Geste</string>
+    <string name="settings_sw_keep_screen_on">Bildschirm eingeschaltet lassen</string>
+    <string name="settings_sw_keep_screen_on_sub">Nur während der Positionsverfolgung; diese läuft ohnehin bei ausgeschaltetem Bildschirm weiter</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
     <string name="poi_cat_campings">Campingplätze und Stellplätze</string>
     <string name="poi_cat_guesthouses">Gästezimmer</string>
@@ -549,7 +556,13 @@
     <string name="settings_poi_select_all">Alle auswählen</string>
     <string name="settings_poi_bike_only">Nur Fahrradthema</string>
     <string name="settings_poi_bike_only_sub">Zeigt nur Orte, die sich als fahrradfreundlich ausweisen</string>
-    <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0.</string>
+    <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
+    <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>
+    <string name="settings_poi_cache_empty">Keine gespeicherten Orte</string>
+    <string name="settings_poi_cache_count">%1$d gespeicherte Orte</string>
+    <string name="settings_poi_cache_pinned">%1$d mit einem Offline-Gebiet mitgenommene Orte bleiben erhalten</string>
+    <string name="settings_poi_cache_hint">Einmal gesehene Orte bleiben eine Woche lang ohne Netz verfügbar. Das Leeren zwingt Trailog, sie erneut abzufragen, etwa wenn ein Eintrag falsch ist.</string>
     <string name="poi_from_cache">Zuletzt bekannte Punkte (offline)</string>
+    <string name="poi_partial">Zu viele Orte hier: nicht alle werden angezeigt</string>
     <string name="poi_needs_network">Verbindung erforderlich, um Sehenswürdigkeiten dieses Gebiets zu laden</string>
 </resources>

@@ -492,6 +492,11 @@
     <string name="settings_label_off_track_sound">So de notificació</string>
     <string name="settings_off_track_sound_default">Per defecte</string>
     <string name="settings_off_track_hint">La campana apareix sota el càlcul d\'itinerari: demana la traça a seguir i avisa tan bon punt te\'n allunyes. No va sense la localització GPS, que activar-la també mostra.</string>
+    <string name="location_channel_name">Seguiment de posició</string>
+    <string name="location_notice_title">Seguiment de posició</string>
+    <string name="location_notice_idle">El seguiment continua amb la pantalla apagada.</string>
+    <string name="location_notice_following">%1$s - a %2$s del traçat</string>
+    <string name="location_notice_stop">Atura</string>
     <string name="settings_section_route_prefs">Preferències de traçat</string>
     <string name="settings_label_route_ways">Vies</string>
     <string name="settings_label_route_hills">Relleu</string>
@@ -505,6 +510,8 @@
     <string name="route_surface_rough">Acceptar els camins</string>
     <string name="settings_sw_follow_position">Segueix la meva posició</string>
     <string name="settings_sw_follow_position_sub">El mapa es recentra 5 s després de l\'últim gest</string>
+    <string name="settings_sw_keep_screen_on">Mantenir la pantalla encesa</string>
+    <string name="settings_sw_keep_screen_on_sub">Només durant el seguiment de posició; aquest continua igualment amb la pantalla apagada</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
     <string name="poi_cat_campings">Càmpings i àrees d\'autocaravanes</string>
     <string name="poi_cat_guesthouses">Cases d\'hostes</string>
@@ -549,7 +556,13 @@
     <string name="settings_poi_select_all">Selecciona-ho tot</string>
     <string name="settings_poi_bike_only">Només temàtica ciclista</string>
     <string name="settings_poi_bike_only_sub">Només mostra llocs que es declaren adaptats als ciclistes</string>
-    <string name="settings_poi_attribution">Dades: DATAtourisme, Llicència Oberta Etalab 2.0.</string>
+    <string name="settings_poi_attribution">Dades: DATAtourisme, Llicència Oberta Etalab 2.0, i OpenStreetMap, llicència ODbL.</string>
+    <string name="settings_clear_poi_cache">Buida la memòria cau de punts d\'interès</string>
+    <string name="settings_poi_cache_empty">Cap lloc a la memòria cau</string>
+    <string name="settings_poi_cache_count">%1$d llocs desats</string>
+    <string name="settings_poi_cache_pinned">Es conserven %1$d llocs emportats amb una zona fora de línia</string>
+    <string name="settings_poi_cache_hint">Els llocs vistos un cop resten consultables sense xarxa durant una setmana. Buidar-los obliga Trailog a demanar-los de nou, per exemple si una fitxa és errònia.</string>
     <string name="poi_from_cache">Últims punts coneguts (fora de línia)</string>
+    <string name="poi_partial">Massa llocs aquí: no es mostren tots</string>
     <string name="poi_needs_network">Cal connexió per carregar els punts d\'interès d\'aquesta zona</string>
 </resources>

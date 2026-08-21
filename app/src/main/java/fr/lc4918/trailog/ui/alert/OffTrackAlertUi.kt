@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.location.TrackWatch
 
 /**
  * Fond de la banniere d'alerte : le rouge des messages d'erreur, a peine translucide.
@@ -97,7 +98,7 @@ fun OffTrackAlertBar(
 @Composable
 fun TrackChooserDialog(
     candidates: List<TrackCandidate>?,
-    followed: FollowedTrack?,
+    followed: TrackWatch.Followed?,
     imperial: Boolean,
     onPick: (TrackCandidate) -> Unit,
     onStop: () -> Unit,

@@ -52,7 +52,12 @@ fun poiIcon(category: PoiCategory): Int = when (category) {
  * clés stables, enregistrées en base ; l'écran porte des mots, qui changent avec la langue.
  */
 @androidx.compose.runtime.Composable
-fun poiCategoryLabel(category: PoiCategory): String = androidx.compose.ui.res.stringResource(
+fun poiCategoryLabel(category: PoiCategory): String =
+    androidx.compose.ui.res.stringResource(poiCategoryLabelRes(category))
+
+/** La ressource elle-meme, pour qui n'est pas un composable : un lieu sans nom prend celui de sa
+ *  categorie, et ce repli sert aussi hors de l'affichage (historique du planificateur). */
+fun poiCategoryLabelRes(category: PoiCategory): Int =
     when (category) {
         PoiCategory.CAMPINGS -> R.string.poi_cat_campings
         PoiCategory.GUESTHOUSES -> R.string.poi_cat_guesthouses
@@ -82,4 +87,3 @@ fun poiCategoryLabel(category: PoiCategory): String = androidx.compose.ui.res.st
         PoiCategory.TOILETS -> R.string.poi_cat_toilets
         PoiCategory.CANOE -> R.string.poi_cat_canoe
     }
-)

@@ -401,6 +401,14 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             sub = stringResource(R.string.settings_sw_follow_position_sub),
         ) { vm.save(cur.copy(mapFollowPosition = it)) }
         RowDivider()
+        // Au meme endroit que le suivi, dont il ne dit lui aussi que le comportement. Pas de lien croise
+        // avec la localisation : le drapeau n'est pose que pendant le suivi (cf. MainScreen), et ne coute
+        // donc rien capteur eteint.
+        SwitchLine(
+            stringResource(R.string.settings_sw_keep_screen_on), cur.keepScreenOn,
+            sub = stringResource(R.string.settings_sw_keep_screen_on_sub),
+        ) { vm.save(cur.copy(keepScreenOn = it)) }
+        RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
@@ -1267,6 +1275,34 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
                 ) { sauve(filtres.toggleBike(groupe)) }
             }
         }
+    }
+    /*
+     * Vider le cache, sous les categories et non au-dessus : c'est un geste d'entretien, qu'on ne fait pas
+     * en decouvrant l'ecran.
+     *
+     * Le meme gabarit que l'historique du planificateur - un compte, une corbeille, grisee quand il n'y a
+     * rien - et pour la meme raison : ce qui s'inscrit sans qu'on le demande doit pouvoir se retirer. Un
+     * cache de points d'interet garde aussi ce que le service a rendu de FAUX, et rien d'autre ne permet
+     * alors de le forcer a redemander.
+     */
+    val poiEnCache by vm.poiCached.collectAsState()
+    val poiEmportes by vm.poiPinned.collectAsState()
+    SettingsCard {
+        SetRow(
+            stringResource(R.string.settings_clear_poi_cache),
+            sub = if (poiEnCache == 0) stringResource(R.string.settings_poi_cache_empty)
+            else stringResource(R.string.settings_poi_cache_count, poiEnCache),
+            onClick = if (poiEnCache == 0) null else ({ vm.clearPoiCache() }),
+            role = Role.Button,
+        ) {
+            Icon(
+                Icons.Filled.DeleteOutline, null,
+                tint = if (poiEnCache == 0) settingsPalette.subtle else settingsPalette.accent,
+            )
+        }
+        // Ce que le bouton ne touche pas, dit seulement quand il y a quelque chose a ne pas toucher.
+        if (poiEmportes > 0) Hint(stringResource(R.string.settings_poi_cache_pinned, poiEmportes))
+        Hint(stringResource(R.string.settings_poi_cache_hint))
     }
     SettingsCard {
         Hint(stringResource(R.string.settings_poi_attribution))

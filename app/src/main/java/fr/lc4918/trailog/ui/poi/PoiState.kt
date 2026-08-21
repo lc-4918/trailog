@@ -43,11 +43,20 @@ class PoiState {
     var tooFar by mutableStateOf(false)
         private set
 
+    /**
+     * Le zoom est redevenu suffisant : le message se lève **tout de suite**, sans attendre les points.
+     *
+     * Il ne se levait qu'à la publication du chargement, soit une demi-seconde d'attente plus une requête
+     * réseau plus tard. Pendant tout ce temps, l'écran continuait de réclamer un zoom qu'on venait de faire :
+     * on zoomait encore, et encore, croyant n'être jamais assez près.
+     */
+    fun nearEnough() { tooFar = false }
+
     fun toggle() {
         visible = !visible
         if (!visible) {
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null
-            tooFar = false; needsNetwork = false
+            tooFar = false; needsNetwork = false; partial = false
         }
     }
 
@@ -59,6 +68,7 @@ class PoiState {
         loadedFilters = null
         tooFar = false
         needsNetwork = false
+        partial = false
     }
 
     fun select(poi: Poi?) { selected = poi }
@@ -79,22 +89,59 @@ class PoiState {
     var needsNetwork by mutableStateOf(false)
         private set
 
+    /**
+     * Une reponse de plus.
+     *
+     * **N'eteint pas l'attente** : les deux sources publient chacune a son arrivee (cf. `poiStream`), et
+     * couper le rond au premier arrive laisserait croire que tout est la alors que la seconde travaille
+     * encore. C'est [endLoad], appele quand le flux se termine, qui l'eteint.
+     */
+    /**
+     * Une source connaît **plus de lieux qu'elle n'en rend** : ce qu'on affiche n'est qu'une partie, et le
+     * reste est écarté dans un ordre que rien ne fixe.
+     *
+     * Le taire donnait une carte qui avait l'air juste et dont les marqueurs changeaient d'un déplacement au
+     * suivant - un loueur de canoës visible, puis absent, sans explication. C'est le seul des quatre messages
+     * qui parle de ce qu'on ne voit PAS.
+     */
+    var partial by mutableStateOf(false)
+        private set
+
     fun publish(
         box: Bbox, filters: PoiFilters, list: List<Poi>,
-        cache: Boolean = false, offline: Boolean = false,
+        cache: Boolean = false, offline: Boolean = false, incomplete: Boolean = false,
     ) {
         pois = list
-        loaded = box
+        /*
+         * Une emprise incompletement rendue n'est PAS retenue comme chargee.
+         *
+         * Sans cela, la troncature se figeait : la vue suivante etant contenue dans celle-ci, [needsLoad]
+         * repondait non, et zoomer sur un coin d'une zone a trois mille lieux n'en ramenait jamais un seul de
+         * plus - on restait avec les 250 tires au hasard de la vue large, dont une poignee seulement tombe
+         * dans le nouveau cadre. Or c'est exactement le geste qui doit marcher : plus on serre, moins il y a
+         * de lieux, et plus la reponse a de chances d'etre complete.
+         *
+         * Le prix est une requete a chaque geste tant qu'on reste dans une zone trop dense - c'est le prix
+         * juste : on sait qu'on ne montre pas tout.
+         */
+        loaded = if (incomplete) null else box
         loadedFilters = filters
-        loading = false
         tooFar = false
         fromCache = cache
         needsNetwork = offline
+        partial = incomplete
     }
 
-    fun tooFar() { tooFar = true; loading = false; needsNetwork = false }
+    fun tooFar() { tooFar = true; loading = false; needsNetwork = false; partial = false }
 
-    fun failed() { loading = false }
+    /**
+     * Fin d'un chargement qui ne publie rien : vue déjà chargée, abandon, ou geste suivant qui annule
+     * celui-ci.
+     *
+     * Appelé sur **tous** les chemins de sortie, faute de quoi l'attente reste allumée pour toujours - et
+     * le bouton tourne indéfiniment sur une requête qui n'existe plus.
+     */
+    fun endLoad() { loading = false }
 
     /**
      * Faut-il redemander pour [box] ?

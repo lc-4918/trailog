@@ -65,6 +65,24 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun save(s: SettingsEntity) = viewModelScope.launch { db.settings().upsert(s) }
 
+    // ---------- cache des points d'interet ----------
+
+    /** Lieux retenus au fil des deplacements, et lieux emportes avec une zone hors ligne. Les deux se
+     *  disent a l'utilisateur, parce que le bouton n'efface que les premiers. */
+    val poiCached: StateFlow<Int> =
+        db.pois().countCachedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val poiPinned: StateFlow<Int> =
+        db.pois().countPinnedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    /**
+     * Vide le cache des points d'interet, les lieux emportes exceptes.
+     *
+     * Sans confirmation : ce qui part se refait a la premiere zone survolee avec du reseau, et demander
+     * "etes-vous sur" pour une donnee qui repousse seule serait du ceremonial. Ce qui ne repousse pas -
+     * les lieux emportes - n'est justement pas touche.
+     */
+    fun clearPoiCache() = viewModelScope.launch { db.pois().clearUnpinned() }
+
     // ---------- sauvegarde et restauration ----------
 
     /**
