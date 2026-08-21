@@ -30,10 +30,16 @@ ménager. Cela explique plusieurs choix qui seraient discutables ailleurs.
 dossiers, on les regarde sur une carte avec un profil altimétrique synchronisé, et on emporte le tout
 hors ligne.
 
-**N'est pas** : un enregistreur GPS, un éditeur de traces, un service en ligne. Il n'y a ni compte, ni
-synchronisation, ni télémétrie. Tout vit sur l'appareil.
+**N'est pas** : un enregistreur GPS, un service en ligne. Il n'y a ni compte, ni synchronisation, ni
+télémétrie. Tout vit sur l'appareil.
 
-Le dessin à la main et le suivi GPS temps réel étaient explicitement hors périmètre au démarrage
+**Est devenu**, en cours de route, un retoucheur de traces : couper, joindre, fusionner, inverser un
+segment désigné du doigt (cf. [`SPEC.md`](SPEC.md#6-bis-retoucher-une-trace)). C'était un non-objectif au
+démarrage, et la nuance vaut d'être dite - retoucher ce qu'on a importé n'est pas le dessiner : il faut
+une trace pour commencer, l'outil ne fabrique rien à partir de rien, et la fonction reste **absente par
+défaut**. Elle s'allume dans les réglages, comme tout ce qui détourne les taps de la carte.
+
+Le dessin à la main et le suivi GPS temps réel, eux, étaient explicitement hors périmètre au démarrage
 (cf. [`SPEC.md`](SPEC.md#1-périmètre)) et le restent.
 
 ## Les contraintes qui expliquent tout le reste
