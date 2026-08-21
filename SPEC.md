@@ -87,6 +87,12 @@ La force de l'ombrage se règle dans sa fiche.
 - Bouton *Importer* -> sélecteur de fichiers -> lecture GPX / GeoJSON / KML / KMZ -> aperçu (nom,
   distance, D+/D-, présence d'altitude et d'horodatage) -> choix de la destination.
 - Destination : dossier existant, ou nouveau dossier (racine ou sous-dossier).
+- **Ouvrir un fichier depuis ailleurs** : Trailog figure dans le "Ouvrir avec" et le "Partager vers" du
+  téléphone pour un GPX, un KML, un KMZ ou un GeoJSON. Un fichier reçu par courriel, posé dans un
+  gestionnaire de fichiers ou téléchargé par le navigateur s'importe donc sans passer par le bouton, et
+  plusieurs d'un coup si l'on en partage plusieurs. Le chemin est ensuite le même que celui du bouton :
+  l'application demande le dossier d'accueil, puis ouvre le menu sur l'import en cours - la couche arrive
+  dans un dossier que rien à l'écran ne montrerait autrement. Renoncer au dossier renonce à l'import.
 - Les **photos des waypoints GPX** (OruxMaps, OsmAnd, Locus, Garmin) sont récupérées et copiées dans le
   stockage de l'application.
 - **Altimétrie manquante** (réglage, désactivé par défaut) : un fichier sans altitude en reçoit une, tirée
@@ -391,6 +397,20 @@ rouvrir le planificateur ne doit pas ressortir le trajet précédent.
 
 ## 14 bis. Pendant la sortie
 
+**Le suivi ne s'arrête pas avec l'écran.** Tant que la position est allumée, elle continue d'être reçue
+l'écran éteint, l'application en arrière-plan, le téléphone en poche - c'est là que le suivi sert, et il
+s'arrêtait jusqu'ici à la première mise en veille. Une **notification permanente** l'annonce, dit l'écart à
+la trace suivie quand il y en a une, et porte un bouton d'arrêt ; le bouton de position de la carte reste le
+second. Le suivi s'arrête aussi de lui-même si la localisation est éteinte dans le téléphone, ou si
+l'application est balayée des tâches récentes : c'est une fonction de l'application, pas un agent qui lui
+survit.
+
+**Garder l'écran allumé** est un réglage à part (onglet Carte, éteint par défaut), et il ne sert plus à ce
+qu'on croit : le suivi n'en a plus besoin pour vivre. Il sert à garder la carte **lisible** - téléphone sur
+un guidon, consulté d'un coup d'oeil sans y toucher toutes les minutes. Le drapeau n'est posé que **pendant
+le suivi** : allumer indéfiniment l'écran de qui consulte ses traces chez lui n'aurait aucun sens, et
+l'écran se rendort dès que la position s'arrête.
+
 Le point courant du profil se déplace **de façon continue** le long du parcours : il se pose entre deux
 sommets, à l'endroit exact visé, et non d'échantillon en échantillon comme avant.
 
@@ -433,8 +453,21 @@ lui-même si le capteur s'éteint ou si la trace quitte la carte.
 
 ## 14 ter. Points d'intérêt
 
-Une couche de **points d'intérêt touristiques** se pose sur la carte, tirée de **DATAtourisme**, la base
-publique française (Licence Ouverte Etalab 2.0, mention dans l'onglet Trajets). Son bouton n'apparaît sur
+Une couche de **points d'intérêt** se pose sur la carte, tirée de **deux sources** : **DATAtourisme**, la
+base publique française du tourisme (Licence Ouverte Etalab 2.0), et **OpenStreetMap** (licence ODbL), toutes
+deux mentionnées dans l'onglet Trajets.
+
+**Qui répond, et où.** Hors de France, DATAtourisme n'a rien à dire : OpenStreetMap répond seul, pour toutes
+les catégories cochées. En France, DATAtourisme garde le tourisme - qu'il décrit mieux et illustre de photos -
+et OpenStreetMap ne complète que le groupe *pratique*, celui des services. Le partage n'a rien d'arbitraire :
+sur un écran de carte autour de Grenoble, DATAtourisme rend 49 hôtels contre 38 à OSM, mais **zéro** point
+d'eau, zéro toilettes publiques, zéro aire de pique-nique et zéro borne de recharge, là où OSM en porte
+plusieurs centaines. Un même lieu connu des deux ne paraît qu'une fois. Un groupe limité au thème vélo, lui,
+reste à DATAtourisme où qu'on soit : OpenStreetMap ne porte pas l'équivalent de ce thème, et montrer des
+hébergements quelconques sous un filtre "vélo" serait promettre ce qu'on ne sait pas.
+
+Un lieu d'OpenStreetMap n'a **pas toujours de nom** - une fontaine ou des toilettes n'en portent presque
+jamais - et son infobulle prend alors le nom de sa catégorie. Son bouton n'apparaît sur
 la carte que si un réglage l'y met - comme la recherche de lieu ou la mesure : c'est une commande qui
 s'ajoute volontairement, et elle interroge un service tiers à chaque déplacement de carte.
 
@@ -454,11 +487,24 @@ remplissent le planificateur et l'ouvrent. **Ouvrir l'infobulle suffit** à insc
 l'historique du planificateur (section 14), sans attendre l'une des trois : on regarde d'abord, on compose
 ensuite, parfois bien plus tard.
 
+**Les sources sont interrogées en parallèle, et chacune s'affiche dès qu'elle répond.** DATAtourisme rend en
+une seconde ; OpenStreetMap est découpé **par groupe** - hébergement, restauration, loisirs, pratique - et
+chaque groupe part de son côté. Mesuré sur une ville dense : trois secondes pour les hôtels et les
+restaurants, seize pour les loisirs, vingt-trois pour les services, là où une requête unique mettait trente
+secondes sans rien montrer avant la fin. Le bouton de la couche porte l'attente : son pictogramme cède la
+place à un rond qui tourne tant qu'une source travaille.
+
 Le chargement suit la carte : les lieux de la **zone visible**, un demi-instant après le dernier geste, et
 rien de redemandé tant que la vue reste dans ce qui a déjà été chargé. En deçà d'un certain zoom, rien n'est
-demandé du tout - l'écran porterait des milliers de lieux dont le service ne rendrait que les cent premiers,
-pris au hasard - et la carte le dit. **Ce message-là se tape**, et amène la carte au zoom minimum qui
-charge, autour du centre courant : une consigne qu'on peut exécuter soi-même est une consigne de trop.
+demandé du tout - l'écran porterait des milliers de lieux dont le service ne rendrait qu'une poignée, prise
+au hasard - et la carte le dit. **Au-dessus de ce zoom, si une source connaît plus de lieux qu'elle n'en
+rend, la carte le dit aussi** : le taire donnait un affichage qui avait l'air juste et dont les marqueurs
+changeaient d'un déplacement au suivant. Une emprise ainsi tronquée n'est **pas** retenue comme chargée :
+tout geste la redemande, zoom compris - et c'est justement le zoom qui rend la réponse complète, puisqu'il
+resserre le cadre. **Ce message-là se tape**, et amène la carte au zoom minimum qui
+charge, autour du centre courant : une consigne qu'on peut exécuter soi-même est une consigne de trop. Il
+disparaît **dès que le zoom est suffisant**, sans attendre les points : le laisser pendant le chargement
+faisait zoomer encore et encore, croyant n'être jamais assez près.
 Il porte pour cette raison la couleur des commandes, là où les deux autres messages du même bandeau - pas
 de réseau, points du cache - restent en texte ordinaire : ce sont des constats, que rien ni personne ne
 lève d'un doigt. Ce qui a été vu une fois est **gardé une semaine** : sans réseau, la
@@ -472,6 +518,12 @@ manquait pour tenir la promesse du hors-ligne : le cache ordinaire ne retient qu
 l'endroit où elle sert le plus. Chercher un point d'eau à 18 h dans une vallée sans réseau est exactement le
 cas d'usage.
 
+**Le cache se vide à la demande**, sous les catégories dans *Réglages / Trajets* : il porte le compte des
+lieux retenus et la corbeille qui les efface. C'est ce qui manquait quand une source rend une fiche fausse -
+rien ne permettait alors de la forcer à redemander, et il fallait attendre la semaine de péremption. Les
+lieux **emportés** avec une zone hors ligne, eux, ne sont pas touchés, et l'écran le dit : un cache se refait
+tout seul à la première zone survolée avec du réseau, une provision non.
+
 Ces lieux-là sont **marqués** et échappent au ménage hebdomadaire : une zone emportée pour un séjour de
 quinze jours se viderait sinon au huitième, sans réseau pour la refaire. Le semis a lieu après les tuiles et
 seulement si elles ont abouti ; s'il échoue, la carte reste acquise et l'écran de fin le dit en une ligne,
@@ -481,7 +533,8 @@ sans se transformer en erreur.
 
 Quatre onglets :
 
-- **Carte** : boutons affichés sur la carte, échelle, rotation, alerte d'éloignement (son bouton, l'écart
+- **Carte** : boutons affichés sur la carte, échelle, rotation, suivi de la position et écran maintenu
+  allumé pendant celui-ci, alerte d'éloignement (son bouton, l'écart
   qui la déclenche, son son), repère de position, gestionnaire de fonds,
   marqueurs et infobulles, apparence du profil. Quatre boutons sont posés sur la carte **par défaut** : le burger, le
   GPS, le gestionnaire de fonds et le planificateur - plus le fond blanc translucide qui les porte. La
@@ -489,7 +542,8 @@ Quatre onglets :
   sont pas : ce sont celles qui s'ajoutent volontairement.
 - **Tuiles** : fond par défaut, catalogue des fournisseurs et composites, import/export
   (cf. [`BASEMAPS.md`](BASEMAPS.md)).
-- **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, calcul du profil, et
+- **Trajets** : URL du géocodeur, URL du moteur d'itinéraire, discipline par défaut, catégories de points
+  d'intérêt et vidage de leur cache, calcul du profil, et
   le complètement de l'altimétrie manquante avec ses deux services (cf. section 6).
 - **Système** : dossiers d'import et des MBTiles, **sauvegarde et restauration**, menu latéral, tolérances
   de tap, simplification du rendu,

@@ -61,17 +61,23 @@ sans dépendre d'un service en ligne.
 - **Carte native** (MapLibre) avec de nombreux fonds de carte configurables (OpenStreetMap,
   IGN, relief, pistes cyclables, fonds composites associant un fond et une surcouche).
 - **Import de traces** au format **GPX**, **GeoJSON** et **KML/KMZ**, avec calcul automatique
-  des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement).
+  des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement). Par le bouton
+  *Importer*, ou directement depuis une autre application : Trailog apparaît dans le **"Ouvrir avec"** et
+  le **"Partager vers"** du téléphone, pour un fichier reçu par courriel, téléchargé ou posé dans un
+  gestionnaire de fichiers.
 - **Profil altimétrique** natif, synchronisé avec un curseur sur la carte, avec zoom sur une
   portion du parcours et échelle verticale réglable.
 - **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires,
   et donner d'un coup la même couleur à toutes les traces d'un dossier.
 - **Points d'intérêt** : marqueurs avec infobulles que vous pouvez modifier (titre, texte,
   liens, photos), y compris les photos des waypoints GPX de votre téléphone.
-- **Points d'intérêt touristiques** (à activer dans les réglages) : hébergements, restaurants,
-  loisirs et services le long du parcours, tirés de **DATAtourisme**. Filtrables par catégorie, avec
-  photo et lien vers le site du lieu, et trois gestes pour en faire un départ, une arrivée ou une
-  étape. Ce qui a été vu une fois reste consultable sans réseau.
+- **Points d'intérêt du parcours** (à activer dans les réglages) : hébergements, restaurants,
+  loisirs et services, tirés de **DATAtourisme** en France et d'**OpenStreetMap** partout - y compris,
+  donc, hors de France. Filtrables par catégorie, avec photo et lien vers le site du lieu, et trois gestes
+  pour en faire un départ, une arrivée ou une étape. OpenStreetMap apporte en France ce que la base
+  touristique ignore : les points d'eau, les toilettes, les aires de pique-nique, les bornes de recharge et
+  les réparateurs de vélos. Ce qui a été vu une fois reste consultable sans réseau, et *Réglages / Trajets*
+  vide ce cache d'un bouton si une fiche vous paraît fausse.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache. Une case permet d'emporter
   aussi les **points d'intérêt** de la zone : ils resteront consultables là où il n'y a pas de signal.
@@ -97,6 +103,11 @@ sans dépendre d'un service en ligne.
 - **Alerte d'éloignement** (à activer dans les réglages) : choisissez la trace que vous suivez parmi
   les plus proches de vous, et Trailog vous prévient - bandeau en bas de l'écran, et son au choix -
   dès que vous vous en écartez de plus que la distance réglée.
+- **Le suivi continue écran éteint** : une fois la position allumée, elle est suivie même l'application
+  fermée et le téléphone en poche - c'est là que l'alerte d'éloignement sert. Une notification permanente
+  vous le rappelle, dit votre écart à la trace suivie, et permet de tout arrêter d'un tap. Un réglage
+  permet aussi de **garder l'écran allumé** pendant le suivi, pour lire la carte sur un guidon sans y
+  toucher : c'est un confort, plus une nécessité.
 - **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
 - **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
   catalan, basque, italien et portugais.
@@ -208,6 +219,14 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   points concernés (dont votre position GPS si vous la demandez depuis celle-ci) au service
   d'itinéraire. La recherche par le nom est **désactivée par défaut**, et les deux services visés sont
   configurables : vous pouvez héberger les vôtres.
+- La **couche des points d'intérêt**, quand vous l'allumez, demande à ses deux sources - DATAtourisme et
+  OpenStreetMap - les lieux de la zone que vous regardez, et rien d'autre : ni qui vous êtes, ni où vous
+  êtes. Elle est **éteinte par défaut**, et ne redemande rien tant que la carte reste dans ce qui a déjà
+  été chargé.
+- Le **suivi de position** ne quitte jamais l'appareil : ni enregistré, ni envoyé, ni conservé une fois le
+  suivi arrêté. Il tourne dans un service que sa notification annonce en permanence, et que vous arrêtez
+  d'un tap. Trailog ne demande pas l'autorisation de localisation en arrière-plan : le suivi ne démarre
+  jamais que d'un geste de votre part.
 - La **mesure sur une trace**, elle, ne sort pas du téléphone : elle se lit sur la trace que vous avez
   importée, et n'interroge aucun service.
 

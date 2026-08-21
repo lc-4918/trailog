@@ -8,6 +8,7 @@ chiffre qu'elle affiche.
 - [Ce que couvre chaque niveau](#ce-que-couvre-chaque-niveau)
 - [Couverture mesurée](#couverture-mesurée)
 - [Tests unitaires](#tests-unitaires)
+- [Tests d'interface](#tests-dinterface)
 - [Ce que les tests ont révélé](#ce-que-les-tests-ont-révélé)
 - [Pièges de l'infrastructure](#pièges-de-linfrastructure)
 
@@ -21,20 +22,28 @@ chiffre qu'elle affiche.
 
 ## Ce que couvre chaque niveau
 
-L'application fait 16494 lignes, dont **9807 (59 %) dans des fichiers `@Composable`**. Ces lignes sont
-hors d'atteinte d'un test unitaire JVM par construction : elles n'existent qu'à l'exécution, dans un
-arbre de composition. Viser 90 % avec des tests unitaires est donc arithmétiquement impossible. La
+L'application fait 26031 lignes, dont **13683 (53 %) dans des fichiers `@Composable`**. Ces lignes-là
+n'existent qu'à l'exécution, dans un arbre de composition : aucun test de logique ne les atteint. La
 répartition est la suivante.
 
 | Niveau | Périmètre | Où |
 |---|---|---|
 | **Unitaire** | logique pure et logique dépendante d'Android (parsing, base, style, calculs) | `app/src/test/` |
-| **Instrumentation** | composants Compose isolés, base sur un vrai SQLite | `app/src/androidTest/` |
+| **Interface** | composables isolés, joués dans une vraie composition | `app/src/test/` (`*UiTest`) |
+| **Instrumentation** | base sur un vrai SQLite | `app/src/androidTest/` |
 | **e2e** | parcours utilisateur complets, application réelle | `app/src/androidTest/` |
 
 Les tests unitaires tournent sur la JVM. Ceux qui touchent au framework Android (`android.util.Xml`,
 `org.json`, Room, `SharedPreferences`) passent par **Robolectric**, qui en fournit une implémentation
 sur la JVM. Ceux qui n'en ont pas besoin s'en passent : ils sont plus rapides.
+
+**Les tests d'interface tournent là aussi**, et non sur un appareil. Le choix a deux raisons. La CI
+n'a pas d'émulateur - un test qui n'y tourne pas ne garde rien -, et un développeur seul ne branche pas
+un téléphone pour valider une infobulle. `createComposeRule()` compose donc pour de vrai sous
+Robolectric : les taps, le focus et les recompositions sont ceux de l'appareil. La contrepartie est
+nette et il faut la connaître : **rien de ce qui touche MapLibre ne peut être composé ici**, ses
+bibliothèques natives ne se chargeant pas sur la JVM (cf. les pièges plus bas). L'écran principal, qui
+porte la carte, reste donc hors d'atteinte ; ses composables, eux, s'appellent un par un.
 
 ## Couverture mesurée
 
@@ -47,38 +56,46 @@ Chiffres réels, produits par Jacoco, non estimés.
 | `data` (LocalePrefs) | 26/26 | 100 % |
 | `data/backup` | 62/62 | 100 % |
 | `elevation` | 214/221 | 97 % |
-| `domain/model` | 220/228 | 96 % |
-| `data/imp` | 182/199 | 91 % |
+| `domain/model` | 257/266 | 97 % |
+| `data/imp` | 199/216 | 92 % |
 | `domain/geo` | 275/302 | 91 % |
 | `routing` | 253/309 | 82 % |
 | `geocode` | 48/67 | 72 % |
-| `data/db` | 236/353 | 67 % |
-| `poi` | 65/100 | 65 % |
-| `map` (StyleBuilder) | 121/189 | 64 % |
-| `data/repo` | 303/618 | 49 % |
-| `update` | 29/132 | 22 % |
-| `map/offline` | 76/349 | 22 % |
+| `ui/alert` | 65/97 | 67 % |
+| `data/db` | 240/360 | 67 % |
+| `poi` | 129/195 | 66 % |
 | `ui/edit` | 63/96 | 66 % |
-| `ui/mappoint` | 56/140 | 40 % |
-| `ui/poi` | 48/210 | 23 % |
-| `ui/planner` | 59/427 | 14 % |
-| `ui/geocode` | 18/146 | 12 % |
-| `ui/points` | 54/495 | 11 % |
-| `ui/profile`, `ui/measure`, `ui/offline`, `ui/components` | 74/1711 | 4 % |
-| `ui/routes`, `ui/settings`, `ui/alert`, `ui/nav`, `ui/theme` | 66/4919 | 1 % |
-| racine (`MainActivity`, `TrailogApp`) | 0/32 | 0 % |
+| `map` (StyleBuilder) | 121/189 | 64 % |
+| `ui/poi` | 121/199 | 61 % |
+| `ui/planner` | 253/436 | 58 % |
+| `data/repo` | 303/618 | 49 % |
+| `ui/mappoint` | 56/139 | 40 % |
+| `ui/geocode` | 49/174 | 28 % |
+| `update` | 29/132 | 22 % |
+| `map/offline` | 76/350 | 22 % |
+| `location` | 31/173 | 18 % |
+| `ui/points` | 77/495 | 16 % |
+| `ui/profile` | 29/301 | 10 % |
+| `ui/measure` | 9/100 | 9 % |
+| `ui/components` | 68/1049 | 7 % |
+| `ui/offline` | 9/283 | 3 % |
+| `ui/settings` | 37/1727 | 2 % |
+| `ui/routes` | 44/3113 | 1 % |
+| `ui/nav`, `ui/theme`, racine (`MainActivity`, `TrailogApp`) | 0/63 | 0 % |
 
-Les paquets `ui` les mieux couverts le sont par leur **logique extraite** - placement d'infobulle,
-transitions d'état, règles de chargement - et non par leurs composables, qui restent hors d'atteinte.
+Les quatre paquets `ui` de tête - `alert`, `poi`, `planner`, `edit` - le doivent à deux choses : leur
+**logique extraite** (placement d'infobulle, transitions d'état, règles de chargement), et depuis peu
+leurs **tests d'interface**, qui atteignent enfin les composables eux-mêmes. `ui/planner` est passé de
+14 à 58 %, `ui/poi` de 23 à 61 %, sans qu'une ligne de production change.
 
 | Ensemble | Couvert | % |
 |---|---|---|
-| **Hors UI** (cible des tests unitaires) | 2232/3309 | **67,5 %** |
-| UI Compose (cible de l'instrumentation) | 438/8144 | 5,4 % |
-| **Total du code source** | 2670/11453 | **23,3 %** |
+| **Hors UI** (cible des tests unitaires) | 2385/3645 | **65,4 %** |
+| UI Compose | 880/8235 | 10,7 % |
+| **Total du code source** | 3265/11880 | **27,5 %** |
 
-Le chiffre à retenir est **67,5 %**, celui du code que les tests unitaires peuvent atteindre. Le total
-de 23,3 % ne dit rien de la qualité des tests : il mesure surtout la part de Compose dans l'app.
+Le chiffre à retenir reste celui du code que les tests de logique peuvent atteindre. Le total ne dit
+rien de la qualité des tests : il mesure surtout la part de Compose dans l'application.
 
 Les paquets encore bas sont `map/offline` (le moteur de téléchargement, qui parle réseau et SQLite) et
 `update` (DownloadManager et installateur système). Les deux relèvent de l'instrumentation plus que du
@@ -86,7 +103,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**659 tests, 61 fichiers**, tous verts.
+**755 tests, 71 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -164,6 +181,7 @@ planificateur de s'ouvrir. Mieux vaut perdre l'historique que le trajet.
 |---|---|---|
 | `LayerImporterTest` | 19 | parsing GPX, KML, KMZ et GeoJSON ; fichiers refusés ; fichiers vides |
 | `PropertyDetectorTest` | 11 | détection texte / lien / image des propriétés importées |
+| `ImportInboxTest` | 8 | fichiers reçus d'une autre application : où lire l'URI, et ne l'importer qu'une fois |
 
 `LayerImporterTest` s'appuie sur de **vrais exports** placés dans `app/src/test/resources/fichiers/`
 (Wikiloc, OruxMaps, Locus, Google Earth), et non sur des extraits fabriqués : c'est la seule façon
@@ -216,7 +234,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 53 | les migrations, et les défauts d'une installation neuve |
+| `MigrationsTest` | 55 | les migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.
@@ -378,8 +396,13 @@ des sous-dossiers d'une autre couleur.
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `DatatourismeTest` | 18 | requête et lecture de la réponse de DATAtourisme, table des 27 catégories |
+| `OverpassTest` | 13 | requête et lecture de la réponse d'OpenStreetMap, la seconde source |
+| `PoiSourcesTest` | 16 | qui répond où, pour quelles catégories, le découpage par groupe et la réunion des réponses |
+| `PoiStreamTest` | 12 | l'ordre d'affichage des sources, et l'aveu d'un affichage partiel |
 | `PoiFiltersTest` | 13 | ce qu'on coche, ce que le service reçoit, et la forme enregistrée |
 | `PoiLoadingTest` | 15 | quand redemander, et ce que la carte dit quand elle ne peut rien montrer |
+| `PoiStateTest` | 7 | le message de zoom, l'attente, et ce qu'une emprise tronquée doit redemander |
+| `PoiCategoryTest` | 9 | à quelle catégorie revient un lieu qui en porte plusieurs |
 
 Ces trois-là gardent une fonction dont **aucune faute ne se voit** : un filtre mal traduit, une condition mal
 écrite ou un chemin de champ inexact ne lèvent rien - ils rendent zéro point d'intérêt, et une carte sans
@@ -395,9 +418,54 @@ essai, sans le moindre message.
 venir un dépassement de quota. La plus importante n'est pas le délai d'attente mais la comparaison
 d'emprises : tant que la vue reste dans ce qui a été chargé, il n'y a rien à redemander.
 
+`OverpassTest` fait pour la seconde source ce que le premier fait pour DATAtourisme, et les deux fautes
+muettes y sont symétriques : l'emprise s'écrit `(sud,ouest,nord,est)`, soit **l'inverse** de l'ordre de
+l'autre service, et une surface dessinée en contour n'a de coordonnées que dans son `center`. Chacune, prise
+seule, rend une carte vide sans lever.
+
+`PoiSourcesTest` garde la règle de partage : hors de France, OpenStreetMap répond seul ; en France, il ne
+complète que les services du terrain, le tourisme restant à la base qui l'illustre de photos. Il verrouille
+aussi la réunion des deux réponses - un même lieu connu des deux bases n'est jamais pointé au même mètre, et
+deux marqueurs superposés se recouvrent sans qu'on puisse ouvrir celui du dessous.
+
+`PoiCategoryTest` part d'un cas relevé sur le terrain : des toilettes publiques affichées en "Campings et
+aires de camping-car" (Souillac, 46). Leurs huit classes réelles sont recopiées dans le test, et il
+verrouille les deux moitiés de la règle - le groupe pratique passe devant, **et un hôtel-restaurant reste un
+hôtel**, ce qu'une priorité plus large aurait cassé.
+
+`PoiStreamTest` garde ce qu'aucune liste finale ne montre : l'**ordre d'affichage**. Deux sources bidon dont
+on choisit l'ordre d'arrivée suffisent à vérifier que chacune publie dès qu'elle répond, que la lente
+n'efface pas la rapide, que chaque réponse est mise au cache sans attendre l'autre, et qu'une émission a
+lieu même quand il n'y a rien - c'est elle qui apprend à l'écran que l'emprise est chargée. Depuis le
+découpage d'OpenStreetMap par groupe, il verrouille aussi que le **même objet rendu par deux groupes** ne
+pose qu'un marqueur, et toujours sous la même catégorie : un hôtel-restaurant répond à la requête des
+hébergements comme à celle de la restauration, et doit rester un hôtel que l'une ou l'autre réponde
+d'abord. Et il verrouille l'**aveu d'un affichage partiel** : une source qui bute sur son plafond le dit,
+le drapeau ne se défait pas à la réponse suivante, et une zone bien rendue ne l'allume jamais.
+
+`PoiStateTest` verrouille trois états qui se ressemblent à l'écran et ne veulent pas dire la même chose :
+trop loin, en train de charger, chargé. Les deux transitions signalées comme trompeuses à l'usage y sont :
+le message de zoom se lève **avant** les points, et l'attente survit à la **première** source.
+
 `PoiFiltersTest` verrouille un choix qui se lit mal dans le code : ce sont les catégories **masquées** qui
 sont enregistrées. Un réglage vierge montre alors tout, et une catégorie ajoutée par une version ultérieure
 apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur aille la chercher.
+
+### `location` - suivi de position
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `TrackWatchTest` | 9 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme |
+
+Cet état vit **hors de l'écran** depuis que le suivi tourne dans un service de premier plan : c'est lui, et
+non la composition, qui décide qu'il faut sonner. Une faute ici ne se voit pas à l'écran - elle se constate
+à dix kilomètres, quand rien n'a prévenu.
+
+Deux règles y sont plus fines qu'il n'y paraît. La **zone morte** : l'alerte se déclenche à l'écart réglé et
+ne se lâche qu'à 80 % de celui-ci, sans quoi une position qui oscille autour du seuil - le lot d'un GPS de
+téléphone sous couvert - rallumerait la bannière et son son toutes les deux secondes. Et l'**annonce unique** :
+seule l'entrée en alerte se signale, le retour sous le seuil réarmant la suivante. Le son dit un
+franchissement ; il ne sonne pas tant qu'on est loin.
 
 ### `geocode` - recherche de lieu
 
@@ -564,6 +632,34 @@ avant correction - **trois APK, 176 Mo**, près de trois fois le poids de l'appl
 version abandonnée. Le test garde aussi ce qu'on ne doit **pas** supprimer : les fichiers de
 l'utilisateur, et le téléchargement d'une version plus récente pas encore installée.
 
+## Tests d'interface
+
+**20 tests, 3 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
+autres dans `app/src/test/`, joués par Robolectric sur la JVM (le pourquoi est plus haut).
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `PoiBubbleUiTest` | 6 | l'infobulle d'un point d'intérêt : nom, catégorie, les trois actions d'itinéraire, le lieu sans nom |
+| `OffTrackAlertUiTest` | 9 | la bannière d'alerte et le choix de la trace à suivre |
+| `RoutePlannerBandUiTest` | 5 | la bande du planificateur, dont le retour sur une étape déjà remplie |
+
+`RoutePlannerBandUiTest` existe **à cause d'un plantage** : toucher le champ de départ d'un itinéraire
+calculé fermait l'application, net. Une étape remplie n'affiche pas son champ mais un cadre, qui demandait
+le focus à un champ non composé - le `FocusRequester` n'avait aucun noeud à saisir et levait. Aucun test de
+logique ne pouvait voir cela : la faute n'était ni dans l'état, ni dans le calcul, mais dans l'**ordre de
+composition**. C'est ce qu'un test d'interface attrape, et lui seul.
+
+`PoiBubbleUiTest` garde le cas devenu courant depuis qu'OpenStreetMap complète la couche : un lieu **sans
+nom**. Une fontaine ou des toilettes n'en portent presque jamais, et ce sont justement les lieux qu'on
+cherche - l'infobulle prend alors le nom de la catégorie plutôt que de s'ouvrir sur un titre vide.
+
+`OffTrackAlertUiTest` couvre l'autre moitié de l'alerte, celle que `TrackWatchTest` n'atteint pas : que la
+distance et le nom de la trace arrivent bien sous les yeux, dans les unités réglées, et que les gestes de la
+boîte de dialogue mènent où ils annoncent.
+
+Ce qui reste hors d'atteinte : l'écran principal lui-même, qui porte la `MapView`. Ses composables
+s'appellent un par un, mais l'assemblage - la carte, ses gestes, ses couches - demande un appareil.
+
 ## Ce que les tests ont révélé
 
 Écrire ces tests a mis au jour trois choses.
@@ -592,7 +688,8 @@ Trois réglages, sans lesquels rien ne fonctionne.
 **`robolectric.properties`** (`app/src/test/resources/`) impose une `Application` neutre. La vraie
 (`TrailogApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas sur
 la JVM : tous les tests Robolectric échouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
-besoin de la carte.
+besoin de la carte - et c'est la même limite qui borne les tests d'interface : un composable qui embarque
+une `MapView` ne peut pas être joué ici, quelle que soit l'`Application`.
 
 **`isIncludeNoLocationClasses`** (`app/build.gradle.kts`) rend visibles à Jacoco les classes chargées
 par Robolectric. Sans lui, le rapport annonce 0 % sur du code pourtant couvert.

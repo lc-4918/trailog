@@ -39,8 +39,11 @@ démarrage, et la nuance vaut d'être dite - retoucher ce qu'on a importé n'est
 une trace pour commencer, l'outil ne fabrique rien à partir de rien, et la fonction reste **absente par
 défaut**. Elle s'allume dans les réglages, comme tout ce qui détourne les taps de la carte.
 
-Le dessin à la main et le suivi GPS temps réel, eux, étaient explicitement hors périmètre au démarrage
-(cf. [`SPEC.md`](SPEC.md#1-périmètre)) et le restent.
+Le dessin à la main et l'**enregistrement** d'une trace, eux, étaient explicitement hors périmètre au
+démarrage (cf. [`SPEC.md`](SPEC.md#1-périmètre)) et le restent. La position, elle, est bien suivie en temps
+réel depuis longtemps - le repère, l'alerte d'éloignement, le restant du profil - et depuis peu hors de
+l'écran, dans un service qui survit à sa mise en veille : c'est ce qui manquerait à un enregistreur si l'on
+en voulait un un jour, mais l'application n'écrit toujours rien de ce qu'elle reçoit.
 
 ## Les contraintes qui expliquent tout le reste
 
@@ -109,6 +112,23 @@ lancement les ressusciterait ou écraserait ses modifications.
 **Conséquence à connaître** : ajouter un fond à `Providers.defaults()` ne suffit pas. Il n'apparaîtra
 que sur une installation neuve. Pour une base déjà en place, il faut l'insérer par une migration
 (cf. la 18-19, qui ajoute le fond AF3V).
+
+### L'import entre aussi par une intention
+
+Le sens sortant existait depuis longtemps - partager une trace en GPX -, mais l'entrant passait
+obligatoirement par le bouton *Importer* : un GPX reçu par courriel ne pouvait pas s'ouvrir dans Trailog.
+Le manifeste déclare donc les filtres qui font apparaître l'application dans le "Ouvrir avec" et le
+"Partager vers".
+
+Deux filtres et non un, parce que les fournisseurs de fichiers ne s'accordent pas : les uns annoncent un type
+MIME propre, les autres retombent sur `application/octet-stream` ou `text/xml` et ne laissent que l'extension
+pour trancher. Le second n'est délibérément **pas** un `*/*` général : sans son `pathPattern`, Trailog se
+proposerait pour tout fichier du téléphone.
+
+Deux conséquences à connaître. L'activité passe en `singleTask` : sans cela, un fichier ouvert pendant que
+l'application tourne empilerait une seconde instance, carte et position recréées à côté de celles qui
+tournent déjà. Et l'intention est **marquée une fois lue** (`data/imp/ImportInbox`) : l'activité la relit à
+chaque recréation, et une rotation d'écran aurait réimporté le même fichier.
 
 ### Version dérivée du tag git
 
@@ -227,11 +247,102 @@ hébergement en France entière. Le seul signal vélo que portent les services e
 et c'est lui que l'application propose, sous ce nom-là plutôt que sous une marque qu'elle ne peut pas
 garantir.
 
+**Un lieu porte huit classes, et l'hébergement colle à tout.** Des toilettes publiques y sont
+`PublicLavatories`, mais aussi `CampingAndCaravanning`, `CamperVanArea`, `Accommodation` et
+`LodgingBusiness` - et comme la catégorie retenue était la première de l'énumération qui reconnaissait une
+classe, elles s'affichaient en "Campings et aires de camping-car". **57 des 250 toilettes** relevées en
+France entière, soit près d'une sur quatre. Le groupe *pratique* passe donc devant les autres au moment de
+trancher (`PoiCategory.ORDRE_DE_RESOLUTION`), et **seulement lui** : sur 250 lieux de chaque sorte, aucun
+musée, camping ou restaurant ne porte de classe pratique, si bien que ce groupe ne peut voler personne. Une
+priorité plus large ferait des dégâts - **117 hôtels sur 250** portent une classe de restauration, et
+passer la restauration devant l'hébergement afficherait la moitié des hôtels en restaurants.
+
 **Ses 384 classes ne sont pas des catégories.** Un même lieu en porte plusieurs - un hôtel-restaurant est
 `Hotel`, `Restaurant`, `Accommodation` et `LodgingBusiness` - et personne ne veut cocher 384 cases. D'où la
 table qui fait le pont entre les 27 catégories de France Vélo Tourisme et les classes qui les remplissent.
 Elle sert deux fois, et c'est pourquoi elle vit dans le domaine : elle **compose la requête** et **relit la
 réponse**.
+
+### OpenStreetMap complète DATAtourisme, il ne le remplace pas
+
+DATAtourisme est la base publique **française** : hors de France, la couche de points d'intérêt était vide,
+sans que rien ne l'explique. C'était la première raison d'une seconde source. La seconde s'est révélée en
+mesurant, sur un écran de carte autour de Grenoble :
+
+| Catégories | DATAtourisme | OpenStreetMap |
+|---|---|---|
+| hôtels | 49 | 38 |
+| points d'eau, toilettes, aires de pique-nique | 0 | 200 |
+| bornes de recharge | 0 | 165 |
+| loueurs et réparateurs de vélos | 4 | 50 |
+
+La base touristique décrit bien le tourisme - et l'illustre de photos, que l'infobulle montre - mais ignore
+largement ce qui sert sur le terrain. D'où le partage retenu (`poi/PoiSources`) : hors de France, OSM répond
+seul ; en France, il ne complète que le groupe *pratique*. Ce n'est pas un repli, c'est une division du
+travail.
+
+**Ce qu'OSM ne peut pas dire.** Un groupe limité au thème vélo reste à DATAtourisme où qu'on soit :
+OpenStreetMap ne porte pas l'équivalent de ce thème, et rendre des hébergements quelconques sous un filtre
+"vélo" serait promettre ce qu'on ne sait pas. Une catégorie vide dit la vérité ; un marqueur qui ment ne se
+rattrape pas. Pour la même raison, sept des vingt-sept catégories n'ont aucune étiquette OSM - "hébergements
+insolites", "villages de caractère" sont des jugements touristiques, qu'OSM ne porte nulle part.
+
+**Les sources sont interrogées en parallèle**, et chacune s'affiche dès qu'elle répond (`poiStream`). Ce
+n'est pas un raffinement : mesurée sur l'instance publique, une requête de toutes les catégories sur une
+ville dense met **une trentaine de secondes**, quand DATAtourisme répond en une.
+
+OpenStreetMap est en outre découpé **par groupe** (`PoiSources.osmGroups`), une requête chacun. Les mêmes
+mesures, à Berlin : hébergements 3,1 s, restauration 2,9 s, loisirs 15,9 s, pratique 23,3 s. Ce ne sont pas
+les trente secondes qui gênaient, c'est de n'avoir rien pendant trente secondes - l'écran se peuple
+désormais au bout de trois. Deux requêtes au plus à la fois : l'instance publique n'accorde que deux
+créneaux par adresse, et au-delà elle refuse d'un 504 au lieu de faire patienter.
+
+**Le plafond de la réponse ne se tait plus.** Chaque source rend au plus 250 lieux par requête - le maximum
+que DATAtourisme accorde. Il était de 100, choisi pour la lisibilité, et c'était une perte silencieuse :
+autour de Souillac, le service connaît 149 lieux, l'application n'en demandait que 100, et les 49 autres
+étaient écartés dans un ordre que rien ne fixe. D'un déplacement de carte au suivant, ce n'étaient pas les
+mêmes - un loueur de canoës apparaissait, puis disparaissait. Relevé sur le terrain, et c'est le pire genre
+de faute : la carte avait l'air juste. Au-delà de 250, la carte annonce désormais qu'elle ne montre pas tout,
+plutôt que de laisser croire à un catalogue complet - **et elle ne retient pas cette emprise comme chargée**.
+Sans quoi la troncature se figeait : la vue suivante étant contenue dans la précédente, la règle du
+"rien à redemander tant qu'on reste dedans" répondait non, et zoomer sur un coin d'une zone à trois mille
+lieux n'en ramenait jamais un de plus. Le prix est une requête à chaque geste tant qu'on reste dans une zone
+trop dense ; c'est le prix juste, puisqu'on sait ne pas tout montrer.
+
+Deux prix à connaître. L'instance publique d'Overpass **repart en 504 une fois sur deux** aux heures
+chargées, et ce refus arrive vite - 8 à 13 secondes, sans rapport avec le poids de la requête -, d'où la
+seconde tentative. Les délais annoncés au serveur, eux, ont dû être relevés à 50 secondes : à 25, il
+avortait sa propre requête (`"Query timed out after 26 seconds"`) au moment précis où elle allait aboutir,
+et la couche restait vide hors de France, là où l'on demande toutes les catégories à la fois. Un échec ne se
+distingue toujours pas d'une zone vide : la couche se rabat sur son cache comme pour l'autre source. Et un lieu d'OSM n'a **pas toujours de nom** - une fontaine, des toilettes -
+là où DATAtourisme en exige un : l'infobulle prend alors le nom de la catégorie, plutôt que de s'ouvrir sur
+un titre vide.
+
+### Le suivi de position vit dans un service, pas dans la carte
+
+Le capteur était écouté depuis l'écran de carte, et ses positions vivaient dans la composition. L'écran
+éteint, Android arrête la recomposition : le suivi s'arrêtait avec elle, au moment précis où il sert -
+téléphone en poche, sur un guidon, dans un sac. La position, l'alerte d'éloignement et le "restant" du
+profil étaient donc des fonctions de terrain qui ne fonctionnaient que sous les yeux de leur utilisateur.
+
+Le flux vit désormais dans un **service de premier plan** (`location/LocationService`), et l'écran n'en est
+qu'un lecteur parmi d'autres. C'est le seul moyen qu'Android offre de tenir le capteur ouvert quand l'écran
+s'endort, et sa notification permanente est le prix à payer : elle dit ce qui tourne, et l'arrêt y est à un
+tap. Un **verrou processeur** l'accompagne, le premier plan garantissant qu'on ne sera pas tué, non que
+l'appareil endormi traitera les positions autrement que par salves.
+
+**Sans `ACCESS_BACKGROUND_LOCATION`** : un service de premier plan de type `location`, démarré pendant que
+l'application est visible, lit le capteur sans elle. Demander l'autorisation d'arrière-plan serait réclamer
+beaucoup plus que ce dont on se sert - le suivi ne démarre jamais que d'un geste.
+
+**L'alerte d'éloignement a suivi le même chemin** (`location/TrackWatch`). Ce n'était pas une conséquence
+technique mais la raison même du changement : une alerte qui ne se déclenche que sous les yeux de celui
+qu'elle doit prévenir n'alerte personne. La mesure de l'écart et le son vivent donc dans le service ; l'écran
+n'en lit que le résultat, et ne garde que ce qui est vraiment une affaire d'écran - le choix de la trace,
+et la croix qui tait la bannière.
+
+Conséquence à connaître : c'est aussi ce sur quoi reposera un enregistreur de trace, si l'application en
+gagne un un jour. Écrire un point toutes les deux secondes demande exactement la même chose.
 
 ### Mises à jour : manifeste en asset de Release
 

@@ -43,15 +43,23 @@ app/src/main/java/fr/lc4918/trailog/
 │  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
 ├─ elevation/                   altitudes manquantes : IGN en France, OpenTopography ailleurs
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
+├─ location/                    suivi de position hors de l'ecran : service de premier plan, veille sur la trace
 ├─ net/                         ServiceUrl (reseau local ou service externe)
-├─ routing/                     Valhalla (itineraire, duree, trace ; 5 disciplines), Polyline
+├─ poi/                         points d'interet : DATAtourisme, Overpass (OSM), regle de partage, cache
+├─ routing/                     Valhalla et BRouter (itineraire, duree, trace ; 5 disciplines), Polyline
 ├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre)
 │  └─ offline/                  TileMath, TileUrl, TileHttp, OfflineTileDownloader, OfflineThumbnails
 ├─ update/                      UpdateManager (manifeste + installateur), UpdateDialog
 └─ ui/
    ├─ components/                MapLibreView, Avatar, ImageViewer, CompactTextField
    ├─ profile/                   ElevationProfile (Canvas), SlopeLegend, SlopeRamp
-   ├─ routes/                    MainScreen, MainViewModel
+   ├─ routes/                    l'ecran principal, decoupe par domaine :
+   │                              MainScreen (carte, etats, effets), MainViewModel,
+   │                              MainDrawer (menu lateral et son arborescence),
+   │                              MapChrome (commandes posees sur la carte, echelle, legende),
+   │                              ProfilePanels, TrackEditUi, MainDialogs, DeviceHeading, ImportPicker
+   ├─ alert/                     alerte d'eloignement : banniere, choix de la trace, son
+   ├─ poi/                       couche des points d'interet : marqueurs, infobulle, chargement
    ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement
    ├─ geocode/                   barre de recherche, infobulle du lieu, etat de la recherche
    ├─ mappoint/                  point designe par un appui long : adresse et mesures de distance
@@ -91,12 +99,20 @@ Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
 | `geocode/PhotonTest` | construction de la requête et lecture de la réponse du géocodeur |
 | `routing/ValhallaTest` | requête et réponse du moteur d'itinéraire, correspondance des disciplines |
 | `routing/PolylineTest` | décodage des polylignes, dont la précision propre à Valhalla |
+| `poi/OverpassTest` | requête et lecture de la réponse d'OpenStreetMap, la seconde source de points d'intérêt |
+| `location/TrackWatchTest` | alerte d'éloignement : déclenchement, zone morte, réarmement |
 
 `ReleaseInfoTest` mérite une note : il garde un contrat entre deux fichiers qui ne se compilent
 pas ensemble, le `jq` du workflow et le parseur Kotlin. Une divergence n'y produirait aucune
 erreur visible, seulement des mises à jour qui cesseraient d'être proposées.
 
-Il n'y a pas encore de tests instrumentés (UI), contributions bienvenues.
+**Les tests d'interface** (`*UiTest`) vivent au même endroit et se lancent par la même commande : ils
+composent pour de vrai sous Robolectric, sans appareil ni émulateur. La limite à connaître est que rien
+de ce qui embarque une `MapView` ne peut y être composé - les bibliothèques natives de MapLibre ne se
+chargent pas sur la JVM. Le détail est dans [`TESTS.md`](TESTS.md#tests-dinterface).
+
+Seule la migration de base est un test d'instrumentation (`app/src/androidTest/`) : elle a besoin d'un
+vrai SQLite.
 
 ## 6. Workflow de contribution
 

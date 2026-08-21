@@ -63,17 +63,21 @@ them on a map with a synchronised elevation profile, without depending on any on
 - **Native map** (MapLibre) with many configurable basemaps (OpenStreetMap, national mapping
   agencies, hillshade, cycle routes, composite basemaps pairing a base with an overlay).
 - **Track import** in **GPX**, **GeoJSON** and **KML/KMZ**, with statistics computed on the fly
-  (distance, ascent and descent, gradient, moving time).
+  (distance, ascent and descent, gradient, moving time). Through the *Import* button, or straight from
+  another app: Trailog shows up in the phone's **"Open with"** and **"Share to"** for a file received by
+  email, downloaded, or sitting in a file manager.
 - **Native elevation profile**, synchronised with a cursor on the map, with zoom on a section of
   the route and an adjustable vertical scale.
 - **Folder organisation**: create, rename, move and delete folders and routes, and colour every
   track in a folder in one go.
 - **Points of interest**: markers with info bubbles you can edit (title, text, links, photos),
   including photos carried by GPX waypoints on your phone.
-- **Tourist points of interest** (enable in settings): lodging, food, leisure and services along the
-  way, from **DATAtourisme**. Filterable by category, with a photo and a link to the venue's website,
-  and three gestures to make it a start, an end or a waypoint. What has been seen once stays
-  available offline.
+- **Points of interest along the way** (enable in settings): lodging, food, leisure and services, from
+  **DATAtourisme** in France and **OpenStreetMap** everywhere - outside France included. Filterable by
+  category, with a photo and a link to the venue's website, and three gestures to make it a start, an end
+  or a waypoint. OpenStreetMap brings what the tourism database ignores in France too: drinking water,
+  public toilets, picnic areas, charging points and bicycle repairers. What has been seen once stays
+  available offline, and *Settings / Routes* clears that cache in one tap if an entry looks wrong.
 - **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
   basemaps, and tiles already viewed stay in cache. A checkbox also takes the area's **points of interest**
   along: they stay available where there is no signal.
@@ -99,6 +103,11 @@ them on a map with a synchronised elevation profile, without depending on any on
 - **Off-track alert** (to be enabled in the settings): pick the track you are following from the ones
   nearest to you, and Trailog warns you - a banner at the bottom of the screen, and a sound if you
   want one - as soon as you stray from it by more than the distance you set.
+- **Tracking survives the screen going off**: once location is on, it keeps being followed with the app
+  in the background and the phone in a pocket - which is exactly when the off-track alert matters. An
+  ongoing notification says so, shows how far off the followed track you are, and stops everything in one
+  tap. A setting also **keeps the screen on** while tracking, to read the map on a handlebar without
+  touching it: a comfort now, no longer a necessity.
 - **Built-in updates**: the app tells you about a new version and installs it for you.
 - **Multilingual**: interface available in French, English, German, Spanish, Catalan, Basque,
   Italian and Portuguese.
@@ -203,6 +212,13 @@ itself whether a newer version exists and offers to install it.
   concerned (including your GPS position if you ask for the distance from it) to the routing
   service. Search by name is **disabled by default**, and both services are configurable: you can
   host your own.
+- The **points of interest layer**, when you turn it on, asks its two sources - DATAtourisme and
+  OpenStreetMap - for the venues in the area you are looking at, and nothing else: not who you are, not
+  where you are. It is **off by default**, and asks for nothing more as long as the map stays within what
+  has already been loaded.
+- **Location tracking** never leaves the device: not recorded, not sent, not kept once tracking stops. It
+  runs in a service its notification announces at all times, and that you stop in one tap. Trailog does
+  not ask for background location permission: tracking only ever starts from a gesture of yours.
 - **Measuring along a track**, on the other hand, never leaves the phone: it is read from the track
   you imported, and queries no service.
 
