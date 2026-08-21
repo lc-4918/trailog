@@ -73,16 +73,22 @@ sans dépendre d'un service en ligne.
   photo et lien vers le site du lieu, et trois gestes pour en faire un départ, une arrivée ou une
   étape. Ce qui a été vu une fois reste consultable sans réseau.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
-  propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache.
+  propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache. Une case permet d'emporter
+  aussi les **points d'intérêt** de la zone : ils resteront consultables là où il n'y a pas de signal.
 - **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
   sur la carte, avec son adresse.
 - **Calcul d'itinéraire** (à activer dans les réglages) : une bande où vous empilez vos étapes, de 2 à
-  25 - chacune cherchée par son nom, prise sur la carte, ou remplacée par **votre position**, résolue au
-  moment du calcul et non au moment du choix. Les étapes se réordonnent et se suppriment, le parcours se
+  25 - chacune cherchée par son nom, ou remplacée par **votre position**, résolue au moment du calcul et
+  non au moment du choix. Les étapes se réordonnent et se suppriment, le parcours se
   recalcule à chaque changement pour la discipline réglée (vélo de route, gravel, VTC, VTT, à pied), se
   dessine sur la carte et porte son propre profil altimétrique. Un champ vide vous repropose les **huit
   derniers lieux** que vous avez rencontrés - une étape retenue, un lieu cherché, un point d'intérêt
-  consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder.
+  consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder. Chacun s'oublie
+  d'une croix, et *Réglages / Itinéraires* vide la liste d'un coup : rien de tout cela ne quitte l'appareil,
+  et rien ne s'y installe sans que vous puissiez l'en retirer.
+- **Trois gestes vers l'itinéraire**, sur toute infobulle qui désigne un endroit - un lieu cherché, un point
+  d'intérêt, un point touché longuement sur la carte : en faire le départ, l'arrivée, ou une étape de plus.
+  Le planificateur s'ouvre déjà rempli.
 - **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
   l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
   ou depuis un second point que vous désignez.
