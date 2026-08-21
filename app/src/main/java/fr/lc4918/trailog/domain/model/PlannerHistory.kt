@@ -3,15 +3,29 @@ package fr.lc4918.trailog.domain.model
 import fr.lc4918.trailog.geocode.GeocodePlace
 
 /**
- * Les derniers lieux retenus dans le planificateur, proposés quand un champ vide prend le focus.
+ * Les derniers lieux rencontrés dans l'application, proposés dans le planificateur quand un champ vide
+ * prend le focus.
  *
- * Cinq au plus : la liste s'affiche sous un champ de saisie, au-dessus du clavier, et au-delà elle
- * chasserait de l'écran les propositions du géocodeur - celles qu'on est en train de taper, qui priment
- * toujours sur ce qu'on a fait hier. La bande défile, mais ce qui compte est ce qu'on voit sans défiler.
+ * **Quatre sources l'alimentent**, et non la seule saisie d'étape : une étape retenue dans le
+ * planificateur, un lieu trouvé par la recherche, un point d'intérêt dont on a ouvert l'infobulle,
+ * l'adresse d'un appui long sur la carte. Toutes disent la même chose - voilà un endroit qui intéresse
+ * celui qui tient le téléphone - et un trajet se compose rarement dans la foulée : on regarde la carte, on
+ * consulte, et c'est plus tard qu'on veut y aller. Réduire l'historique aux champs du planificateur, c'est
+ * ne se souvenir que des trajets déjà faits, jamais de celui qu'on prépare.
  *
- * Ce sont les lieux **retenus**, non le texte frappé : c'est le lieu qui a des coordonnées, donc le seul
- * qu'on puisse reposer dans une étape sans redemander quoi que ce soit au géocodeur. Une saisie
- * abandonnée en cours de frappe n'a rien à faire ici.
+ * **Huit au plus.** Le plafond était de cinq quand seules les saisies d'étape le remplissaient ; les
+ * quatre sources l'épuisent bien plus vite - parcourir la carte avec la couche des points d'intérêt
+ * allumée chasse cinq entrées en autant de taps, et l'historique ne se souvenait plus du trajet qu'on
+ * préparait la veille.
+ *
+ * Huit et non davantage : la liste s'affiche sous un champ de saisie, au-dessus du clavier, et au-delà
+ * elle chasserait de l'écran les propositions du géocodeur - celles qu'on est en train de taper, qui
+ * priment toujours sur ce qu'on a fait hier. La bande défile, ce qui rend les dernières atteignables sans
+ * les mettre sur le chemin ; mais ce qui compte reste ce qu'on voit sans défiler.
+ *
+ * Ce sont des **lieux**, non du texte frappé : ce qui entre ici a des coordonnées, et c'est la seule chose
+ * qu'on puisse reposer dans une étape sans redemander quoi que ce soit au géocodeur. Une saisie abandonnée
+ * en cours de frappe n'a rien à faire ici, pas plus qu'un point de la carte dont on n'a pas su le nom.
  */
 data class PlannerHistory(val places: List<GeocodePlace> = emptyList()) {
 
@@ -35,7 +49,7 @@ data class PlannerHistory(val places: List<GeocodePlace> = emptyList()) {
     fun asText(): String = places.joinToString("\n") { "${it.label}\t${it.lon}\t${it.lat}" }
 
     companion object {
-        const val MAX = 5
+        const val MAX = 8
 
         /**
          * Relit la forme enregistrée. Une ligne illisible est ignorée plutôt que fatale : c'est un

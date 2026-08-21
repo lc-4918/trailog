@@ -489,7 +489,7 @@ private fun StepRow(
             )
         }
         /*
-         * Historique : les trois derniers lieux retenus, proposes au focus d'un champ vide, comme la
+         * Historique : les huit derniers lieux retenus, proposes au focus d'un champ vide, comme la
          * position actuelle et au meme moment.
          *
          * Ils s'effacent des la premiere frappe : ce qu'on tape prime toujours sur ce qu'on a fait hier,

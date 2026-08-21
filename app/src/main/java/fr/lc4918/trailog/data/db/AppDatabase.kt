@@ -388,7 +388,7 @@ internal object MigrationSql {
      * lieux. La seule chose qui compte ici est que la table existe avant la premiere requete.
      */
     /**
-     * Cinq derniers lieux retenus dans le planificateur (cf. PlannerHistory).
+     * Huit derniers lieux retenus pour le planificateur (cf. PlannerHistory).
      *
      * Vide au depart : un historique se remplit a l'usage, et proposer quoi que ce soit avant le premier
      * trajet n'aurait aucun sens.

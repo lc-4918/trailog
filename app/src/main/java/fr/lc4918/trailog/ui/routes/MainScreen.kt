@@ -684,11 +684,21 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         mapPoint.publishAddress(AddressState.Loading)
         val lang = ctx.resources.configuration.locales[0].language
         val r = Photon.reverse(geocodingBase, lon, lat, lang) ?: Photon.reverse(geocodingBase, lon, lat, lang)
+        val adresse = r?.firstOrNull()
         mapPoint.publishAddress(when {
             r == null -> AddressState.Failed
-            r.isEmpty() -> AddressState.NotFound
-            else -> AddressState.Done(r.first().lines)
+            adresse == null -> AddressState.NotFound
+            else -> AddressState.Done(adresse.lines)
         })
+        // L'adresse trouvee entre dans l'historique du planificateur (cf. PlannerHistory) : on vient de
+        // montrer un endroit et d'en lire le nom, c'est un candidat pour un prochain trajet.
+        //
+        // Aux coordonnees DESIGNEES, non a celles que rend le geocodeur : l'epingle est restee sur le point
+        // qu'on a montre, l'adresse n'en est que le nom, et c'est de la qu'on voudra partir.
+        //
+        // Rien a retenir quand le service n'a rien rendu : un historique sans libelle ne se relit pas, et
+        // "44.56, 6.08" ne dirait rien a personne trois jours plus tard.
+        if (adresse != null) vm.rememberPlannerPlace(GeocodePlace(adresse.lines, lon, lat))
     }
 
     /**
@@ -1249,6 +1259,18 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // planificateur, et rien a dupliquer.
     fun placeOf(p: fr.lc4918.trailog.poi.Poi) =
         GeocodePlace(listOfNotNull(p.label, p.city), p.lon, p.lat)
+    /*
+     * Un point d'interet CONSULTE alimente l'historique du planificateur (cf. PlannerHistory), sans
+     * attendre qu'on en fasse une etape : ouvrir son infobulle, c'est deja s'y interesser, et les trois
+     * boutons de la bulle ne sont pas le seul chemin vers un trajet - on regarde d'abord, on compose
+     * ensuite, parfois bien plus tard.
+     *
+     * Sur l'uuid et non sur le POI : c'est lui qui identifie le lieu, et deux chargements successifs de la
+     * couche rendent des objets distincts pour le meme endroit, qui relanceraient l'effet pour rien.
+     */
+    LaunchedEffect(poi.selected?.uuid) {
+        poi.selected?.let { vm.rememberPlannerPlace(placeOf(it)) }
+    }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {
         if (planner.open) return
@@ -1509,6 +1531,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             onQueryChange = { geo.query = it },
                             onPick = { place ->
                                 geo.select(place)
+                                // Un lieu cherche par son nom alimente l'historique du planificateur : le
+                                // chercher est deja dire qu'il nous interesse, et le retaper demain dans un
+                                // champ d'etape serait refaire le meme travail (cf. PlannerHistory).
+                                vm.rememberPlannerPlace(place)
                                 controller.centerOnAtLeast(place.lat, place.lon, GeocodeMinZoom)
                             },
                             onClose = { geo.closeSearch() },

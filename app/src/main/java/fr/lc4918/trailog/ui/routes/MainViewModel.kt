@@ -781,6 +781,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Retient un lieu dans l'historique du planificateur (cf. PlannerHistory).
      *
+     * La porte d'entree unique de cet historique, et ses quatre appelants sont dans l'ecran de carte : une
+     * etape retenue dans le planificateur, un lieu trouve par la recherche, un point d'interet consulte,
+     * l'adresse d'un appui long. Tous passent par ici, d'ou le nom volontairement neutre - ce n'est plus
+     * "ce qu'on a tape dans le planificateur", c'est "un endroit qui a compte".
+     *
      * Ecrit ici et non dans la bande : le planificateur ne connait pas la base, et c'est deja par le
      * ViewModel que passent les autres etats d'affichage retenus d'une fois sur l'autre.
      */

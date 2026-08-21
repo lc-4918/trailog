@@ -22,14 +22,25 @@ class PlannerHistoryTest {
     }
 
     /**
-     * Cinq, pas davantage : la liste s'affiche sous un champ, au-dessus du clavier, et au-dela elle
+     * Huit, pas davantage : la liste s'affiche sous un champ, au-dessus du clavier, et au-dela elle
      * chasserait de l'ecran les propositions du geocodeur - celles qu'on est en train de taper.
+     *
+     * Huit et non cinq depuis que quatre sources l'alimentent (etape retenue, lieu cherche, point d'interet
+     * consulte, appui long) : a cinq, parcourir la carte avec la couche des points d'interet allumee
+     * chassait tout l'historique en autant de taps.
      */
-    @Test fun `l'historique s'arrete a cinq`() {
+    @Test fun `l'historique s'arrete a huit`() {
         var h = PlannerHistory()
-        listOf("a", "b", "c", "d", "e", "f", "g").forEach { h += lieu(it) }
-        assertEquals(5, h.places.size)
-        assertEquals(listOf("g", "f", "e", "d", "c"), h.places.map { it.label })
+        listOf("a", "b", "c", "d", "e", "f", "g", "h", "i", "j").forEach { h += lieu(it) }
+        assertEquals(8, h.places.size)
+        assertEquals(listOf("j", "i", "h", "g", "f", "e", "d", "c"), h.places.map { it.label })
+    }
+
+    /** La relecture est bornee comme l'ajout : une forme enregistree par une version plus permissive ne
+     *  doit pas rendre une liste plus longue que ce que l'ecran sait montrer. */
+    @Test fun `la relecture s'arrete au meme plafond`() {
+        val texte = (1..12).joinToString("\n") { "lieu $it\t1.0\t43.0" }
+        assertEquals(PlannerHistory.MAX, PlannerHistory.of(texte).places.size)
     }
 
     /**
