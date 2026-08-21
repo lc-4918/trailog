@@ -2,7 +2,6 @@ package fr.lc4918.trailog.ui.poi
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,14 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,6 +42,7 @@ import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.poi.Poi
 import fr.lc4918.trailog.ui.geocode.CloseCorner
+import fr.lc4918.trailog.ui.geocode.RouteActions
 import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import fr.lc4918.trailog.ui.points.OverlayIconButton
 import fr.lc4918.trailog.ui.points.OverlayInset
@@ -147,10 +143,9 @@ fun PoiBubble(
                         poi, fontSp,
                         Modifier.padding(top = if (poi.imageUrl != null) 8.dp else 6.dp, bottom = 2.dp),
                     )
-                    HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
-                    RouteAction(Icons.Outlined.PlayArrow, R.string.poi_set_start, fontSp, onSetStart)
-                    RouteAction(Icons.Outlined.Flag, R.string.poi_set_end, fontSp, onSetEnd)
-                    RouteAction(Icons.Filled.Add, R.string.poi_add_step, fontSp, onAddStep)
+                    // Les memes trois actions que l'infobulle d'un lieu cherche et celle d'un appui long :
+                    // trois facons d'avoir trouve un endroit, un seul geste pour en faire une etape.
+                    RouteActions(onSetStart, onSetEnd, onAddStep, fontSp)
                 }
             }
             /*
@@ -216,22 +211,3 @@ private fun CategoryChip(poi: Poi, fontSp: Int, modifier: Modifier = Modifier) {
     }
 }
 
-/** Une des trois actions d'itinéraire : toute la ligne est cliquable, comme les rangées de mesure de
- *  l'infobulle d'un point de carte. */
-@Composable
-private fun RouteAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: Int,
-    fontSp: Int,
-    onClick: () -> Unit,
-) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
-    ) {
-        Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(10.dp))
-        Text(stringResource(label), fontSize = fontSp.sp)
-    }
-}

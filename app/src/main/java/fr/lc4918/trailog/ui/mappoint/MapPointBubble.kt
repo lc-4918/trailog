@@ -49,6 +49,7 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.ui.geocode.AddressText
 import fr.lc4918.trailog.ui.geocode.CloseCorner
+import fr.lc4918.trailog.ui.geocode.RouteActions
 import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import kotlinx.coroutines.launch
 
@@ -66,6 +67,11 @@ import kotlinx.coroutines.launch
  *
  * [showPositionRow] : la mesure depuis la position n'a de sens qu'avec le capteur allume. Ligne retiree
  * plutot que bouton grise, un bouton qui ne repond pas laissant croire a une panne.
+ *
+ * Les **trois actions d'itineraire** ferment la bulle, comme sur un point d'interet et sur un lieu
+ * cherche : un endroit qu'on vient de designer du doigt est un depart ou une arrivee aussi legitime qu'un
+ * camping du catalogue. Elles sont offertes meme sans adresse - le point a des coordonnees, c'est tout ce
+ * qu'il faut pour y aller, et l'etape porte alors les coordonnees pour nom.
  */
 @Composable
 fun MapPointBubble(
@@ -77,6 +83,9 @@ fun MapPointBubble(
     imperial: Boolean,
     onDistanceFromPosition: () -> Unit,
     onDistanceFromPoint: () -> Unit,
+    onSetStart: () -> Unit,
+    onSetEnd: () -> Unit,
+    onAddStep: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     fontSp: Int = 14,
@@ -105,6 +114,10 @@ fun MapPointBubble(
                 }
                 MeasureRow(stringResource(R.string.geocode_distance_from_point), pointMeasure,
                     profileLabel, imperial, fontSp, onDistanceFromPoint)
+                // Sous les mesures, et non au-dessus : on regarde d'abord ou est le point et a quelle
+                // distance il se trouve, on decide d'y aller ensuite. L'ordre de la bulle suit celui de
+                // la question qu'on se pose.
+                RouteActions(onSetStart, onSetEnd, onAddStep, fontSp)
             }
             CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp))
         }

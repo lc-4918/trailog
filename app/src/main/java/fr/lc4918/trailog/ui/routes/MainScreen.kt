@@ -1281,6 +1281,23 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
     // Le planificateur refuse au-dela de 25 etapes : le dire, plutot que de laisser un tap sans effet.
     var plannerFullMessage by remember { mutableStateOf(false) }
+    /*
+     * Le point d'un appui long, en lieu d'etape.
+     *
+     * Son adresse quand on la connait, ses COORDONNEES sinon : un point au milieu d'un bois est une etape
+     * parfaitement legitime - c'est peut-etre le depart du sentier - et refuser d'en faire une parce que le
+     * geocodeur n'a pas de nom a lui donner reviendrait a n'accepter que les endroits qui ont une adresse.
+     *
+     * Point decimal impose : la virgule d'une locale francaise separerait a la fois les decimales et les
+     * deux valeurs, et donnerait "44,56, 6,08" (cf. Photon.parse, meme repli).
+     */
+    fun placeOfPoint(): GeocodePlace {
+        val (lon, lat) = mapPoint.point ?: (0.0 to 0.0)
+        val adresse = (mapPoint.address as? AddressState.Done)?.lines
+        return GeocodePlace(
+            adresse ?: listOf("%.5f, %.5f".format(java.util.Locale.US, lat, lon)), lon, lat,
+        )
+    }
 
     /*
      * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
@@ -1837,6 +1854,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             content = {
                                 GeocodeBubble(
                                     lines = gPlace.lines,
+                                    // Le lieu part tel quel dans le planificateur : il porte deja son
+                                    // adresse et ses coordonnees, c'est exactement ce qu'attend une etape.
+                                    onSetStart = { ouvrePlanificateur(); planner.setStart(gPlace); geo.clear() },
+                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(gPlace); geo.clear() },
+                                    onAddStep = {
+                                        ouvrePlanificateur()
+                                        if (planner.addWaypoint(gPlace)) geo.clear()
+                                        else plannerFullMessage = true
+                                    },
                                     onClose = { geo.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
@@ -1910,6 +1936,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     imperial = imperialUnits,
                                     onDistanceFromPosition = { onDistanceFromPositionTap() },
                                     onDistanceFromPoint = { onDistanceFromPointTap() },
+                                    onSetStart = { ouvrePlanificateur(); planner.setStart(placeOfPoint()); mapPoint.clear() },
+                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOfPoint()); mapPoint.clear() },
+                                    onAddStep = {
+                                        ouvrePlanificateur()
+                                        if (planner.addWaypoint(placeOfPoint())) mapPoint.clear()
+                                        else plannerFullMessage = true
+                                    },
                                     onClose = { mapPoint.clear() },
                                     fontSp = settings?.bubbleFont ?: 14,
                                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,

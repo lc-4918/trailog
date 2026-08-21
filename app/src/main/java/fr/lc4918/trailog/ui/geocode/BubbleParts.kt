@@ -1,5 +1,17 @@
 package fr.lc4918.trailog.ui.geocode
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -22,6 +34,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -34,11 +47,12 @@ import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 
 /**
- * Les deux morceaux communs aux infobulles du geocodage - celle d'un lieu cherche par son nom, celle d'un
- * point designe par un appui long : l'adresse, et la croix qui referme.
+ * Les morceaux communs aux infobulles d'un endroit - celle d'un lieu cherche par son nom, celle d'un point
+ * designe par un appui long, celle d'un point d'interet : l'adresse, la croix qui referme, et les trois
+ * actions d'itineraire.
  *
- * Ces deux bulles disent la meme chose de deux endroits obtenus autrement. Ce qu'elles ont en commun vit
- * donc ici, plutot qu'en deux exemplaires qui divergeraient a la premiere correction.
+ * Ces bulles disent la meme chose d'endroits obtenus autrement. Ce qu'elles ont en commun vit donc ici,
+ * plutot qu'en plusieurs exemplaires qui divergeraient a la premiere correction.
  */
 
 /**
@@ -175,4 +189,44 @@ private fun AddressPart(
     Text(text, fontSize = fontSp.sp, fontWeight = FontWeight.SemiBold,
         maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = modifier,
         onTextLayout = onLayout)
+}
+
+/**
+ * Les trois actions d'itineraire d'une infobulle : point de depart, point d'arrivee, etape de plus.
+ *
+ * Communes aux trois bulles qui designent un endroit, et c'est le fond de l'affaire : un lieu cherche par
+ * son nom, un point d'interet et un point d'appui long sont trois facons d'avoir trouve **le meme genre de
+ * chose** - un endroit avec des coordonnees. Les proposer sur l'un et pas sur les autres obligeait a
+ * ressortir par le planificateur et a retaper ce qu'on avait sous les yeux.
+ *
+ * Le trait au-dessus les separe de ce que la bulle DIT de l'endroit : au-dessus on lit, au-dessous on agit.
+ */
+@Composable
+fun RouteActions(
+    onSetStart: () -> Unit,
+    onSetEnd: () -> Unit,
+    onAddStep: () -> Unit,
+    fontSp: Int,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+        RouteAction(Icons.Outlined.PlayArrow, R.string.poi_set_start, fontSp, onSetStart)
+        RouteAction(Icons.Outlined.Flag, R.string.poi_set_end, fontSp, onSetEnd)
+        RouteAction(Icons.Filled.Add, R.string.poi_add_step, fontSp, onAddStep)
+    }
+}
+
+/** Une action d'itineraire : son pictogramme a la couleur des commandes, et ce qu'elle fait. */
+@Composable
+private fun RouteAction(icon: ImageVector, label: Int, fontSp: Int, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(label), fontSize = fontSp.sp)
+    }
 }
