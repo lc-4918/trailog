@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">p. ex. La meva ruta juliol 2026</string>
     <string name="offline_config_continue_on_error_label">Continua en cas d\'error</string>
     <string name="offline_config_continue_on_error_desc">Si està activat, la baixada continua encara que no s\'hagi pogut baixar alguna tessel·la</string>
+    <string name="offline_config_pois_label">Emporta\'t els punts d\'interès</string>
+    <string name="offline_config_pois_desc">Els llocs turístics de la zona es podran consultar sense xarxa</string>
+    <string name="offline_progress_pois">%1$d punt(s) d\'interès desat(s)</string>
+    <string name="offline_progress_pois_none">Punts d\'interès: servei no disponible, el mapa sí que s\'ha desat</string>
     <string name="offline_action_download">Baixa</string>
     <string name="offline_progress_title">S\'està baixant...</string>
     <string name="offline_progress_total">Total per baixar: %1$d</string>

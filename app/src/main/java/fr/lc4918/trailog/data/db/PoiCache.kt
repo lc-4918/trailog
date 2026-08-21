@@ -32,6 +32,14 @@ data class PoiCacheEntity(
     val bikeTheme: Boolean,
     /** Horodatage du chargement, pour la peremption (cf. [PoiDao.deleteOlderThan]). */
     val fetchedAt: Long,
+    /**
+     * Emporte volontairement avec une zone hors ligne, et non croise au fil d'un deplacement de carte.
+     *
+     * Ce qu'on a demande ne se perime pas au bout d'une semaine comme le reste : une zone emportee pour un
+     * voyage de quinze jours se viderait au milieu du sejour, et precisement la ou il n'y a pas de reseau
+     * pour la refaire. Le menage epargne donc ces lignes-la (cf. [PoiDao.deleteOlderThan]).
+     */
+    val pinned: Boolean = false,
 )
 
 @Dao
@@ -50,8 +58,14 @@ interface PoiDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(pois: List<PoiCacheEntity>)
 
-    @Query("DELETE FROM poi_cache WHERE fetchedAt < :before")
+    /** Menage des lignes croisees au fil des deplacements. Ce qu'on a emporte exprès y echappe : c'est la
+     *  difference entre un cache et une provision (cf. [PoiCacheEntity.pinned]). */
+    @Query("DELETE FROM poi_cache WHERE fetchedAt < :before AND pinned = 0")
     suspend fun deleteOlderThan(before: Long)
+
+    /** Les lignes emportees avec une zone hors ligne, comptees pour le dire a l'utilisateur. */
+    @Query("SELECT COUNT(*) FROM poi_cache WHERE pinned = 1")
+    suspend fun countPinned(): Int
 
     @Query("DELETE FROM poi_cache")
     suspend fun clear()

@@ -787,6 +787,40 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 55 -> 56 : les points d'interet emportes avec une zone ----------
+
+    /**
+     * A zero pour l'existant, et c'est juste : tout ce qui est deja en cache y a ete mis EN PASSANT, au
+     * fil des deplacements de carte. Rien de cela n'a ete demande, donc rien de cela ne merite d'echapper
+     * au menage hebdomadaire.
+     */
+    @Test fun `55 vers 56 ne retient aucun point d'interet deja en cache`() {
+        val db = freshDb("m5556")
+        db.execSQL(MigrationSql.CREATE_POI_CACHE_V55)
+        db.execSQL(
+            "INSERT INTO poi_cache VALUES ('u1', 'Camping du lac', 43.0, 1.8, 'camping', null, null, " +
+                "null, 0, 1700000000000)"
+        )
+        db.execSQL(MigrationSql.ADD_POI_PINNED)
+        assertEquals(0, scalar(db, "SELECT pinned FROM poi_cache WHERE uuid = 'u1'") { it.getInt(0) })
+        db.close()
+    }
+
+    /** Le menage epargne ce qu'on a emporte : c'est la difference entre un cache, qu'on subit, et une
+     *  provision, qu'on a faite. Une zone prise pour quinze jours ne doit pas se vider au huitieme. */
+    @Test fun `le menage du cache epargne les lieux emportes`() {
+        val db = freshDb("m5556bis")
+        db.execSQL(MigrationSql.CREATE_POI_CACHE)
+        db.execSQL("INSERT INTO poi_cache VALUES ('vieux', 'Croise en passant', 43.0, 1.8, 'camping', " +
+            "null, null, null, 0, 1000, 0)")
+        db.execSQL("INSERT INTO poi_cache VALUES ('emporte', 'Emporte expres', 43.0, 1.8, 'camping', " +
+            "null, null, null, 0, 1000, 1)")
+        db.execSQL("DELETE FROM poi_cache WHERE fetchedAt < 2000 AND pinned = 0")
+        assertEquals(1, scalar(db, "SELECT COUNT(*) FROM poi_cache") { it.getInt(0) })
+        assertEquals("emporte", scalar(db, "SELECT uuid FROM poi_cache") { it.getString(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

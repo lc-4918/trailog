@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">z. B. Meine Wanderung Juli 2026</string>
     <string name="offline_config_continue_on_error_label">Bei Fehler fortfahren</string>
     <string name="offline_config_continue_on_error_desc">Wenn aktiviert, wird der Download fortgesetzt, auch wenn eine Kachel nicht heruntergeladen werden konnte</string>
+    <string name="offline_config_pois_label">Sehenswürdigkeiten mitnehmen</string>
+    <string name="offline_config_pois_desc">Die touristischen Orte des Gebiets sind ohne Netz verfügbar</string>
+    <string name="offline_progress_pois">%1$d Sehenswürdigkeit(en) mitgenommen</string>
+    <string name="offline_progress_pois_none">Sehenswürdigkeiten: Dienst nicht erreichbar, die Karte ist gespeichert</string>
     <string name="offline_action_download">Herunterladen</string>
     <string name="offline_progress_title">Wird heruntergeladen...</string>
     <string name="offline_progress_total">Insgesamt herunterzuladen: %1$d</string>

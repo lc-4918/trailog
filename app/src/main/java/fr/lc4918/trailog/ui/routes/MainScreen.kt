@@ -2686,6 +2686,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
                     dark = darkChrome,
                     styleJson = style?.styleJson, styleUrl = style?.styleUrl,
+                    // La case n'apparait que si la couche des points d'interet est allumee : proposer
+                    // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
+                    poiAvailable = settings?.poiEnabled == true,
                     onDismiss = { closeOfflineFlow() },
                     onDownload = { request ->
                         // Domaine B : lance le moteur, puis revient à la carte ou la popup de progression

@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">ex. O meu trilho julho 2026</string>
     <string name="offline_config_continue_on_error_label">Continuar em caso de erro</string>
     <string name="offline_config_continue_on_error_desc">Se ativado, a descarga continua mesmo que uma peça não tenha sido descarregada</string>
+    <string name="offline_config_pois_label">Levar os pontos de interesse</string>
+    <string name="offline_config_pois_desc">Os locais turísticos da zona ficarão disponíveis sem rede</string>
+    <string name="offline_progress_pois">%1$d ponto(s) de interesse guardado(s)</string>
+    <string name="offline_progress_pois_none">Pontos de interesse: serviço indisponível, o mapa ficou guardado</string>
     <string name="offline_action_download">Descarregar</string>
     <string name="offline_progress_title">A descarregar...</string>
     <string name="offline_progress_total">Total a descarregar: %1$d</string>

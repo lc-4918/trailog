@@ -23,6 +23,10 @@ import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.domain.model.PlannerHistory
+import fr.lc4918.trailog.poi.Datatourisme
+import fr.lc4918.trailog.poi.PoiRepository
+import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.map.BasemapKeyProbe
 import fr.lc4918.trailog.map.StyleBuilder
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
@@ -85,6 +89,9 @@ private const val NearestTrackCount = 8
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
     private val db = AppDatabase.get(app)
+    /** Points d'interet : seule la garniture d'une zone hors ligne passe par ici, le chargement de la
+     *  carte ayant le sien (cf. l'ecran de carte). */
+    private val poiRepo = PoiRepository(db.pois())
 
     val folders: StateFlow<List<FolderEntity>> =
         repo.folders.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -881,10 +888,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     // Le moteur rappelle depuis plusieurs threads : update() (CAS) est thread-safe.
                     _offlineDownload.update { it?.copy(done = done, failed = failed) }
                 }
+                /*
+                 * Les points d'interet de la zone, APRES les tuiles et seulement si elles ont abouti.
+                 *
+                 * Apres : le fond de carte est ce qu'on est venu chercher, et une requete touristique ne
+                 * doit pas retarder son ecriture. Seulement en cas de succes : sans tuiles, il n'y a pas de
+                 * zone hors ligne a garnir, et le fichier vient d'etre efface.
+                 *
+                 * Un echec ici ne fait pas echouer le telechargement - la carte est deja sur le telephone.
+                 * L'ecran de fin le dit en une ligne, sans se transformer en erreur.
+                 */
+                val lieux = if (req.withPois && result is OfflineDownloadResult.Success) {
+                    val filtres = PoiFilters.of(s.poiHiddenCategories, s.poiBikeGroups)
+                    val (libres, velo) = filtres.queries()
+                    runCatching {
+                        poiRepo.pinArea(Datatourisme.DEFAULT_URL, req.bbox, libres, velo)
+                    }.getOrNull()
+                } else null
                 _offlineDownload.update { st ->
                     when (result) {
                         // Fin en mode réduit : on force minimized=false pour rouvrir la popup (SPEC section 4).
-                        is OfflineDownloadResult.Success -> st?.copy(phase = OfflinePhase.SUCCESS, minimized = false)
+                        is OfflineDownloadResult.Success ->
+                            st?.copy(phase = OfflinePhase.SUCCESS, minimized = false, pinnedPois = lieux)
                         is OfflineDownloadResult.Failed ->
                             st?.copy(phase = OfflinePhase.ERROR, failed = result.failed, minimized = false)
                     }

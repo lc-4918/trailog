@@ -66,6 +66,13 @@ fun OfflineDownloadCard(
                 OfflinePhase.SUCCESS -> ResultContent(
                     icon = { Icon(Icons.Filled.CheckCircle, null, tint = GreenSuccess, modifier = Modifier.size(28.dp)) },
                     message = stringResource(R.string.offline_progress_success, state.name),
+                    // Le sort des points d'interet, quand on a demande a les emporter : leur nombre, ou
+                    // l'aveu que le service n'a pas repondu. La carte, elle, est bien la - d'ou une ligne
+                    // sous le succes plutot qu'un message d'erreur qui ferait douter de tout.
+                    detail = state.pinnedPois?.let { n ->
+                        if (n > 0) stringResource(R.string.offline_progress_pois, n)
+                        else stringResource(R.string.offline_progress_pois_none)
+                    },
                     onClose = onClose,
                 )
                 OfflinePhase.ERROR -> ResultContent(
@@ -115,11 +122,25 @@ private fun RunningContent(state: OfflineDownloadState, onMinimize: () -> Unit, 
 }
 
 @Composable
-private fun ResultContent(icon: @Composable () -> Unit, message: String, onClose: () -> Unit) {
+private fun ResultContent(
+    icon: @Composable () -> Unit,
+    message: String,
+    onClose: () -> Unit,
+    detail: String? = null,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         icon()
         Spacer(Modifier.width(12.dp))
         Text(message, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+    }
+    // En retrait sous le message, a l'aplomb du texte et non de l'icone : c'est une precision sur ce qui
+    // vient d'etre dit, pas une seconde nouvelle.
+    if (detail != null) {
+        Text(
+            detail, style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 40.dp, top = 4.dp),
+        )
     }
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

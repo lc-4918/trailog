@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">ex. Ma randonnée Juillet 2026</string>
     <string name="offline_config_continue_on_error_label">Continuer en cas d\'erreur</string>
     <string name="offline_config_continue_on_error_desc">Si activé, le téléchargement continue même si une tuile n\'a pu être téléchargée</string>
+    <string name="offline_config_pois_label">Emporter les points d\'intérêt</string>
+    <string name="offline_config_pois_desc">Les lieux touristiques de la zone seront consultables sans réseau</string>
+    <string name="offline_progress_pois">%1$d point(s) d\'intérêt emporté(s)</string>
+    <string name="offline_progress_pois_none">Points d\'intérêt : service indisponible, la carte est bien enregistrée</string>
     <string name="offline_action_download">Télécharger</string>
     <string name="offline_progress_title">Téléchargement en cours...</string>
     <string name="offline_progress_total">Total à télécharger : %1$d</string>

@@ -14,6 +14,15 @@ data class OfflineDownloadState(
     val failed: Int = 0,
     val phase: OfflinePhase = OfflinePhase.RUNNING,
     val minimized: Boolean = false,
+    /**
+     * Points d'interet emportes avec la zone : leur nombre, 0 si le service n'a rien rendu la, null si on
+     * n'en a pas demande ou si le service n'a pas repondu.
+     *
+     * Trois etats et non deux : "aucun lieu ici" et "le service est muet" ne s'annoncent pas du meme mot,
+     * et la zone est deja telechargee dans les deux cas - le message de succes doit pouvoir le nuancer
+     * sans se transformer en erreur.
+     */
+    val pinnedPois: Int? = null,
 ) {
     /** Tuiles traitées (réussies + échouées) sur le total, en pourcentage borné [0, 100]. */
     val percent: Int get() = if (total <= 0) 0 else ((done + failed) * 100 / total).coerceIn(0, 100)

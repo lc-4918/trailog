@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">adib. Nire ibilaldia 2026ko uztaila</string>
     <string name="offline_config_continue_on_error_label">Jarraitu errorea gertatuz gero</string>
     <string name="offline_config_continue_on_error_desc">Aktibatuta badago, deskarga jarraituko da lauzaren bat deskargatu ez bada ere</string>
+    <string name="offline_config_pois_label">Eraman interesguneak</string>
+    <string name="offline_config_pois_desc">Eremuko toki turistikoak sarerik gabe kontsultagarri egongo dira</string>
+    <string name="offline_progress_pois">%1$d interesgune eramanda</string>
+    <string name="offline_progress_pois_none">Interesguneak: zerbitzua eskuraezina, mapa ondo gorde da</string>
     <string name="offline_action_download">Deskargatu</string>
     <string name="offline_progress_title">Deskargatzen...</string>
     <string name="offline_progress_total">Deskargatzeko guztira: %1$d</string>

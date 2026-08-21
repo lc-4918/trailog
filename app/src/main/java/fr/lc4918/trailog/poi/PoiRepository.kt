@@ -56,6 +56,44 @@ class PoiRepository(private val dao: PoiDao) {
         return PoiLoad(duCache, fromCache = duCache.isNotEmpty())
     }
 
+    /**
+     * **Emporte** les points d'intérêt d'une zone, pour les avoir sans réseau.
+     *
+     * Le cache ordinaire ne retient que ce qu'on a survolé **connecté** : sur le terrain, la couche est
+     * donc vide précisément là où l'on n'est jamais allé avec du signal - l'endroit où elle servirait le
+     * plus. Une zone téléchargée pour partir doit emporter ses lieux comme elle emporte ses tuiles.
+     *
+     * Les lignes écrites ici sont marquées (`pinned`) : le ménage hebdomadaire les épargne, une zone
+     * emportée pour quinze jours ne devant pas se vider au milieu du séjour.
+     *
+     * Rend le nombre de lieux emportés, **ou null si le service n'a pas répondu** : la distinction compte,
+     * une zone sans le moindre café et un service muet ne s'annoncent pas du même mot. Un lieu déjà connu
+     * du cache est réécrit marqué : le demander exprès vaut mieux que l'avoir croisé.
+     */
+    suspend fun pinArea(
+        base: String, box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>,
+    ): Int? {
+        if (libres.isEmpty() && velo.isEmpty()) return 0
+        val frais = buildList {
+            if (libres.isNotEmpty()) {
+                addAll(Datatourisme.catalog(base, box.north, box.west, box.south, box.east, libres))
+            }
+            if (velo.isNotEmpty()) {
+                addAll(Datatourisme.catalog(base, box.north, box.west, box.south, box.east, velo,
+                    bikeOnly = true))
+            }
+        }
+        // Aucun lieu ET rien en base sur cette zone : le service n'a probablement pas repondu. On ne peut
+        // pas trancher a coup sur - une zone peut etre reellement vide - mais annoncer "0 lieu emporte"
+        // apres une panne reseau ferait croire a un desert.
+        if (frais.isEmpty()) return null
+        val now = System.currentTimeMillis()
+        return runCatching {
+            dao.upsertAll(frais.map { it.toEntity(now, pinned = true) })
+            frais.size
+        }.getOrNull()
+    }
+
     companion object {
         /**
          * Durée de vie du cache : une semaine.
@@ -71,9 +109,10 @@ class PoiRepository(private val dao: PoiDao) {
 /** Ce qu'un chargement rend, et d'où il vient. */
 data class PoiLoad(val pois: List<Poi>, val fromCache: Boolean)
 
-private fun Poi.toEntity(now: Long) = PoiCacheEntity(
+private fun Poi.toEntity(now: Long, pinned: Boolean = false) = PoiCacheEntity(
     uuid = uuid, label = label, lat = lat, lon = lon, categoryKey = category.key,
     city = city, imageUrl = imageUrl, webUrl = webUrl, bikeTheme = bikeTheme, fetchedAt = now,
+    pinned = pinned,
 )
 
 private fun PoiCacheEntity.toPoi(): Poi? {

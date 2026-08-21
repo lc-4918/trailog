@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">e.g. My hike July 2026</string>
     <string name="offline_config_continue_on_error_label">Continue on error</string>
     <string name="offline_config_continue_on_error_desc">If enabled, the download continues even if a tile could not be downloaded</string>
+    <string name="offline_config_pois_label">Take points of interest along</string>
+    <string name="offline_config_pois_desc">The area\'s tourist venues will be available with no network</string>
+    <string name="offline_progress_pois">%1$d point(s) of interest taken along</string>
+    <string name="offline_progress_pois_none">Points of interest: service unavailable, the map itself is saved</string>
     <string name="offline_action_download">Download</string>
     <string name="offline_progress_title">Downloading...</string>
     <string name="offline_progress_total">Total to download: %1$d</string>

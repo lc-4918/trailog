@@ -97,6 +97,9 @@ fun OfflineDownloadConfigScreen(
     styleUrl: String?,
     onDismiss: () -> Unit,
     onDownload: (OfflineDownloadRequest) -> Unit,
+    /** La couche des points d'interet est allumee dans les reglages : sans elle, rien a proposer
+     *  d'emporter - la case ne s'affiche pas. */
+    poiAvailable: Boolean = false,
     /** Parcours a border, quand le telechargement suit une trace ; null pour une emprise rectangulaire. */
     corridorPoints: List<Pair<Double, Double>>? = null,
     corridorName: String = "",
@@ -108,6 +111,9 @@ fun OfflineDownloadConfigScreen(
     }
     var name by remember { mutableStateOf(corridorName) }
     var continueOnError by remember { mutableStateOf(false) }
+    // Coche d'office quand la couche est allumee : qui l'a allumee s'en sert, et une zone emportee sans
+    // ses lieux se decouvre trop tard - sur le terrain, sans reseau pour la completer.
+    var withPois by remember { mutableStateOf(poiAvailable) }
     // Largeur telechargee de chaque cote du parcours. En kilometres parce que c'est l'unite dans laquelle
     // on se represente un ecart de route : "500 m autour" ne dit pas grand-chose, "un kilometre de chaque
     // cote" se voit.
@@ -198,6 +204,17 @@ fun OfflineDownloadConfigScreen(
                         ) {
                             SettingsSwitch(continueOnError) { continueOnError = it }
                         }
+                        // Les tuiles seules laissent la couche vide precisement la ou l'on va : le cache
+                        // ne retient que ce qu'on a survole CONNECTE (cf. PoiRepository.pinArea).
+                        if (poiAvailable) {
+                            RowDivider()
+                            SetRow(
+                                stringResource(R.string.offline_config_pois_label),
+                                sub = stringResource(R.string.offline_config_pois_desc),
+                            ) {
+                                SettingsSwitch(withPois) { withPois = it }
+                            }
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     BboxOverview(bbox, styleJson, styleUrl)
@@ -215,6 +232,7 @@ fun OfflineDownloadConfigScreen(
                             onDownload(OfflineDownloadRequest(
                                 bbox, minZ, maxZ, name, continueOnError,
                                 corridor = corridorPoints?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
+                                withPois = poiAvailable && withPois,
                             ))
                         },
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),

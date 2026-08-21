@@ -131,6 +131,10 @@
     <string name="offline_config_name_placeholder">es. La mia escursione luglio 2026</string>
     <string name="offline_config_continue_on_error_label">Continua in caso di errore</string>
     <string name="offline_config_continue_on_error_desc">Se attivato, il download continua anche se non è stato possibile scaricare un tile</string>
+    <string name="offline_config_pois_label">Porta con te i punti di interesse</string>
+    <string name="offline_config_pois_desc">I luoghi turistici della zona saranno consultabili senza rete</string>
+    <string name="offline_progress_pois">%1$d punto/i di interesse salvato/i</string>
+    <string name="offline_progress_pois_none">Punti di interesse: servizio non disponibile, la mappa è comunque salvata</string>
     <string name="offline_action_download">Scarica</string>
     <string name="offline_progress_title">Download in corso...</string>
     <string name="offline_progress_total">Totale da scaricare: %1$d</string>
