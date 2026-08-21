@@ -86,7 +86,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**655 tests, 61 fichiers**, tous verts.
+**659 tests, 61 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -138,7 +138,7 @@ c'est ce qu'un mauvais signe dans la formule ferait disparaître sans rien casse
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `BubblePositionTest` | 3 | clés stables des 10 positions, repli sur AUTO si la clé est inconnue |
-| `PlannerHistoryTest` | 8 | historique des lieux du planificateur : ordre, plafond, forme enregistrée |
+| `PlannerHistoryTest` | 10 | historique des lieux du planificateur : ordre, plafond, oubli, forme enregistrée |
 
 Les clés sont persistées en base (`settings.bubblePosition`) : les changer casserait les réglages
 existants. Une valeur inconnue doit retomber sur AUTO plutôt que de planter.
@@ -148,6 +148,10 @@ tête, le même lieu qui **remonte** au lieu de se dupliquer - sans quoi quelque
 soi et le col voisin rempliraient la liste de deux entrées répétées - et le plafond de huit, appliqué
 **des deux côtés**, à l'ajout comme à la relecture : une base écrite par une version au plafond plus
 généreux ne doit pas rendre une liste plus longue que ce que l'écran sait montrer.
+
+L'**oubli** y est verrouillé aussi, et c'est le pendant du remplissage automatique : l'historique se remplit
+tout seul de ce qu'on consulte, il faut donc pouvoir en retirer ce qu'on n'y a pas mis exprès. Oublier un
+lieu inconnu ne retire rien - la croix d'une proposition déjà partie ne doit pas emporter sa voisine.
 
 Le reste tient à la forme enregistrée, et c'est là que se joue la robustesse : le séparateur est la
 tabulation parce qu'une adresse porte toujours des virgules (« Mirepoix, 09500 Ariège, France »), et une
@@ -212,7 +216,7 @@ disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprim
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `MigrationsTest` | 48 | les 33 migrations, et les défauts d'une installation neuve |
+| `MigrationsTest` | 53 | les migrations, et les défauts d'une installation neuve |
 
 **Ce sont les tests les plus critiques du lot.** Une migration fautive ne casse pas le build : elle
 détruit les couches importées de l'utilisateur, en silence, au premier lancement.

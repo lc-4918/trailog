@@ -250,6 +250,11 @@ Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12)
 depuis une vue à l'échelle d'un pays ; son infobulle en donne l'adresse, et rien de plus. Il entre aussi
 dans l'**historique du planificateur** (section 14) : l'avoir cherché est déjà dire qu'il nous intéresse.
 
+L'infobulle porte les **trois actions d'itinéraire** - départ, arrivée, étape de plus - les mêmes que celle
+d'un point d'intérêt et celle d'un appui long. Chercher un lieu pour aller quelque part est le geste le plus
+courant qui soit ; l'infobulle qui le trouvait ne savait pourtant rien en faire, et il fallait rouvrir le
+planificateur pour y retaper ce qu'on avait sous les yeux.
+
 ## 12. Point quelconque de la carte (appui long)
 
 Un appui long hors d'une trace et d'un marqueur pose une épingle et ouvre une infobulle qui répond à trois
@@ -265,6 +270,11 @@ L'adresse trouvée entre dans l'**historique du planificateur** (section 14), au
 et non à celles que rend le géocodeur : l'épingle est restée sur le point qu'on a montré, l'adresse n'en
 est que le nom. Un point sans adresse - plein champ, forêt, lac - n'y entre pas : « 44.56, 6.08 » ne dirait
 rien à personne trois jours plus tard.
+
+Les **trois actions d'itinéraire** y figurent aussi, et elles sont offertes **même sans adresse** : le point
+a des coordonnées, c'est tout ce qu'il faut pour y aller, et l'étape porte alors les coordonnées pour nom.
+Un point au milieu d'un bois est une étape parfaitement légitime - c'est peut-être le départ du sentier -,
+et n'accepter que les endroits qui ont une adresse reviendrait à ne planifier qu'en ville.
 
 Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
 d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied. Le moteur
@@ -354,6 +364,12 @@ dans une étape sans redemander quoi que ce soit au géocodeur. Une saisie aband
 a rien à faire. L'historique survit à la fermeture de l'application (colonne `settings.plannerHistory`, une
 ligne par lieu, séparateurs tabulés - une adresse porte toujours des virgules, jamais de tabulation).
 
+**L'historique s'efface**, et c'est la contrepartie de son remplissage automatique : ce qui s'inscrit sans
+qu'on le demande doit pouvoir se retirer. Une croix sur chaque proposition en retire le lieu ; *Réglages /
+Itinéraires* porte le compte des lieux retenus et le bouton qui vide tout. Une croix visible plutôt qu'un
+appui long : un geste que rien n'annonce n'existe pas pour qui ne le connaît pas déjà. Sans confirmation -
+huit lieux se reconstituent en une promenade, la demander serait du cérémonial.
+
 Le plafond de huit est un compromis d'écran : la liste s'affiche sous un champ, au-dessus du clavier, et
 au-delà elle chasserait de l'écran les propositions du géocodeur. Il était de cinq quand seules les saisies
 d'étape le remplissaient ; les quatre sources l'épuisent bien plus vite - parcourir la carte avec la couche
@@ -441,6 +457,18 @@ de réseau, points du cache - restent en texte ordinaire : ce sont des constats,
 lève d'un doigt. Ce qui a été vu une fois est **gardé une semaine** : sans réseau, la
 couche montre les derniers points connus et l'annonce ; si elle ne connaît rien de cette zone, elle réclame
 une connexion plutôt que de laisser croire à une région sans un seul café.
+
+**Une zone téléchargée hors ligne peut emporter ses lieux** avec ses tuiles, par une case de l'écran de
+configuration - présente seulement si la couche est allumée, cochée d'office si elle l'est. C'est ce qui
+manquait pour tenir la promesse du hors-ligne : le cache ordinaire ne retient que ce qu'on a survolé
+**connecté**, si bien que la couche était vide précisément là où l'on n'était jamais allé avec du signal -
+l'endroit où elle sert le plus. Chercher un point d'eau à 18 h dans une vallée sans réseau est exactement le
+cas d'usage.
+
+Ces lieux-là sont **marqués** et échappent au ménage hebdomadaire : une zone emportée pour un séjour de
+quinze jours se viderait sinon au huitième, sans réseau pour la refaire. Le semis a lieu après les tuiles et
+seulement si elles ont abouti ; s'il échoue, la carte reste acquise et l'écran de fin le dit en une ligne,
+sans se transformer en erreur.
 
 ## 15. Réglages
 
