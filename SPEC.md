@@ -271,7 +271,14 @@ et non à celles que rend le géocodeur : l'épingle est restée sur le point qu
 est que le nom. Un point sans adresse - plein champ, forêt, lac - n'y entre pas : « 44.56, 6.08 » ne dirait
 rien à personne trois jours plus tard.
 
-Les **trois actions d'itinéraire** y figurent aussi, et elles sont offertes **même sans adresse** : le point
+L'infobulle se lit en deux temps, séparés d'un trait : **au-dessus** l'adresse, seule chose que le
+géocodage sait dire de ce point ; **au-dessous** ce qu'on peut en faire - les deux mesures, puis les trois
+actions d'itinéraire, cinq lignes d'un même gabarit, pictogramme et libellé. Les mesures ont longtemps été
+deux boutons à bordure posés dans l'en-tête, du temps où elles y étaient seules ; elles s'y donnaient l'air
+d'appartenir à la description du point, alors qu'elles demandent un calcul comme les autres. Le résultat
+d'une mesure s'inscrit sous son libellé - à droite, il ne tiendrait pas, et la durée se coupait au milieu.
+
+Les **trois actions d'itinéraire** sont offertes **même sans adresse** : le point
 a des coordonnées, c'est tout ce qu'il faut pour y aller, et l'étape porte alors les coordonnées pour nom.
 Un point au milieu d'un bois est une étape parfaitement légitime - c'est peut-être le départ du sentier -,
 et n'accepter que les endroits qui ont une adresse reviendrait à ne planifier qu'en ville.

@@ -208,25 +208,51 @@ fun RouteActions(
     onAddStep: () -> Unit,
     fontSp: Int,
     modifier: Modifier = Modifier,
+    /** Le trait de separation d'avec ce qui precede. A retirer quand la bulle a deja ouvert la zone des
+     *  actions par ses propres lignes : deux traits couperaient en deux une liste qui n'en fait qu'une. */
+    divider: Boolean = true,
 ) {
     Column(modifier) {
-        HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
-        RouteAction(Icons.Outlined.PlayArrow, R.string.poi_set_start, fontSp, onSetStart)
-        RouteAction(Icons.Outlined.Flag, R.string.poi_set_end, fontSp, onSetEnd)
-        RouteAction(Icons.Filled.Add, R.string.poi_add_step, fontSp, onAddStep)
+        if (divider) HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+        BubbleAction(Icons.Outlined.PlayArrow, stringResource(R.string.poi_set_start), fontSp, onSetStart)
+        BubbleAction(Icons.Outlined.Flag, stringResource(R.string.poi_set_end), fontSp, onSetEnd)
+        BubbleAction(Icons.Filled.Add, stringResource(R.string.poi_add_step), fontSp, onAddStep)
     }
 }
 
-/** Une action d'itineraire : son pictogramme a la couleur des commandes, et ce qu'elle fait. */
+/**
+ * Une ligne d'action d'infobulle : son pictogramme a la couleur des commandes, ce qu'elle fait, et - s'il
+ * y a lieu - ce qu'elle a rendu.
+ *
+ * Le gabarit commun a TOUT ce qu'une bulle propose de faire de l'endroit qu'elle decrit : les trois
+ * actions d'itineraire, et les deux mesures de distance d'un point designe. Une seule colonne de
+ * pictogrammes, un seul alignement de libelles, une seule hauteur de ligne - c'est ce qui fait lire la
+ * liste d'un coup d'oeil au lieu d'un empilement de commandes de formes differentes.
+ *
+ * [detail] se pose SOUS le libelle et non a sa droite : un resultat de mesure ("11,2 km - 54 min" plus son
+ * appel de note) ne tient pas a cote d'un libelle deja long dans plusieurs langues, et se coupait au
+ * milieu - le nombre restait lisible, mais faux de moitie.
+ */
 @Composable
-private fun RouteAction(icon: ImageVector, label: Int, fontSp: Int, onClick: () -> Unit) {
+fun BubbleAction(
+    icon: ImageVector,
+    label: String,
+    fontSp: Int,
+    onClick: () -> Unit,
+    detail: @Composable (() -> Unit)? = null,
+) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start,
     ) {
-        Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        // Le pictogramme suit la PREMIERE ligne du libelle, et ne se centre pas sur une ligne qui a pousse
+        // un resultat sous elle : il descendrait alors dans le vide, loin du texte qu'il annonce.
+        Icon(icon, null, Modifier.padding(top = 2.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(10.dp))
-        Text(stringResource(label), fontSize = fontSp.sp)
+        Column {
+            Text(label, fontSize = fontSp.sp)
+            if (detail != null) detail()
+        }
     }
 }
