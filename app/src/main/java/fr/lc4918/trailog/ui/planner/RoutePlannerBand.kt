@@ -150,6 +150,7 @@ fun RoutePlannerBand(
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
+    onPlaceForgotten: (GeocodePlace) -> Unit,
     onImport: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
@@ -181,6 +182,7 @@ fun RoutePlannerBand(
                 )
                 RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
                 StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,
+                    onPlaceForgotten,
                     onImport, onDownload,
                     Modifier.weight(1f, fill = false).padding(top = 10.dp))
                 ResultsZone(state, imperial, settings, lastLabelInsetPx)
@@ -249,6 +251,7 @@ private fun StepList(
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
+    onPlaceForgotten: (GeocodePlace) -> Unit,
     onImport: () -> Unit,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
@@ -269,6 +272,7 @@ private fun StepList(
                 geocoding = geocoding,
                 history = history,
                 onPlaceChosen = onPlaceChosen,
+                onPlaceForgotten = onPlaceForgotten,
             )
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -318,6 +322,7 @@ private fun StepRow(
     geocoding: GeocodingParams,
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
+    onPlaceForgotten: (GeocodePlace) -> Unit,
 ) {
     var focused by remember(step.id) { mutableStateOf(false) }
     // Le clic sur l'affichage replie ne peut PAS demander le focus lui-meme : tant qu'il tient la place du
@@ -506,6 +511,7 @@ private fun StepRow(
                     icon = true,
                     image = Icons.Filled.History,
                     onClick = { onPlaceChosen(lieu); state.choose(step, StepTarget.Place(lieu)); settle() },
+                    onForget = { onPlaceForgotten(lieu) },
                 )
             }
         }
@@ -537,6 +543,7 @@ private fun SuggestionRow(
     icon: Boolean,
     onClick: () -> Unit,
     image: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.MyLocation,
+    onForget: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
@@ -546,7 +553,26 @@ private fun SuggestionRow(
             Icon(image, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
         }
         Text(label, fontSize = 13.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = if (icon) 6.dp else 0.dp))
+            modifier = Modifier.padding(start = if (icon) 6.dp else 0.dp).weight(1f))
+        /*
+         * La croix des seules propositions d'HISTORIQUE (cf. [onForget] : les autres ne la passent pas).
+         *
+         * Visible, et non un appui long : l'historique se remplit tout seul de ce qu'on consulte, il faut
+         * donc pouvoir en retirer ce qu'on n'y a pas mis expres - et un geste que rien n'annonce n'existe
+         * pas pour qui ne le connait pas deja.
+         *
+         * Rien a fermer ni a rouvrir : la ligne disparait, les autres remontent, le champ garde le focus.
+         */
+        if (onForget != null) {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                IconButton(onClick = onForget, modifier = Modifier.size(22.dp)) {
+                    Icon(
+                        Icons.Filled.Close, stringResource(R.string.planner_forget_place),
+                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
 

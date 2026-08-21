@@ -76,6 +76,23 @@ class PlannerHistoryTest {
         assertEquals(listOf("Mirepoix", "Revel"), h.places.map { it.label })
     }
 
+    /**
+     * L'historique se remplit TOUT SEUL de ce qu'on consulte, pas seulement de ce qu'on tape : il faut donc
+     * pouvoir en retirer ce qu'on n'y a pas mis expres. Une application qui garde trace des deplacements
+     * sans offrir de l'effacer se contredit elle-meme.
+     */
+    @Test fun `un lieu s'oublie par son libelle`() {
+        val h = PlannerHistory() + lieu("Mirepoix") + lieu("Soreze") + lieu("Revel")
+        assertEquals(listOf("Revel", "Mirepoix"), (h - "Soreze").places.map { it.label })
+    }
+
+    /** Oublier ce qui n'y est pas ne retire rien : la croix d'une proposition deja partie ne doit pas
+     *  emporter sa voisine. */
+    @Test fun `oublier un lieu inconnu ne change rien`() {
+        val h = PlannerHistory() + lieu("Mirepoix")
+        assertEquals(listOf("Mirepoix"), (h - "Toulouse").places.map { it.label })
+    }
+
     @Test fun `un historique vide ne propose rien`() {
         assertTrue(PlannerHistory.of("").places.isEmpty())
         assertTrue(PlannerHistory.of(null).places.isEmpty())

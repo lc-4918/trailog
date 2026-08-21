@@ -40,6 +40,16 @@ data class PlannerHistory(val places: List<GeocodePlace> = emptyList()) {
         PlannerHistory((listOf(place) + places.filter { it.label != place.label }).take(MAX))
 
     /**
+     * Retire un lieu, désigné par son libellé - le même qui sert à ne pas le compter deux fois.
+     *
+     * L'historique se remplit **tout seul** de ce qu'on consulte, et pas seulement de ce qu'on tape : il
+     * faut donc pouvoir en retirer ce qu'on n'y a pas mis exprès. Une application qui garde trace de vos
+     * déplacements sans offrir de l'effacer se contredit elle-même.
+     */
+    operator fun minus(label: String): PlannerHistory =
+        PlannerHistory(places.filter { it.label != label })
+
+    /**
      * Forme enregistrée : une ligne par lieu, `libellé` puis longitude et latitude séparés par des
      * tabulations.
      *

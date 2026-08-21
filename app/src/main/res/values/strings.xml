@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Vue complète</string>
     <string name="planner_layer_name">Nom de la couche</string>
     <string name="planner_clear_step">Effacer</string>
+    <string name="planner_forget_place">Oublier ce lieu</string>
+    <string name="settings_section_planner_history">Historique des lieux</string>
+    <string name="settings_clear_planner_history">Effacer l\'historique</string>
+    <string name="settings_planner_history_empty">Aucun lieu retenu</string>
+    <string name="settings_planner_history_count">%1$d lieu(x) retenu(s)</string>
+    <string name="settings_planner_history_hint">Les lieux cherchés, les points d\'intérêt consultés et les adresses relevées d\'un appui long sont reproposés dans le planificateur. Ils ne quittent jamais l\'appareil.</string>
     <string name="planner_search_failed">Service de recherche injoignable</string>
     <string name="planner_retry">Réessayer</string>
     <string name="planner_show_profile">Afficher le profil altimétrique</string>

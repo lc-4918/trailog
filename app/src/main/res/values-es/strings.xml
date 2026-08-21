@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nombre de la capa</string>
     <string name="planner_clear_step">Borrar</string>
+    <string name="planner_forget_place">Olvidar este lugar</string>
+    <string name="settings_section_planner_history">Historial de lugares</string>
+    <string name="settings_clear_planner_history">Borrar el historial</string>
+    <string name="settings_planner_history_empty">Ningún lugar guardado</string>
+    <string name="settings_planner_history_count">%1$d lugar(es) guardado(s)</string>
+    <string name="settings_planner_history_hint">Los lugares buscados, los puntos de interés consultados y las direcciones obtenidas con una pulsación larga se vuelven a proponer en el planificador. Nunca salen del dispositivo.</string>
     <string name="planner_search_failed">Servicio de búsqueda inaccesible</string>
     <string name="planner_retry">Reintentar</string>
     <string name="planner_show_profile">Mostrar el perfil altimétrico</string>

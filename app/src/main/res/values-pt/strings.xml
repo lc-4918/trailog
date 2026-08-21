@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nome da camada</string>
     <string name="planner_clear_step">Limpar</string>
+    <string name="planner_forget_place">Esquecer este local</string>
+    <string name="settings_section_planner_history">Histórico de locais</string>
+    <string name="settings_clear_planner_history">Limpar o histórico</string>
+    <string name="settings_planner_history_empty">Nenhum local guardado</string>
+    <string name="settings_planner_history_count">%1$d local(is) guardado(s)</string>
+    <string name="settings_planner_history_hint">Os locais pesquisados, os pontos de interesse consultados e os endereços obtidos com uma pressão longa são novamente propostos no planeador. Nunca saem do dispositivo.</string>
     <string name="planner_search_failed">Serviço de pesquisa inacessível</string>
     <string name="planner_retry">Tentar novamente</string>
     <string name="planner_show_profile">Mostrar o perfil altimétrico</string>

@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Gesamtansicht</string>
     <string name="planner_layer_name">Name der Ebene</string>
     <string name="planner_clear_step">Löschen</string>
+    <string name="planner_forget_place">Diesen Ort vergessen</string>
+    <string name="settings_section_planner_history">Ortsverlauf</string>
+    <string name="settings_clear_planner_history">Verlauf löschen</string>
+    <string name="settings_planner_history_empty">Kein Ort gespeichert</string>
+    <string name="settings_planner_history_count">%1$d Ort(e) gespeichert</string>
+    <string name="settings_planner_history_hint">Gesuchte Orte, geöffnete Sehenswürdigkeiten und per langem Druck ermittelte Adressen werden im Planer erneut vorgeschlagen. Sie verlassen das Gerät nie.</string>
     <string name="planner_search_failed">Suchdienst nicht erreichbar</string>
     <string name="planner_retry">Erneut versuchen</string>
     <string name="planner_show_profile">Höhenprofil anzeigen</string>

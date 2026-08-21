@@ -2137,6 +2137,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         history = PlannerHistory.of(settings?.plannerHistory),
                         // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
                         onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },
+                        onPlaceForgotten = { lieu -> vm.forgetPlannerPlace(lieu.label) },
                         onImport = { importDialog = true },
                         onDownload = {
                             val name = defaultRouteName(planner.targets, currentPositionLabel)

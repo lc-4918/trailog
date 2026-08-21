@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nome del livello</string>
     <string name="planner_clear_step">Cancella</string>
+    <string name="planner_forget_place">Dimentica questo luogo</string>
+    <string name="settings_section_planner_history">Cronologia dei luoghi</string>
+    <string name="settings_clear_planner_history">Cancella la cronologia</string>
+    <string name="settings_planner_history_empty">Nessun luogo memorizzato</string>
+    <string name="settings_planner_history_count">%1$d luogo/luoghi memorizzato/i</string>
+    <string name="settings_planner_history_hint">I luoghi cercati, i punti di interesse aperti e gli indirizzi ottenuti con una pressione prolungata vengono riproposti nel pianificatore. Non lasciano mai il dispositivo.</string>
     <string name="planner_search_failed">Servizio di ricerca irraggiungibile</string>
     <string name="planner_retry">Riprova</string>
     <string name="planner_show_profile">Mostra il profilo altimetrico</string>

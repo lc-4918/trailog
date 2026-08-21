@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Full view</string>
     <string name="planner_layer_name">Layer name</string>
     <string name="planner_clear_step">Clear</string>
+    <string name="planner_forget_place">Forget this place</string>
+    <string name="settings_section_planner_history">Place history</string>
+    <string name="settings_clear_planner_history">Clear history</string>
+    <string name="settings_planner_history_empty">No place kept</string>
+    <string name="settings_planner_history_count">%1$d place(s) kept</string>
+    <string name="settings_planner_history_hint">Places you searched, points of interest you opened and addresses read from a long press are offered again in the planner. They never leave the device.</string>
     <string name="planner_search_failed">Search service unreachable</string>
     <string name="planner_retry">Retry</string>
     <string name="planner_show_profile">Show elevation profile</string>

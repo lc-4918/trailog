@@ -798,8 +798,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun rememberPlannerPlace(place: fr.lc4918.trailog.geocode.GeocodePlace) = viewModelScope.launch {
         val s = settings.value ?: return@launch
-        val maj = (fr.lc4918.trailog.domain.model.PlannerHistory.of(s.plannerHistory) + place).asText()
+        val maj = (PlannerHistory.of(s.plannerHistory) + place).asText()
         if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
+    }
+
+    /**
+     * Retire un lieu de l'historique du planificateur : la croix d'une proposition.
+     *
+     * Le pendant indispensable de [rememberPlannerPlace] : ce qui s'inscrit tout seul doit pouvoir se
+     * retirer a la main. Un lieu consulte par curiosite, une adresse qu'on ne veut pas revoir proposee -
+     * l'un et l'autre s'effacent d'un geste, sans passer par la reinitialisation de tous les reglages.
+     */
+    fun forgetPlannerPlace(label: String) = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        val maj = (PlannerHistory.of(s.plannerHistory) - label).asText()
+        if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
+    }
+
+    /** Vide l'historique du planificateur : le bouton des reglages. */
+    fun clearPlannerHistory() = viewModelScope.launch {
+        val s = settings.value ?: return@launch
+        if (s.plannerHistory.isNotEmpty()) db.settings().upsert(s.copy(plannerHistory = ""))
     }
 
     /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur

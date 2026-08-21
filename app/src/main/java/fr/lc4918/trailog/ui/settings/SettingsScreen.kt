@@ -152,6 +152,7 @@ import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.domain.model.GroupCheck
+import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
@@ -1184,6 +1185,36 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
             SurfacePref.entries, optionLabel = { surfacePrefLabel(it) }) {
             vm.save(cur.withRoutePrefs(tuned, prefs.copy(surface = it)))
         }
+    }
+
+    /*
+     * Vider l'historique des lieux du planificateur.
+     *
+     * Il se remplit TOUT SEUL de ce qu'on consulte - un lieu cherche, un point d'interet ouvert, l'adresse
+     * d'un appui long - et pas seulement de ce qu'on tape. Ce qui s'inscrit sans qu'on le demande doit
+     * pouvoir s'effacer sans reinitialiser tous les reglages : c'est la moindre des choses pour une
+     * application dont l'argument est que tout reste sur l'appareil.
+     *
+     * Le compte en sous-titre, et la ligne eteinte quand il est a zero : un bouton qui n'a rien a effacer
+     * ne doit pas repondre comme s'il avait fait quelque chose. Sans confirmation - huit lieux se
+     * reconstituent en une promenade, la demander pour cela serait du ceremonial.
+     */
+    val lieux = PlannerHistory.of(cur.plannerHistory).places
+    SectionTitle(stringResource(R.string.settings_section_planner_history))
+    SettingsCard {
+        SetRow(
+            stringResource(R.string.settings_clear_planner_history),
+            sub = if (lieux.isEmpty()) stringResource(R.string.settings_planner_history_empty)
+            else stringResource(R.string.settings_planner_history_count, lieux.size),
+            onClick = if (lieux.isEmpty()) null else ({ vm.save(cur.copy(plannerHistory = "")) }),
+            role = Role.Button,
+        ) {
+            Icon(
+                Icons.Filled.DeleteOutline, null,
+                tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
+            )
+        }
+        Hint(stringResource(R.string.settings_planner_history_hint))
     }
 
     /*

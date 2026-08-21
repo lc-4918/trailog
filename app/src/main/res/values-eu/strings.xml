@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Ikuspegi osoa</string>
     <string name="planner_layer_name">Geruzaren izena</string>
     <string name="planner_clear_step">Garbitu</string>
+    <string name="planner_forget_place">Ahaztu toki hau</string>
+    <string name="settings_section_planner_history">Tokien historia</string>
+    <string name="settings_clear_planner_history">Garbitu historia</string>
+    <string name="settings_planner_history_empty">Ez da tokirik gorde</string>
+    <string name="settings_planner_history_count">%1$d toki gordeta</string>
+    <string name="settings_planner_history_hint">Bilatutako tokiak, irekitako interesguneak eta sakatze luze batez lortutako helbideak berriz proposatzen dira plangintzan. Ez dute gailua inoiz uzten.</string>
     <string name="planner_search_failed">Bilaketa-zerbitzua eskuraezina</string>
     <string name="planner_retry">Saiatu berriro</string>
     <string name="planner_show_profile">Erakutsi altuera-profila</string>

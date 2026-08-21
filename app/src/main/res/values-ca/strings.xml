@@ -181,6 +181,12 @@
     <string name="planner_zoom_out">Vista completa</string>
     <string name="planner_layer_name">Nom de la capa</string>
     <string name="planner_clear_step">Esborra</string>
+    <string name="planner_forget_place">Oblida aquest lloc</string>
+    <string name="settings_section_planner_history">Historial de llocs</string>
+    <string name="settings_clear_planner_history">Esborra l\'historial</string>
+    <string name="settings_planner_history_empty">Cap lloc desat</string>
+    <string name="settings_planner_history_count">%1$d lloc(s) desat(s)</string>
+    <string name="settings_planner_history_hint">Els llocs cercats, els punts d\'interès consultats i les adreces obtingudes amb una pulsació llarga es tornen a proposar al planificador. Mai no surten del dispositiu.</string>
     <string name="planner_search_failed">Servei de cerca inaccessible</string>
     <string name="planner_retry">Torna-ho a provar</string>
     <string name="planner_show_profile">Mostra el perfil altimètric</string>
