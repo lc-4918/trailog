@@ -2,21 +2,12 @@ package fr.lc4918.trailog.ui.routes
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
-import android.os.CancellationSignal
 import android.os.SystemClock
-import android.view.WindowManager
 import android.provider.OpenableColumns
-import android.provider.Settings
 import android.view.Surface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -73,11 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
-import androidx.core.location.LocationManagerCompat
 import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
@@ -105,8 +92,6 @@ import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
-import fr.lc4918.trailog.location.LocationHub
-import fr.lc4918.trailog.location.LocationService
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.net.ServiceUrl
 import fr.lc4918.trailog.map.CoverageBounds
@@ -126,6 +111,8 @@ import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.mappoint.MeasureState
+import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
+import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.measure.MeasureAnchor
 import fr.lc4918.trailog.ui.measure.MeasureBubble
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
@@ -169,14 +156,12 @@ import fr.lc4918.trailog.ui.planner.defaultRouteName
 import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.cursorInfos
 import fr.lc4918.trailog.ui.profile.titleInfos
-import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -270,37 +255,15 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     /*
      * ---------- position GPS ----------
      *
-     * L'ecran ne lit plus le capteur : il lit [LocationHub], que [LocationService] alimente depuis un
-     * service de premier plan. C'est ce qui fait survivre le suivi a l'extinction de l'ecran - la
-     * composition, elle, s'arrete des que la carte n'est plus visible, et le suivi s'arretait avec elle
-     * (cf. la documentation de LocationService).
+     * Allumer le suivi et l'eteindre, demander une position pour une seule question, savoir si la
+     * localisation est allumee dans le telephone : tout cela vit dans [LocationControls], avec les trois
+     * autorisations et le recepteur systeme qui vont avec.
      *
-     * Il reste ici deux choses que le service ne fait pas : demander le capteur pour une seule question
-     * (cf. currentPosition), et savoir si la localisation est allumee dans le telephone - deux lectures qui
-     * ne demandent rien a personne.
+     * L'ecran n'en garde que ce qu'il AFFICHE - le symbole du repere, ci-dessous - et ce qu'il en lit.
      */
-    val gpsActive by LocationHub.tracking.collectAsState()
-    val fix by LocationHub.fix.collectAsState()
-    val lastUserLocation = remember(fix) { fix?.let { it.lat to it.lon } } // (lat, lon)
-    // vrai tant qu'un recentrage automatique est dû (activation du capteur, ou retour au premier plan) :
-    // consommé dès que la prochaine position arrive
-    var pendingCenter by remember { mutableStateOf(false) }
-    // Instant du dernier geste sur la carte (0 = aucun), en temps depuis le démarrage de l'appareil et non
-    // en heure murale : le suivi de position s'y réfère, et un changement d'heure - fuseau, mise à l'heure
-    // du réseau - ne doit pas le suspendre pour l'éternité ni le réveiller trop tôt.
-    var lastUserGestureAt by remember { mutableLongStateOf(0L) }
-    var showLocationDisabledDialog by remember { mutableStateOf(false) }
-    val locationManager = remember { ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
-    // Le repere suit le flux du concentrateur : une position de plus, un repere deplace. Le rechargement
-    // de style, lui, ne demande rien - le controleur garde la derniere position et la repose lui-meme.
-    LaunchedEffect(fix) {
-        val f = fix ?: return@LaunchedEffect
-        controller.setUserLocation(f.lon, f.lat, f.accuracyM)
-        if (pendingCenter) { controller.centerOn(f.lat, f.lon); pendingCenter = false }
-    }
-    // Suivi arrete : plus de repere. Ici et non dans stopGps, parce que le service peut aussi s'arreter de
-    // lui-meme - la notification, ou le systeme qui reprend sa memoire.
-    LaunchedEffect(gpsActive) { if (!gpsActive) { controller.clearUserLocation(); pendingCenter = false } }
+    val location = rememberLocationControls(controller, settings?.showGpsButton)
+    // Ecran maintenu allume tant que le suivi tourne, si le reglage le demande (cf. KeepScreenOnEffect).
+    KeepScreenOnEffect(settings?.keepScreenOn == true && location.gpsActive)
 
     // Symbole du repère de position et sa couleur : celle réglée, sinon celle propre au symbole (le bleu de
     // la puce, le rouge des flèches et de la croix) - une couleur vide n'est pas un choix, c'est l'absence
@@ -310,193 +273,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val gpsMarkerSizeDp = (settings?.gpsMarkerSizeDp ?: DefaultGpsMarkerSizeDp).toFloat()
 
     // Orientation du telephone, quand le symbole choisi en porte une (cf. HeadingEffect).
-    HeadingEffect(gpsActive && gpsMarker.oriented, lastUserLocation) { controller.setUserHeading(it) }
-
-    fun hasLocationPermission() =
-        ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-    /*
-     * La localisation est-elle allumee dans le telephone.
-     *
-     * A ne pas confondre avec [gpsActive], qui dit seulement si le REPERE est pose sur la carte. Ce qui se
-     * CALCULE a partir de la position - partir d'ou l'on est dans le planificateur, mesurer une distance
-     * depuis la position - ne demande que le capteur : le reglage "Localisation GPS" et son bouton ne
-     * commandent, eux, que l'affichage du repere.
-     *
-     * Relu a chaque bascule de la localisation, que le systeme diffuse, et au retour au premier plan :
-     * sans cela, l'eteindre depuis le volet des reglages rapides laissait des propositions qui ne
-     * pouvaient plus aboutir, et l'allumer n'en ramenait aucune.
-     */
-    var sensorEnabled by remember { mutableStateOf(false) }
-    fun refreshSensorEnabled() { sensorEnabled = LocationManagerCompat.isLocationEnabled(locationManager) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        refreshSensorEnabled()
-        val observer = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_RESUME) refreshSensorEnabled()
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) { refreshSensorEnabled() }
-        }
-        // Les deux annonces : la bascule generale de la localisation, et l'allumage ou l'extinction d'un
-        // fournisseur en particulier - c'est celle-la que les anciennes versions d'Android envoient.
-        val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION).apply {
-            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
-        }
-        ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            runCatching { ctx.unregisterReceiver(receiver) }
-        }
-    }
-
-    /*
-     * L'autorisation de notifier, demandee au premier allumage du suivi et a lui seul.
-     *
-     * Depuis Android 13, une notification refusee ne s'affiche pas - le service, lui, tourne quand meme.
-     * Ce serait une position qui consomme la batterie sans que rien ne le dise ni ne l'arrete, exactement
-     * ce qu'on reproche aux applications qui suivent en cachette. Un refus n'empeche donc rien : il est
-     * pris pour ce qu'il est, et le bouton de la carte reste le second moyen d'arreter.
-     */
-    val notificationPermissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    fun askNotificationPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        val accordee = ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
-        if (!accordee) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    /** Fin du suivi : le service s'arrete, et le repere disparait avec lui (cf. l'effet sur gpsActive). */
-    fun stopGps() { LocationService.stop(ctx) }
-
-    /** Le fournisseur de position a interroger : le GPS s'il est allume, le reseau sinon, rien si les
-     *  deux sont eteints. */
-    fun enabledProvider(): String? = when {
-        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-        locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-        else -> null
-    }
-
-    @SuppressLint("MissingPermission")
-    fun startGps() {
-        if (!hasLocationPermission()) return
-        val provider = enabledProvider() ?: return
-        askNotificationPermission()
-        LocationService.start(ctx)
-        // Le cadrage reste ici, et lui seul : le service pose le repere, l'ecran decide de ce que la camera
-        // en fait. La derniere position connue est relue plutot qu'attendue du flux - c'est elle qui
-        // distingue les deux cadrages, un saut au zoom 15 sur un point qu'on tient deja, un simple
-        // recentrage a l'arrivee de la premiere mesure.
-        val last = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
-        if (last != null) {
-            controller.moveTo(last.latitude, last.longitude, 15.0)
-            pendingCenter = false
-        } else {
-            pendingCenter = true   // pas de dernière position connue : on centre dès que le capteur en donne une
-        }
-    }
-
-    /** Recentre la carte sur la dernière position GPS connue (bouton de recentrage). */
-    fun recenterOnGps() { lastUserLocation?.let { (la, lo) -> controller.centerOn(la, lo) } }
-
-    /**
-     * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
-     *
-     * Le repere affiche donne deja un flux de positions : on s'en sert telle quelle. Sinon on demande au
-     * systeme une position ponctuelle, qu'il rend tout de suite s'il en a une assez fraiche et qu'il va
-     * chercher au capteur autrement. C'est ce qui affranchit le planificateur et les mesures de
-     * l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
-     *
-     * Null si l'autorisation manque ou si la localisation est eteinte - et aussi si le capteur n'a rien
-     * rendu dans le delai que le systeme s'accorde, sous un toit ou dans un tunnel.
-     */
-    @SuppressLint("MissingPermission")
-    suspend fun currentPosition(): Pair<Double, Double>? {
-        lastUserLocation?.let { return it }
-        if (!hasLocationPermission()) return null
-        val provider = enabledProvider() ?: return null
-        return suspendCancellableCoroutine { cont ->
-            val signal = CancellationSignal()
-            cont.invokeOnCancellation { signal.cancel() }
-            runCatching {
-                LocationManagerCompat.getCurrentLocation(
-                    locationManager, provider, signal, ContextCompat.getMainExecutor(ctx),
-                ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
-            }.onFailure { if (cont.isActive) cont.resume(null) }
-        }
-    }
-
-    val locationSettingsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        refreshSensorEnabled()
-        if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
-    }
-    // Geste mis en attente de l'autorisation : rejoue des qu'elle est accordee. L'autorisation se demande
-    // maintenant depuis plusieurs endroits (le bouton de position, mais aussi le planificateur et la
-    // mesure depuis la position), et chacun a sa propre suite a donner.
-    var pendingLocationAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        val action = pendingLocationAction
-        pendingLocationAction = null
-        if (granted) action?.invoke()
-    }
-
-    /** Fait [action] avec le capteur, en demandant d'abord l'autorisation si elle manque. */
-    fun withLocationPermission(action: () -> Unit) {
-        if (hasLocationPermission()) action()
-        else {
-            pendingLocationAction = action
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-
-    fun onGpsButtonTap() {
-        if (gpsActive) { stopGps(); return }
-        withLocationPermission {
-            if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
-            else showLocationDisabledDialog = true
-        }
-    }
-
-    // le réglage "afficher le bouton GPS" désactivé pendant que la position est active coupe la position
-    // (mais ne désactive pas le capteur lui-même, seulement les mises à jour côté appli)
-    LaunchedEffect(settings?.showGpsButton) {
-        if (settings?.showGpsButton == false && gpsActive) stopGps()
-    }
-    // Localisation eteinte dans le telephone alors que le suivi tourne : il n'a plus rien a ecouter. Sans
-    // cet arret, sa notification resterait affichee a annoncer un suivi qui ne recoit plus rien.
-    LaunchedEffect(sensorEnabled) { if (!sensorEnabled && gpsActive) stopGps() }
-
-    /*
-     * Ecran maintenu allume, si le reglage le demande et TANT QUE LE SUIVI TOURNE.
-     *
-     * Ce n'est plus ce qui garde le suivi en vie - le service s'en charge, veille comprise - mais ce qui
-     * garde la carte LISIBLE : telephone sur un guidon, ou consulte d'un coup d'oeil sans y toucher. D'ou
-     * le lien avec le suivi plutot qu'avec l'ecran de carte : allumer indefiniment l'ecran de quelqu'un qui
-     * consulte ses traces sur son canape n'aurait aucun sens.
-     *
-     * Le drapeau est pose sur la FENETRE et retire au depart de l'ecran : laisse en place, il survivrait a
-     * la carte, et rien a l'ecran ne dirait plus pourquoi le telephone ne s'endort pas.
-     */
-    val keepScreenOn = settings?.keepScreenOn == true && gpsActive
-    // L'activite se cherche en remontant les contextes : celui de la composition est parfois un habillage -
-    // c'en est un ici, la langue etant posee par attachBaseContext (cf. LocalePrefs).
-    val fenetre = remember(ctx) {
-        generateSequence(ctx) { (it as? ContextWrapper)?.baseContext }
-            .filterIsInstance<Activity>().firstOrNull()?.window
-    }
-    DisposableEffect(keepScreenOn, fenetre) {
-        if (keepScreenOn) fenetre?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        else fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose { fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-    }
-    /*
-     * Rien n'est desabonne a la disparition de l'ecran, et c'est tout l'objet du service : le suivi doit
-     * survivre a la carte qu'on quitte, a l'ecran qui s'endort, et a l'application passee en arriere-plan.
-     * Il ne s'arrete que sur un geste - le bouton, la notification - ou quand la localisation s'eteint.
-     */
+    HeadingEffect(location.gpsActive && gpsMarker.oriented, location.lastUserLocation) { controller.setUserHeading(it) }
 
     // ---------- alerte d'éloignement de la trace suivie ----------
     /*
@@ -516,17 +293,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     var alertChooserPending by remember { mutableStateOf(false) }
 
     fun onAlertButtonTap() {
-        if (gpsActive) alert.openChooser() else showAlertNeedsGpsDialog = true
+        if (location.gpsActive) alert.openChooser() else showAlertNeedsGpsDialog = true
     }
 
-    LaunchedEffect(gpsActive, alertChooserPending) {
-        if (alertChooserPending && gpsActive) { alertChooserPending = false; alert.openChooser() }
+    LaunchedEffect(location.gpsActive, alertChooserPending) {
+        if (alertChooserPending && location.gpsActive) { alertChooserPending = false; alert.openChooser() }
     }
     // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
     // couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
-    LaunchedEffect(alert.chooserOpen, alert.candidates, lastUserLocation) {
+    LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
         if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
-        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
+        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
         vm.nearestTracks(la, lo) { alert.candidates = it }
     }
     /*
@@ -540,8 +317,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     val awayM by TrackWatch.awayM.collectAsState()
     val alertBanner = alerting && !silenced
     // Le réglage éteint, ou le capteur coupé : plus rien à suivre. La liste ouverte se referme avec.
-    LaunchedEffect(alertEnabled, gpsActive) {
-        if (!alertEnabled || !gpsActive) {
+    LaunchedEffect(alertEnabled, location.gpsActive) {
+        if (!alertEnabled || !location.gpsActive) {
             TrackWatch.stop()
             alert.closeChooser()
             alertChooserPending = false
@@ -671,14 +448,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Origine de la mesure depuis la position, figée dès qu'une position est connue : le repère affiché en
     // livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
     //
-    // La position vient du capteur, éteint ou allumé côté affichage (cf. currentPosition) : mesurer d'où
+    // La position vient du capteur, éteint ou allumé côté affichage (cf. LocationControls.currentPosition) : mesurer d'où
     // l'on est n'oblige plus à poser le repère sur la carte.
     //
     // Sans position - autorisation refusée, localisation éteinte, ou capteur muet jusqu'au bout du délai
     // que le système s'accorde -, la mesure est abandonnée : son spinner tournerait indéfiniment.
     LaunchedEffect(mapPoint.positionMeasure) {
         if (mapPoint.positionMeasure != MeasureState.Loading || mapPoint.positionOrigin != null) return@LaunchedEffect
-        val fix = currentPosition()
+        val fix = location.currentPosition()
         if (fix == null) mapPoint.publishPositionMeasure(MeasureState.Failed)
         else mapPoint.fixPositionOrigin(fix.first, fix.second)
     }
@@ -816,9 +593,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         val pts = targets.map { t ->
             when (t) {
                 is StepTarget.Place -> t.place.lat to t.place.lon
-                // Demandee au capteur, que le repere soit affiche ou non (cf. currentPosition) : composer
+                // Demandee au capteur, que le repere soit affiche ou non (cf. LocationControls.currentPosition) : composer
                 // un parcours depuis chez soi n'oblige pas a poser sa position sur la carte.
-                StepTarget.CurrentPosition -> currentPosition() ?: run {
+                StepTarget.CurrentPosition -> location.currentPosition() ?: run {
                     planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
                 }
             }
@@ -917,7 +694,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      */
     fun onDistanceFromPositionTap() {
         if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
-        else withLocationPermission { mapPoint.requestDistanceFromPosition() }
+        else location.withLocationPermission { mapPoint.requestDistanceFromPosition() }
     }
 
     /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
@@ -962,7 +739,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
             // Un geste rend la carte à son propriétaire : le suivi de position se tait le temps du silence
             // (cf. MapFollow). Ce rappel ne se déclenche que sur un geste humain - centerOn et fitTo ne le
             // font pas -, sans quoi le suivi s'interdirait lui-même à son premier recentrage.
-            lastUserGestureAt = SystemClock.elapsedRealtime()
+            location.noteUserGesture()
         }
         // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
         // les modes de saisie exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point.
@@ -1326,20 +1103,20 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // même fermeture, va la lire. Deux effets côte à côte n'auraient tenu que par l'ordre de déclaration.
     if (bubbleOpen) {
         DisposableEffect(Unit) {
-            onDispose { lastUserGestureAt = SystemClock.elapsedRealtime() }
+            onDispose { location.noteUserGesture() }
         }
     }
     val followsPosition = MapFollow.follows(
         enabled = settings?.mapFollowPosition != false,
-        gpsActive = gpsActive,
+        gpsActive = location.gpsActive,
         plannerOpen = planner.open,
         layerOpen = activeLayerId != null,
         bubbleOpen = bubbleOpen,
     )
-    LaunchedEffect(followsPosition, lastUserLocation, lastUserGestureAt) {
+    LaunchedEffect(followsPosition, location.lastUserLocation, location.lastUserGestureAt) {
         if (!followsPosition) return@LaunchedEffect
-        val (la, lo) = lastUserLocation ?: return@LaunchedEffect
-        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), lastUserGestureAt)
+        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
+        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), location.lastUserGestureAt)
         if (wait > 0L) delay(wait)
         controller.centerOn(la, lo)
     }
@@ -1482,7 +1259,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         }
                         if (settings?.showGpsButton == true) {
                             IconButton(
-                                onClick = { onGpsButtonTap() },
+                                onClick = { location.onGpsButtonTap() },
                                 // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
                                 // bleu, comme le bouton de retouche. Le bouton portait auparavant un aplat
                                 // bleu plein, seul de son espece dans la colonne - il se lisait comme un
@@ -1490,7 +1267,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                 // des ornements de carte.
                                 modifier = controlBg,
                             ) {
-                                val gpsTint = if (gpsActive) MapChromeActive else chromeFg
+                                val gpsTint = if (location.gpsActive) MapChromeActive else chromeFg
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(Icons.Outlined.Place, stringResource(R.string.content_desc_gps_position),
                                         modifier = Modifier.size(GpsIconSize), tint = gpsTint)
@@ -1933,7 +1710,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                                     // capteur suffit. Une mesure déjà demandée retient la ligne : son
                                     // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
                                     // sur la carte - rien ne l'expliquerait plus.
-                                    showPositionRow = sensorEnabled || mapPoint.positionMeasure != null,
+                                    showPositionRow = location.sensorEnabled || mapPoint.positionMeasure != null,
                                     positionMeasure = mapPoint.positionMeasure,
                                     pointMeasure = mapPoint.pointMeasure,
                                     imperial = imperialUnits,
@@ -1987,8 +1764,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 val centerTolPx = with(density) { 16.dp.toPx() }
                 val viewCenterX = constraints.maxWidth / 2f
                 val viewCenterY = constraints.maxHeight / 2f
-                val positionOffCenter = remember(lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
-                    lastUserLocation?.let { (la, lo) -> controller.screenOf(lo, la) }?.let { p ->
+                val positionOffCenter = remember(location.lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
+                    location.lastUserLocation?.let { (la, lo) -> controller.screenOf(lo, la) }?.let { p ->
                         hypot(p.x - viewCenterX, p.y - viewCenterY) > centerTolPx
                     } ?: false
                 }
@@ -2020,8 +1797,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     //
                     // Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et
                     // c'est ce bouton-ci qui s'ajoute ou se retire par le haut.
-                    if (gpsActive && positionOffCenter) {
-                        IconButton(onClick = { recenterOnGps() }, modifier = controlBg) {
+                    if (location.gpsActive && positionOffCenter) {
+                        IconButton(onClick = { location.recenterOnGps() }, modifier = controlBg) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location), tint = chromeFg)
                                 // Disque central au bleu du point de position : le bouton n'existant que
@@ -2151,9 +1928,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         lastLabelInsetPx = 0f,
                         maxHeight = plannerMaxHeight,
                         onPickCurrentPosition = { step ->
-                            withLocationPermission { planner.choose(step, StepTarget.CurrentPosition) }
+                            location.withLocationPermission { planner.choose(step, StepTarget.CurrentPosition) }
                         },
-                        sensorEnabled = sensorEnabled,
+                        sensorEnabled = location.sensorEnabled,
                         geocoding = GeocodingParams(geocodingBase,
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
                         history = PlannerHistory.of(settings?.plannerHistory),
@@ -2557,13 +2334,13 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         // Calculee sur la trace COMPLETE et non sur la fenetre zoomee : la question est
                         // "combien me reste-t-il jusqu'au bout", pas "jusqu'au bord du graphique".
                         val whole = computed?.samples
-                        val position = lastUserLocation
+                        val position = location.lastUserLocation
                         val onTrack = remember(position, whole) {
                             if (position == null || whole.isNullOrEmpty()) null
                             else TrackMeasure.project(whole, position.second, position.first)
                                 ?.let { it to TrackMath.remaining(whole, it.alongM) }
                         }
-                        if (gpsActive && onTrack != null && settings?.profileRemaining != false) {
+                        if (location.gpsActive && onTrack != null && settings?.profileRemaining != false) {
                             RemainingOnTrackRow(
                                 projection = onTrack.first, remaining = onTrack.second, imperial = imp,
                                 fontSp = settings?.profBarFont ?: 11,
@@ -2933,7 +2710,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 TextButton(onClick = {
                     showAlertNeedsGpsDialog = false
                     alertChooserPending = true
-                    onGpsButtonTap()
+                    location.onGpsButtonTap()
                 }) { Text(stringResource(R.string.action_enable)) }
             },
             dismissButton = {
@@ -2953,18 +2730,18 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         )
     }
 
-    if (showLocationDisabledDialog) {
+    if (location.showDisabledDialog) {
         AlertDialog(
-            onDismissRequest = { showLocationDisabledDialog = false },
+            onDismissRequest = { location.showDisabledDialog = false },
             title = { Text(stringResource(R.string.dialog_gps_disabled_title)) },
             text = { Text(stringResource(R.string.dialog_gps_disabled_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    showLocationDisabledDialog = false
-                    locationSettingsLauncher.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    location.showDisabledDialog = false
+                    location.openLocationSettings()
                 }) { Text(stringResource(R.string.action_enable)) }
             },
-            dismissButton = { TextButton(onClick = { showLocationDisabledDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+            dismissButton = { TextButton(onClick = { location.showDisabledDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
 }
