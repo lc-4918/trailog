@@ -456,6 +456,8 @@
     <string name="settings_sw_measure">Neurketa arrastoan</string>
     <string name="settings_sw_poi">Interesguneak</string>
     <string name="settings_sw_poi_sub">Ostatuak, jatetxeak eta zerbitzuak ibilbidean zehar</string>
+    <string name="settings_sw_poi_osm">OpenStreetMap-ekin osatu</string>
+    <string name="settings_sw_poi_osm_sub">Frantzian, turismo datu-baseak ezagutzen ez dituen jatetxeak, tabernak eta zerbitzuak gehitzen ditu. Kontsulta motelagoa. Eraginik gabe atzerrian, non OpenStreetMap iturri bakarra den.</string>
     <string name="poi_layer_title">Interesguneak</string>
     <string name="settings_section_gps_marker">Kokapen markatzailea</string>
     <string name="settings_label_gps_marker_style">Ikurra</string>

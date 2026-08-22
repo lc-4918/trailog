@@ -52,6 +52,11 @@ import fr.lc4918.trailog.map.offline.Bbox
  * touristique et les marchés de producteurs - autant d'objets qui n'existent tout simplement pas dans
  * OpenStreetMap.
  *
+ * **Le complément se coupe.** La requête Overpass est longue, et qui n'en veut pas doit pouvoir s'en
+ * passer : le réglage "Compléter avec OpenStreetMap" rend alors la France à DATAtourisme seul. Il ne
+ * touche que le complément - hors de France, OpenStreetMap répond quoi qu'il arrive, faute de quoi la
+ * couche serait vide sans explication.
+ *
  * **Un groupe limité au thème vélo reste à DATAtourisme**, où qu'on soit : OSM ne porte pas l'équivalent
  * de ce thème, et rendre des hébergements quelconques sous un filtre "vélo" serait promettre ce qu'on ne
  * sait pas. Une catégorie vide dit la vérité ; un marqueur qui ment ne se rattrape pas.
@@ -96,10 +101,17 @@ object PoiSources {
      *
      * [libres] est le jeu des catégories cochées **hors** thème vélo : celles limitées au vélo ne passent
      * jamais par ici (cf. la note de tête).
+     *
+     * [complement] est le réglage "Compléter avec OpenStreetMap". Il ne gouverne que le COMPLÉMENT, et
+     * n'a donc d'effet que là où DATAtourisme répond : une requête Overpass est longue - une trentaine de
+     * secondes sur une ville dense - et qui n'en veut pas doit pouvoir s'en passer. Hors de France il est
+     * ignoré, et volontairement : OpenStreetMap y est la seule source, et l'écouter viderait la couche
+     * sans que rien sur la carte ne l'explique.
      */
-    fun osmCategories(box: Bbox, libres: Set<PoiCategory>): Set<PoiCategory> =
-        if (datatourismeCovers(box)) libres.filterTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
-        else libres
+    fun osmCategories(box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true): Set<PoiCategory> =
+        if (!datatourismeCovers(box)) libres
+        else if (!complement) emptySet()
+        else libres.filterTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
 
     /**
      * Les catégories à demander à OpenStreetMap, **découpées par groupe** : une requête par groupe, plutôt
@@ -124,8 +136,8 @@ object PoiSources {
      * En France, ce découpage rend deux requêtes au plus - la restauration et le pratique - et le premier
      * des deux à répondre s'affiche sans attendre l'autre.
      */
-    fun osmGroups(box: Bbox, libres: Set<PoiCategory>): List<Set<PoiCategory>> =
-        osmCategories(box, libres)
+    fun osmGroups(box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true): List<Set<PoiCategory>> =
+        osmCategories(box, libres, complement)
             .groupBy { it.group }
             .toSortedMap(compareBy { it.ordinal })
             .values.map { it.toSet() }

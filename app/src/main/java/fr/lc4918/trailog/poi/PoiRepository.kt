@@ -48,10 +48,10 @@ class PoiRepository(private val dao: PoiDao) {
      */
     fun load(
         base: String, box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>,
-        osmBase: String = Overpass.DEFAULT_URL,
+        osmBase: String = Overpass.DEFAULT_URL, osmComplement: Boolean = true,
     ): Flow<PoiLoad> = poiStream(
         datatourisme = { datatourisme(base, box, libres, velo) },
-        osm = osmSources(osmBase, box, libres),
+        osm = osmSources(osmBase, box, libres, osmComplement),
         garder = { frais -> garder(frais) },
         cache = { duCache(box, libres, velo) },
     )
@@ -152,10 +152,10 @@ class PoiRepository(private val dao: PoiDao) {
      * que d'attendre leur tour. Le jeton fait donc ici la file d'attente que le serveur ne fait pas.
      */
     private fun osmSources(
-        base: String, box: Bbox, libres: Set<PoiCategory>,
+        base: String, box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true,
     ): List<suspend () -> PoiBatch> {
         val creneaux = Semaphore(OSM_CRENEAUX)
-        return PoiSources.osmGroups(box, libres).map { groupe ->
+        return PoiSources.osmGroups(box, libres, complement).map { groupe ->
             {
                 val lieux = creneaux.withPermit { Overpass.around(base, box, groupe) }
                 PoiBatch(

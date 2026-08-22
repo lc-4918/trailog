@@ -64,6 +64,33 @@ class PoiSourcesTest {
         assertFalse("les loisirs aussi", PoiCategory.CULTURAL_SITES in demandees)
     }
 
+    /**
+     * L'interrupteur "Completer avec OpenStreetMap" eteint : en France, DATAtourisme repond seul.
+     *
+     * Une requete Overpass est longue - une trentaine de secondes sur une ville dense - et qui n'en veut
+     * pas doit pouvoir s'en passer, quitte a perdre les restaurants de quartier.
+     */
+    @Test fun `le complement eteint rend la France a DATAtourisme seul`() {
+        val demandees = PoiSources.osmCategories(grenoble, PoiCategory.entries.toSet(), complement = false)
+        assertTrue("plus rien n'est demande a OSM", demandees.isEmpty())
+        assertTrue("et donc aucune requete", PoiSources.osmGroups(grenoble, PoiCategory.entries.toSet(),
+            complement = false).isEmpty())
+    }
+
+    /**
+     * Le meme interrupteur eteint, HORS de France : il est ignore, et volontairement.
+     *
+     * OpenStreetMap y est la seule source. L'ecouter viderait la couche entiere sans que rien sur la carte
+     * ne l'explique - un reglage qui parle du complement ne doit pas pouvoir supprimer le principal.
+     */
+    @Test fun `le complement eteint ne vide pas la couche hors de France`() {
+        val toutes = PoiCategory.entries.toSet()
+        assertEquals("OSM repond comme si de rien n'etait",
+            PoiSources.osmCategories(berlin, toutes, complement = true),
+            PoiSources.osmCategories(berlin, toutes, complement = false))
+        assertTrue(PoiSources.osmCategories(berlin, toutes, complement = false).isNotEmpty())
+    }
+
     /** Hors de France, DATAtourisme n'a rien a dire : OSM repond seul, pour tout ce qui est coche. */
     @Test fun `hors de France, OSM repond pour tout`() {
         val demandees = PoiSources.osmCategories(berlin, setOf(PoiCategory.HOTELS, PoiCategory.WATER))

@@ -419,6 +419,15 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             stringResource(R.string.settings_sw_poi), cur.poiEnabled,
             sub = stringResource(R.string.settings_sw_poi_sub),
         ) { vm.save(cur.copy(poiEnabled = it)) }
+        // Sous la couche qu'il nuance, et seulement quand elle est allumee : un reglage qui ne peut rien
+        // faire n'a rien a montrer.
+        if (cur.poiEnabled) {
+            RowDivider()
+            SwitchLine(
+                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
+                sub = stringResource(R.string.settings_sw_poi_osm_sub),
+            ) { vm.save(cur.copy(poiOsmComplement = it)) }
+        }
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,

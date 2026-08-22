@@ -456,6 +456,8 @@
     <string name="settings_sw_measure">Mesura sobre traça</string>
     <string name="settings_sw_poi">Punts d\'interès</string>
     <string name="settings_sw_poi_sub">Allotjaments, restauració i serveis al llarg del recorregut</string>
+    <string name="settings_sw_poi_osm">Completar amb OpenStreetMap</string>
+    <string name="settings_sw_poi_osm_sub">A França, afegeix els restaurants, bars i serveis que la base turística ignora. Consulta més lenta. Sense efecte a l\'estranger, on OpenStreetMap és l\'única font.</string>
     <string name="poi_layer_title">Punts d\'interès</string>
     <string name="settings_section_gps_marker">Marca de posició</string>
     <string name="settings_label_gps_marker_style">Símbol</string>

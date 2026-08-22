@@ -456,6 +456,8 @@
     <string name="settings_sw_measure">Messen auf Track</string>
     <string name="settings_sw_poi">Sehenswürdigkeiten</string>
     <string name="settings_sw_poi_sub">Unterkunft, Gastronomie und Service entlang der Strecke</string>
+    <string name="settings_sw_poi_osm">Mit OpenStreetMap ergänzen</string>
+    <string name="settings_sw_poi_osm_sub">Ergänzt in Frankreich Restaurants, Bars und Services, die die Tourismusdatenbank nicht kennt. Langsamere Abfrage. Ohne Wirkung im Ausland, wo OpenStreetMap die einzige Quelle ist.</string>
     <string name="poi_layer_title">Sehenswürdigkeiten</string>
     <string name="settings_section_gps_marker">Positionsmarke</string>
     <string name="settings_label_gps_marker_style">Symbol</string>

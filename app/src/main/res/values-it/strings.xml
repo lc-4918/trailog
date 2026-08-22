@@ -456,6 +456,8 @@
     <string name="settings_sw_measure">Misura sulla traccia</string>
     <string name="settings_sw_poi">Punti di interesse</string>
     <string name="settings_sw_poi_sub">Alloggi, ristoranti e servizi lungo il percorso</string>
+    <string name="settings_sw_poi_osm">Completare con OpenStreetMap</string>
+    <string name="settings_sw_poi_osm_sub">In Francia, aggiunge ristoranti, bar e servizi che la banca dati turistica ignora. Richiesta più lenta. Nessun effetto all\'estero, dove OpenStreetMap è l\'unica fonte.</string>
     <string name="poi_layer_title">Punti di interesse</string>
     <string name="settings_section_gps_marker">Segnaposto di posizione</string>
     <string name="settings_label_gps_marker_style">Simbolo</string>

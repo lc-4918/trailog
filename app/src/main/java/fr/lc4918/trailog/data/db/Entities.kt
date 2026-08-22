@@ -238,6 +238,12 @@ data class SettingsEntity(
     // cles (cf. PoiFilters). Les decochees, pour qu'un reglage vide veuille dire "tout afficher".
     val poiHiddenCategories: String = "",
     val poiBikeGroups: String = "",
+    // Completer DATAtourisme par OpenStreetMap la ou les deux repondent, c'est-a-dire en France : la
+    // restauration, que la base touristique ne connait qu'a travers les hotels qui servent a manger, et les
+    // services du terrain qu'elle ignore. Une requete Overpass de plus par chargement, et elle est longue -
+    // d'ou l'interrupteur. HORS de France ce reglage ne change rien : OpenStreetMap y est la seule source,
+    // et l'eteindre viderait la couche (cf. PoiSources).
+    val poiOsmComplement: Boolean = true,
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

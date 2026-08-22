@@ -696,6 +696,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         state = poi,
         controller = controller,
         enabled = settings?.poiEnabled,
+        osmComplement = settings?.poiOsmComplement != false,
         filters = remember(settings?.poiHiddenCategories, settings?.poiBikeGroups) {
             PoiFilters.of(settings?.poiHiddenCategories, settings?.poiBikeGroups)
         },
