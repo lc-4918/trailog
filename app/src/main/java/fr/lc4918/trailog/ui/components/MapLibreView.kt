@@ -107,8 +107,10 @@ class MapController {
     private val gpsImages = hashSetOf<String>()
 
     // ---- repere de position GPS (cf. setUserMarker) ----
-    private var userMarker = GpsMarkerStyle.DOT
-    private var userMarkerColor = GpsMarkerStyle.DOT.defaultColor
+    // La fleche pleine, comme le defaut du reglage : cet etat vaut jusqu'au premier setUserMarker, et un
+    // repli qui differe du defaut ferait clignoter le repere d'un symbole a l'autre au demarrage.
+    private var userMarker = GpsMarkerStyle.ARROW_FILLED
+    private var userMarkerColor = GpsMarkerStyle.ARROW_FILLED.defaultColor
     private var userMarkerSizeDp = DefaultGpsMarkerSizeDp.toFloat()
     /** Derniere orientation connue du telephone (degres, nord vrai), ou null tant que rien n'a ete mesure. */
     private var userHeading: Float? = null
@@ -966,8 +968,10 @@ class MapController {
      * la couleur du symbole : c'est l'imprécision DE CE repère-là qu'il dessine, pas un halo indépendant.
      */
     private fun ensureUserLayers(s: Style) {
+        // Couleur illisible : celle que SON symbole porte par defaut, et non celle d'un autre - un repere
+        // en forme de fleche rouge ne doit pas virer au bleu de la puce parce qu'un reglage est corrompu.
         val colorInt = runCatching { userMarkerColor.toColorInt() }
-            .getOrElse { GpsMarkerStyle.DOT.defaultColor.toColorInt() }
+            .getOrElse { userMarker.defaultColor.toColorInt() }
         if (s.getSourceAs<GeoJsonSource>(USER_SRC) == null) {
             s.addSource(GeoJsonSource(USER_SRC, emptyFc()))
             s.addLayer(CircleLayer(USER_ACCURACY, USER_SRC).withProperties(

@@ -279,7 +279,7 @@ data class SettingsEntity(
     val mapButtonSizeDp: Int = DefaultMapButtonSizeDp,
     // Symbole de la position GPS sur la carte (cf. GpsMarkerStyle) : la puce par defaut, deux fleches qui
     // suivent l'orientation du telephone, ou une croix de visee.
-    val gpsMarkerStyle: String = "dot",
+    val gpsMarkerStyle: String = "arrow_filled",
     // Couleur du symbole. Vide = celle propre au symbole choisi (cf. GpsMarkerStyle.defaultColor) : la
     // couleur suit alors le symbole quand on en change, au lieu de figer le bleu de la puce sur une fleche.
     val gpsMarkerColor: String = "",
@@ -318,12 +318,13 @@ const val MinGpsMarkerSizeDp = 12
 const val MaxGpsMarkerSizeDp = 48
 
 /**
- * Taille par defaut d'une installation neuve : celle de la puce d'origine (rayon 7 + contour 2,5),
- * inchangee pour qui n'y touche pas. Les autres symboles ont la leur (cf. GpsMarkerStyle.defaultSizeDp),
- * appliquee quand on en change ; la constante ne peut pas la citer, un `const` exigeant une valeur
- * calculable a la compilation.
+ * Taille par defaut d'une installation neuve : celle de la FLECHE PLEINE, symbole par defaut.
+ *
+ * Doit valoir GpsMarkerStyle.ARROW_FILLED.defaultSizeDp ; la constante ne peut pas la citer, un `const`
+ * exigeant une valeur calculable a la compilation. Les autres symboles ont la leur, appliquee quand on en
+ * change (cf. SettingsMapTab).
  */
-const val DefaultGpsMarkerSizeDp = 20
+const val DefaultGpsMarkerSizeDp = 30
 
 /**
  * La cloche de l'alerte d'eloignement s'affiche-t-elle sur la carte ?

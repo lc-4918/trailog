@@ -27,6 +27,13 @@ enum class GpsMarkerStyle(val key: String, val defaultColor: String, val default
     val oriented: Boolean get() = this == ARROW_OUTLINE || this == ARROW_FILLED
 
     companion object {
-        fun of(key: String?): GpsMarkerStyle = entries.firstOrNull { it.key == key } ?: DOT
+        /**
+         * Le repli est la FLECHE PLEINE, c'est-a-dire le defaut du reglage.
+         *
+         * Les deux doivent coincider. `of` est appele avec `settings?.gpsMarkerStyle`, donc avec null tant
+         * que les reglages ne sont pas revenus de la base - et cette fenetre se rouvre a chaque recreation
+         * du ViewModel. Un repli qui differe du defaut y ferait clignoter le repere d'un symbole a l'autre.
+         */
+        fun of(key: String?): GpsMarkerStyle = entries.firstOrNull { it.key == key } ?: ARROW_FILLED
     }
 }

@@ -898,6 +898,52 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 58 -> 59 : la fleche pleine devient le repere par defaut ----------
+
+    /**
+     * Un changement de DEFAUT ne touche qu'une installation neuve.
+     *
+     * La ligne de reglages existe deja chez qui a l'application, avec la puce qu'elle portait a
+     * l'installation : sans cette migration, le nouveau defaut ne serait vu que par ceux qui n'ont jamais
+     * lance l'application. C'est ce que la migration repare, et c'est ce que ce test verifie sur une base.
+     */
+    @Test fun `58 vers 59 pousse la fleche pleine aux bases restees sur la puce`() {
+        val db = freshDb("m5859"); settingsV16(db)
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerStyle TEXT NOT NULL DEFAULT 'dot'")
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerSizeDp INTEGER NOT NULL DEFAULT 20")
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerColor TEXT NOT NULL DEFAULT ''")
+
+        db.execSQL(MigrationSql.DEFAULT_MARKER_ARROW)
+
+        assertEquals("arrow_filled", scalar(db, "SELECT gpsMarkerStyle FROM settings") { it.getString(0) })
+        assertEquals("la taille suit le symbole", 30,
+            scalar(db, "SELECT gpsMarkerSizeDp FROM settings") { it.getInt(0) })
+        assertEquals("defaut de l'entite", "arrow_filled", SettingsEntity().gpsMarkerStyle)
+        db.close()
+    }
+
+    /**
+     * Un symbole CHOISI survit a la migration.
+     *
+     * C'est tout l'objet du `WHERE gpsMarkerStyle = 'dot'` : pousser un nouveau defaut est une chose,
+     * ecraser le reglage de quelqu'un en est une autre. La limite est connue et assumee - qui a
+     * deliberement choisi la puce se retrouve avec la fleche, ce reglage ne gardant pas trace de la
+     * difference entre un defaut subi et un choix pose.
+     */
+    @Test fun `58 vers 59 laisse en place un symbole deja choisi`() {
+        val db = freshDb("m5859bis"); settingsV16(db)
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerStyle TEXT NOT NULL DEFAULT 'dot'")
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerSizeDp INTEGER NOT NULL DEFAULT 20")
+        db.execSQL("ALTER TABLE settings ADD COLUMN gpsMarkerColor TEXT NOT NULL DEFAULT ''")
+        db.execSQL("UPDATE settings SET gpsMarkerStyle = 'crosshair', gpsMarkerSizeDp = 24")
+
+        db.execSQL(MigrationSql.DEFAULT_MARKER_ARROW)
+
+        assertEquals("crosshair", scalar(db, "SELECT gpsMarkerStyle FROM settings") { it.getString(0) })
+        assertEquals(24, scalar(db, "SELECT gpsMarkerSizeDp FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
         val db = AppDatabase.get(ctx)
         val s = db.openHelper.writableDatabase
