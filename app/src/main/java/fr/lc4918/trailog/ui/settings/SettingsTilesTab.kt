@@ -86,7 +86,7 @@ import kotlinx.coroutines.launch
 /**
  * L'onglet Fonds : le catalogue des fonds de carte, leurs dossiers, et les composites.
  *
- * Le plus dense des cinq, parce qu'une ligne de fond porte beaucoup : un apercu, une cle d'API, une plage
+ * Le plus dense des quatre, parce qu'une ligne de fond porte beaucoup : un apercu, une cle d'API, une plage
  * de zoom, une attribution, et de quoi la modifier sans quitter la liste.
  */
 

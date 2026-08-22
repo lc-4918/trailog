@@ -665,7 +665,7 @@ conversation en deux temps (dépôt de profil, puis calcul), et donc deux caches
 | D1 | ~~`navigation-compose` et `datastore-preferences` déclarés, non utilisés~~ | **Corrigée** | Retirés du catalogue de versions et du module. Vestiges du squelette initial ; `AppRoot` n'a jamais utilisé de composant de navigation (AD-1), et les réglages vivent dans Room. |
 | D2 | Aucune abstraction du dépôt | Dette assumée (AD-3) | Un test de composant monté demanderait une réécriture |
 | D3 | ~~`data/repo` importe `ui/offline/OfflineDownloadRequest`~~ | **Corrigée** | `OfflineDownloadRequest` et `OfflineCorridor` sont descendus dans `map/offline`, chez le moteur qui les consomme. `map/offline/OfflineTileDownloader` portait la même inversion, elle tombe avec. |
-| D4 | ~~`SettingsScreen.kt` : 2 022 lignes~~ | **Corrigée** | Découpé en six fichiers, un par onglet plus `SettingsWidgets` pour les briques partagées par les cinq. Le plus gros fait 537 lignes. |
+| D4 | ~~`SettingsScreen.kt` : 2 022 lignes~~ | **Corrigée** | Découpé en six fichiers : un par onglet (Carte, Tuiles, Trajets, Système), `SettingsWidgets` pour les briques partagées par les quatre, et le squelette de l'écran, qui garde son aiguillage et les sélecteurs système. Le plus gros fait 537 lignes. |
 | D5 | Clés d'API en dur, dépôt public | Risque accepté | Quota épuisable par un tiers ; inacceptable en store |
 | D6 | `MainScreen` non testé | Limite structurelle | `MapView` ne se charge pas sur la JVM |
 | D7 | Dépendance à des instances publiques à quota | Risque externe | Atténué par AD-7 et le réglage d'URL, pas supprimé |

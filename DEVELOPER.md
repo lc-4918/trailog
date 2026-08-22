@@ -69,9 +69,10 @@ app/src/main/java/fr/lc4918/trailog/
    ├─ measure/                   mesure d'une distance entre deux points d'une trace
    ├─ planner/                   bande du planificateur d'itineraire, etat de ses etapes
    ├─ offline/                   Saisie de la zone et configuration du téléchargement
-   ├─ settings/                  un fichier par onglet : SettingsScreen (la coquille et ses onglets),
-   │                              SettingsMapTab, SettingsTilesTab, SettingsRoutesTab, SettingsSystemTab,
-   │                              SettingsWidgets (les briques des cinq), SettingsStyle, SettingsViewModel
+   ├─ settings/                  SettingsScreen (le squelette de l'ecran et son aiguillage), puis un
+   │                              fichier par onglet : SettingsMapTab, SettingsTilesTab,
+   │                              SettingsRoutesTab, SettingsSystemTab. SettingsWidgets porte les
+   │                              briques des quatre ; SettingsStyle la palette, SettingsViewModel l'etat
    ├─ theme/                     Theme.kt
    └─ nav/                       AppRoot.kt
 ```

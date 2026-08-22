@@ -47,7 +47,7 @@ import kotlin.math.roundToInt
  * Les briques repetees de l'ecran de reglages : une ligne d'interrupteur, une ligne de pas a pas, une case,
  * un titre de section, et les commandes compactes qu'elles emploient.
  *
- * Elles sont ici parce qu'elles servent aux CINQ onglets. Les garder dans le fichier de l'ecran obligeait
+ * Elles sont ici parce qu'elles servent aux QUATRE onglets. Les garder dans le fichier de l'ecran obligeait
  * a le lire en entier pour comprendre une ligne de reglage, et c'est ce qui l'avait porte a deux mille
  * lignes.
  */
