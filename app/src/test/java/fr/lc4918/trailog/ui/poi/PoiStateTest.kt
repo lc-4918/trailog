@@ -39,11 +39,44 @@ class PoiStateTest {
         assertTrue("et rien n'est encore charge", poi.pois.isEmpty())
     }
 
+    /**
+     * Une zone qui vient d'echouer n'est pas redemandee au geste suivant.
+     *
+     * Le cas releve a Albi : Overpass refusait, l'emprise n'etait donc pas retenue, et chaque geste de
+     * carte relancait aussitot la requete que le service venait de refuser - huit gestes, vingt-cinq
+     * requetes, vingt-cinq refus. L'insistance faisait le bannissement.
+     */
+    @Test fun `une zone en echec attend avant d'etre redemandee`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = false)
+        poi.loadFailed(vue, now = 1_000L)
+        assertFalse("juste apres l'echec, on ne redemande pas",
+            poi.needsLoad(vue, filtres, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS / 2))
+        assertTrue("le delai passe, on retente",
+            poi.needsLoad(vue, filtres, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS + 1))
+    }
+
+    /** Le frein ne vaut que pour la zone en cause : ailleurs, la carte redemande normalement. */
+    @Test fun `l'echec d'une zone n'en bloque pas une autre`() {
+        val poi = couche()
+        poi.loadFailed(vue, now = 0L)
+        val ailleurs = Bbox.of(vue.east + 1.0, vue.south, vue.east + 2.0, vue.north)
+        assertTrue(poi.needsLoad(ailleurs, filtres, now = 1_000L))
+    }
+
+    /** Rallumer la couche est un geste : il merite une nouvelle tentative, sans attendre le delai. */
+    @Test fun `rallumer la couche oublie l'echec`() {
+        val poi = couche()
+        poi.loadFailed(vue, now = 0L)
+        poi.hide()
+        assertTrue(poi.needsLoad(vue, filtres, now = 1_000L))
+    }
+
     /** L'attente survit a la premiere source : la seconde travaille encore. */
     @Test fun `publier n'eteint pas l'attente`() {
         val poi = couche()
         poi.beginLoad()
-        poi.publish(vue, filtres, listOf(lieu))
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
         assertTrue("une source de plus est peut-etre en route", poi.loading)
         poi.endLoad()
         assertFalse(poi.loading)
@@ -61,25 +94,25 @@ class PoiStateTest {
     /** Une vue deja chargee ne se redemande pas ; une vue qui deborde, si. */
     @Test fun `on ne redemande que ce qui deborde`() {
         val poi = couche()
-        poi.publish(vue, filtres, listOf(lieu))
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
         val dedans = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertFalse(poi.needsLoad(dedans, filtres))
+        assertFalse(poi.needsLoad(dedans, filtres, now = 0L))
         val dehors = Bbox(west = 5.65, south = 45.15, east = 5.95, north = 45.25)
-        assertTrue(poi.needsLoad(dehors, filtres))
+        assertTrue(poi.needsLoad(dehors, filtres, now = 0L))
     }
 
     /** Eteindre la couche oublie tout, message et attente compris : la rallumer repart d'une page vierge. */
     @Test fun `eteindre la couche efface son etat`() {
         val poi = couche()
         poi.beginLoad()
-        poi.publish(vue, filtres, listOf(lieu))
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
         poi.tooFar()
         poi.toggle()
         assertFalse(poi.visible)
         assertFalse(poi.tooFar)
         assertFalse(poi.loading)
         assertTrue(poi.pois.isEmpty())
-        assertTrue("et la prochaine vue sera redemandee", poi.needsLoad(vue, filtres))
+        assertTrue("et la prochaine vue sera redemandee", poi.needsLoad(vue, filtres, now = 0L))
     }
 
     /**
@@ -92,18 +125,18 @@ class PoiStateTest {
      */
     @Test fun `une zone tronquee se redemande des qu'on zoome`() {
         val poi = couche()
-        poi.publish(vue, filtres, listOf(lieu), incomplete = true)
+        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false)
         assertTrue(poi.partial)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertTrue("le zoom doit redemander", poi.needsLoad(plusServre, filtres))
-        assertTrue("un deplacement aussi", poi.needsLoad(vue, filtres))
+        assertTrue("le zoom doit redemander", poi.needsLoad(plusServre, filtres, now = 0L))
+        assertTrue("un deplacement aussi", poi.needsLoad(vue, filtres, now = 0L))
     }
 
     /** Rendue en entier, la meme emprise ne se redemande pas : c'est ce qui tient les appels loin du quota. */
     @Test fun `une zone complete ne se redemande pas`() {
         val poi = couche()
-        poi.publish(vue, filtres, listOf(lieu), incomplete = false)
+        poi.publish(vue, filtres, listOf(lieu), incomplete = false, complete = true)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertFalse(poi.needsLoad(plusServre, filtres))
+        assertFalse(poi.needsLoad(plusServre, filtres, now = 0L))
     }
 }

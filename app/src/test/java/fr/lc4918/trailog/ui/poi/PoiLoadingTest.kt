@@ -43,7 +43,7 @@ class PoiLoadingTest {
 
     /** Rien de charge : il faut demander. */
     @Test fun `le premier affichage demande toujours`() {
-        assertTrue(PoiState().needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres))
+        assertTrue(PoiState().needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
     }
 
     /**
@@ -52,40 +52,40 @@ class PoiLoadingTest {
      */
     @Test fun `une vue contenue dans le charge ne redemande rien`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList())
-        assertFalse(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres))
-        assertFalse("la meme vue exactement", etat.needsLoad(box(4.0, 44.0, 7.0, 47.0), tousFiltres))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
+        assertFalse(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
+        assertFalse("la meme vue exactement", etat.needsLoad(box(4.0, 44.0, 7.0, 47.0), tousFiltres, now = 0L))
     }
 
     /** Des que la vue deborde, ne serait-ce que d'un cote, il manque des points d'interet a l'ecran. */
     @Test fun `une vue qui deborde redemande`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList())
-        assertTrue("vers l'ouest", etat.needsLoad(box(3.0, 45.0, 6.0, 46.0), tousFiltres))
-        assertTrue("vers le nord", etat.needsLoad(box(5.0, 45.0, 6.0, 48.0), tousFiltres))
-        assertTrue("dezoome", etat.needsLoad(box(0.0, 40.0, 10.0, 50.0), tousFiltres))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
+        assertTrue("vers l'ouest", etat.needsLoad(box(3.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
+        assertTrue("vers le nord", etat.needsLoad(box(5.0, 45.0, 6.0, 48.0), tousFiltres, now = 0L))
+        assertTrue("dezoome", etat.needsLoad(box(0.0, 40.0, 10.0, 50.0), tousFiltres, now = 0L))
     }
 
     /** Eteindre la couche jette tout : garder des marqueurs invisibles n'apporte rien, et le geste qui la
      *  rallume justifie sa requete. */
     @Test fun `eteindre la couche oublie ce qui etait charge`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
         etat.select(poi("a"))
         etat.hide()
         assertTrue(etat.pois.isEmpty())
         assertNull(etat.selected)
-        assertTrue("le charge doit etre oublie aussi", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres))
+        assertTrue("le charge doit etre oublie aussi", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
     }
 
     /** Un point d'interet disparu du dernier chargement ne doit pas laisser son infobulle ouverte : elle
      *  decrirait un marqueur qui n'est plus sur la carte. */
     @Test fun `l'infobulle se ferme si son point d'interet a disparu`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a"), poi("b")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a"), poi("b")), complete = true)
         etat.selectById("a")
         assertEquals("a", etat.selected?.uuid)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("b")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("b")), complete = true)
         etat.dropSelectionIfGone()
         assertNull(etat.selected)
     }
@@ -93,9 +93,9 @@ class PoiLoadingTest {
     /** ... mais elle reste ouverte tant que son point est encore la. */
     @Test fun `l'infobulle survit a un rechargement qui garde son point`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
         etat.selectById("a")
-        etat.publish(box(4.0, 44.0, 8.0, 47.0), tousFiltres, listOf(poi("a"), poi("c")))
+        etat.publish(box(4.0, 44.0, 8.0, 47.0), tousFiltres, listOf(poi("a"), poi("c")), complete = true)
         etat.dropSelectionIfGone()
         assertEquals("a", etat.selected?.uuid)
     }
@@ -115,10 +115,10 @@ class PoiLoadingTest {
      */
     @Test fun `changer les filtres force un rechargement`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
         val autres = tousFiltres.toggle(PoiCategory.BARS)
-        assertTrue(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), autres))
-        assertFalse("les memes filtres ne forcent rien", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres))
+        assertTrue(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), autres, now = 0L))
+        assertFalse("les memes filtres ne forcent rien", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
     }
 
     /** Trop dezoome : on ne charge pas, et l'ecran le dit plutot que de laisser une carte vide. */
@@ -134,9 +134,9 @@ class PoiLoadingTest {
      *  fraiche du service. */
     @Test fun `les points du cache se declarent comme tels`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), cache = true)
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), cache = true, complete = true)
         assertTrue(etat.fromCache)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")))
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
         assertFalse(etat.fromCache)
     }
 
@@ -146,7 +146,7 @@ class PoiLoadingTest {
      */
     @Test fun `sans reseau et sans rien a montrer, la connexion se reclame`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true)
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true, complete = true)
         assertTrue(etat.needsNetwork)
         assertFalse("ce n'est pas le cas du cache", etat.fromCache)
     }
@@ -154,7 +154,7 @@ class PoiLoadingTest {
     /** Une zone reellement vide, avec du reseau, ne reclame rien : c'est une reponse, pas une panne. */
     @Test fun `une zone vide avec du reseau ne reclame rien`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList())
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
         assertFalse(etat.needsNetwork)
     }
 
@@ -162,7 +162,7 @@ class PoiLoadingTest {
      *  reseau puisqu'on n'a rien demande. */
     @Test fun `trop dezoome efface la reclamation de connexion`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true)
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true, complete = true)
         etat.tooFar()
         assertTrue(etat.tooFar)
         assertFalse(etat.needsNetwork)

@@ -2,6 +2,7 @@ package fr.lc4918.trailog.poi
 
 import fr.lc4918.trailog.domain.model.PoiCategory
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -31,9 +32,42 @@ class PoiStreamTest {
             garder = {},
             cache = { emptyList() },
         ).toList()
-        assertEquals("une emission par source", 2, emissions.size)
+        assertEquals("une emission par source, plus la cloture", 3, emissions.size)
         assertEquals(listOf("dt1"), emissions[0].pois.map { it.uuid })
         assertEquals(listOf("dt1", "osm1"), emissions[1].pois.map { it.uuid })
+        assertTrue("seule la derniere dit que tout est arrive", emissions.last().complete)
+        assertFalse("les intermediaires ne le disent pas", emissions[0].complete)
+    }
+
+    /**
+     * La cloture est ce qui autorise l'ecran a retenir l'emprise, et rien d'autre ne le fait.
+     *
+     * Le cas d'Albi : DATAtourisme repond en une seconde, Overpass en met trois a trente. Un geste de carte
+     * de plus annulait le flux entre les deux, et l'emprise avait deja ete retenue sur la seule reponse
+     * rapide - les restaurants ne revenaient jamais.
+     */
+    @Test fun `un flux interrompu ne clot rien`() = runTest {
+        val emissions = mutableListOf<PoiLoad>()
+        poiStream(
+            datatourisme = { PoiBatch(listOf(hotel), false) },
+            osm = listOf({ delay(30_000); PoiBatch(listOf(fontaine), false) }),
+            garder = {},
+            cache = { emptyList() },
+        ).take(1).toList(emissions)
+        assertEquals(1, emissions.size)
+        assertFalse("rien ne dit que tout est arrive", emissions.single().complete)
+    }
+
+    /** Une source qui n'a pas repondu n'est pas une source vide : le flux ne se clot pas dessus. */
+    @Test fun `une source en echec empeche la cloture`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(listOf(hotel), false) },
+            osm = listOf({ PoiBatch(emptyList(), tronque = false, echec = true) }),
+            garder = {},
+            cache = { emptyList() },
+        ).toList()
+        assertEquals(listOf("dt1"), emissions.last().pois.map { it.uuid })
+        assertFalse("l'emprise ne doit pas etre retenue", emissions.last().complete)
     }
 
     /** Chaque emission porte TOUT ce qu'on sait : l'ecran remplace sa liste, il n'accumule rien. */
@@ -46,6 +80,7 @@ class PoiStreamTest {
         ).toList()
         assertEquals(listOf("osm1"), emissions[0].pois.map { it.uuid })
         assertEquals(setOf("dt1", "osm1"), emissions[1].pois.map { it.uuid }.toSet())
+        assertTrue(emissions.last().complete)
     }
 
     /** Une source muette n'emet pas : une emission de plus ferait clignoter la carte pour rien. */
@@ -56,8 +91,9 @@ class PoiStreamTest {
             garder = {},
             cache = { emptyList() },
         ).toList()
-        assertEquals(1, emissions.size)
-        assertFalse(emissions.single().fromCache)
+        assertEquals("l'arrivee, puis la cloture", 2, emissions.size)
+        assertFalse(emissions.first().fromCache)
+        assertEquals(listOf("dt1"), emissions.last().pois.map { it.uuid })
     }
 
     /** Les deux muettes : le cache prend le relais, et l'emission le dit. */
@@ -123,9 +159,10 @@ class PoiStreamTest {
             garder = {},
             cache = { emptyList() },
         ).toList()
-        assertEquals(2, emissions.size)
+        assertEquals("un groupe, l'autre, puis la cloture", 3, emissions.size)
         assertEquals(listOf("osm1"), emissions[0].pois.map { it.uuid })
         assertEquals(setOf("osm1", "osm2"), emissions[1].pois.map { it.uuid }.toSet())
+        assertTrue(emissions.last().complete)
     }
 
     /**

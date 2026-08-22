@@ -4,6 +4,8 @@ import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -20,12 +22,15 @@ import java.net.URLEncoder
  * France elle ne rend rien, et la couche restait vide sans que rien ne l'explique. En France même, elle
  * ignore largement ce qui sert sur le terrain - mesuré autour de Grenoble, à l'échelle d'un écran de
  * carte : **zéro** point d'eau, zéro toilettes publiques, zéro aire de pique-nique, zéro borne de
- * recharge, quatre loueurs de vélos ; OSM y porte respectivement 129, 46, 25, 165 et 50 objets. Les
- * hébergements et restaurants, eux, sont comparables (49 hôtels contre 38), et c'est pour cela que
- * DATAtourisme garde le tourisme là où il le décrit bien - avec ses photos, que l'infobulle montre.
+ * recharge, quatre loueurs de vélos ; OSM y porte respectivement 129, 46, 25, 165 et 50 objets.
+ *
+ * Les **hébergements** sont comparables (49 hôtels contre 38), et c'est pour cela que DATAtourisme les
+ * garde - avec ses photos, que l'infobulle montre. Cette mesure-là a longtemps servi à conclure que la
+ * **restauration** l'était aussi : elle ne l'est pas, et personne ne l'avait mesurée. Sur le centre
+ * d'Albi, 6 restaurants contre 150, et les 6 sont des hôtels (cf. [PoiSources]).
  *
  * **Le partage est donc géographique, et par groupe** (cf. [PoiRepository]) : hors de France, OSM répond
- * seul ; en France, il ne complète que le groupe *pratique*, celui des services.
+ * seul ; en France, il complète le groupe *pratique* - celui des services - et la *restauration*.
  *
  * **Ce que la requête a d'inhabituel.** Overpass parle son propre langage, pas une URL de paramètres. Deux
  * choix comptent :
@@ -167,8 +172,9 @@ object Overpass {
         runCatching { jsonPrimitive.content.toDouble() }.getOrNull()
 
     /**
-     * Charge les points d'intérêt d'une emprise. Liste vide quand il n'y a rien à montrer, que le réseau
-     * manque ou que l'instance refuse - l'appelant n'a rien à en faire de différent (cf. [PoiRepository]).
+     * Charge les points d'intérêt d'une emprise. Liste vide quand il n'y a rien à montrer ici, et **null
+     * quand l'instance n'a pas répondu** - les deux ne se valent pas, et les confondre faisait passer un
+     * refus pour une zone déserte (cf. [PoiRepository.load]).
      *
      * En POST et non en GET : la requête dépasse couramment le millier de caractères, et une URL de cette
      * longueur se fait tronquer par les intermédiaires.
@@ -178,20 +184,39 @@ object Overpass {
      */
     suspend fun around(
         base: String, box: Bbox, categories: Set<PoiCategory>,
-    ): List<Poi> = withContext(Dispatchers.IO) {
+    ): List<Poi>? = withContext(Dispatchers.IO) {
+        // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
         val ql = query(box, categories) ?: return@withContext emptyList()
         val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
         val cible = base.ifBlank { DEFAULT_URL }
+        var repondu = false
         repeat(2) { essai ->
             if (essai > 0) delay(RETRY_DELAY_MS)
-            val resp = TileHttp.post(
-                cible, corps,
-                contentType = "application/x-www-form-urlencoded; charset=utf-8",
-                connectTimeoutMs = TIMEOUT_MS, readTimeoutMs = TIMEOUT_MS,
-            )
-            val lieux = resp.body?.let { parse(it.toString(Charsets.UTF_8), categories) }.orEmpty()
+            /*
+             * `runInterruptible` et non un appel direct : un geste de carte de plus annule ce chargement,
+             * mais `HttpURLConnection` bloque dans un thread d'E/S ne s'en apercoit pas. Les requetes
+             * abandonnees continuaient donc de courir et de consommer les creneaux du service, au point de
+             * faire refuser l'appelant - releve a Albi, quatre requetes en cours pour un seul geste utile.
+             *
+             * Ici, l'annulation interrompt le thread, la lecture leve, et la requete s'arrete pour de bon.
+             * `ensureActive` evite en plus d'en lancer une seconde apres coup.
+             */
+            ensureActive()
+            val resp = runInterruptible {
+                TileHttp.post(
+                    cible, corps,
+                    contentType = "application/x-www-form-urlencoded; charset=utf-8",
+                    connectTimeoutMs = TIMEOUT_MS, readTimeoutMs = TIMEOUT_MS,
+                )
+            }
+            val corpsRecu = resp.body ?: return@repeat
+            repondu = true
+            val lieux = parse(corpsRecu.toString(Charsets.UTF_8), categories)
             if (lieux.isNotEmpty()) return@withContext lieux
         }
-        emptyList()
+        // Null quand l'instance n'a jamais repondu - un 504, une coupure, un delai depasse. La zone peut
+        // etre reellement vide, mais on n'en sait rien, et l'appelant ne doit pas retenir cette emprise
+        // comme chargee : le groupe manquant ne serait plus jamais redemande (cf. PoiLoad.complete).
+        if (repondu) emptyList() else null
     }
 }

@@ -24,9 +24,33 @@ import fr.lc4918.trailog.map.offline.Bbox
  *
  * D'où :
  * - **hors de France**, DATAtourisme n'a rien à dire du tout : OSM répond seul, pour tout ;
- * - **en France**, DATAtourisme garde le tourisme, qu'il décrit mieux et illustre de photos, et OSM ne
- *   complète que le groupe *pratique* - l'eau, les toilettes, les bornes, les réparateurs. C'est
- *   exactement ce qu'on cherche à dix-huit heures dans une vallée, et ce que la base touristique ignore.
+ * - **en France**, DATAtourisme garde l'hébergement et les loisirs, qu'il décrit mieux et illustre de
+ *   photos, et OSM complète le groupe *pratique* - l'eau, les toilettes, les bornes, les réparateurs.
+ *   C'est exactement ce qu'on cherche à dix-huit heures dans une vallée, et ce que la base touristique
+ *   ignore.
+ *
+ * **La restauration est passée à OSM elle aussi**, et c'est une correction. Relevé sur le centre d'Albi,
+ * même emprise pour les deux sources :
+ *
+ * | | DATAtourisme | OpenStreetMap |
+ * |---|---|---|
+ * | restaurants | **6** | **150** |
+ * | bars, cafés, pubs | 1 | 23 |
+ *
+ * Et les six de DATAtourisme sont **tous des hôtels** : ils portent `Restaurant` en plus de `Hotel`, et
+ * sont les seuls "restaurants" que la base connaisse. Un restaurant de quartier n'est pas un objet
+ * touristique - il n'entre dans cette base que s'il est adossé à un hébergement.
+ *
+ * La couverture varie d'ailleurs énormément d'une région à l'autre, ce qui interdit de s'y fier : pour la
+ * même question, DATAtourisme rend 10 lieux de restauration à Albi, 46 à Grenoble, 29 à Nantes, 185 à
+ * Strasbourg et 729 à Marseille. Ce ne sont pas des villes de tailles si différentes ; ce sont des comités
+ * régionaux qui ne publient pas les mêmes choses.
+ *
+ * L'hébergement et les loisirs, eux, restent à DATAtourisme, et le contenu le justifie autant que le
+ * nombre : sur le centre d'Albi il rend les quatorze hôtels de la ville, nommés, et cinquante-deux lieux
+ * de loisirs dont les circuits de découverte, les bouclettes de randonnée urbaine, le petit train
+ * touristique et les marchés de producteurs - autant d'objets qui n'existent tout simplement pas dans
+ * OpenStreetMap.
  *
  * **Un groupe limité au thème vélo reste à DATAtourisme**, où qu'on soit : OSM ne porte pas l'équivalent
  * de ce thème, et rendre des hébergements quelconques sous un filtre "vélo" serait promettre ce qu'on ne
@@ -60,13 +84,21 @@ object PoiSources {
     fun datatourismeCovers(box: Bbox): Boolean = COUVERTURE.any { croise(it, box) }
 
     /**
+     * Les groupes qu'OpenStreetMap sert **même là où DATAtourisme répond** (cf. la note de tête).
+     *
+     * Le pratique parce que la base touristique l'ignore ; la restauration parce qu'elle n'y connaît que
+     * les hôtels qui servent à manger.
+     */
+    private val COMPLETES_PAR_OSM = setOf(PoiGroup.PRACTICAL, PoiGroup.FOOD)
+
+    /**
      * Les catégories à demander à OpenStreetMap pour cette emprise.
      *
      * [libres] est le jeu des catégories cochées **hors** thème vélo : celles limitées au vélo ne passent
      * jamais par ici (cf. la note de tête).
      */
     fun osmCategories(box: Bbox, libres: Set<PoiCategory>): Set<PoiCategory> =
-        if (datatourismeCovers(box)) libres.filterTo(mutableSetOf()) { it.group == PoiGroup.PRACTICAL }
+        if (datatourismeCovers(box)) libres.filterTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
         else libres
 
     /**
@@ -89,8 +121,8 @@ object PoiSources {
      *
      * Les groupes vides ne comptent pas : rien de coché, rien à demander.
      *
-     * En France, ce découpage ne change rien - seul le groupe pratique y est demandé à OSM, et il ne fait
-     * qu'une requête.
+     * En France, ce découpage rend deux requêtes au plus - la restauration et le pratique - et le premier
+     * des deux à répondre s'affiche sans attendre l'autre.
      */
     fun osmGroups(box: Bbox, libres: Set<PoiCategory>): List<Set<PoiCategory>> =
         osmCategories(box, libres)

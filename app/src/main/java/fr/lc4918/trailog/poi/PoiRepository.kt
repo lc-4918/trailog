@@ -158,7 +158,11 @@ class PoiRepository(private val dao: PoiDao) {
         return PoiSources.osmGroups(box, libres).map { groupe ->
             {
                 val lieux = creneaux.withPermit { Overpass.around(base, box, groupe) }
-                PoiBatch(lieux, tronque = lieux.size >= Overpass.LIMIT)
+                PoiBatch(
+                    lieux.orEmpty(),
+                    tronque = (lieux?.size ?: 0) >= Overpass.LIMIT,
+                    echec = lieux == null,
+                )
             }
         }
     }
@@ -176,10 +180,17 @@ class PoiRepository(private val dao: PoiDao) {
         /**
          * Requetes OpenStreetMap simultanees.
          *
-         * Deux, parce que c'est ce que l'instance publique accorde par adresse. Au-dela, elle ne fait pas
-         * patienter : elle refuse d'un 504, et le groupe concerne serait perdu pour cet ecran de carte.
+         * **Une**, et c'est une correction. L'instance publique accorde deux creneaux par adresse, et l'on
+         * en prenait deux d'un coup - sans compter les requetes des chargements deja annules, qui
+         * continuent de courir. Releve sur le terrain a Albi : huit gestes de carte, vingt-cinq requetes
+         * Overpass, et vingt-cinq echecs de connexion. Le service ne refusait pas une requete trop lourde,
+         * il refusait l'appelant.
+         *
+         * Saturer d'emblee le quota ne fait rien gagner : les deux groupes se suivent au lieu de se
+         * concurrencer, et chacun s'affiche des qu'il repond (cf. `poiStream`). Ce qui change, c'est qu'il
+         * reste de la marge pour le geste suivant.
          */
-        const val OSM_CRENEAUX = 2
+        const val OSM_CRENEAUX = 1
     }
 }
 
@@ -190,7 +201,32 @@ class PoiRepository(private val dao: PoiDao) {
  * qu'elle connaît, et le reste est écarté dans un ordre que rien ne fixe. Le taire donnait une carte qui
  * avait l'air juste et dont les marqueurs disparaissaient d'un déplacement au suivant.
  */
-data class PoiLoad(val pois: List<Poi>, val fromCache: Boolean, val partial: Boolean = false)
+data class PoiLoad(
+    val pois: List<Poi>,
+    val fromCache: Boolean,
+    val partial: Boolean = false,
+    /**
+     * Toutes les sources ont repondu, et aucune n'a bute sur son plafond.
+     *
+     * C'est la seule emission qui autorise l'ecran a RETENIR l'emprise comme chargee. Les emissions
+     * intermediaires remplissent la carte au fur et a mesure, mais ne disent rien de ce qui manque encore.
+     *
+     * Sans cette distinction, la premiere source arrivee suffisait a marquer l'emprise chargee. Un geste de
+     * carte de plus annulait le chargement en cours - DATAtourisme repond en une seconde, Overpass en met
+     * trois a trente - et la vue suivante, contenue dans celle-ci, ne redemandait plus rien : la carte
+     * restait sur les seuls lieux de la source rapide. Releve sur Albi apres un dezoom suivi d'un zoom :
+     * les restaurants avaient disparu et ne revenaient jamais.
+     */
+    val complete: Boolean = false,
+    /**
+     * Une source n'a **pas repondu** - un refus, une coupure, un delai depasse.
+     *
+     * A distinguer de [partial], qui dit qu'une source a repondu mais s'est arretee a son plafond. Les deux
+     * empechent de retenir l'emprise, mais pas pour la meme raison et pas avec les memes suites : une
+     * troncature se redemande au geste suivant, un echec attend (cf. `PoiLoading.RETRY_AFTER_FAIL_MS`).
+     */
+    val failed: Boolean = false,
+)
 
 /**
  * Ce qu'une source rend : ses lieux, et si elle s'est arrêtée à son plafond.
@@ -199,7 +235,7 @@ data class PoiLoad(val pois: List<Poi>, val fromCache: Boolean, val partial: Boo
  * enregistrements illisibles ou hors catégorie ont été écartés. Il peut donc manquer une troncature, jamais
  * en inventer une - on préfère se taire à tort qu'alarmer à tort.
  */
-internal data class PoiBatch(val pois: List<Poi>, val tronque: Boolean)
+internal data class PoiBatch(val pois: List<Poi>, val tronque: Boolean, val echec: Boolean = false)
 
 private fun Poi.toEntity(now: Long, pinned: Boolean = false) = PoiCacheEntity(
     uuid = uuid, label = label, lat = lat, lon = lon, categoryKey = category.key,
@@ -219,13 +255,16 @@ private fun PoiCacheEntity.toPoi(): Poi? {
  * qui publie, quand, et ce que porte chaque émission - et cela se teste avec deux fonctions bidon, là où
  * le dépôt entier demanderait deux services en ligne et une base (cf. `PoiStreamTest`).
  *
- * Les règles tiennent en trois lignes :
+ * Les règles tiennent en quatre lignes :
  * - une source qui rend quelque chose publie **aussitôt**, avec ce que l'autre a déjà rendu ;
  * - une source muette ne publie rien - elle n'a rien à ajouter, et une émission de plus ferait clignoter
  *   la carte pour rien ;
  * - les deux muettes, on se rabat sur le cache, et l'émission finale le dit. Elle a lieu **même vide** :
  *   c'est elle qui apprend à l'écran que cette emprise est chargée, faute de quoi il la redemanderait à
- *   chaque geste.
+ *   chaque geste ;
+ * - **une émission finale close le flux dès que toutes les sources ont répondu**, et elle seule porte
+ *   [PoiLoad.complete]. C'est ce qui distingue "voici tout ce qu'il y a ici" de "voici ce qui est arrivé
+ *   jusqu'à présent" - un chargement interrompu en cours de route ne doit pas passer pour terminé.
  */
 internal fun poiStream(
     datatourisme: suspend () -> PoiBatch,
@@ -244,9 +283,14 @@ internal fun poiStream(
     val dOsm = LinkedHashMap<String, Poi>()
     var publie = false
 
+    // Une source qui n'a pas repondu n'est pas une source qui n'a rien a dire : l'emprise ne peut alors
+    // pas etre retenue comme chargee, sans quoi le groupe manquant ne serait jamais redemande.
+    var echec = false
+
     suspend fun arrivee(reponse: PoiBatch, venuDeDatatourisme: Boolean) {
         val lieux = reponse.pois
         if (reponse.tronque) partiel = true
+        if (reponse.echec) echec = true
         if (lieux.isEmpty()) return
         // Sous verrou : les sources arrivent sur des fils distincts, et l'emission doit porter un etat
         // coherent - jamais la moitie d'une reunion en cours.
@@ -267,8 +311,17 @@ internal fun poiStream(
         osm.forEach { source -> add(launch { arrivee(source(), venuDeDatatourisme = false) }) }
     }
     travaux.forEach { it.join() }
-    if (!publie) {
+    // Toutes les sources ont repondu : l'emission finale porte le meme etat que la derniere, et le dit.
+    // C'est elle, et elle seule, qui autorise l'ecran a retenir l'emprise.
+    val retenable = !partiel && !echec
+    if (publie) {
+        send(PoiLoad(
+            PoiSources.merge(deDatatourisme, dOsm.values.toList()),
+            fromCache = false, partial = partiel, complete = retenable, failed = echec,
+        ))
+    } else {
         val gardes = cache()
-        send(PoiLoad(gardes, fromCache = gardes.isNotEmpty(), partial = partiel))
+        send(PoiLoad(gardes, fromCache = gardes.isNotEmpty(), partial = partiel,
+            complete = retenable, failed = echec))
     }
 }

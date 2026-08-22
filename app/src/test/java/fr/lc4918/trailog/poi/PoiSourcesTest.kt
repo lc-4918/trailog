@@ -45,16 +45,23 @@ class PoiSourcesTest {
     // ---------- Ce qu'on demande a OpenStreetMap ----------
 
     /**
-     * En France, OSM ne complete que les services du terrain : l'eau, les toilettes, les bornes, les
-     * reparateurs. Le tourisme reste a DATAtourisme, qui le decrit mieux et l'illustre de photos.
+     * En France, OSM complete les services du terrain - l'eau, les toilettes, les bornes, les reparateurs -
+     * ET la restauration, que la base touristique ne connait qu'a travers les hotels qui servent a manger
+     * (6 restaurants contre 150 sur le centre d'Albi, et les 6 etaient des hotels).
+     *
+     * L'hebergement et les loisirs restent a DATAtourisme, qui les decrit mieux et les illustre de photos.
      */
-    @Test fun `en France, OSM ne repond que pour le groupe pratique`() {
+    @Test fun `en France, OSM repond pour le pratique et la restauration`() {
         val toutes = PoiCategory.entries.toSet()
         val demandees = PoiSources.osmCategories(grenoble, toutes)
         assertTrue(demandees.isNotEmpty())
-        assertTrue(demandees.all { it.group == PoiGroup.PRACTICAL })
+        assertTrue(demandees.all { it.group == PoiGroup.PRACTICAL || it.group == PoiGroup.FOOD })
         assertTrue(PoiCategory.WATER in demandees)
-        assertFalse(PoiCategory.HOTELS in demandees)
+        assertTrue("un restaurant de quartier doit etre demande a OSM",
+            PoiCategory.RESTAURANTS in demandees)
+        assertTrue("un bar de quartier aussi", PoiCategory.BARS in demandees)
+        assertFalse("l'hebergement reste a DATAtourisme", PoiCategory.HOTELS in demandees)
+        assertFalse("les loisirs aussi", PoiCategory.CULTURAL_SITES in demandees)
     }
 
     /** Hors de France, DATAtourisme n'a rien a dire : OSM repond seul, pour tout ce qui est coche. */
@@ -125,11 +132,15 @@ class PoiSourcesTest {
             PoiCategory.entries.toSet(), groupes.flatten().toSet())
     }
 
-    /** En France, le decoupage ne change rien : seul le groupe pratique y est demande a OSM. */
-    @Test fun `en France, le decoupage ne fait qu'une requete`() {
+    /** En France, deux requetes au plus : la restauration et le pratique, chacune s'affichant des qu'elle
+     *  repond sans attendre l'autre. */
+    @Test fun `en France, le decoupage fait deux requetes`() {
         val groupes = PoiSources.osmGroups(grenoble, PoiCategory.entries.toSet())
-        assertEquals(1, groupes.size)
-        assertTrue(groupes.single().all { it.group == PoiGroup.PRACTICAL })
+        assertEquals(2, groupes.size)
+        assertEquals(setOf(PoiGroup.FOOD, PoiGroup.PRACTICAL),
+            groupes.map { g -> g.first().group }.toSet())
+        assertTrue("chaque requete ne porte qu'un groupe",
+            groupes.all { g -> g.map { it.group }.distinct().size == 1 })
     }
 
     /** Un groupe dont rien n'est coche ne vaut pas une requete. */

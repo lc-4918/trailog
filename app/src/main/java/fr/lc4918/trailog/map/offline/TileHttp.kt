@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.map.offline
 
+import fr.lc4918.trailog.BuildConfig
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -15,7 +16,16 @@ import java.net.URL
 object TileHttp {
     private const val CONNECT_TIMEOUT_MS = 15_000
     private const val READ_TIMEOUT_MS = 20_000
-    private const val USER_AGENT = "Trailog/1.0 (Android)"
+    /**
+     * Ce que l'application dit d'elle aux services qu'elle interroge.
+     *
+     * Nom, version reelle et adresse du depot : c'est ce que demandent les politiques d'usage des services
+     * publics qu'on appelle - celle d'Overpass en particulier, qui refuse ou limite plus durement ce qui
+     * ressemble a un robot anonyme. La version en dur n'apprenait rien a personne, et l'adresse donne a un
+     * administrateur de quoi nous joindre plutot que de nous bloquer.
+     */
+    private val USER_AGENT =
+        "Trailog/${BuildConfig.VERSION_NAME} (Android; +https://github.com/lc-4918/trailog)"
 
     /** Statut HTTP et corps de la réponse. [status] vaut 0 quand la requête n'a pas abouti du tout
      *  (pas de réseau, délai dépassé) : un appelant qui doit distinguer "le serveur répond qu'il n'y

@@ -32,6 +32,21 @@ object PoiLoading {
     const val DEBOUNCE_MS = 500L
 
     /**
+     * Delai avant de redemander une zone dont le chargement a **echoue**.
+     *
+     * Une minute, et ce n'est pas une precaution : c'est ce qui separe un service qui hoquette d'un service
+     * qui nous bannit. Une emprise en echec n'est pas retenue comme chargee - sans quoi le manque se
+     * figerait -, mais sans ce frein chaque geste de carte la redemandait aussitot. Releve a Albi : huit
+     * gestes, vingt-cinq requetes Overpass, vingt-cinq refus de connexion. L'instance publique n'accorde
+     * que deux creneaux par adresse, et l'application se faisait refuser d'autant plus fort qu'elle
+     * insistait.
+     *
+     * Ne s'applique qu'a l'echec. Une reponse simplement **tronquee** se redemande, elle, a chaque geste :
+     * le service a repondu, et resserrer la vue est precisement ce qui rendra la reponse complete.
+     */
+    const val RETRY_AFTER_FAIL_MS = 60_000L
+
+    /**
      * L'emprise à demander pour un écran donné : la même, élargie de [MARGIN] de part et d'autre.
      *
      * Charger plus large que l'écran est ce qui rend gratuits les petits déplacements : tant que la vue

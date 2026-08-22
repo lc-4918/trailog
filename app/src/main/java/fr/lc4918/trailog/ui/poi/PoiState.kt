@@ -38,6 +38,11 @@ class PoiState {
     /** Filtres de ce chargement : les changer invalide tout, la réponse ne portait pas les mêmes lieux. */
     private var loadedFilters: PoiFilters? = null
 
+    /** Emprise du dernier chargement qui a **echoue**, et l'instant de cet echec : on ne la redemande pas
+     *  tout de suite (cf. [PoiLoading.RETRY_AFTER_FAIL_MS]). */
+    private var failedBox: Bbox? = null
+    private var failedAt = 0L
+
     /** La carte est trop dézoomée pour charger quoi que ce soit (cf. [PoiLoading.MIN_ZOOM]) : le dire,
      *  plutôt que de laisser une carte vide sans explication. */
     var tooFar by mutableStateOf(false)
@@ -57,6 +62,7 @@ class PoiState {
         if (!visible) {
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null
             tooFar = false; needsNetwork = false; partial = false
+            failedBox = null
         }
     }
 
@@ -69,6 +75,7 @@ class PoiState {
         tooFar = false
         needsNetwork = false
         partial = false
+        failedBox = null
     }
 
     fun select(poi: Poi?) { selected = poi }
@@ -110,21 +117,33 @@ class PoiState {
     fun publish(
         box: Bbox, filters: PoiFilters, list: List<Poi>,
         cache: Boolean = false, offline: Boolean = false, incomplete: Boolean = false,
+        /** Sans valeur par defaut, et volontairement : c'est l'oubli de cette question qui a fait
+         *  disparaitre les restaurants d'Albi. Chaque appelant doit dire s'il a tout recu. */
+        complete: Boolean,
     ) {
         pois = list
         /*
-         * Une emprise incompletement rendue n'est PAS retenue comme chargee.
+         * Une emprise n'est retenue comme chargee que si le chargement est alle a son terme, toutes sources
+         * arrivees et aucune tronquee.
          *
-         * Sans cela, la troncature se figeait : la vue suivante etant contenue dans celle-ci, [needsLoad]
-         * repondait non, et zoomer sur un coin d'une zone a trois mille lieux n'en ramenait jamais un seul de
-         * plus - on restait avec les 250 tires au hasard de la vue large, dont une poignee seulement tombe
-         * dans le nouveau cadre. Or c'est exactement le geste qui doit marcher : plus on serre, moins il y a
-         * de lieux, et plus la reponse a de chances d'etre complete.
+         * Deux fautes distinctes s'y cachaient, et la seconde est celle qu'on a vue sur Albi.
          *
-         * Le prix est une requete a chaque geste tant qu'on reste dans une zone trop dense - c'est le prix
-         * juste : on sait qu'on ne montre pas tout.
+         * La troncature d'abord : sans ce garde-fou elle se figeait, la vue suivante etant contenue dans
+         * celle-ci, et zoomer sur un coin d'une zone a trois mille lieux n'en ramenait jamais un seul de
+         * plus - on restait avec les 250 tires au hasard de la vue large. Or c'est exactement le geste qui
+         * doit marcher : plus on serre, moins il y a de lieux, et plus la reponse a de chances d'etre
+         * complete.
+         *
+         * L'interruption ensuite. Les sources publient chacune a son arrivee, et la premiere suffisait a
+         * marquer l'emprise chargee. DATAtourisme repond en une seconde, Overpass en met trois a trente : un
+         * geste de carte de plus annulait le chargement entre les deux, et la vue suivante ne redemandait
+         * plus rien. La carte restait sur les seuls lieux de la source rapide, definitivement. Un dezoom
+         * suivi d'un zoom sur Albi faisait ainsi disparaitre les cent cinquante restaurants sans retour.
+         *
+         * Le prix est une requete a chaque geste tant qu'un chargement n'aboutit pas - c'est le prix juste :
+         * on sait qu'on ne montre pas tout.
          */
-        loaded = if (incomplete) null else box
+        loaded = if (complete) box else null
         loadedFilters = filters
         tooFar = false
         fromCache = cache
@@ -132,7 +151,20 @@ class PoiState {
         partial = incomplete
     }
 
+    /**
+     * Ce chargement n'a pas abouti : une source n'a pas repondu.
+     *
+     * On retient l'emprise et l'instant, pour laisser au service le temps de se remettre avant de le
+     * redemander. Sans ce frein, l'echec se nourrissait de lui-meme : chaque geste relancait la requete que
+     * le service venait de refuser, et il la refusait d'autant plus fort.
+     *
+     * [now] vient de l'appelant, en temps depuis le demarrage de l'appareil : un changement d'heure - fuseau,
+     * mise a l'heure du reseau - ne doit ni prolonger l'attente indefiniment ni l'annuler d'un coup.
+     */
+    fun loadFailed(box: Bbox, now: Long) { failedBox = box; failedAt = now }
+
     fun tooFar() { tooFar = true; loading = false; needsNetwork = false; partial = false }
+
 
     /**
      * Fin d'un chargement qui ne publie rien : vue déjà chargée, abandon, ou geste suivant qui annule
@@ -153,11 +185,20 @@ class PoiState {
      * La comparaison se fait sur l'emprise **élargie** au moment du chargement (cf. `PoiLoading.grow`) :
      * charger un peu plus large que l'écran permet justement à un petit déplacement de ne rien coûter.
      */
-    fun needsLoad(box: Bbox, filters: PoiFilters): Boolean {
+    fun needsLoad(box: Bbox, filters: PoiFilters, now: Long): Boolean {
         if (loadedFilters != filters) return true
+        // Une zone qui vient d'echouer attend son tour : le service n'aura pas change d'avis en trois
+        // secondes, et insister est ce qui le fait refuser plus durement (cf. RETRY_AFTER_FAIL_MS).
+        val e = failedBox
+        if (e != null && now - failedAt < PoiLoading.RETRY_AFTER_FAIL_MS && contient(e, box)) return false
         val d = loaded ?: return true
-        return !(box.west >= d.west && box.east <= d.east && box.south >= d.south && box.north <= d.north)
+        return !contient(d, box)
     }
+
+    /** [dehors] contient-elle entierement [dedans]. */
+    private fun contient(dehors: Bbox, dedans: Bbox): Boolean =
+        dedans.west >= dehors.west && dedans.east <= dehors.east &&
+            dedans.south >= dehors.south && dedans.north <= dehors.north
 
     /** Un point d'intérêt disparu du dernier chargement ne doit pas laisser son infobulle ouverte sur la
      *  carte : elle décrirait un marqueur qui n'y est plus. */

@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.poi
 
+import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -54,7 +55,10 @@ fun PoiEffects(
         try {
             delay(PoiLoading.DEBOUNCE_MS)
             val vue = controller.visibleBounds() ?: return@LaunchedEffect
-            if (!state.needsLoad(vue, filters)) return@LaunchedEffect
+            // Temps depuis le demarrage de l'appareil, et non heure murale : un changement d'heure ne doit
+            // pas prolonger indefiniment le silence apres un echec ni l'annuler d'un coup.
+            val maintenant = SystemClock.elapsedRealtime()
+            if (!state.needsLoad(vue, filters, maintenant)) return@LaunchedEffect
             val box = PoiLoading.grow(vue)
             state.beginLoad()
             // Deux requetes au plus : celles qui se contentent du catalogue, et celles limitees au theme
@@ -68,7 +72,10 @@ fun PoiEffects(
                 // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a
                 // pas repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.
                 val horsLigne = charge.pois.isEmpty() && !NetworkStatus.hasInternet(ctx)
-                state.publish(box, filters, charge.pois, charge.fromCache, horsLigne, charge.partial)
+                state.publish(box, filters, charge.pois, charge.fromCache, horsLigne, charge.partial,
+                    complete = charge.complete)
+                // Une source muette met la zone au repos : on la redemandera, mais pas au prochain geste.
+                if (charge.failed) state.loadFailed(box, SystemClock.elapsedRealtime())
                 state.dropSelectionIfGone()
             }
         } finally {
