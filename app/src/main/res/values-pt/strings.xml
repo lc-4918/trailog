@@ -495,10 +495,16 @@
     <string name="settings_off_track_sound_default">Predefinido</string>
     <string name="settings_off_track_hint">O sino aparece sob o cálculo de itinerário: pede o trilho a seguir e avisa assim que se afastar dele. Não funciona sem a localização GPS, que ao ativá-la também aparece.</string>
     <string name="location_channel_name">Seguimento de posição</string>
+    <string name="location_alert_channel_name">Seguimento de posição interrompido</string>
     <string name="location_notice_title">Seguimento de posição</string>
     <string name="location_notice_idle">O seguimento continua com o ecrã desligado.</string>
     <string name="location_notice_following">%1$s - a %2$s do trajeto</string>
     <string name="location_notice_stop">Parar</string>
+    <string name="location_notice_waiting">Localização desativada - o seguimento retomará assim que voltar.</string>
+    <string name="location_stopped_sensor">Localização desativada no telemóvel: já não há marcador. O seguimento retomará assim que voltar.</string>
+    <string name="location_stopped_system">O seguimento de posição parou sozinho. Já não tem marcador no mapa.</string>
+    <string name="location_stopped_resume">Retomar</string>
+    <string name="location_stale_banner">Posição parada há %1$s: o marcador pode estar errado.</string>
     <string name="settings_section_route_prefs">Preferências de traçado</string>
     <string name="settings_label_route_ways">Vias</string>
     <string name="settings_label_route_hills">Relevo</string>

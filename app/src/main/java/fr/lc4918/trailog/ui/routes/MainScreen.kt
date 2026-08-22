@@ -93,6 +93,7 @@ import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.routeUrl
+import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
@@ -104,6 +105,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
@@ -127,6 +129,7 @@ import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
+import fr.lc4918.trailog.ui.location.LocationNoticeBar
 import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
@@ -247,13 +250,25 @@ fun MainScreen(
      */
     val location = rememberLocationControls(controller, settings?.showGpsButton)
     // Ecran maintenu allume tant que le suivi tourne, si le reglage le demande (cf. KeepScreenOnEffect).
+    // L'annonce d'un arret subi du suivi : voir la banniere posee avec celle de l'alerte d'eloignement.
+    val stopNotice by LocationHub.stopNotice.collectAsState()
     KeepScreenOnEffect(settings?.keepScreenOn == true && location.gpsActive)
 
     // Symbole du repère de position et sa couleur : celle réglée, sinon celle propre au symbole (le bleu de
     // la puce, le rouge des flèches et de la croix) - une couleur vide n'est pas un choix, c'est l'absence
     // de choix, et elle doit suivre le symbole quand on en change.
     val gpsMarker = GpsMarkerStyle.of(settings?.gpsMarkerStyle)
-    val gpsMarkerColor = settings?.gpsMarkerColor?.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
+    val gpsMarkerColorReglee = settings?.gpsMarkerColor?.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
+    /**
+     * Le repere passe au GRIS quand il ne dit plus la verite.
+     *
+     * Un repere fige est visuellement identique a un repere juste : on regarde un point qui affirme ou
+     * l'on est, et il a raison depuis dix minutes. La banniere le dit en toutes lettres, mais elle
+     * s'adresse a qui lit le bas de l'ecran ; la couleur s'adresse a qui regarde la carte, c'est-a-dire a
+     * tout le monde. C'est la seule teinte de l'application qui dise un doute, et elle vaut pour tous les
+     * symboles de repere - le reglage de couleur reprend la main des que le capteur repond.
+     */
+    val gpsMarkerColor = if (location.positionStale) GpsStaleColor else gpsMarkerColorReglee
     val gpsMarkerSizeDp = (settings?.gpsMarkerSizeDp ?: DefaultGpsMarkerSizeDp).toFloat()
 
     // Orientation du telephone, quand le symbole choisi en porte une (cf. HeadingEffect).
@@ -1626,6 +1641,39 @@ fun MainScreen(
                         awayM = awayM ?: alertDistanceM.toDouble(),
                         imperial = imperialUnits,
                         onClose = { TrackWatch.silence() },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                    )
+                }
+                /*
+                 * Le suivi s'est arrete tout seul, ou le repere ne bouge plus.
+                 *
+                 * Au meme endroit et au meme rang que l'alerte d'eloignement : ce sont les deux seules
+                 * choses que la carte annonce d'elle-meme, et aucun panneau ne doit les recouvrir. Elles
+                 * ne se disputent jamais la place - un suivi arrete n'a plus d'ecart a mesurer, et une
+                 * position figee ne se mesure pas davantage.
+                 *
+                 * L'arret l'emporte sur la peremption : le repere efface est le fait le plus grave, et le
+                 * dire deux fois n'en dirait pas plus.
+                 */
+                val arret = stopNotice
+                if (arret != null) {
+                    LocationNoticeBar(
+                        text = stringResource(
+                            if (arret == LocationHub.StopReason.SENSOR_OFF) R.string.location_stopped_sensor
+                            else R.string.location_stopped_system,
+                        ),
+                        onDismiss = { location.dismissStopNotice() },
+                        actionLabel = stringResource(R.string.location_stopped_resume),
+                        onAction = { location.dismissStopNotice(); location.onGpsButtonTap() },
+                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                    )
+                } else if (location.positionStale) {
+                    LocationNoticeBar(
+                        text = stringResource(
+                            R.string.location_stale_banner,
+                            Format.duration((location.positionAgeMs ?: 0L) / 1000.0),
+                        ),
+                        onDismiss = { },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                     )
                 }

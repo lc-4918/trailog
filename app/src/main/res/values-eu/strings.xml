@@ -495,10 +495,16 @@
     <string name="settings_off_track_sound_default">Lehenetsia</string>
     <string name="settings_off_track_hint">Kanpaia ibilbide-kalkuluaren azpian agertzen da: jarraitu beharreko arrastoa eskatzen du, eta urruntzen zarenean abisatzen du. Ezin da GPS kokapenik gabe joan, eta hura ere aktibatzen da.</string>
     <string name="location_channel_name">Kokapenaren jarraipena</string>
+    <string name="location_alert_channel_name">Kokapenaren jarraipena etenda</string>
     <string name="location_notice_title">Kokapenaren jarraipena</string>
     <string name="location_notice_idle">Jarraipenak aurrera darrai pantaila itzalita ere.</string>
     <string name="location_notice_following">%1$s - ibilbidetik %2$s</string>
     <string name="location_notice_stop">Gelditu</string>
+    <string name="location_notice_waiting">Kokapena itzalita - jarraipena berrekingo da itzultzen denean.</string>
+    <string name="location_stopped_sensor">Kokapena telefonoan itzalita: ez dago markarik. Jarraipena berrekingo da itzultzen denean.</string>
+    <string name="location_stopped_system">Kokapenaren jarraipena bere kabuz gelditu da. Ez duzu markarik mapan.</string>
+    <string name="location_stopped_resume">Berrekin</string>
+    <string name="location_stale_banner">Kokapena %1$s daramatza geldirik: marka okerra izan daiteke.</string>
     <string name="settings_section_route_prefs">Ibilbide-hobespenak</string>
     <string name="settings_label_route_ways">Bideak</string>
     <string name="settings_label_route_hills">Erliebea</string>

@@ -39,7 +39,11 @@ import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.LocationService
 import fr.lc4918.trailog.ui.components.MapController
 import kotlin.coroutines.resume
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+
+/** Cadence de relecture de l'age de la position : la seconde suffit pour un seuil de trente. */
+private const val STALE_TICK_MS = 1_000L
 
 /**
  * Tout ce que l'ecran de carte doit savoir faire avec la position : l'allumer, l'eteindre, en demander
@@ -146,8 +150,19 @@ class LocationControls internal constructor(
         if (!accordee) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
-    /** Fin du suivi : le service s'arrete, et le repere disparait avec lui (cf. [onTrackingStopped]). */
-    fun stopGps() { LocationService.stop(ctx) }
+    /**
+     * Fin du suivi DEMANDEE : le service s'arrete, et le repere disparait avec lui.
+     *
+     * Le geste est enregistre avant l'arret. C'est ce qui distingue cet arret-ci de tous les autres :
+     * il n'a rien a annoncer, et rien ne doit le rallumer.
+     */
+    fun stopGps() {
+        LocationHub.stopRequestedByUser()
+        LocationService.stop(ctx)
+    }
+
+    /** L'annonce d'un arret subi a ete lue : la banniere se retire. */
+    fun dismissStopNotice() { LocationHub.clearStopNotice() }
 
     /** Le fournisseur de position a interroger : le GPS s'il est allume, le reseau sinon, rien si les
      *  deux sont eteints. */
@@ -162,6 +177,7 @@ class LocationControls internal constructor(
         if (!hasLocationPermission()) return
         val provider = enabledProvider() ?: return
         askNotificationPermission()
+        LocationHub.wantTracking()
         LocationService.start(ctx)
         // Le cadrage reste ici, et lui seul : le service pose le repere, l'ecran decide de ce que la camera
         // en fait. La derniere position connue est relue plutot qu'attendue du flux - c'est elle qui
@@ -251,6 +267,43 @@ class LocationControls internal constructor(
         controller.clearUserLocation()
         pendingCenter = false
     }
+
+    /**
+     * L'age de la derniere mesure, en millisecondes, ou null s'il n'y en a aucune.
+     *
+     * Recalcule a la demande : ce n'est pas la position qui vieillit dans un etat, c'est l'horloge qui
+     * avance. Lu par [positionStale], que l'ecran surveille.
+     */
+    private fun fixAgeMs(): Long? = fixState.value?.let { SystemClock.elapsedRealtime() - it.receivedAtMs }
+
+    /** Depuis combien de temps le capteur n'a plus rien donne, ou null s'il n'y a pas de repere. */
+    val positionAgeMs: Long? get() = fixAgeMs()
+
+    /**
+     * Le repere ment : le capteur n'a plus rien donne depuis [STALE_AFTER_MS].
+     *
+     * Un repere fige est visuellement identique a un repere juste - c'est le meme accident que la
+     * disparition, sous une forme plus sournoise : on regarde un point qui affirme ou l'on est, et il a
+     * raison depuis dix minutes.
+     */
+    var positionStale by mutableStateOf(false)
+        private set
+
+    internal fun refreshStale() {
+        val age = fixAgeMs()
+        positionStale = gpsActive && age != null && age > STALE_AFTER_MS
+    }
+
+    companion object {
+        /**
+         * Au-dela, le repere est declare vieux.
+         *
+         * Le capteur est demande toutes les deux secondes. Trente, c'est quinze mesures manquees - assez
+         * pour n'etre pas un trou passager sous un pont, assez peu pour qu'a velo cela ne fasse que
+         * cent cinquante metres d'erreur.
+         */
+        const val STALE_AFTER_MS = 30_000L
+    }
 }
 
 /**
@@ -309,11 +362,29 @@ fun rememberLocationControls(controller: MapController, showGpsButton: Boolean?)
     }
 
     // Le reglage "afficher le bouton GPS" desactive pendant que la position est active coupe la position
-    // (mais ne desactive pas le capteur lui-meme, seulement les mises a jour cote appli).
+    // (mais ne desactive pas le capteur lui-meme, seulement les mises a jour cote appli). Un geste, donc :
+    // arret DEMANDE, qui ne s'annonce pas et ne se rallume pas.
     LaunchedEffect(showGpsButton) { if (showGpsButton == false && controls.gpsActive) controls.stopGps() }
-    // Localisation eteinte dans le telephone alors que le suivi tourne : il n'a plus rien a ecouter. Sans
-    // cet arret, sa notification resterait affichee a annoncer un suivi qui ne recoit plus rien.
-    LaunchedEffect(controls.sensorEnabled) { if (!controls.sensorEnabled && controls.gpsActive) controls.stopGps() }
+
+    /*
+     * La localisation du telephone n'est PLUS surveillee ici.
+     *
+     * L'ecran la coupait lui-meme quand elle s'eteignait, et personne ne la rallumait : une coupure d'une
+     * seconde - l'economie d'energie d'un Samsung en fin de batterie - arretait le suivi pour le reste de
+     * la sortie. Le service s'en charge desormais de bout en bout : il attend le capteur au lieu de
+     * renoncer, se rebranche des qu'il revient, et le dit dans les deux sens. Un seul proprietaire, et
+     * c'est celui qui survit a l'ecran.
+     *
+     * [LocationControls.sensorEnabled] reste lu, mais pour ce qui INTERROGE le capteur sans afficher de
+     * repere - le planificateur, les mesures depuis la position.
+     */
+
+    // L'age de la derniere mesure : ce n'est pas elle qui change, c'est l'horloge qui avance. D'ou une
+    // relecture reguliere, et seulement tant que le suivi tourne - rien a surveiller sinon.
+    LaunchedEffect(tracking, fix) {
+        controls.refreshStale()
+        while (tracking) { delay(STALE_TICK_MS); controls.refreshStale() }
+    }
 
     /*
      * Rien n'est desabonne a la disparition de l'ecran, et c'est tout l'objet du service : le suivi doit

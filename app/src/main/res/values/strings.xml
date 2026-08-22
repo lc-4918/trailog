@@ -497,10 +497,16 @@
     <string name="settings_off_track_sound_default">Par défaut</string>
     <string name="settings_off_track_hint">La cloche s\'affiche sous le calcul d\'itinéraire : elle demande la trace à suivre, puis prévient dès que vous vous en écartez. Elle ne va pas sans la localisation GPS, que l\'activer affiche aussi.</string>
     <string name="location_channel_name">Suivi de position</string>
+    <string name="location_alert_channel_name">Suivi de position interrompu</string>
     <string name="location_notice_title">Suivi de position</string>
     <string name="location_notice_idle">Le suivi continue, écran éteint.</string>
     <string name="location_notice_following">%1$s - à %2$s de la trace</string>
     <string name="location_notice_stop">Arrêter</string>
+    <string name="location_notice_waiting">Localisation coupée - le suivi reprendra dès son retour.</string>
+    <string name="location_stopped_sensor">Localisation coupée dans le téléphone : plus de repère. Le suivi reprendra dès son retour.</string>
+    <string name="location_stopped_system">Le suivi de position s\'est arrêté tout seul. Vous n\'avez plus de repère sur la carte.</string>
+    <string name="location_stopped_resume">Reprendre</string>
+    <string name="location_stale_banner">Position figée depuis %1$s : le repère peut être faux.</string>
     <string name="settings_section_route_prefs">Préférences de tracé</string>
     <string name="settings_label_route_ways">Voies</string>
     <string name="settings_label_route_hills">Relief</string>

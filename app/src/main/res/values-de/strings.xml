@@ -495,10 +495,16 @@
     <string name="settings_off_track_sound_default">Standard</string>
     <string name="settings_off_track_hint">Die Glocke sitzt unter dem Routenplaner: Sie fragt nach der zu verfolgenden Spur und warnt, sobald Sie davon abweichen. Sie geht nicht ohne den GPS-Standort, der damit ebenfalls eingeschaltet wird.</string>
     <string name="location_channel_name">Positionsverfolgung</string>
+    <string name="location_alert_channel_name">Positionsverfolgung unterbrochen</string>
     <string name="location_notice_title">Positionsverfolgung</string>
     <string name="location_notice_idle">Die Verfolgung läuft auch bei ausgeschaltetem Bildschirm weiter.</string>
     <string name="location_notice_following">%1$s - %2$s von der Strecke entfernt</string>
     <string name="location_notice_stop">Beenden</string>
+    <string name="location_notice_waiting">Standort deaktiviert - die Verfolgung wird fortgesetzt, sobald er zurückkehrt.</string>
+    <string name="location_stopped_sensor">Standort im Telefon deaktiviert: keine Markierung mehr. Die Verfolgung wird fortgesetzt, sobald er zurückkehrt.</string>
+    <string name="location_stopped_system">Die Positionsverfolgung wurde von selbst beendet. Sie haben keine Markierung mehr auf der Karte.</string>
+    <string name="location_stopped_resume">Fortsetzen</string>
+    <string name="location_stale_banner">Position seit %1$s eingefroren: die Markierung kann falsch sein.</string>
     <string name="settings_section_route_prefs">Routenvorlieben</string>
     <string name="settings_label_route_ways">Wege</string>
     <string name="settings_label_route_hills">Gelände</string>

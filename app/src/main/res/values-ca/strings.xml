@@ -495,10 +495,16 @@
     <string name="settings_off_track_sound_default">Per defecte</string>
     <string name="settings_off_track_hint">La campana apareix sota el càlcul d\'itinerari: demana la traça a seguir i avisa tan bon punt te\'n allunyes. No va sense la localització GPS, que activar-la també mostra.</string>
     <string name="location_channel_name">Seguiment de posició</string>
+    <string name="location_alert_channel_name">Seguiment de posició interromput</string>
     <string name="location_notice_title">Seguiment de posició</string>
     <string name="location_notice_idle">El seguiment continua amb la pantalla apagada.</string>
     <string name="location_notice_following">%1$s - a %2$s del traçat</string>
     <string name="location_notice_stop">Atura</string>
+    <string name="location_notice_waiting">Ubicació desactivada: el seguiment es reprendrà tan aviat com torni.</string>
+    <string name="location_stopped_sensor">Ubicació desactivada al telèfon: ja no hi ha marcador. El seguiment es reprendrà tan aviat com torni.</string>
+    <string name="location_stopped_system">El seguiment de posició s\'ha aturat tot sol. Ja no teniu marcador al mapa.</string>
+    <string name="location_stopped_resume">Reprèn</string>
+    <string name="location_stale_banner">Posició aturada des de fa %1$s: el marcador pot ser fals.</string>
     <string name="settings_section_route_prefs">Preferències de traçat</string>
     <string name="settings_label_route_ways">Vies</string>
     <string name="settings_label_route_hills">Relleu</string>

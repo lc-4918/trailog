@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapSurface
 import kotlinx.coroutines.runBlocking
@@ -20,6 +21,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,6 +91,9 @@ class MainScreenUiTest {
         val actuels = app.repository.settings.get() ?: SettingsEntity()
         app.repository.settings.upsert(bloc(actuels).copy(geocodingUrl = "http://127.0.0.1:1"))
     }
+
+    /** Le concentrateur est un objet de processus : chaque test repart de l'etat eteint. */
+    @Before fun suiviEteint() { LocationHub.stopRequestedByUser() }
 
     private fun ecran() {
         compose.setContent { MaterialTheme { MainScreen(onSettings = {}, map = surface) } }
@@ -218,6 +223,76 @@ class MainScreenUiTest {
         ecran()
         attend { surface.controller != null }
         assertNotNull(carte.onLongPressEmpty)
+    }
+
+    // ---------- L'arret subi du suivi de position ----------
+
+    /**
+     * Le suivi s'arrete tout seul : la carte le DIT.
+     *
+     * **Ce test vient du terrain.** Un testeur a fait vingt kilometres dans le mauvais sens parce que son
+     * repere avait disparu sans un mot. L'application effacait le repere et se taisait ; la carte
+     * continuait de s'afficher exactement comme avant.
+     *
+     * Aucun test de domaine ne peut voir cela : la regle est bien dans `LocationHub` et s'y teste (cf.
+     * `LocationHubTest`), mais que l'ecran la porte SOUS LES YEUX ne se verifie qu'ici.
+     */
+    @Test fun `un arret subi du suivi s'affiche sur la carte`() {
+        reglages { it.copy(showGpsButton = true) }
+        ecran()
+        attend { affiche(R.string.content_desc_gps_position) }
+        assertFalse("rien tant que rien ne s'est arrete", texte(R.string.location_stopped_system))
+
+        // Ce que fait le service quand il meurt sans que personne ne l'ait demande.
+        compose.runOnUiThread {
+            LocationHub.wantTracking()
+            LocationHub.setTracking(false, LocationHub.StopReason.SYSTEM)
+        }
+        attend { texte(R.string.location_stopped_system) }
+    }
+
+    /** La localisation coupee dans le telephone se dit AUTREMENT : elle annonce sa propre reprise, la
+     *  precedente non. */
+    @Test fun `la localisation coupee se dit avec ses mots`() {
+        reglages()
+        ecran()
+        attend { surface.controller != null }
+        compose.runOnUiThread {
+            LocationHub.wantTracking()
+            LocationHub.setTracking(false, LocationHub.StopReason.SENSOR_OFF)
+        }
+        attend { texte(R.string.location_stopped_sensor) }
+        assertFalse(texte(R.string.location_stopped_system))
+    }
+
+    /** Un arret DEMANDE ne s'annonce pas : une banniere apres chaque tap sur le bouton apprendrait a
+     *  l'ignorer, et c'est la seule chose qu'elle ne doit pas devenir. */
+    @Test fun `un arret demande n'affiche rien`() {
+        reglages()
+        ecran()
+        attend { surface.controller != null }
+        compose.runOnUiThread {
+            LocationHub.wantTracking()
+            LocationHub.stopRequestedByUser()
+            LocationHub.setTracking(false, LocationHub.StopReason.USER)
+        }
+        compose.waitForIdle()
+        assertFalse(texte(R.string.location_stopped_system))
+        assertFalse(texte(R.string.location_stopped_sensor))
+    }
+
+    /** La croix retire l'annonce : elle a ete lue. */
+    @Test fun `la croix de la banniere la retire`() {
+        reglages()
+        ecran()
+        attend { surface.controller != null }
+        compose.runOnUiThread {
+            LocationHub.wantTracking()
+            LocationHub.setTracking(false, LocationHub.StopReason.SYSTEM)
+        }
+        attend { texte(R.string.location_stopped_system) }
+        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
+        attend { !texte(R.string.location_stopped_system) }
     }
 
     // ---------- Le menu lateral ----------

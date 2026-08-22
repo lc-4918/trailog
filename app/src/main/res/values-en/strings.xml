@@ -495,10 +495,16 @@
     <string name="settings_off_track_sound_default">Default</string>
     <string name="settings_off_track_hint">The bell sits below the route planner: it asks which track to follow, then warns as soon as you stray from it. It cannot go without GPS location, which turning it on also shows.</string>
     <string name="location_channel_name">Location tracking</string>
+    <string name="location_alert_channel_name">Location tracking interrupted</string>
     <string name="location_notice_title">Location tracking</string>
     <string name="location_notice_idle">Tracking continues with the screen off.</string>
     <string name="location_notice_following">%1$s - %2$s off the track</string>
     <string name="location_notice_stop">Stop</string>
+    <string name="location_notice_waiting">Location turned off - tracking will resume as soon as it returns.</string>
+    <string name="location_stopped_sensor">Location turned off on the phone: no more marker. Tracking will resume as soon as it returns.</string>
+    <string name="location_stopped_system">Location tracking stopped on its own. You no longer have a marker on the map.</string>
+    <string name="location_stopped_resume">Resume</string>
+    <string name="location_stale_banner">Position frozen for %1$s: the marker may be wrong.</string>
     <string name="settings_section_route_prefs">Route preferences</string>
     <string name="settings_label_route_ways">Ways</string>
     <string name="settings_label_route_hills">Terrain</string>

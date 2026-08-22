@@ -7,8 +7,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.LocationListener
 import android.location.LocationManager
@@ -68,11 +70,38 @@ class LocationService : Service() {
     /** Derniere version connue des reglages (seuil d'alerte, son, unites). */
     @Volatile private var settings: SettingsEntity? = null
 
+    /**
+     * Pourquoi ce service s'arretera, quand il s'arretera.
+     *
+     * [Service.onDestroy] ne dit jamais pourquoi il est appele. La raison se pose donc AVANT, la ou elle
+     * est connue : un tap sur "Arreter", l'application balayee des recentes. Ce qui reste est subi, et
+     * c'est la valeur par defaut.
+     */
+    @Volatile private var stopReason = LocationHub.StopReason.SYSTEM
+
+    /** Le capteur est ecoute a cet instant. Faux quand le service attend qu'il revienne. */
+    @Volatile private var subscribed = false
+
+    /**
+     * La bascule de la localisation dans le telephone, ecoutee par le SERVICE et non par l'ecran.
+     *
+     * C'est ce qui permet d'attendre le capteur au lieu d'abandonner : l'economie d'energie coupe la
+     * localisation en cours de sortie, et rien ne la rallumait cote application - il fallait rouvrir la
+     * carte et retaper sur le bouton, ce que personne ne fait sans savoir qu'il le faut.
+     */
+    private val providerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) { retryIfPossible() }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION).apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+        }
+        ContextCompat.registerReceiver(this, providerReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         watchSettings()
         watchTrack()
         watchNotice()
@@ -80,14 +109,22 @@ class LocationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
+            // Le bouton de la notification : un geste, donc rien a annoncer et rien a rallumer.
+            LocationHub.stopRequestedByUser()
+            stopReason = LocationHub.StopReason.USER
             stopSelf()
             return START_NOT_STICKY
         }
         // L'autorisation AVANT tout le reste : depuis Android 14, se declarer en premier plan de type
         // "location" sans elle leve une SecurityException - et le systeme peut nous relancer (START_STICKY)
         // longtemps apres que l'utilisateur l'a retiree.
-        if (!hasPermission() || enabledProvider() == null) {
-            // Rien a ecouter, et un service qui tourne pour rien laisserait une notification mensongere.
+        //
+        // Elle seule est redhibitoire. L'ABSENCE DE CAPTEUR ne l'est plus : c'est un etat passager - une
+        // economie d'energie qui coupe la localisation, un mode avion de trente secondes - et y renoncer
+        // definitivement, en rendant START_NOT_STICKY, est precisement ce qui laissait quelqu'un rouler
+        // sans repere et sans que rien ne le dise.
+        if (!hasPermission()) {
+            LocationHub.stopRequestedByUser()   // rien a rallumer : l'autorisation manque
             stopSelf()
             return START_NOT_STICKY
         }
@@ -95,21 +132,114 @@ class LocationService : Service() {
         // trop tard, et une position recue entre-temps n'aurait personne pour la lire. Sous garde malgre
         // tout - un demarrage refuse (arriere-plan, Android 12+) ne doit pas emporter l'application.
         val declare = runCatching { startForeground(NOTIF_ID, notification(notice.value)) }.isSuccess
-        if (!declare || !subscribe()) {
+        if (!declare) {
             stopSelf()
             return START_NOT_STICKY
         }
-        LocationHub.setTracking(true)
+        // Un demarrage est toujours une intention : celle du bouton, ou celle que le systeme rejoue en
+        // nous relancant apres avoir repris sa memoire.
+        LocationHub.wantTracking()
+        stopReason = LocationHub.StopReason.SYSTEM
+        if (subscribe()) LocationHub.setTracking(true) else awaitProvider()
         // Le systeme peut nous relancer apres avoir eu besoin de memoire : le suivi reprend alors seul,
         // ce qu'on attend d'une fonction qu'on a demandee pour la duree d'une sortie.
         return START_STICKY
     }
 
+    /**
+     * Le capteur n'a rien a offrir pour l'instant : on reste en vie et on l'attend.
+     *
+     * La notification le dit, plutot que d'annoncer un suivi qui ne recoit rien - c'est la raison qui
+     * faisait arreter le service ici, et elle etait bonne ; ce qui ne l'etait pas est d'en conclure qu'il
+     * fallait renoncer. [providerReceiver] reveille des que la localisation revient.
+     */
+    private fun awaitProvider() {
+        LocationHub.setTracking(false, LocationHub.StopReason.SENSOR_OFF)
+        notice.value = getString(R.string.location_notice_waiting)
+        postStoppedAlert(LocationHub.StopReason.SENSOR_OFF)
+    }
+
+    /**
+     * L'arret subi, dit la ou il sera lu : une notification qui sonne.
+     *
+     * La banniere de la carte ne suffit pas, et c'est tout le probleme de ce defaut - le suivi sert
+     * precisement quand personne ne regarde l'ecran, telephone en poche ou sur un guidon. Une annonce qui
+     * attend qu'on rallume l'ecran arrive apres les vingt kilometres, pas avant.
+     *
+     * Canal distinct de celui du suivi, et d'importance HAUTE : celui du suivi est volontairement discret
+     * - il porte une notification permanente qui ne doit jamais s'imposer -, et une importance ne se
+     * change plus une fois le canal cree.
+     */
+    private fun postStoppedAlert(reason: LocationHub.StopReason) {
+        if (!LocationHub.wanted.value) return
+        ensureAlertChannel()
+        val texte = getString(
+            if (reason == LocationHub.StopReason.SENSOR_OFF) R.string.location_stopped_sensor
+            else R.string.location_stopped_system,
+        )
+        val ouvrir = PendingIntent.getActivity(
+            this, 2, Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notif = NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_location)
+            .setContentTitle(getString(R.string.location_notice_title))
+            .setContentText(texte)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(texte))
+            .setContentIntent(ouvrir)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            .build()
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        runCatching { nm.notify(ALERT_NOTIF_ID, notif) }
+    }
+
+    private fun ensureAlertChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        if (nm.getNotificationChannel(ALERT_CHANNEL_ID) != null) return
+        nm.createNotificationChannel(
+            NotificationChannel(
+                ALERT_CHANNEL_ID, getString(R.string.location_alert_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ),
+        )
+    }
+
+    /** La localisation vient de basculer : on se rebranche si elle est revenue, on lache si elle est partie. */
+    private fun retryIfPossible() {
+        if (!hasPermission()) return
+        if (enabledProvider() != null) {
+            if (subscribed) return
+            if (subscribe()) {
+                notice.value = null
+                LocationHub.setTracking(true)
+                // Le suivi a repris de lui-meme : l'annonce d'arret n'a plus d'objet, et la laisser
+                // afficher un probleme resolu serait la rendre inutile a la fois suivante.
+                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                runCatching { nm?.cancel(ALERT_NOTIF_ID) }
+            }
+        } else if (subscribed) {
+            runCatching { locationManager.removeUpdates(listener) }
+            subscribed = false
+            awaitProvider()
+        }
+    }
+
     override fun onDestroy() {
         runCatching { locationManager.removeUpdates(listener) }
+        runCatching { unregisterReceiver(providerReceiver) }
+        subscribed = false
         releaseWakeLock()
-        LocationHub.setTracking(false)
-        TrackWatch.stop()
+        // L'annonce AVANT l'arret : setTracking efface l'intention lue par postStoppedAlert.
+        if (stopReason != LocationHub.StopReason.USER) postStoppedAlert(stopReason)
+        LocationHub.setTracking(false, stopReason)
+        // La trace suivie SURVIT au service. Elle etait arretee ici, si bien que l'alerte d'eloignement -
+        // la fonction faite pour dire "tu quittes le chemin" - etait demontee par l'evenement meme qui la
+        // rendait necessaire, et sans un mot. Elle attend desormais que les positions reviennent.
         scope.cancel()
         super.onDestroy()
     }
@@ -122,6 +252,8 @@ class LocationService : Service() {
      * ferme l'application serait exactement ce qu'on reproche aux applications qui le font.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
+        LocationHub.stopRequestedByUser()
+        stopReason = LocationHub.StopReason.USER
         stopSelf()
         super.onTaskRemoved(rootIntent)
     }
@@ -134,6 +266,7 @@ class LocationService : Service() {
         val provider = enabledProvider() ?: return false
         return runCatching {
             locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
+            subscribed = true
             // La derniere position connue tout de suite : le systeme la tient deja, et l'attendre laisserait
             // la carte sans repere pendant les secondes que le GPS met a se fixer.
             locationManager.getLastKnownLocation(provider)?.let { LocationHub.publish(it) }
@@ -264,7 +397,9 @@ class LocationService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "suivi-position"
+        private const val ALERT_CHANNEL_ID = "suivi-position-arrete"
         private const val NOTIF_ID = 4918
+        private const val ALERT_NOTIF_ID = 4919
         private const val WAKE_LOCK_TAG = "trailog:suivi-position"
         const val ACTION_STOP = "fr.lc4918.trailog.STOP_LOCATION"
 
