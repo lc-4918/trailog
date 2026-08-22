@@ -77,15 +77,6 @@ internal fun sameStyleSettings(a: SettingsEntity?, b: SettingsEntity?): Boolean 
         a?.mbtilesDir == b?.mbtilesDir &&
         a?.hillshadeOn == b?.hillshadeOn
 
-/** Position de dépose lors d'un drag & drop dans la légende : avant/après un sibling, ou dedans (dossier cible). */
-enum class DropPosition { BEFORE, INTO, AFTER }
-
-/** Couches réellement lues pour chercher la trace la plus proche, et segments proposés au bout du compte
- *  (cf. [MainViewModel.nearestTracks]). Douze couches parce qu'une poignée de traces se recouvrent au même
- *  endroit ; huit propositions parce qu'au-delà on ne choisit plus, on cherche. */
-private const val NearestScanLayers = 12
-private const val NearestTrackCount = 8
-
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
     private val db = AppDatabase.get(app)
@@ -315,7 +306,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      *
      * Deux passes, parce qu'une seule serait intenable. La premiere ne lit RIEN : elle classe les couches
      * sur la distance a leur rectangle englobant (cf. OffTrack.bboxDistanceM), qui est en base. La seconde
-     * ne lit que les [NearestScanLayers] premieres et projette la position sur chacun de leurs segments.
+     * ne lit que les [NEAREST_SCAN_LAYERS] premieres et projette la position sur chacun de leurs segments.
      * Une bibliotheque de deux cents traces coute donc douze fichiers de profils, et non deux cents.
      *
      * Le pre-tri est SUR : la distance au rectangle minore celle a la trace qu'il contient, une couche
@@ -326,9 +317,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * sens - c'est le meme parti pris que le premier point de la mesure sur trace.
      */
     fun nearestTracks(lat: Double, lon: Double, onResult: (List<TrackCandidate>) -> Unit) = viewModelScope.launch {
-        val near = layers.value.filter { it.visible && it.hasLine }
-            .sortedBy { OffTrack.bboxDistanceM(lat, lon, it.west, it.south, it.east, it.north) }
-            .take(NearestScanLayers)
+        // Premiere passe : on ne lit rien, on classe par la distance a l'emprise (cf. layersToScan).
+        val near = layersToScan(layers.value, lat, lon)
         if (near.isEmpty()) { onResult(emptyList()); return@launch }
         val found = near.map { ly ->
             async {
@@ -341,8 +331,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
             }
-        }.awaitAll().flatten().sortedBy { it.awayM }.take(NearestTrackCount)
-        onResult(found)
+        }.awaitAll().flatten()
+        onResult(closestCandidates(found))
     }
 
     fun closeProfile() {
@@ -733,13 +723,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val newParentId: Long? = if (position == DropPosition.INTO) targetId else parentOf(targetKind, targetId)
         val oldParentId = parentOf(kind, id)
         val current = combinedChildren(newParentId).filterNot { it.first == kind && it.second == id }
-        val targetIndex = current.indexOfFirst { it.first == targetKind && it.second == targetId }
-        val insertAt = when (position) {
-            DropPosition.INTO -> current.size
-            DropPosition.BEFORE -> if (targetIndex < 0) current.size else targetIndex
-            DropPosition.AFTER -> if (targetIndex < 0) current.size else targetIndex + 1
-        }
-        val newList = current.toMutableList().apply { add(insertAt, Triple(kind, id, 0)) }
+        val newList = droppedOrder(
+            siblings = current,
+            moved = Triple(kind, id, 0),
+            targetIndex = current.indexOfFirst { it.first == targetKind && it.second == targetId },
+            position = position,
+        )
         if (oldParentId != newParentId) {
             when (kind) {
                 "folder" -> db.folders().move(id, newParentId)
@@ -849,13 +838,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val newParentId: Long? = if (position == DropPosition.INTO) targetId.toLongOrNull() else basemapParentOf(targetKind, targetId)
         val oldParentId = basemapParentOf(kind, id)
         val current = combinedBasemapChildren(newParentId).filterNot { it.first == kind && it.second == id }
-        val targetIndex = current.indexOfFirst { it.first == targetKind && it.second == targetId }
-        val insertAt = when (position) {
-            DropPosition.INTO -> current.size
-            DropPosition.BEFORE -> if (targetIndex < 0) current.size else targetIndex
-            DropPosition.AFTER -> if (targetIndex < 0) current.size else targetIndex + 1
-        }
-        val newList = current.toMutableList().apply { add(insertAt, Triple(kind, id, 0)) }
+        val newList = droppedOrder(
+            siblings = current,
+            moved = Triple(kind, id, 0),
+            targetIndex = current.indexOfFirst { it.first == targetKind && it.second == targetId },
+            position = position,
+        )
         if (oldParentId != newParentId) {
             when (kind) {
                 "folder" -> id.toLongOrNull()?.let { db.basemapFolders().move(it, newParentId) }
@@ -978,24 +966,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Composite désigné par le fond actif, s'il en est un et qu'il est activé ; null sinon (fond simple). */
-    private fun activeComposite(s: SettingsEntity, comps: List<CompositeEntity>): CompositeEntity? =
-        compositeIdFromBasemapId(s.defaultBasemapId)?.let { id -> comps.firstOrNull { it.id == id && it.enabled } }
-
-    /** Fonds visuellement présents à l'écran, dans l'ordre d'empilement : le fond, puis l'overlay si le fond
-     *  actif est un composite. Le relief en est exclu, n'étant pas un fond en soi (cf. [buildStyle]). Sert au
-     *  bouton "info" : la légende proposée est ainsi toujours celle de ce qui est réellement affiché. */
-    private fun displayedProviders(s: SettingsEntity, provs: List<ProviderEntity>, comps: List<CompositeEntity>): List<ProviderEntity> {
-        val composite = activeComposite(s, comps)
-        if (composite != null) {
-            val bg = provs.firstOrNull { it.id == composite.backgroundProviderId }
-            if (bg != null && bg.type != "DEM") {
-                val fg = provs.firstOrNull { it.id == composite.foregroundProviderId }
-                return listOfNotNull(bg, fg?.takeIf { it.type != "DEM" })
-            }
-        }
-        return listOfNotNull(provs.firstOrNull { it.id == s.defaultBasemapId && it.type != "DEM" }
-            ?: provs.firstOrNull { it.type != "DEM" })
-    }
 
     /**
      * Fonds dont le service a explicitement refuse notre cle, cette session-ci.
