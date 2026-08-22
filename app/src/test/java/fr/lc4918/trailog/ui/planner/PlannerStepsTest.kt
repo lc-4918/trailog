@@ -1,7 +1,9 @@
 package fr.lc4918.trailog.ui.planner
 
 import fr.lc4918.trailog.geocode.GeocodePlace
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,6 +42,67 @@ class PlannerStepsTest {
         etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
         etat.choose(etat.steps.last(), StepTarget.Place(lieu("Soreze")))
         assertFalse(etat.usesCurrentPosition)
+    }
+
+    // ---------- Le depart part d'ou l'on est ----------
+
+    /**
+     * Le suivi allume, le planificateur s'ouvre sur un depart deja pose.
+     *
+     * La position actuelle etait deja offerte en tete des suggestions, au focus d'un champ vierge - encore
+     * fallait-il toucher le champ pour la voir, et la choisir. Or quelqu'un qui a le suivi allume et qui
+     * demande un itineraire part, presque toujours, de la ou il se tient.
+     */
+    @Test fun `le planificateur ouvert avec le suivi part de la position`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner(fromCurrentPosition = true)
+        assertEquals(StepTarget.CurrentPosition, etat.steps.first().target)
+        assertNull("l'arrivee reste a saisir", etat.steps.last().target)
+    }
+
+    /** Sans suivi, rien n'est pose : le champ reste vierge, et la suggestion au focus fait son office. */
+    @Test fun `sans suivi, le depart reste vierge`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        assertNull(etat.steps.first().target)
+    }
+
+    /**
+     * Un depart deja pose n'est pas ecrase.
+     *
+     * Le cas se produit vraiment : on touche un point d'interet, on demande "Depart", puis on rouvre la
+     * bande. Ecraser serait perdre le geste qu'on vient de faire.
+     */
+    @Test fun `un depart deja pose survit a l'ouverture`() {
+        val etat = RoutePlannerState()
+        etat.setStart(lieu("Mirepoix"))
+        etat.openPlanner(fromCurrentPosition = true)
+        assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+    }
+
+    /**
+     * Un depart qu'on a commence a taper n'est pas ecrase non plus.
+     *
+     * `untouched` et non la vacuite du champ : effacer entierement une saisie la rend vide sans la rendre
+     * vierge, et la position ressurgirait sous les doigts.
+     */
+    @Test fun `un depart en cours de saisie survit a l'ouverture`() {
+        val etat = RoutePlannerState()
+        etat.type(etat.steps.first(), "Mire")
+        etat.openPlanner(fromCurrentPosition = true)
+        assertNull(etat.steps.first().target)
+    }
+
+    /**
+     * La position deja posee ailleurs n'est pas posee deux fois.
+     *
+     * Partir d'ou l'on est pour y revenir donne un troncon de longueur nulle, que le moteur refuse.
+     */
+    @Test fun `la position posee a l'arrivee n'est pas reposee au depart`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.last(), StepTarget.CurrentPosition)
+        etat.openPlanner(fromCurrentPosition = true)
+        assertNull(etat.steps.first().target)
     }
 
     // ---------- Un lieu deja pose ne se repropose pas ----------

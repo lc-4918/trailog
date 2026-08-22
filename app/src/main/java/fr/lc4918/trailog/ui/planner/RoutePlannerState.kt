@@ -208,9 +208,36 @@ class RoutePlannerState {
 
     val done: RouteState.Done? get() = route as? RouteState.Done
 
-    fun openPlanner() {
+    /**
+     * Ouvre le planificateur, en partant d'ou l'on est si [fromCurrentPosition].
+     *
+     * **Pre-rempli et non propose.** La position actuelle etait deja offerte en tete des suggestions, au
+     * focus d'un champ vierge (cf. RoutePlannerBand) - encore fallait-il toucher le champ pour la voir, et
+     * la choisir. Or quelqu'un qui a le suivi allume et qui demande un itineraire part, presque toujours,
+     * de la ou il se tient : c'est la reponse par defaut, pas une proposition parmi d'autres. La saisie la
+     * remplace des la premiere frappe, comme n'importe quelle etape posee.
+     *
+     * Ne touche qu'un depart VIERGE : rouvrir sur un trajet en cours, ou un depart qu'on vient de poser
+     * depuis une infobulle, ne doit rien ecraser.
+     */
+    fun openPlanner(fromCurrentPosition: Boolean = false) {
         open = true
         collapsed = false
+        if (fromCurrentPosition) startFromCurrentPosition()
+    }
+
+    /**
+     * Le depart part d'ou l'on est - si le depart est encore vierge, et si la position ne sert pas deja
+     * ailleurs dans le trajet.
+     *
+     * La seconde garde importe : partir d'ou l'on est pour y revenir donne un troncon de longueur nulle,
+     * que le moteur refuse. C'est la meme regle que celle de la suggestion, et pour la meme raison.
+     */
+    fun startFromCurrentPosition() {
+        if (usesCurrentPosition) return
+        val depart = steps.firstOrNull() ?: return
+        if (depart.target != null || !depart.untouched) return
+        choose(depart, StepTarget.CurrentPosition)
     }
 
     /** Ferme et remet a zero : rouvrir le planificateur doit donner une feuille vierge, pas le trajet

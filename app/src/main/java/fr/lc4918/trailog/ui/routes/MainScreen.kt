@@ -1483,7 +1483,11 @@ fun MainScreen(
                                 showNoConnectionDialog = true
                             } else {
                                 vm.closeProfile()          // les deux occupent le bas de l'écran
-                                planner.openPlanner()
+                                // Le suivi allumé : on part d'où l'on est. Le bouton de la carte
+                                // seulement - les infobulles, elles, ouvrent le planificateur POUR y
+                                // poser le lieu qu'on vient de toucher, et pré-remplir le départ
+                                // décalerait ce que leur "Étape" va remplir.
+                                planner.openPlanner(fromCurrentPosition = location.gpsActive)
                                 planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
                             }
                         }, modifier = controlBg) {
