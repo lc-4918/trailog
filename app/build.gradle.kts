@@ -150,7 +150,6 @@ dependencies {
     implementation(libs.compose.material.icons)
     debugImplementation(libs.compose.ui.tooling)
 
-    implementation(libs.navigation.compose)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
@@ -158,7 +157,6 @@ dependencies {
 
     implementation(libs.coroutines.android)
     implementation(libs.serialization.json)
-    implementation(libs.datastore.prefs)
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

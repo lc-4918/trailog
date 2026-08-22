@@ -69,7 +69,9 @@ app/src/main/java/fr/lc4918/trailog/
    ├─ measure/                   mesure d'une distance entre deux points d'une trace
    ├─ planner/                   bande du planificateur d'itineraire, etat de ses etapes
    ├─ offline/                   Saisie de la zone et configuration du téléchargement
-   ├─ settings/                  SettingsScreen, SettingsViewModel
+   ├─ settings/                  un fichier par onglet : SettingsScreen (la coquille et ses onglets),
+   │                              SettingsMapTab, SettingsTilesTab, SettingsRoutesTab, SettingsSystemTab,
+   │                              SettingsWidgets (les briques des cinq), SettingsStyle, SettingsViewModel
    ├─ theme/                     Theme.kt
    └─ nav/                       AppRoot.kt
 ```
@@ -144,20 +146,15 @@ vrai SQLite.
   `SharedPreferences` (`LocalePrefs`), devant être lue avant la création de la base.
 - **Images** : Coil 3 (dont support SVG pour les drapeaux, GIF).
 
-> `navigation-compose` et `datastore-preferences` figurent dans les dépendances du module mais
-> ne sont utilisés nulle part dans le code : vestiges du scaffolding initial, supprimables.
-
 ### Dépendances principales
 
 | Domaine | Bibliothèque | Version |
 |---|---|---|
 | UI | Jetpack Compose (BOM) | 2025.01.00 |
-| Navigation | Navigation Compose | 2.8.5 |
 | Persistance | Room | 2.6.1 |
 | Carte | MapLibre Native Android | 11.11.0 |
 | Coroutines | kotlinx-coroutines | 1.9.0 |
 | Sérialisation | kotlinx-serialization | 1.7.3 |
-| Réglages | DataStore Preferences | 1.1.1 |
 | Images | Coil 3 | 3.1.0 |
 | Build | AGP | 8.7.3 |
 | Langage | Kotlin | 2.1.0 |
