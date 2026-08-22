@@ -116,8 +116,9 @@ import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.TrackChooserDialog
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
-import fr.lc4918.trailog.ui.components.MapLibreView
+import fr.lc4918.trailog.ui.components.MapLibreSurface
 import fr.lc4918.trailog.ui.components.MapPromptBar
+import fr.lc4918.trailog.ui.components.MapSurface
 import fr.lc4918.trailog.ui.edit.CutTarget
 import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.SegmentRef
@@ -165,7 +166,14 @@ import kotlin.math.roundToInt
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
-fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainViewModel = viewModel()) {
+fun MainScreen(
+    onSettings: () -> Unit,
+    settingsOpen: Boolean = false,
+    vm: MainViewModel = viewModel(),
+    // La carte, en parametre pour qu'un test puisse composer l'ecran sans les natifs de MapLibre (cf.
+    // MapSurface). En production, c'est la vraie : l'appel de AppRoot ne la nomme pas.
+    map: MapSurface = MapLibreSurface,
+) {
     val folders by vm.folders.collectAsState()
     val layers by vm.layers.collectAsState()
     val providers by vm.providers.collectAsState()
@@ -904,7 +912,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     ) {
         Box(Modifier.fillMaxSize()) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
-                MapLibreView(
+                map.Render(
                     modifier = Modifier.fillMaxSize(), controller = controller,
                     styleJson = style?.styleJson, styleUrl = style?.styleUrl,
                     onReady = { styleTick++ },

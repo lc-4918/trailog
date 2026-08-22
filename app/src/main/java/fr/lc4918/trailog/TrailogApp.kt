@@ -17,7 +17,20 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 
-class TrailogApp : Application(), SingletonImageLoader.Factory {
+/**
+ * Ouverte, avec deux points d'entree separes du reste : c'est ce qui permet a un test d'interface de
+ * monter la VRAIE application - meme depot, memes reglages, meme ViewModel - sans les deux choses qui
+ * l'en empechaient.
+ *
+ * [initMapEngine] isole le seul appel natif : les bibliotheques de MapLibre ne se chargent pas sur la JVM
+ * (cf. `MapSurface`).
+ *
+ * [startBackgroundWork] isole ce que le demarrage lance en tache de fond. Le semis y ecrit les reglages
+ * s'ils manquent, sur un autre thread et a un moment qu'on ne choisit pas : un test qui pose les siens
+ * juste apres court contre lui, et perd une fois sur dix. Le test appelle donc `ensureSeed` lui-meme,
+ * puis ecrit - dans cet ordre, et sans course.
+ */
+open class TrailogApp : Application(), SingletonImageLoader.Factory {
     lateinit var repository: TrailogRepository
         private set
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -28,8 +41,13 @@ class TrailogApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        MapLibre.getInstance(this)               // init du SDK carte
+        initMapEngine()
         repository = TrailogRepository(this)
+        startBackgroundWork()
+    }
+
+    /** Ce que le demarrage lance en tache de fond. Separee et ouverte : voir la note de classe. */
+    protected open fun startBackgroundWork() {
         scope.launch { repository.ensureSeed() }  // providers + réglages au 1er lancement
         // Ménage des APK de mise à jour : DownloadManager les dépose dans le dossier privé de
         // l'application et rien ne les en retirait, si bien qu'il en restait un par mise à jour -
@@ -37,6 +55,11 @@ class TrailogApp : Application(), SingletonImageLoader.Factory {
         // et non après l'installation : à ce moment-là l'installateur système lit encore le fichier, et
         // l'application est de toute façon remplacée puis relancée (cf. UpdateManager.sweepDownloads).
         scope.launch { UpdateManager.sweepDownloads(this@TrailogApp) }
+    }
+
+    /** Init du SDK carte. Separe et ouverte : voir la note de classe. */
+    protected open fun initMapEngine() {
+        MapLibre.getInstance(this)
     }
 
     /** Loader d'images partagé (avatar + champs image des infobulles) : SVG, GIF, chargement réseau. */
