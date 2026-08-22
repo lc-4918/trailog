@@ -468,7 +468,7 @@ traitées explicitement dans le code :
 
 | Élément | Survit à | Mécanisme |
 |---|---|---|
-| Suivi de position | l'écran éteint, l'app en arrière-plan | `LocationService`, service de premier plan ; l'écran lit `LocationHub` |
+| Suivi de position | l'écran éteint, l'app en arrière-plan, le capteur coupé puis revenu | `LocationService`, service de premier plan, seul propriétaire du capteur ; l'écran lit `LocationHub` |
 | État du ViewModel | la rotation | `ViewModel` |
 | Ouverture des réglages | la rotation, la mort du processus | `rememberSaveable` |
 | `MapView` | la sortie de composition | `destroyOnDispose = false` par défaut |
@@ -829,6 +829,32 @@ social autant que technique : il voit en permanence que quelque chose tourne, et
 
 **Ce qui la ferait tomber.** Rien. C'est ce montage qui rendra possible l'enregistrement de trace, comme
 le dit l'en-tête de `LocationHub`.
+
+**Ce qu'elle ne réglait pas, et qu'un essai sur le terrain a montré.** Le service tient le suivi en vie ;
+il ne disait pas ce qui arrivait quand il s'arrêtait quand même. Un testeur a fait **vingt kilomètres dans
+le mauvais sens** : son repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application ne
+savait plus où il était. Quatre règles en découlent, désormais tenues par le code.
+
+**Un arrêt demandé et un arrêt subi ne sont pas la même chose.** `LocationHub` porte l'intention
+(`wanted`) à côté de l'état (`tracking`). Ce qui suit un tap sur le bouton est le silence ; ce qui suit une
+localisation coupée ou un service tué est une **annonce** - une notification qui sonne, sur son propre
+canal, parce que la bannière de la carte attend qu'on rallume l'écran, c'est-à-dire après les vingt
+kilomètres.
+
+**Le capteur appartient au service, de bout en bout.** L'écran coupait lui-même le suivi quand la
+localisation s'éteignait, et personne ne le rallumait : une coupure d'une seconde - l'économie d'énergie
+d'un Samsung en fin de batterie - l'arrêtait pour le reste de la sortie. Le service **attend** le capteur
+au lieu de renoncer, et se rebranche seul. Il ne rend plus `START_NOT_STICKY` sur une absence de capteur,
+qui est un état passager ; il ne le fait plus que sur l'autorisation manquante, qui n'en est pas un.
+
+**Un réglage qui n'a pas encore répondu n'est pas un réglage éteint.** `settings` vaut `null` le temps
+d'ouvrir la base, et cette fenêtre se rouvre à chaque recréation du ViewModel - donc après une mort du
+processus, en pleine sortie. Trois lectures y traitaient l'inconnu comme un « non » quand le défaut du
+réglage est « oui » : la carte ne portait plus que le burger, ni bouton GPS ni itinéraire. C'est l'autre
+moitié du témoignage, celle que le service n'explique pas.
+
+**Un repère figé est un repère qui ment.** `Fix` porte son heure de réception, sur l'horloge de l'appareil
+et non l'heure murale. Au-delà de trente secondes sans mesure, le repère passe au gris et la carte le dit.
 
 ### AD-9 : deux moteurs d'itinéraire, BRouter par défaut
 

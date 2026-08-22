@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**808 tests, 76 fichiers**, tous verts.
+**823 tests, 78 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -516,6 +516,17 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `TrackWatchTest` | 9 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme |
+| `LocationHubTest` | 9 | la différence entre un suivi qu'on arrête et un suivi qui s'arrête |
+
+`LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
+repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application ne savait plus où il était.
+Le suivi s'était arrêté tout seul - localisation coupée, ou service tué - et le code traitait cet arrêt-là
+exactement comme un tap sur le bouton. Toute la correction tient dans cette distinction : ce qui suit un
+arrêt **demandé** est le silence, ce qui suit un arrêt **subi** est une annonce et une reprise.
+
+Deux mutations vérifient que ces tests attrapent bien le défaut d'origine. Faire taire l'arrêt subi - le
+comportement exact d'avant - fait tomber **5 tests** ; effacer l'intention à l'arrêt, ce qui supprimerait
+la reprise automatique, en fait tomber **3**.
 
 Cet état vit **hors de l'écran** depuis que le suivi tourne dans un service de premier plan : c'est lui, et
 non la composition, qui décide qu'il faut sonner. Une faute ici ne se voit pas à l'écran - elle se constate
@@ -694,15 +705,16 @@ l'utilisateur, et le téléchargement d'une version plus récente pas encore ins
 
 ## Tests d'interface
 
-**27 tests, 4 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
+**33 tests, 5 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
 autres dans `app/src/test/`, joués par Robolectric sur la JVM (le pourquoi est plus haut).
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PoiBubbleUiTest` | 6 | l'infobulle d'un point d'intérêt : nom, catégorie, les trois actions d'itinéraire, le lieu sans nom |
 | `OffTrackAlertUiTest` | 9 | la bannière d'alerte et le choix de la trace à suivre |
-| `MainScreenUiTest` | 7 | l'écran de carte entier : les réglages, le menu, et les modes qui se disputent les taps |
+| `MainScreenUiTest` | 11 | l'écran de carte entier : les réglages, le menu, les modes qui se disputent les taps, et l'annonce d'un suivi interrompu |
 | `RoutePlannerBandUiTest` | 5 | la bande du planificateur, dont le retour sur une étape déjà remplie |
+| `MainScreenSansReglagesTest` | 2 | la carte pendant que les réglages n'ont pas encore répondu |
 
 `RoutePlannerBandUiTest` existe **à cause d'un plantage** : toucher le champ de départ d'un itinéraire
 calculé fermait l'application, net. Une étape remplie n'affiche pas son champ mais un cadre, qui demandait
@@ -717,6 +729,27 @@ cherche - l'infobulle prend alors le nom de la catégorie plutôt que de s'ouvri
 `OffTrackAlertUiTest` couvre l'autre moitié de l'alerte, celle que `TrackWatchTest` n'atteint pas : que la
 distance et le nom de la trace arrivent bien sous les yeux, dans les unités réglées, et que les gestes de la
 boîte de dialogue mènent où ils annoncent.
+
+### La fenêtre où les réglages n'existent pas encore
+
+`MainScreenSansReglagesTest` **vient du terrain**, et il garde un défaut qu'aucun test de logique n'aurait
+vu. `MainViewModel.settings` est un `StateFlow<SettingsEntity?>` dont la valeur initiale est `null` : c'est
+le premier état de tout ViewModel, et il dure le temps d'ouvrir la base. Après une **mort du processus** -
+Android reprend sa mémoire pendant une longue sortie, écran éteint - l'activité et le ViewModel sont
+recréés, et cette fenêtre se rouvre en pleine route.
+
+Trois lectures y traitaient l'inconnu comme un « non » alors que le défaut du réglage est « oui ». La carte
+ne portait plus alors **que le burger** : ni bouton GPS, ni itinéraire, ni gestionnaire de fonds. Les deux
+premiers sont exactement ceux qu'un testeur a décrits comme disparus. Tout le reste du fichier lisait déjà
+son défaut (`?:` ou `!= false`) ; c'étaient les trois seules exceptions.
+
+Les deux tests tiennent les deux moitiés : ce dont le défaut est « oui » reste affiché, ce dont le défaut
+est « non » reste absent. Tout afficher par précaution serait la faute inverse.
+
+**Une classe à part, et la base vidée.** Le singleton de base est partagé par les méthodes d'une même
+classe - et, l'expérience le montre, par les classes successives d'une même exécution. Sans ce ménage,
+cette classe héritait des réglages écrits par `MainScreenUiTest`, dont un menu latéral réglé sur le
+glissement, et la fenêtre qu'on veut tenir ouverte se refermait.
 
 ### L'écran principal, et ce qu'il a fallu pour l'atteindre
 
