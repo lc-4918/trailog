@@ -86,7 +86,6 @@ import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
-import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.DefaultOffTrackAlertM
 import fr.lc4918.trailog.data.db.LayerEntity
@@ -94,7 +93,6 @@ import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.routeUrl
-import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
@@ -111,8 +109,6 @@ import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.net.ServiceUrl
-import fr.lc4918.trailog.poi.Datatourisme
-import fr.lc4918.trailog.poi.PoiRepository
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
@@ -122,7 +118,6 @@ import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
 import fr.lc4918.trailog.ui.components.MapPromptBar
-import fr.lc4918.trailog.ui.components.PoiMarker
 import fr.lc4918.trailog.ui.edit.CutTarget
 import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.SegmentRef
@@ -134,21 +129,19 @@ import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
 import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
+import fr.lc4918.trailog.ui.mappoint.MapPointEffects
 import fr.lc4918.trailog.ui.mappoint.MapPointState
-import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
-import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
+import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
 import fr.lc4918.trailog.ui.planner.GeocodingParams
-import fr.lc4918.trailog.ui.planner.RoutePlannerBand
-import fr.lc4918.trailog.ui.mappoint.MapPointEffects
 import fr.lc4918.trailog.ui.planner.PlannerEffects
+import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
-import fr.lc4918.trailog.ui.planner.RouteState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
 import fr.lc4918.trailog.ui.poi.PoiBubble
@@ -165,10 +158,8 @@ import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
