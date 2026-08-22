@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.TrailogApp
 import fr.lc4918.trailog.data.LocalePrefs
-import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
@@ -45,7 +44,6 @@ private val providersJson = Json { prettyPrint = true; ignoreUnknownKeys = true 
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
-    private val db = AppDatabase.get(app)
 
     val settings: StateFlow<SettingsEntity?> =
         repo.settingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -63,16 +61,16 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _pendingProvidersImport = MutableStateFlow<List<ProviderExportEntry>?>(null)
     val pendingProvidersImport = _pendingProvidersImport.asStateFlow()
 
-    fun save(s: SettingsEntity) = viewModelScope.launch { db.settings().upsert(s) }
+    fun save(s: SettingsEntity) = viewModelScope.launch { repo.settings.upsert(s) }
 
     // ---------- cache des points d'interet ----------
 
     /** Lieux retenus au fil des deplacements, et lieux emportes avec une zone hors ligne. Les deux se
      *  disent a l'utilisateur, parce que le bouton n'efface que les premiers. */
     val poiCached: StateFlow<Int> =
-        db.pois().countCachedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        repo.pois.countCachedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
     val poiPinned: StateFlow<Int> =
-        db.pois().countPinnedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        repo.pois.countPinnedFlow().stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     /**
      * Vide le cache des points d'interet, les lieux emportes exceptes.
@@ -81,7 +79,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      * "etes-vous sur" pour une donnee qui repousse seule serait du ceremonial. Ce qui ne repousse pas -
      * les lieux emportes - n'est justement pas touche.
      */
-    fun clearPoiCache() = viewModelScope.launch { db.pois().clearUnpinned() }
+    fun clearPoiCache() = viewModelScope.launch { repo.pois.clearUnpinned() }
 
     // ---------- sauvegarde et restauration ----------
 
@@ -112,10 +110,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }.getOrDefault(RestoreOutcome.FAILED)
         onDone(outcome)
     }
-    fun saveProvider(p: ProviderEntity) = viewModelScope.launch { db.providers().upsert(p) }
-    fun deleteProvider(p: ProviderEntity) = viewModelScope.launch { db.providers().delete(p) }
-    fun saveComposite(c: CompositeEntity) = viewModelScope.launch { db.composites().upsert(c) }
-    fun deleteComposite(c: CompositeEntity) = viewModelScope.launch { db.composites().delete(c) }
+    fun saveProvider(p: ProviderEntity) = viewModelScope.launch { repo.providers.upsert(p) }
+    fun deleteProvider(p: ProviderEntity) = viewModelScope.launch { repo.providers.delete(p) }
+    fun saveComposite(c: CompositeEntity) = viewModelScope.launch { repo.composites.upsert(c) }
+    fun deleteComposite(c: CompositeEntity) = viewModelScope.launch { repo.composites.delete(c) }
 
     /** Import d'un fichier .mbtiles choisi par l'utilisateur. */
     fun importMbtiles(uri: Uri) = viewModelScope.launch {
@@ -139,7 +137,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         val name = queryDisplayName(uri) ?: "avatar"
         val input = ctx.contentResolver.openInputStream(uri) ?: return@launch
         val path = repo.importImage(input, name)
-        db.settings().upsert(s.copy(avatarSource = path))
+        repo.settings.upsert(s.copy(avatarSource = path))
     }
 
     /** Restaure les paramètres initiaux (SPEC section 3.1) : réglages, avatar, thème, titre, langue et
@@ -148,14 +146,14 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      *  Providers.defaults() donc ne sont jamais touchés par la boucle ci-dessous. */
     fun resetAllSettings() = viewModelScope.launch {
         val ctx = getApplication<Application>()
-        db.settings().upsert(SettingsEntity())
+        repo.settings.upsert(SettingsEntity())
         LocalePrefs.set(ctx, "fr")
         val seedEnabled = Providers.defaults().associate { it.id to it.enabled }
         val toReset = providers.value.mapNotNull { p ->
             val defaultEnabled = seedEnabled[p.id] ?: return@mapNotNull null
             if (p.enabled != defaultEnabled) p.copy(enabled = defaultEnabled) else null
         }
-        if (toReset.isNotEmpty()) db.providers().upsertAll(toReset)
+        if (toReset.isNotEmpty()) repo.providers.upsertAll(toReset)
     }
 
     /** Exporte tous les fournisseurs (SPEC section 4.2), API keys en clair. */
@@ -206,7 +204,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
                 sortOrder = existing?.sortOrder ?: nextSort++, folderId = existing?.folderId,
             )
         }
-        db.providers().upsertAll(toUpsert)
+        repo.providers.upsertAll(toUpsert)
         _pendingProvidersImport.value = null
     }
 

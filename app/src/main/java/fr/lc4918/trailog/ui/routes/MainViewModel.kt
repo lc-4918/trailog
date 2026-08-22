@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import fr.lc4918.trailog.TrailogApp
-import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.BasemapFolderEntity
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.FolderEntity
@@ -79,10 +78,13 @@ internal fun sameStyleSettings(a: SettingsEntity?, b: SettingsEntity?): Boolean 
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
-    private val db = AppDatabase.get(app)
-    /** Points d'interet : seule la garniture d'une zone hors ligne passe par ici, le chargement de la
-     *  carte ayant le sien (cf. l'ecran de carte). */
-    private val poiRepo = PoiRepository(db.pois())
+    /**
+     * Points d'interet : la garniture d'une zone hors ligne, et le chargement de la carte.
+     *
+     * Public, et cree ICI une seule fois : l'ecran de carte construisait le sien, ce qui lui faisait ouvrir
+     * la base depuis un composable. Il le recoit desormais (cf. `PoiEffects`).
+     */
+    val poiRepository = PoiRepository(repo.pois)
 
     val folders: StateFlow<List<FolderEntity>> =
         repo.folders.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -554,11 +556,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- visibilité ----------
     fun setLayerVisible(l: LayerEntity, v: Boolean) = viewModelScope.launch {
-        db.layers().setVisible(l.id, v)
+        repo.layers.setVisible(l.id, v)
         if (!v && _activeLayerId.value == l.id) closeProfile()
         if (!v && _markerLayerId.value == l.id) closeMarker()
     }
-    fun setLayerColor(l: LayerEntity, color: String) = viewModelScope.launch { db.layers().setColor(l.id, color) }
+    fun setLayerColor(l: LayerEntity, color: String) = viewModelScope.launch { repo.layers.setColor(l.id, color) }
 
     /**
      * Applique une même couleur à toutes les couches du dossier, sous-dossiers compris.
@@ -572,14 +574,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun setFolderColor(folderId: Long, color: String) = viewModelScope.launch {
         val ids = descendantFolderIds(folderId, folders.value)
-        layers.value.filter { it.folderId in ids }.forEach { db.layers().setColor(it.id, color) }
+        layers.value.filter { it.folderId in ids }.forEach { repo.layers.setColor(it.id, color) }
     }
 
     /** Applique la visibilité à toutes les couches du dossier (et de ses sous-dossiers). */
     fun setFolderVisible(folderId: Long, visible: Boolean) = viewModelScope.launch {
         val ids = descendantFolderIds(folderId, folders.value)
         val affected = layers.value.filter { it.folderId in ids }
-        affected.forEach { db.layers().setVisible(it.id, visible) }
+        affected.forEach { repo.layers.setVisible(it.id, visible) }
         if (!visible) {
             if (affected.any { it.id == _activeLayerId.value }) closeProfile()
             if (affected.any { it.id == _markerLayerId.value }) closeMarker()
@@ -600,7 +602,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val s = settings.value ?: return@collect
                 if (s.hasCamera && kotlin.math.abs(s.lastLat - lat) < 1e-6 &&
                     kotlin.math.abs(s.lastLon - lon) < 1e-6 && kotlin.math.abs(s.lastZoom - zoom) < 1e-4) return@collect
-                db.settings().upsert(s.copy(lastLat = lat, lastLon = lon, lastZoom = zoom, hasCamera = true))
+                repo.settings.upsert(s.copy(lastLat = lat, lastLon = lon, lastZoom = zoom, hasCamera = true))
             }
         }
     }
@@ -673,13 +675,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- arborescence ----------
     fun createFolder(name: String, parentId: Long?) =
-        viewModelScope.launch { db.folders().insert(FolderEntity(name = name, parentId = parentId)) }
+        viewModelScope.launch { repo.folders.insert(FolderEntity(name = name, parentId = parentId)) }
     /** Crée un dossier et renvoie son id (pour enchaîner un import dedans). */
     fun createFolder(name: String, parentId: Long?, onCreated: (Long) -> Unit) = viewModelScope.launch {
-        val id = db.folders().insert(FolderEntity(name = name, parentId = parentId)); onCreated(id)
+        val id = repo.folders.insert(FolderEntity(name = name, parentId = parentId)); onCreated(id)
     }
-    fun renameFolder(id: Long, name: String) = viewModelScope.launch { db.folders().rename(id, name) }
-    fun moveFolder(id: Long, parentId: Long?) = viewModelScope.launch { db.folders().move(id, parentId) }
+    fun renameFolder(id: Long, name: String) = viewModelScope.launch { repo.folders.rename(id, name) }
+    fun moveFolder(id: Long, parentId: Long?) = viewModelScope.launch { repo.folders.move(id, parentId) }
 
     /**
      * Supprime un dossier. Si [deleteContents], supprime récursivement ses sous-dossiers et toutes leurs
@@ -690,11 +692,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (deleteContents) {
             val ids = descendantFolderIds(f.id, folders.value)
             layers.value.filter { it.folderId in ids }.forEach { repo.deleteLayer(it) }
-            folders.value.filter { it.id in ids }.forEach { db.folders().delete(it) }
+            folders.value.filter { it.id in ids }.forEach { repo.folders.delete(it) }
         } else {
-            layers.value.filter { it.folderId == f.id }.forEach { db.layers().move(it.id, f.parentId) }
-            folders.value.filter { it.parentId == f.id }.forEach { db.folders().move(it.id, f.parentId) }
-            db.folders().delete(f)
+            layers.value.filter { it.folderId == f.id }.forEach { repo.layers.move(it.id, f.parentId) }
+            folders.value.filter { it.parentId == f.id }.forEach { repo.folders.move(it.id, f.parentId) }
+            repo.folders.delete(f)
         }
     }
 
@@ -709,8 +711,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return result
     }
 
-    fun renameLayer(id: Long, name: String) = viewModelScope.launch { db.layers().rename(id, name) }
-    fun moveLayer(id: Long, folderId: Long?) = viewModelScope.launch { db.layers().move(id, folderId) }
+    fun renameLayer(id: Long, name: String) = viewModelScope.launch { repo.layers.rename(id, name) }
+    fun moveLayer(id: Long, folderId: Long?) = viewModelScope.launch { repo.layers.move(id, folderId) }
     fun deleteLayer(l: LayerEntity) = viewModelScope.launch { repo.deleteLayer(l) }
 
     // ---------- réordonnancement unifié par drag & drop (dossiers/couches mélangés) ----------
@@ -731,8 +733,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         if (oldParentId != newParentId) {
             when (kind) {
-                "folder" -> db.folders().move(id, newParentId)
-                "layer" -> db.layers().move(id, newParentId)
+                "folder" -> repo.folders.move(id, newParentId)
+                "layer" -> repo.layers.move(id, newParentId)
             }
         }
         newList.forEachIndexed { idx, (k, itemId, _) -> setSort(k, itemId, idx) }
@@ -743,8 +745,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun setSort(kind: String, id: Long, order: Int) = when (kind) {
-        "folder" -> db.folders().setSort(id, order)
-        else -> db.layers().setSort(id, order)
+        "folder" -> repo.folders.setSort(id, order)
+        else -> repo.layers.setSort(id, order)
     }
     private fun parentOf(kind: String, id: Long): Long? = when (kind) {
         "folder" -> folders.value.firstOrNull { it.id == id }?.parentId
@@ -759,12 +761,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- Basemap Control (dossiers + réordonnancement des fonds de plan) ----------
     fun createBasemapFolder(name: String, parentId: Long?) =
-        viewModelScope.launch { db.basemapFolders().insert(BasemapFolderEntity(name = name, parentId = parentId)) }
+        viewModelScope.launch { repo.basemapFolders.insert(BasemapFolderEntity(name = name, parentId = parentId)) }
 
     /** Change le fond de plan courant (bouton du Basemap Control ou tap sur un item du panneau). */
     fun selectBasemap(id: String) = viewModelScope.launch {
         val s = settings.value ?: return@launch
-        db.settings().upsert(s.copy(defaultBasemapId = id))
+        repo.settings.upsert(s.copy(defaultBasemapId = id))
     }
 
     /**
@@ -781,7 +783,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun rememberPlannerPlace(place: fr.lc4918.trailog.geocode.GeocodePlace) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         val maj = (PlannerHistory.of(s.plannerHistory) + place).asText()
-        if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
+        if (s.plannerHistory != maj) repo.settings.upsert(s.copy(plannerHistory = maj))
     }
 
     /**
@@ -794,21 +796,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun forgetPlannerPlace(label: String) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         val maj = (PlannerHistory.of(s.plannerHistory) - label).asText()
-        if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
+        if (s.plannerHistory != maj) repo.settings.upsert(s.copy(plannerHistory = maj))
     }
 
     /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
      *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
     fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {
         val s = settings.value ?: return@launch
-        if (s.profileSlopeLegend != shown) db.settings().upsert(s.copy(profileSlopeLegend = shown))
+        if (s.profileSlopeLegend != shown) repo.settings.upsert(s.copy(profileSlopeLegend = shown))
     }
 
     /** Tap sur le relief dans le gestionnaire : allume ou éteint son ombrage. Ne touche pas au fond DEM
      *  lui-même, dont le `enabled` ne dit que sa présence dans la liste (cf. SettingsEntity.hillshadeOn). */
     fun toggleHillshade() = viewModelScope.launch {
         val s = settings.value ?: return@launch
-        db.settings().upsert(s.copy(hillshadeOn = !s.hillshadeOn))
+        repo.settings.upsert(s.copy(hillshadeOn = !s.hillshadeOn))
     }
 
     /** Réordonnancement unifié du Basemap Control : kind dans {"folder","provider","composite"}, id en String
@@ -825,9 +827,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
         if (oldParentId != newParentId) {
             when (kind) {
-                "folder" -> id.toLongOrNull()?.let { db.basemapFolders().move(it, newParentId) }
-                "provider" -> db.providers().move(id, newParentId)
-                "composite" -> id.toLongOrNull()?.let { db.composites().move(it, newParentId) }
+                "folder" -> id.toLongOrNull()?.let { repo.basemapFolders.move(it, newParentId) }
+                "provider" -> repo.providers.move(id, newParentId)
+                "composite" -> id.toLongOrNull()?.let { repo.composites.move(it, newParentId) }
             }
         }
         newList.forEachIndexed { idx, (k, itemId, _) -> setBasemapSort(k, itemId, idx) }
@@ -838,9 +840,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun setBasemapSort(kind: String, id: String, order: Int) = when (kind) {
-        "folder" -> id.toLongOrNull()?.let { db.basemapFolders().setSort(it, order) } ?: Unit
-        "provider" -> db.providers().setSort(id, order)
-        else -> id.toLongOrNull()?.let { db.composites().setSort(it, order) } ?: Unit
+        "folder" -> id.toLongOrNull()?.let { repo.basemapFolders.setSort(it, order) } ?: Unit
+        "provider" -> repo.providers.setSort(id, order)
+        else -> id.toLongOrNull()?.let { repo.composites.setSort(it, order) } ?: Unit
     }
     private fun basemapParentOf(kind: String, id: String): Long? = when (kind) {
         "folder" -> basemapFolders.value.firstOrNull { it.id.toString() == id }?.parentId
@@ -888,7 +890,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     val filtres = PoiFilters.of(s.poiHiddenCategories, s.poiBikeGroups)
                     val (libres, velo) = filtres.queries()
                     runCatching {
-                        poiRepo.pinArea(Datatourisme.DEFAULT_URL, req.bbox, libres, velo)
+                        poiRepository.pinArea(Datatourisme.DEFAULT_URL, req.bbox, libres, velo)
                     }.getOrNull()
                 } else null
                 _offlineDownload.update { st ->

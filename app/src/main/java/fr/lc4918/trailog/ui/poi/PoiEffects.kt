@@ -3,9 +3,7 @@ package fr.lc4918.trailog.ui.poi
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.poi.Datatourisme
@@ -30,6 +28,13 @@ import kotlinx.coroutines.delay
 fun PoiEffects(
     state: PoiState,
     controller: MapController,
+    /**
+     * Le depot des points d'interet, fourni par l'ecran.
+     *
+     * Recu et non construit : le construire demandait d'ouvrir la base, et une couche d'interface n'a pas
+     * a connaitre Room. C'est le depot de l'application qui la possede (cf. `TrailogRepository`).
+     */
+    repo: PoiRepository,
     /** Le reglage qui autorise la couche : l'eteindre la referme. */
     enabled: Boolean?,
     /** Le reglage "Completer avec OpenStreetMap" : sans effet hors de France (cf. PoiSources). */
@@ -40,7 +45,6 @@ fun PoiEffects(
     styleTick: Int,
 ) {
     val ctx = LocalContext.current
-    val repo = remember(ctx) { PoiRepository(AppDatabase.get(ctx).pois()) }
 
     LaunchedEffect(enabled) { if (enabled == false) state.hide() }
 

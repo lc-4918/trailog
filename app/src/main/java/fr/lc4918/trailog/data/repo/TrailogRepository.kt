@@ -52,13 +52,35 @@ import java.io.File
 import java.io.InputStream
 
 class TrailogRepository(private val ctx: Context) {
+    /**
+     * **Le seul endroit qui ouvre la base.** Room rend un singleton, si bien qu'ouvrir ailleurs ne
+     * dupliquait rien et ne cassait rien - mais trois classes de l'interface le faisaient, dont un
+     * composable, et la couche haute connaissait alors Room aussi bien que la couche basse.
+     *
+     * La regle se verifie mecaniquement, et c'est ce qui la tient :
+     *
+     * ```
+     * grep -rn "AppDatabase.get(" --include=*.kt app/src/main/java | grep -v data/repo
+     * ```
+     */
     private val db = AppDatabase.get(ctx)
+
+    /**
+     * Les DAO, offerts tels quels.
+     *
+     * La facade n'est donc pas etanche, et c'est assume : une application d'un seul developpeur n'a pas
+     * besoin qu'on lui reecrive trente methodes de delegation pour renommer une couche. Ce qui compte est
+     * qu'un seul objet OUVRE la base et possede la disposition des fichiers ; qui lit une table ensuite le
+     * fait par ici.
+     */
     val folders = db.folders()
     val layers = db.layers()
     val providers = db.providers()
     val composites = db.composites()
     val basemapFolders = db.basemapFolders()
-    val settingsFlow = db.settings().flow()
+    val settings = db.settings()
+    val pois = db.pois()
+    val settingsFlow = settings.flow()
 
     private val layersDir: File by lazy { File(ctx.filesDir, "layers").apply { mkdirs() } }
     private val imagesDir: File by lazy { File(ctx.filesDir, "images").apply { mkdirs() } }
