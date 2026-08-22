@@ -135,7 +135,9 @@ object Overpass {
 
     private fun poiOf(o: JsonObject, retenues: Set<PoiCategory>): Poi? = runCatching {
         val etiquettes = o["tags"]?.jsonObject?.mapValues { (_, v) -> v.texte().orEmpty() } ?: return null
-        val categorie = PoiCategory.ofOsm(etiquettes, retenues) ?: return null
+        // Meme regle que pour l'autre source : la categorie est intrinseque, le filtre ne fait
+        // qu'ecarter (cf. PoiCategory.ofOsm).
+        val categorie = PoiCategory.visibleDans(PoiCategory.ofOsm(etiquettes), retenues) ?: return null
         // Un noeud porte ses coordonnees ; une surface ou une relation rend le centre demande par
         // "out center". Sans ce repli, tout ce qui est dessine en contour serait perdu.
         val centre = o["center"]?.jsonObject

@@ -139,7 +139,9 @@ object Datatourisme {
         val lat = geo?.get("latitude")?.nombre() ?: return null
         val lon = geo["longitude"]?.nombre() ?: return null
         val classes = o["type"]?.jsonArray.orEmpty().mapNotNull { it.texte() }
-        val categorie = PoiCategory.of(classes, retenues) ?: return null
+        // La categorie est celle du lieu, pas celle qu'on a demandee : un hotel-restaurant est un hotel,
+        // et il ne s'affiche pas si les hotels sont masques (cf. PoiCategory.of).
+        val categorie = PoiCategory.visibleDans(PoiCategory.of(classes), retenues) ?: return null
         val nom = o["label"]?.jsonObject?.get("@fr")?.texte()
             ?: o["label"]?.jsonObject?.values?.firstOrNull()?.texte() ?: return null
         val themes = o["hasTheme"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["key"]?.texte() }

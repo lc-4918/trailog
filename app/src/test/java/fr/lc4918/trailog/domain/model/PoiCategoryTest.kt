@@ -48,11 +48,40 @@ class PoiCategoryTest {
             PoiCategory.of(listOf("Camping", "CampingAndCaravanning", "Accommodation")))
     }
 
-    /** La priorite ne s'applique qu'aux categories COCHEES : decocher les toilettes rend le lieu a la
-     *  categorie suivante qui le reconnait, et non a rien. */
-    @Test fun `la priorite se borne aux categories cochees`() {
+    /**
+     * Ce qu'un lieu EST ne depend pas de ce qu'on a coche : decocher les toilettes ne les ramene pas en
+     * campings, elle les fait disparaitre.
+     *
+     * La regle etait l'inverse, et c'etait une promesse fausse : sous le seul filtre "Restaurants", le
+     * centre d'Albi rendait six marqueurs qui etaient six hotels.
+     */
+    @Test fun `un lieu garde sa categorie quel que soit le filtre`() {
         val sansToilettes = PoiCategory.entries.toSet() - PoiCategory.TOILETS
-        assertEquals(PoiCategory.CAMPINGS, PoiCategory.of(toilettesDeSouillac, sansToilettes))
+        assertEquals(PoiCategory.TOILETS, PoiCategory.of(toilettesDeSouillac))
+        assertNull(PoiCategory.visibleDans(PoiCategory.of(toilettesDeSouillac), sansToilettes))
+    }
+
+    /** Le cas d'Albi : sous le seul filtre "Restaurants", un hotel-restaurant ne s'affiche pas. */
+    @Test fun `un hotel-restaurant ne passe pas sous le filtre restauration`() {
+        val hotelRestaurant = listOf("Hotel", "Restaurant", "HotelRestaurant")
+        assertNull(PoiCategory.visibleDans(PoiCategory.of(hotelRestaurant), setOf(PoiCategory.RESTAURANTS)))
+        assertEquals(PoiCategory.HOTELS,
+            PoiCategory.visibleDans(PoiCategory.of(hotelRestaurant), setOf(PoiCategory.HOTELS)))
+    }
+
+    /** Et un vrai restaurant de quartier, lui, passe : il ne porte aucune classe d'hebergement. */
+    @Test fun `un restaurant de quartier passe sous le filtre restauration`() {
+        assertEquals(PoiCategory.RESTAURANTS,
+            PoiCategory.visibleDans(PoiCategory.of(listOf("Restaurant", "FoodEstablishment")),
+                setOf(PoiCategory.RESTAURANTS)))
+        assertEquals(PoiCategory.BARS,
+            PoiCategory.visibleDans(PoiCategory.ofOsm(mapOf("amenity" to "cafe")), setOf(PoiCategory.BARS)))
+    }
+
+    /** Meme regle cote OpenStreetMap : l'hotel-restaurant y est un hotel, et sort du filtre restauration. */
+    @Test fun `un hotel-restaurant OSM ne passe pas non plus`() {
+        val tags = mapOf("tourism" to "hotel", "amenity" to "restaurant")
+        assertNull(PoiCategory.visibleDans(PoiCategory.ofOsm(tags), setOf(PoiCategory.RESTAURANTS)))
     }
 
     @Test fun `une classe inconnue ne donne aucune categorie`() {

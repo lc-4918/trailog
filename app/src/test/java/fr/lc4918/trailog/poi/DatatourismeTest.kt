@@ -133,15 +133,17 @@ class DatatourismeTest {
     }
 
     /**
-     * Un lieu porte PLUSIEURS classes : un hotel-restaurant est Hotel ET Restaurant. Il s'affiche sous la
-     * categorie que l'utilisateur a demandee, et non sous celle que le service a listee en premier.
+     * Un lieu porte PLUSIEURS classes : un hotel-restaurant est Hotel ET Restaurant. Il est un hotel, quel
+     * que soit le filtre, et sous le seul filtre "Restaurants" il ne s'affiche pas du tout.
+     *
+     * Le cas releve sur le centre d'Albi : la base n'y connait que six "restaurants", et les six sont des
+     * hotels. Les servir sous le filtre restauration donnait une carte qui avait l'air juste.
      */
-    @Test fun `un lieu a plusieurs classes suit la categorie demandee`() {
+    @Test fun `un hotel-restaurant est un hotel, et rien d'autre`() {
         val json = """{"objects":[{"uuid":"a","label":{"@fr":"Hôtel du Commerce"},
             "type":["Restaurant","LodgingBusiness","Hotel"],
             "isLocatedAt":[{"geo":{"latitude":1.0,"longitude":2.0}}]}]}"""
-        assertEquals(PoiCategory.RESTAURANTS,
-            Datatourisme.parse(json, setOf(PoiCategory.RESTAURANTS)).single().category)
+        assertTrue(Datatourisme.parse(json, setOf(PoiCategory.RESTAURANTS)).isEmpty())
         assertEquals(PoiCategory.HOTELS,
             Datatourisme.parse(json, setOf(PoiCategory.HOTELS)).single().category)
     }

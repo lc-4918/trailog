@@ -186,34 +186,54 @@ enum class PoiCategory(
         /**
          * La catégorie d'un POI d'après les classes qu'il porte, ou null si aucune ne nous parle.
          *
-         * [retenues] borne la recherche aux catégories cochées : un hôtel-restaurant porte `Hotel` ET
-         * `Restaurant`, et doit s'afficher sous celle que l'utilisateur a demandée. À défaut d'indice, c'est
-         * [ORDRE_DE_RESOLUTION] qui tranche - un ordre arbitraire mais stable et documenté, préférable à un
-         * marqueur qui changerait de pictogramme d'un chargement à l'autre.
+         * **Ce qu'un lieu EST ne dépend pas de ce qu'on a demandé.** La recherche parcourt toutes les
+         * catégories, cochées ou non, et [ORDRE_DE_RESOLUTION] tranche entre celles qui le reconnaissent.
+         * C'est ensuite à l'appelant d'écarter le lieu si sa catégorie est masquée (cf. [visibleDans]).
+         *
+         * La règle a d'abord été l'inverse - la recherche se bornait aux catégories cochées, pour qu'un
+         * hôtel-restaurant s'affiche sous celle qu'on avait demandée - et c'était une **promesse fausse**.
+         * Relevé sur le centre d'Albi : en ne cochant que "Restaurants", la carte rendait six marqueurs,
+         * et les six étaient des hôtels. Ils portent tous `Restaurant` en plus de `Hotel`, et n'ayant plus
+         * que cette issue, ils s'affichaient en restaurants. Sur cinq villes et 520 lieux rendus par une
+         * requête de restauration, **7 % portent une classe d'hébergement** - 80 % à Albi, où la base
+         * touristique ne connaît presque aucun restaurant indépendant.
+         *
+         * Le même défaut valait pour les toilettes : décocher "Toilettes" en gardant "Campings" les
+         * ramenait sous forme de campings, la priorité du groupe pratique ne s'appliquant elle aussi
+         * qu'aux catégories cochées.
+         *
+         * Ce que cela coûte, et c'est assumé : un lieu dont la catégorie intrinsèque est masquée disparaît
+         * entièrement, même s'il porte par ailleurs la classe d'une catégorie affichée. C'est le sens
+         * qu'on veut donner au filtre - masquer les restaurants masque les restaurants, et rien d'autre
+         * ne vient prendre leur place.
          *
          * Null plutôt qu'une catégorie fourre-tout : le service rend parfois des classes que personne n'a
          * demandées, et un marqueur sans catégorie n'a rien à faire sur la carte.
          */
-        fun of(classes: Collection<String>, retenues: Set<PoiCategory> = entries.toSet()): PoiCategory? =
-            ORDRE_DE_RESOLUTION.firstOrNull { it in retenues && it.classes.any { c -> c in classes } }
+        fun of(classes: Collection<String>): PoiCategory? =
+            ORDRE_DE_RESOLUTION.firstOrNull { it.classes.any { c -> c in classes } }
 
         /**
          * La catégorie d'un objet OpenStreetMap d'après ses étiquettes, ou null si aucune ne nous parle.
          *
-         * Même règle que pour DATAtourisme ([of]), [ORDRE_DE_RESOLUTION] compris : un lieu peut être à la
-         * fois `tourism=hotel` et `amenity=restaurant`, et doit s'afficher sous celle qu'on a demandée.
+         * Même règle que pour DATAtourisme ([of]), [ORDRE_DE_RESOLUTION] compris et intrinsèque de la même
+         * façon : un `tourism=hotel` qui est aussi `amenity=restaurant` est un hôtel, quoi qu'on ait coché.
          *
          * Un sélecteur à plusieurs paires exige que TOUTES soient portées : c'est ce qui distingue l'office
          * de tourisme du panneau d'information.
          */
-        fun ofOsm(tags: Map<String, String>, retenues: Set<PoiCategory> = entries.toSet()): PoiCategory? =
+        fun ofOsm(tags: Map<String, String>): PoiCategory? =
             ORDRE_DE_RESOLUTION.firstOrNull { cat ->
-                cat in retenues && cat.osm.any { selecteur ->
+                cat.osm.any { selecteur ->
                     selecteur.split(',').all { paire ->
                         tags[paire.substringBefore('=')] == paire.substringAfter('=')
                     }
                 }
             }
+
+        /** La catégorie [c] est-elle affichable sous le filtre [retenues]. Null n'est jamais affichable. */
+        fun visibleDans(c: PoiCategory?, retenues: Set<PoiCategory>): PoiCategory? =
+            c?.takeIf { it in retenues }
 
         /** Relit une clé enregistrée. Null si elle est inconnue - catégorie retirée depuis, ou faute. */
         fun byKey(key: String?): PoiCategory? = entries.firstOrNull { it.key == key }
