@@ -473,11 +473,23 @@ internal object MigrationSql {
     """.trimIndent()
 }
 
+/**
+ * Version du schema, nommee plutot qu'ecrite dans l'annotation.
+ *
+ * `@Database` a une retention binaire : sa valeur n'est pas lisible a l'execution, donc pas verifiable par
+ * un test. La constante l'est, et c'est ce qui permet a [MigrationChainTest] de comparer la chaine des
+ * migrations a la version qu'elle est censee atteindre.
+ *
+ * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
+ * (cf. `ALL_MIGRATIONS`).
+ */
+internal const val DB_VERSION = 58
+
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class,
         PoiCacheEntity::class],
-    version = 58,
+    version = DB_VERSION,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -791,12 +803,39 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
+         * constructeur.
+         *
+         * C'est ce qui permet a un test de verifier la CHAINE et non seulement chaque maillon : qu'aucune
+         * version ne manque entre la plus ancienne et celle que declare `@Database`. Le defaut vise est
+         * precis - on ajoute une colonne, on ecrit sa migration, on incremente la version, et l'on oublie
+         * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
+         * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
+         */
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58)
+
+        /**
+         * La plus ancienne version depuis laquelle on sait migrer.
+         *
+         * En dessous, aucun chemin n'existe et aucun ne sera ecrit : ces bases datent des toutes premieres
+         * versions et plus personne n'en porte. C'est le SEUL cas ou l'on accepte de repartir a vide, et
+         * `fallbackToDestructiveMigrationFrom` le borne a ces versions-la.
+         *
+         * Partout ailleurs, un chemin manquant fait desormais **echouer l'ouverture** au lieu d'effacer :
+         * un plantage au demarrage se corrige par une mise a jour, des couches effacees ne reviennent pas.
+         */
+        internal const val OLDEST_SUPPORTED = 16
+
         @Volatile private var INSTANCE: AppDatabase? = null
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(
                 context.applicationContext, AppDatabase::class.java, "trailog.db"
-            ).addMigrations(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58)
-                .fallbackToDestructiveMigration().build().also { INSTANCE = it }
+            ).addMigrations(*ALL_MIGRATIONS)
+                // Destructeur pour les seules versions anterieures a la premiere migration ecrite.
+                // Un trou dans la chaine entretenue leve desormais, au lieu d'effacer en silence.
+                .fallbackToDestructiveMigrationFrom(*(1 until OLDEST_SUPPORTED).toList().toIntArray())
+                .build().also { INSTANCE = it }
         }
     }
 }
