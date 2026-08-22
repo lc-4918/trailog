@@ -2,7 +2,10 @@ package fr.lc4918.trailog.ui.measure
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,10 +28,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.ui.components.MapController
 
 private val TailWidth = 16.dp
 private val TailHeight = 8.dp
@@ -128,5 +135,74 @@ private fun Tail(color: Color, pointingDown: Boolean) {
             close()
         }
         drawPath(path, color)
+    }
+}
+
+/**
+ * L'infobulle de la mesure, posee sur la carte a l'endroit ou le parcours mesure la porte le mieux.
+ *
+ * Ancree au plus pres du milieu du parcours, et suivant la carte au deplacement et au zoom (d'ou
+ * [idleTick], comme l'infobulle d'un lieu). Le zoom pose pour viser le second point laisse souvent le
+ * milieu hors de l'ecran ; l'ancre glisse alors le long du parcours jusqu'au premier point visible
+ * (cf. [MeasureAnchor]).
+ *
+ * Ne s'affiche que lorsque les deux points sont poses : avant cela, c'est la bande de consigne qui occupe
+ * l'ecran, et elle vit ailleurs.
+ */
+@Composable
+fun BoxWithConstraintsScope.MeasureBubbleLayer(
+    state: TrackMeasureState,
+    controller: MapController,
+    /** Fin d'un deplacement de carte : l'ancre est alors reprise. */
+    idleTick: Int,
+    /** Ce qui recouvre le bas de la carte (le panneau de profil, la barre de navigation a defaut). */
+    bottomCoverPx: Int,
+    imperial: Boolean,
+    fontSp: Int,
+    backgroundAlpha: Float,
+) {
+    val path = state.path
+    val meters = state.meters
+    if (path.isEmpty() || meters == null) return
+
+    val density = LocalDensity.current
+    val topInset = WindowInsets.statusBars.getTop(density)
+    val margin = with(density) { 8.dp.roundToPx() }
+    // Emprise où la pointe a le droit de se poser : la carte, moins une marge de confort (jamais collée au
+    // bord) et moins ce qui la recouvre en bas. Rien à réserver pour la hauteur de la bulle : elle bascule
+    // au-dessus ou en dessous de sa pointe selon la place (cf. MeasureBubble).
+    val inset = with(density) { 24.dp.roundToPx() }
+    val left = inset
+    val right = (constraints.maxWidth - inset).coerceAtLeast(left)
+    val top = topInset + inset
+    val bottom = (constraints.maxHeight - bottomCoverPx - inset).coerceAtLeast(top)
+    val tip = remember(path, idleTick, left, right, top, bottom) {
+        var found: IntOffset? = null
+        MeasureAnchor.pick(path.size) { i ->
+            val (lon, lat) = path[i]
+            val p = controller.screenOf(lon, lat) ?: return@pick false
+            val inside = p.x >= left && p.x <= right && p.y >= top && p.y <= bottom
+            if (inside) found = IntOffset(p.x.toInt(), p.y.toInt())
+            inside
+        }
+        // Parcours entièrement hors de l'écran (la carte est partie ailleurs) : la bulle se range du côté
+        // où il se trouve plutôt que de disparaître avec sa croix, seul moyen à l'écran de refermer la
+        // mesure.
+        found ?: state.mid?.let { (lon, lat) ->
+            controller.screenOf(lon, lat)?.let { p ->
+                IntOffset(p.x.toInt().coerceIn(left, right), p.y.toInt().coerceIn(top, bottom))
+            }
+        }
+    }
+    if (tip != null) {
+        MeasureBubble(
+            text = Format.shortDistance(meters, imperial),
+            tipX = tip.x, tipY = tip.y,
+            topInset = topInset,
+            margin = margin,
+            onClose = { state.clear() },
+            fontSp = fontSp,
+            backgroundAlpha = backgroundAlpha,
+        )
     }
 }

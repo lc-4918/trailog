@@ -12,9 +12,6 @@ import android.view.Surface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,17 +67,11 @@ import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.data.db.routePrefs
-import fr.lc4918.trailog.ui.components.MapActionBar
-import fr.lc4918.trailog.ui.edit.CutBubblePlacement
 import fr.lc4918.trailog.ui.edit.CutTarget
 import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.SegmentRef
 import fr.lc4918.trailog.ui.edit.TrackEditState
-import fr.lc4918.trailog.data.repo.TrailogRepository
-import fr.lc4918.trailog.domain.geo.Format
-import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
-import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
@@ -107,8 +98,7 @@ import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
 import fr.lc4918.trailog.ui.location.rememberLocationControls
-import fr.lc4918.trailog.ui.measure.MeasureAnchor
-import fr.lc4918.trailog.ui.measure.MeasureBubble
+import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
@@ -151,11 +141,6 @@ import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import fr.lc4918.trailog.ui.profile.ElevationProfile
-import fr.lc4918.trailog.ui.profile.SlopeLegend
-import fr.lc4918.trailog.ui.profile.TrackInfoColumns
-import fr.lc4918.trailog.ui.profile.cursorInfos
-import fr.lc4918.trailog.ui.profile.titleInfos
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -1879,19 +1864,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                  * des commandes. Elle descend alors juste au-dessous, gardant l'espacement des boutons.
                  */
                 if (edit.open) {
-                    var toolbarHeightPx by remember { mutableIntStateOf(0) }
-                    val gapPx = with(density) { MapControlSpacing.roundToPx() }
-                    val topPx = maxOf(
-                        (constraints.maxHeight - toolbarHeightPx) / 2,
-                        topControlsHeightPx + gapPx,
-                    )
                     TrackEditToolbar(
                         state = edit, canUndo = canUndo, chromeBg = chromeBg, chromeFg = chromeFg,
-                        onUndo = { vm.undoLastEdit() },
-                        modifier = Modifier.align(Alignment.TopStart)
-                            .offset { IntOffset(0, topPx) }
-                            .padding(start = 8.dp)
-                            .onGloballyPositioned { toolbarHeightPx = it.size.height },
+                        topControlsHeightPx = topControlsHeightPx, onUndo = { vm.undoLastEdit() },
                     )
                 }
                 /*
@@ -1969,190 +1944,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { pointBarHeightPx = it.size.height },
                     )
                 }
-                // ---------- retouche : marqueur de coupe, consignes et confirmations ----------
-                // Le marqueur suit la carte au deplacement et au zoom (moveTick), comme les infobulles :
-                // il designe un point du terrain, pas un point de l'ecran.
-                edit.cut?.let { target ->
-                    val p = target.hit.point
-                    // La bulle SUIT la carte a chaque image : c'est le point du terrain qu'elle designe.
-                    val off = remember(moveTick, target) { controller.screenOf(p.lon, p.lat) }
-                    /*
-                     * Le COTE, lui, ne se recalcule pas a chaque image : recalcule en continu, il change
-                     * en cours de geste et la bulle tremble. Il est donc fige, et revu seulement :
-                     *
-                     * - a la pose du marqueur ;
-                     * - a la FIN d'un deplacement ou d'un dezoom (idleTick), une seule fois.
-                     *
-                     * Jamais a un zoom avant : ce qui etait degage a l'echelle du dessus l'est encore en
-                     * s'approchant, la trace ne faisant que s'ecarter d'elle-meme.
-                     */
-                    val cutPlacedTick = remember(target) { idleTick }
-                    var cutSide by remember(target) { mutableStateOf<CutBubblePlacement.Side?>(null) }
-                    var cutZoom by remember(target) { mutableStateOf(Double.MAX_VALUE) }
-                    val bubbleWpx = with(density) { CutBubbleWidth.roundToPx() }
-                    val bubbleHpx = with(density) { CutBubbleHeight.roundToPx() }
-                    val tailPx = with(density) { CutTailHeight.roundToPx() }
-                    val marginPx = with(density) { CutBubbleMargin.roundToPx() }
-                    val topInsetPx = WindowInsets.statusBars.getTop(density)
-
-                    LaunchedEffect(target, idleTick) {
-                        val zoom = controller.cameraState()?.third ?: return@LaunchedEffect
-                        if (cutSide != null && zoom > cutZoom) return@LaunchedEffect
-                        val here = controller.screenOf(p.lon, p.lat) ?: return@LaunchedEffect
-                        // Ce que la bulle pourrait recouvrir : les portions de trace assez proches pour
-                        // tomber sous elle, converties en metres a l'echelle du moment.
-                        val reachPx = kotlin.math.hypot(
-                            (bubbleWpx + tailPx).toDouble(), (bubbleHpx + tailPx).toDouble(),
-                        ) + marginPx
-                        val radiusM = reachPx * controller.metersPerPixel(p.lat)
-                        val runs = withContext(Dispatchers.Default) {
-                            TrackEdit.nearbyRuns(cutGeometry, p.lon, p.lat, radiusM)
-                        }
-                        val screenRuns = runs.map { run ->
-                            run.mapNotNull { q -> controller.screenOf(q.lon, q.lat)?.let { it.x to it.y } }
-                        }.filter { it.size >= 2 }
-                        val pl = CutBubblePlacement.choose(
-                            pointX = here.x.toInt(), pointY = here.y.toInt(), track = screenRuns,
-                            bubbleW = bubbleWpx, bubbleH = bubbleHpx, tail = tailPx,
-                            viewW = constraints.maxWidth, viewH = constraints.maxHeight,
-                            topInset = topInsetPx, margin = marginPx,
-                        )
-                        cutSide = pl.side
-                        cutZoom = zoom
-                        // Le decalage de carte n'a lieu qu'a la POSE du marqueur : le rejouer a chaque fin
-                        // de deplacement ramenerait la carte de force des qu'on la pousse pour regarder
-                        // ailleurs.
-                        if (idleTick == cutPlacedTick && (pl.panX != 0 || pl.panY != 0)) {
-                            controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                        }
-                    }
-                    val side = cutSide
-                    if (off != null && side != null) {
-                        val totalW = if (side == CutBubblePlacement.Side.LEFT || side == CutBubblePlacement.Side.RIGHT)
-                            bubbleWpx + tailPx else bubbleWpx
-                        val totalH = if (side == CutBubblePlacement.Side.TOP || side == CutBubblePlacement.Side.BOTTOM)
-                            bubbleHpx + tailPx else bubbleHpx
-                        val bx = when (side) {
-                            CutBubblePlacement.Side.LEFT -> off.x.toInt() - totalW
-                            CutBubblePlacement.Side.RIGHT -> off.x.toInt()
-                            else -> off.x.toInt() - totalW / 2
-                        }
-                        val by = when (side) {
-                            CutBubblePlacement.Side.TOP -> off.y.toInt() - totalH
-                            CutBubblePlacement.Side.BOTTOM -> off.y.toInt()
-                            else -> off.y.toInt() - totalH / 2
-                        }
-                        CutMarkerBubble(
-                            side = side, bg = chromeBg, fg = chromeFg,
-                            modifier = Modifier.offset { IntOffset(bx, by) },
-                        )
-                    }
-                }
-                if (edit.open && edit.tool != EditTool.NONE) {
-                    val barModifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                        .padding(bottom = with(density) { profileBarHeightPx.toDp() })
-                    val cutTarget = edit.cut
-                    val a = edit.first
-                    val b = edit.second
-                    when {
-                        // Coupe : le marqueur est pose, on demande confirmation. Un nouveau tap ailleurs
-                        // le deplace tant qu'on n'a pas confirme.
-                        cutTarget != null -> MapActionBar(
-                            text = stringResource(R.string.edit_cut_confirm, cutTarget.layerName),
-                            onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
-                        ) {
-                            MapBarAction(stringResource(R.string.action_cancel)) { edit.choose(EditTool.NONE) }
-                            MapBarAction(stringResource(R.string.action_split_track), primary = true) {
-                                val layer = layers.firstOrNull { it.id == cutTarget.layerId }
-                                edit.choose(EditTool.NONE)
-                                if (layer != null) vm.splitLayerAt(layer, cutTarget.hit) { ok ->
-                                    if (!ok) edit.message = cannotSplitMessage
-                                }
-                            }
-                        }
-                        // Jonction : les deux segments sont designes, reste a dire comment les relier.
-                        a != null && b != null -> MapActionBar(
-                            text = stringResource(R.string.edit_join_how, a.layerName, b.layerName),
-                            onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
-                        ) {
-                            val apply: (TrailogRepository.JoinMode) -> Unit = { mode ->
-                                val la = layers.firstOrNull { it.id == a.layerId }
-                                val lb = layers.firstOrNull { it.id == b.layerId }
-                                edit.choose(EditTool.NONE)
-                                if (la != null && lb != null) {
-                                    vm.joinSegments(la, a.segment, lb, b.segment, mode) { applied ->
-                                        if (applied != mode) edit.message = routedFellBack
-                                    }
-                                }
-                            }
-                            MapBarAction(stringResource(R.string.join_straight)) { apply(TrailogRepository.JoinMode.STRAIGHT) }
-                            MapBarAction(stringResource(R.string.join_routed), primary = true) { apply(TrailogRepository.JoinMode.ROUTED) }
-                            MapBarAction(stringResource(R.string.join_none)) { apply(TrailogRepository.JoinMode.NONE) }
-                        }
-                        // Sinon : la consigne de l'outil en cours.
-                        else -> MapPromptBar(
-                            text = when (edit.tool) {
-                                EditTool.REVERSE -> stringResource(R.string.edit_pick_reverse)
-                                EditTool.CUT -> stringResource(R.string.edit_pick_cut)
-                                EditTool.JOIN -> if (a == null) stringResource(R.string.edit_pick_first)
-                                    else stringResource(R.string.edit_pick_second, a.layerName)
-                                EditTool.NONE -> ""
-                            },
-                            onClose = { edit.choose(EditTool.NONE) },
-                            modifier = barModifier,
-                        )
-                    }
-                }
-                // Infobulle de la mesure : ancrée sur le parcours mesuré au plus près de son milieu, et
-                // suivant la carte au pan et au zoom (d'où idleTick, comme l'infobulle d'un lieu). Le zoom
-                // posé pour viser le second point laisse souvent le milieu hors de l'écran ; l'ancre glisse
-                // alors le long du parcours jusqu'au premier point visible (cf. MeasureAnchor).
-                val measurePath = measure.path
-                val measureMeters = measure.meters
-                if (measurePath.isNotEmpty() && measureMeters != null) {
-                    val topInset = WindowInsets.statusBars.getTop(density)
-                    val margin = with(density) { 8.dp.roundToPx() }
-                    // Emprise où la pointe a le droit de se poser : la carte, moins une marge de confort
-                    // (jamais collée au bord) et moins ce qui la recouvre en bas : le profil quand il est
-                    // ouvert, la barre de navigation sinon. Rien à réserver pour la hauteur de la bulle :
-                    // elle bascule au-dessus ou en dessous de sa pointe selon la place (cf. MeasureBubble).
-                    val inset = with(density) { 24.dp.roundToPx() }
-                    val bottomCover = if (activeLayerId != null) profileBarHeightPx
-                        else WindowInsets.navigationBars.getBottom(density)
-                    val left = inset
-                    val right = (constraints.maxWidth - inset).coerceAtLeast(left)
-                    val top = topInset + inset
-                    val bottom = (constraints.maxHeight - bottomCover - inset).coerceAtLeast(top)
-                    val tip = remember(measurePath, idleTick, left, right, top, bottom) {
-                        var found: IntOffset? = null
-                        MeasureAnchor.pick(measurePath.size) { i ->
-                            val (lon, lat) = measurePath[i]
-                            val p = controller.screenOf(lon, lat) ?: return@pick false
-                            val inside = p.x >= left && p.x <= right && p.y >= top && p.y <= bottom
-                            if (inside) found = IntOffset(p.x.toInt(), p.y.toInt())
-                            inside
-                        }
-                        // Parcours entièrement hors de l'écran (la carte est partie ailleurs) : la bulle se
-                        // range du côté où il se trouve plutôt que de disparaître avec sa croix, seul moyen
-                        // à l'écran de refermer la mesure.
-                        found ?: measure.mid?.let { (lon, lat) ->
-                            controller.screenOf(lon, lat)?.let { p ->
-                                IntOffset(p.x.toInt().coerceIn(left, right), p.y.toInt().coerceIn(top, bottom))
-                            }
-                        }
-                    }
-                    if (tip != null) {
-                        MeasureBubble(
-                            text = Format.shortDistance(measureMeters, imperialUnits),
-                            tipX = tip.x, tipY = tip.y,
-                            topInset = topInset,
-                            margin = margin,
-                            onClose = { measure.clear() },
-                            fontSp = settings?.bubbleFont ?: 14,
-                            backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                        )
-                    }
-                }
+                TrackEditPrompts(
+                    edit = edit,
+                    layers = layers,
+                    cutGeometry = cutGeometry,
+                    controller = controller,
+                    chromeBg = chromeBg,
+                    chromeFg = chromeFg,
+                    moveTick = moveTick,
+                    idleTick = idleTick,
+                    bottomCoverPx = profileBarHeightPx,
+                    vm = vm,
+                )
+                MeasureBubbleLayer(
+                    state = measure,
+                    controller = controller,
+                    idleTick = idleTick,
+                    // Le profil quand il est ouvert, la barre de navigation sinon.
+                    bottomCoverPx = if (activeLayerId != null) profileBarHeightPx
+                        else WindowInsets.navigationBars.getBottom(density),
+                    imperial = imperialUnits,
+                    fontSp = settings?.bubbleFont ?: 14,
+                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                )
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offlineDrawingActive) {
                     BboxDrawingOverlay(
@@ -2170,210 +1984,26 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             .onGloballyPositioned { offlineBarHeightPx = it.size.height },
                     )
                 }
-                // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit de l'écran. On
-                // calcule l'intrusion réelle de l'arc À LA HAUTEUR du label (et non le rayon plein, qui n'est
-                // atteint que tout en bas) : le label est remonté par la barre de navigation, l'angle y mord
-                // donc bien moins.
-                //   - r = rayon de l'angle (px, API 31+, sinon 0 = écran plat)
-                //   - dy = distance verticale du label au bord bas de l'écran (barre de nav + ~6 px entre la
-                //     ligne de base du label et le bas du tracé)
-                //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
-                //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
-                // Commun au profil d'une trace et à celui d'un itinéraire planifié, posés au même endroit.
-                val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
-                val lastLabelInsetPx = remember(view, navBottomPx) {
-                    val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                        view.rootWindowInsets?.getRoundedCorner(android.view.RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
-                    else 0).toFloat()
-                    if (r <= 0f) 0f else {
-                        val dy = navBottomPx + 6f
-                        val intrusion = if (dy >= r) 0f else r - kotlin.math.sqrt(r * r - (r - dy) * (r - dy))
-                        (intrusion - with(density) { 10.dp.toPx() }).coerceAtLeast(0f)
-                    }
-                }
-                // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ;
-                // pendant un chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
-                val shown = computed ?: if (!profileLoading) lastComputed else null
-                // Portion actuellement affichée (zoom A/B) : sous-liste de shown.samples, ou la trace
-                // complète si aucun zoom. Le kilométrage (Sample.x) n'est jamais remis à zéro (cumulé depuis
-                // le début de la trace) ; seules les infos (distance/D+/D- du bandeau titre) sont recalculées
-                // pour la seule portion visible (cf. TrackMath.statsOf, réutilisable sur une sous-plage).
-                val zoomRange = profileZoom
-                val windowStart = zoomRange?.first ?: 0
-                // Mémorisé sur (shown, zoomRange) : sinon subList()/statsOf() recréaient une liste d'identité
-                // différente à CHAQUE recomposition (déplacement du curseur, etc.), invalidant le cache de
-                // rendu de ElevationProfile (comparaison par référence) -> reconstruction de tous les chemins
-                // à chaque frame pendant un zoom (jusqu'à ~2000 points), d'où une surcharge CPU.
-                val windowSamples = remember(shown, zoomRange) {
-                    shown?.samples?.let { s ->
-                        if (zoomRange != null && zoomRange.last < s.size) s.subList(zoomRange.first, zoomRange.last + 1) else s
-                    }
-                }
-                val windowStats = remember(shown, zoomRange, windowSamples) {
-                    if (zoomRange != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
-                }
-                // Le curseur est une abscisse absolue : la fenetre zoomee n'a plus rien a lui retrancher,
-                // et l'echantillon qu'il designe s'obtient par interpolation (cf. TrackMath.sampleAt).
-                val cursorSample = remember(cursor, windowSamples) {
-                    val along = cursor
-                    if (along == null || windowSamples == null) null
-                    else TrackMath.sampleAt(windowSamples, along)?.takeIf { along >= windowSamples.first().x && along <= windowSamples.last().x }
-                }
-
-                // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil
-                // (décalées de la hauteur mesurée du panneau, superposé à la carte (Cf. profileBarHeightPx).
-                if (computed != null && cursorSample != null) {
-                    val imp = settings?.units == "imperial"
-                    val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
-                    // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur
-                    // un point plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui
-                    // est seul et va a gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
-                    CompositionLocalProvider(LocalContentColor provides Color.Black) {
-                        TrackInfoColumns(
-                            cursorInfos(cursorSample, settings?.cursorInfos ?: "dist,ele,slope", imp),
-                            fontSp = settings?.profCursorFont ?: 11,
-                            bold = settings?.profCursorBold == true,
-                            arrangement = Arrangement.spacedBy(14.dp),
-                            // Meme ecart a droite qu'entre le bas du bloc et le profil : le coin se lit
-                            // alors comme un coin, et non comme deux marges qui ne se repondent pas.
-                            modifier = Modifier.align(Alignment.BottomEnd)
-                                .padding(end = CursorInfoGap, bottom = cursorBottomDp + CursorInfoGap)
-                                .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        )
-                    }
-                }
-                // Bouton de zoom du profil : même hauteur que les infos du point ci-dessus, mais à gauche -
-                // elles occupent désormais la droite.
-                if (activeLayerId != null && shown != null) {
-                    val cursorBottomDp = with(density) { profileBarHeightPx.toDp() }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = cursorBottomDp + 4.dp)
-                            .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
-                    ) {
-                        // Seul bouton restant : le retour a la vue complete. Le zoom lui-meme se fait aux
-                        // doigts sur le graphique (ecartement ou double-tap), comme dans le planificateur.
-                        if (profileZoom != null) {
-                            ProfileZoomButton(R.drawable.ic_profile_zoom_expand,
-                                stringResource(R.string.content_desc_profile_zoom_expand), active = false) { vm.expandProfileZoom() }
-                        }
-                    }
-                }
-                // Profil (visible dès le tap sur une trace) superposé à la carte, qui garde toujours sa
-                // taille pleine : ne jamais la redimensionner ici, une AndroidView type SurfaceView flashe en
-                // noir le temps de son prochain frame quand elle est redimensionnée pendant une animation.
-                // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
-                AnimatedVisibility(
-                    visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically(),
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                ) {
-                    val imp = settings?.units == "imperial"
-                    Column(
-                        Modifier.fillMaxWidth().background(Color.White)
-                            .padding(horizontal = 8.dp).navigationBarsPadding()
-                            .onGloballyPositioned { profileBarHeightPx = it.size.height },
-                    ) {
-                        // Le titre a sa ligne, les infos la leur : elles s'etalent alors sur toute la
-                        // largeur, en colonnes libellees, la ou les serrer a la suite du titre les
-                        // reduisait a une file de valeurs sans nom.
-                        //
-                        /*
-                         * Le "i" de la legende des pentes se pose en EXPOSANT au bout de la premiere ligne
-                         * du titre, et le titre lui reserve sa place.
-                         *
-                         * Il passait auparavant PAR-DESSUS le titre, qui filait dessous : un nom long se
-                         * lisait alors sous un rond blanc. Le titre s'ecrit desormais sur deux lignes au
-                         * besoin, dans la largeur qui reste - c'est-a-dire que la place du "i" est retiree
-                         * a la colonne de texte, non prise au titre.
-                         */
-                        val legendShown = settings?.profileSlope != false && settings?.profileSlopeLegend == true
-                        val hasLegendButton = settings?.profileSlope != false
-                        Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
-                            Text(profileTitle, fontSize = (settings?.profTitleFont ?: 16).sp,
-                                fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(end = if (hasLegendButton) SlopeLegendGutter else 0.dp))
-                            if (hasLegendButton) {
-                                SlopeLegendButton(
-                                    shown = legendShown,
-                                    // En haut, non centre : sur un titre de deux lignes, un "i" centre
-                                    // tomberait entre les deux, ou il n'appartiendrait plus a aucune.
-                                    modifier = Modifier.align(Alignment.TopEnd),
-                                ) { vm.setSlopeLegend(!legendShown) }
-                            }
-                        }
-                        if (windowStats != null) {
-                            // Temps de marche estime, pour une trace qui n'a pas d'horodatage : calcule sur
-                            // les echantillons affiches, il suit donc le zoom du profil comme les autres
-                            // totaux. Retenu tant qu'ils ne changent pas - une recomposition ne doit pas
-                            // relancer un balayage de deux mille points.
-                            val tobler = remember(windowSamples) {
-                                windowSamples?.let { TrackMath.toblerSeconds(it) }
-                            }
-                            TrackInfoColumns(
-                                titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imp, tobler),
-                                fontSp = settings?.profBarFont ?: 11,
-                                bold = settings?.profBarBold == true,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        // Ou l'on en est SUR CETTE TRACE, capteur allume : ce qui reste a parcourir, et le
-                        // denivele qui reste a monter. C'est la seule ligne de l'application qui serve
-                        // PENDANT la sortie et non avant ou apres - d'ou sa place, sous les totaux du
-                        // parcours entier, qu'elle vient nuancer.
-                        //
-                        // Calculee sur la trace COMPLETE et non sur la fenetre zoomee : la question est
-                        // "combien me reste-t-il jusqu'au bout", pas "jusqu'au bord du graphique".
-                        val whole = computed?.samples
-                        val position = location.lastUserLocation
-                        val onTrack = remember(position, whole) {
-                            if (position == null || whole.isNullOrEmpty()) null
-                            else TrackMeasure.project(whole, position.second, position.first)
-                                ?.let { it to TrackMath.remaining(whole, it.alongM) }
-                        }
-                        if (location.gpsActive && onTrack != null && settings?.profileRemaining != false) {
-                            RemainingOnTrackRow(
-                                projection = onTrack.first, remaining = onTrack.second, imperial = imp,
-                                fontSp = settings?.profBarFont ?: 11,
-                            )
-                        }
-                        if (windowStats != null && legendShown) {
-                            SlopeLegend(windowStats.maxAbsSlope, settings?.profLegendFont ?: 9,
-                                Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                bold = settings?.profLegendBold == true)
-                        } else {
-                            // Sans legende, les infos toucheraient le graphique : elle tenait lieu de
-                            // respiration entre les deux.
-                            Spacer(Modifier.height(ProfileGraphGap))
-                        }
-                        Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                            // Trace sans altitude : le profil serait une ligne plate et muette. On le
-                            // remplace par un avertissement, plutôt que de laisser croire à un parcours plat.
-                            if (shown != null && !shown.hasZ && !profileLoading) {
-                                NoElevationBanner(Modifier.fillMaxSize())
-                            } else if (windowSamples != null && windowStats != null && !profileLoading) {
-                                ElevationProfile(
-                                    samples = windowSamples, stats = windowStats,
-                                    grid = settings?.profileGrid ?: true,
-                                    slope = settings?.profileSlope ?: true,
-                                    lineColor = if (profileLineColor != Color.Unspecified) profileLineColor else MaterialTheme.colorScheme.primary,
-                                    axisFontSp = settings?.profAxisFont ?: 9,
-                                    axisBold = settings?.profAxisBold == true,
-                                    cursorX = cursor, onScrub = { vm.onProfileTap(it) },
-                                    onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
-                                    onDoubleTap = { fraction -> vm.zoomProfile(2f, fraction) },
-                                    lastLabelInsetPx = lastLabelInsetPx,
-                                    verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
-                                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                                )
-                            } else {
-                                CircularProgressIndicator()
-                            }
-                        }
-                    }
-                }
+                TrackProfileLayer(
+                    activeLayerId = activeLayerId,
+                    computed = computed,
+                    lastComputed = lastComputed,
+                    loading = profileLoading,
+                    zoom = profileZoom,
+                    cursor = cursor,
+                    title = profileTitle,
+                    lineColor = profileLineColor,
+                    settings = settings,
+                    imperial = imperialUnits,
+                    gpsActive = location.gpsActive,
+                    userLocation = location.lastUserLocation,
+                    onHeightChange = { profileBarHeightPx = it },
+                    onExpandZoom = { vm.expandProfileZoom() },
+                    onToggleSlopeLegend = { vm.setSlopeLegend(it) },
+                    onScrub = { vm.onProfileTap(it) },
+                    onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
+                    onDoubleTapZoom = { fraction -> vm.zoomProfile(2f, fraction) },
+                )
                 /*
                  * Bannière de l'alerte d'éloignement, posée EN DERNIER : elle passe donc par-dessus tout ce
                  * qui occupe le bas de l'écran - profil, bande du planificateur, consignes de saisie.

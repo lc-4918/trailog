@@ -28,10 +28,21 @@ import androidx.compose.material.icons.filled.Link
 import fr.lc4918.trailog.ui.edit.CutBubblePlacement
 import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.TrackEditState
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
+import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.data.repo.TrailogRepository
 import fr.lc4918.trailog.domain.geo.TrackEdit
+import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.ui.components.MapActionBar
+import fr.lc4918.trailog.ui.components.MapController
+import fr.lc4918.trailog.ui.components.MapPromptBar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
- * La retouche d'une trace, cote ecran : la bulle qui marque le point de coupe, et la barre d'outils.
+ * La retouche d'une trace, cote ecran : la barre d'outils, la bulle qui marque le point de coupe, et la
+ * bande de consigne du bas - chacune pour elle-meme, puis toutes ensemble dans [TrackEditLayer].
  *
  * Les calculs, eux, sont ailleurs et depuis toujours (`domain/geo/TrackEdit`, `ui/edit`) : ce fichier ne
  * porte que ce qui se voit.
@@ -130,16 +141,26 @@ internal fun CutMarkerBubble(
  * sa separation.
  */
 @Composable
-internal fun TrackEditToolbar(
+internal fun BoxWithConstraintsScope.TrackEditToolbar(
     state: TrackEditState,
     canUndo: Boolean,
     chromeBg: Color,
     chromeFg: Color,
+    /** Bas de la colonne de commandes du coin haut-gauche : la barre ne remonte jamais dessus. */
+    topControlsHeightPx: Int,
     onUndo: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
+    // A mi-hauteur de l'ecran, sauf si les commandes du haut descendent plus bas : c'est alors sous elles
+    // qu'elle se pose, dans la meme colonne et au meme ecart que ses voisines.
+    var toolbarHeightPx by remember { mutableIntStateOf(0) }
+    val gapPx = with(LocalDensity.current) { MapControlSpacing.roundToPx() }
+    val topPx = maxOf((constraints.maxHeight - toolbarHeightPx) / 2, topControlsHeightPx + gapPx)
     Column(
-        modifier.background(chromeBg.copy(alpha = ControlButtonBgAlpha), RoundedCornerShape(ControlButtonRadius))
+        Modifier.align(Alignment.TopStart)
+            .offset { IntOffset(0, topPx) }
+            .padding(start = 8.dp)
+            .onGloballyPositioned { toolbarHeightPx = it.size.height }
+            .background(chromeBg.copy(alpha = ControlButtonBgAlpha), RoundedCornerShape(ControlButtonRadius))
             .padding(2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -175,5 +196,172 @@ internal fun EditToolButton(
                 else -> chromeFg
             },
         )
+    }
+}
+
+/**
+ * Ce que la retouche pose au RAS DU BAS de l'ecran : le marqueur du point de coupe, et la bande qui porte
+ * la consigne de l'outil en cours ou la confirmation qu'il attend.
+ *
+ * Les deux ensemble parce qu'ils se repondent - poser le marqueur change la consigne en confirmation, et
+ * confirmer les efface tous les deux -, mais separes de la barre d'outils, qui se pose PLUS TOT dans la
+ * boite : la bande du planificateur passe par-dessus la barre, et sous ces deux-ci.
+ *
+ * Prend le ViewModel plutot qu'une poignee de rappels : couper et joindre lui demandent une trace, un
+ * segment, un mode et une suite a donner, et les envelopper un par un n'aurait deplace le noeud que d'un
+ * cran (meme raison que `DrawerContent`).
+ */
+@Composable
+internal fun BoxWithConstraintsScope.TrackEditPrompts(
+    edit: TrackEditState,
+    layers: List<LayerEntity>,
+    cutGeometry: List<List<TrackPoint>>,
+    controller: MapController,
+    chromeBg: Color,
+    chromeFg: Color,
+    /** Deplacement de carte en cours : le marqueur suit le terrain, image par image. */
+    moveTick: Int,
+    /** Fin d'un deplacement : le COTE de la bulle ne se revoit qu'a ce moment-la. */
+    idleTick: Int,
+    /** Ce qui recouvre deja le bas de l'ecran (le panneau de profil) : la bande se pose au-dessus. */
+    bottomCoverPx: Int,
+    vm: MainViewModel,
+) {
+    val density = LocalDensity.current
+    val cannotSplitMessage = stringResource(R.string.split_impossible)
+    val routedFellBack = stringResource(R.string.join_fell_back_straight)
+
+    // Le marqueur suit la carte au deplacement et au zoom (moveTick), comme les infobulles : il designe un
+    // point du terrain, pas un point de l'ecran.
+    edit.cut?.let { target ->
+        val p = target.hit.point
+        // La bulle SUIT la carte a chaque image : c'est le point du terrain qu'elle designe.
+        val off = remember(moveTick, target) { controller.screenOf(p.lon, p.lat) }
+        /*
+         * Le COTE, lui, ne se recalcule pas a chaque image : recalcule en continu, il change en cours de
+         * geste et la bulle tremble. Il est donc fige, et revu seulement :
+         *
+         * - a la pose du marqueur ;
+         * - a la FIN d'un deplacement ou d'un dezoom (idleTick), une seule fois.
+         *
+         * Jamais a un zoom avant : ce qui etait degage a l'echelle du dessus l'est encore en s'approchant,
+         * la trace ne faisant que s'ecarter d'elle-meme.
+         */
+        val cutPlacedTick = remember(target) { idleTick }
+        var cutSide by remember(target) { mutableStateOf<CutBubblePlacement.Side?>(null) }
+        var cutZoom by remember(target) { mutableStateOf(Double.MAX_VALUE) }
+        val bubbleWpx = with(density) { CutBubbleWidth.roundToPx() }
+        val bubbleHpx = with(density) { CutBubbleHeight.roundToPx() }
+        val tailPx = with(density) { CutTailHeight.roundToPx() }
+        val marginPx = with(density) { CutBubbleMargin.roundToPx() }
+        val topInsetPx = WindowInsets.statusBars.getTop(density)
+
+        LaunchedEffect(target, idleTick) {
+            val zoom = controller.cameraState()?.third ?: return@LaunchedEffect
+            if (cutSide != null && zoom > cutZoom) return@LaunchedEffect
+            val here = controller.screenOf(p.lon, p.lat) ?: return@LaunchedEffect
+            // Ce que la bulle pourrait recouvrir : les portions de trace assez proches pour tomber sous
+            // elle, converties en metres a l'echelle du moment.
+            val reachPx = kotlin.math.hypot(
+                (bubbleWpx + tailPx).toDouble(), (bubbleHpx + tailPx).toDouble(),
+            ) + marginPx
+            val radiusM = reachPx * controller.metersPerPixel(p.lat)
+            val runs = withContext(Dispatchers.Default) {
+                TrackEdit.nearbyRuns(cutGeometry, p.lon, p.lat, radiusM)
+            }
+            val screenRuns = runs.map { run ->
+                run.mapNotNull { q -> controller.screenOf(q.lon, q.lat)?.let { it.x to it.y } }
+            }.filter { it.size >= 2 }
+            val pl = CutBubblePlacement.choose(
+                pointX = here.x.toInt(), pointY = here.y.toInt(), track = screenRuns,
+                bubbleW = bubbleWpx, bubbleH = bubbleHpx, tail = tailPx,
+                viewW = constraints.maxWidth, viewH = constraints.maxHeight,
+                topInset = topInsetPx, margin = marginPx,
+            )
+            cutSide = pl.side
+            cutZoom = zoom
+            // Le decalage de carte n'a lieu qu'a la POSE du marqueur : le rejouer a chaque fin de
+            // deplacement ramenerait la carte de force des qu'on la pousse pour regarder ailleurs.
+            if (idleTick == cutPlacedTick && (pl.panX != 0 || pl.panY != 0)) {
+                controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
+            }
+        }
+        val side = cutSide
+        if (off != null && side != null) {
+            val totalW = if (side == CutBubblePlacement.Side.LEFT || side == CutBubblePlacement.Side.RIGHT)
+                bubbleWpx + tailPx else bubbleWpx
+            val totalH = if (side == CutBubblePlacement.Side.TOP || side == CutBubblePlacement.Side.BOTTOM)
+                bubbleHpx + tailPx else bubbleHpx
+            val bx = when (side) {
+                CutBubblePlacement.Side.LEFT -> off.x.toInt() - totalW
+                CutBubblePlacement.Side.RIGHT -> off.x.toInt()
+                else -> off.x.toInt() - totalW / 2
+            }
+            val by = when (side) {
+                CutBubblePlacement.Side.TOP -> off.y.toInt() - totalH
+                CutBubblePlacement.Side.BOTTOM -> off.y.toInt()
+                else -> off.y.toInt() - totalH / 2
+            }
+            CutMarkerBubble(
+                side = side, bg = chromeBg, fg = chromeFg,
+                modifier = Modifier.offset { IntOffset(bx, by) },
+            )
+        }
+    }
+
+    if (edit.open && edit.tool != EditTool.NONE) {
+        val barModifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
+            .padding(bottom = with(density) { bottomCoverPx.toDp() })
+        val cutTarget = edit.cut
+        val a = edit.first
+        val b = edit.second
+        when {
+            // Coupe : le marqueur est pose, on demande confirmation. Un nouveau tap ailleurs le deplace
+            // tant qu'on n'a pas confirme.
+            cutTarget != null -> MapActionBar(
+                text = stringResource(R.string.edit_cut_confirm, cutTarget.layerName),
+                onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
+            ) {
+                MapBarAction(stringResource(R.string.action_cancel)) { edit.choose(EditTool.NONE) }
+                MapBarAction(stringResource(R.string.action_split_track), primary = true) {
+                    val layer = layers.firstOrNull { it.id == cutTarget.layerId }
+                    edit.choose(EditTool.NONE)
+                    if (layer != null) vm.splitLayerAt(layer, cutTarget.hit) { ok ->
+                        if (!ok) edit.message = cannotSplitMessage
+                    }
+                }
+            }
+            // Jonction : les deux segments sont designes, reste a dire comment les relier.
+            a != null && b != null -> MapActionBar(
+                text = stringResource(R.string.edit_join_how, a.layerName, b.layerName),
+                onClose = { edit.choose(EditTool.NONE) }, modifier = barModifier,
+            ) {
+                val apply: (TrailogRepository.JoinMode) -> Unit = { mode ->
+                    val la = layers.firstOrNull { it.id == a.layerId }
+                    val lb = layers.firstOrNull { it.id == b.layerId }
+                    edit.choose(EditTool.NONE)
+                    if (la != null && lb != null) {
+                        vm.joinSegments(la, a.segment, lb, b.segment, mode) { applied ->
+                            if (applied != mode) edit.message = routedFellBack
+                        }
+                    }
+                }
+                MapBarAction(stringResource(R.string.join_straight)) { apply(TrailogRepository.JoinMode.STRAIGHT) }
+                MapBarAction(stringResource(R.string.join_routed), primary = true) { apply(TrailogRepository.JoinMode.ROUTED) }
+                MapBarAction(stringResource(R.string.join_none)) { apply(TrailogRepository.JoinMode.NONE) }
+            }
+            // Sinon : la consigne de l'outil en cours.
+            else -> MapPromptBar(
+                text = when (edit.tool) {
+                    EditTool.REVERSE -> stringResource(R.string.edit_pick_reverse)
+                    EditTool.CUT -> stringResource(R.string.edit_pick_cut)
+                    EditTool.JOIN -> if (a == null) stringResource(R.string.edit_pick_first)
+                        else stringResource(R.string.edit_pick_second, a.layerName)
+                    EditTool.NONE -> ""
+                },
+                onClose = { edit.choose(EditTool.NONE) },
+                modifier = barModifier,
+            )
+        }
     }
 }
