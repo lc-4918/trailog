@@ -113,11 +113,19 @@ grep -rn "^import android" app/src/main/java/fr/lc4918/trailog/domain/
 # aucune couche sous ui/ ne remonte vers ui/
 grep -rn "^import fr.lc4918.trailog.ui\." \
   app/src/main/java/fr/lc4918/trailog/{domain,data,map,poi,routing,geocode,elevation,location,net,update}/
+
+# une seule classe ouvre la base
+grep -rn "AppDatabase.get(" --include=*.kt app/src/main/java | grep -v data/repo
 ```
 
-Les deux rendent aujourd'hui zéro ligne. Toute ligne qu'elles rendraient est une régression
+Les trois rendent aujourd'hui zéro ligne. Toute ligne qu'elles rendraient est une régression
 d'architecture, pas un détail de rangement : une couche basse qui remonte vers l'interface rend son
 test impossible sans émulateur, et son extraction impossible sans réécriture.
+
+**Les deux premières ne voient que les imports.** Une couche haute qui construit elle-même ce qui
+appartient à une couche basse leur échappe, l'import étant alors légitime dans ce sens. C'est ainsi qu'un
+composable a longtemps ouvert la base sans qu'aucune vérification ne le dise, d'où la troisième commande,
+qui cherche un appel et non un import.
 
 Les autres dépendances autorisées :
 
@@ -143,6 +151,16 @@ séparés de leurs effets Compose (`ui/poi/PoiEffects.kt`) exactement pour être
 émulateur. C'est le motif à reproduire pour toute règle dont une modification silencieuse aurait un
 coût externe.
 
+Le même geste vaut pour le calcul enfermé dans un ViewModel. Quatre fichiers en sont sortis, tous purs et
+tous testés, et c'est ce qui rend l'absence d'injection tenable (AD-3) :
+
+| Fichier | Ce qu'il décide |
+|---|---|
+| `ui/routes/StyleSettings` (`sameStyleSettings`) | Quels réglages imposent de reconstruire le style de carte |
+| `ui/routes/TreeReorder` (`droppedOrder`) | Où se pose un élément lâché dans une arborescence. Le calcul était **écrit deux fois**, pour le menu et pour le catalogue des fonds |
+| `ui/routes/DisplayedBasemaps` | Quels fonds sont réellement à l'écran, donc quelle légende proposer |
+| `ui/routes/NearestTracks` | Combien de couches ouvrir pour trouver la trace la plus proche, et combien en proposer |
+
 ---
 
 ## 4. Responsabilités et invariants
@@ -163,9 +181,16 @@ fonction y est déterministe et testable sans montage.
 
 ### `data/repo/TrailogRepository`
 
-Façade unique vers la persistance. Seul point qui connaît à la fois la base et le système de fichiers.
+Façade vers la persistance : la base et le système de fichiers.
 
 **Invariants.**
+- **Seule classe qui ouvre la base.** Room rend un singleton, si bien qu'ouvrir ailleurs ne dupliquait
+  rien - mais trois classes de l'interface le faisaient, dont un composable, et la couche haute
+  connaissait alors Room aussi bien que la couche basse. La règle se vérifie mécaniquement
+  (cf. section 3.2).
+- **La façade n'est pas étanche, et c'est assumé** : les DAO sont offerts tels quels, plutôt que
+  réécrits en trente méthodes de délégation. Ce qui compte est qu'un seul objet *ouvre* la base et
+  possède la disposition des fichiers ; qui lit une table ensuite le fait par lui.
 - Aucune méthode `suspend` publique ne s'exécute sur le thread principal (chacune ouvre son
   `withContext(Dispatchers.IO)`).
 - La géométrie n'entre jamais en base : elle va sur disque (voir section 6).
@@ -303,10 +328,11 @@ aucune trace, et le geste suivant redemande.
                                  |
               +------------------+------------------+
               v                                     v
-      Valhalla.route                          Brouter.route
+      Valhalla.route                          Brouter.route  (LE DEFAUT)
       1 requête HTTP                          1) POST /profile -> id (mis en cache)
-      coût dans le serveur                    2) GET  itinéraire sous cet id
-      altitudes demandées (pas 30 m)          altitudes déjà dans la géométrie
+      coût figé dans le serveur               2) GET  itinéraire sous cet id
+      altitudes demandées (pas 30 m)          coût dans le profil envoyé
+                                              altitudes déjà dans la géométrie
               |                                     |
               +------------------+------------------+
                                  v
@@ -380,9 +406,21 @@ demande quatre gestes, et les quatre sont obligatoires :
 3. l'objet `Migration(n, n+1)` et son enregistrement dans `addMigrations(...)` ;
 4. l'incrémentation de `version = n+1`.
 
-`fallbackToDestructiveMigration()` est présent en dernier recours, mais une migration manquante y
-mènerait, c'est-à-dire à la perte des couches importées. **Ce n'est pas un filet, c'est un piège** :
-toute évolution de schéma doit avoir sa migration.
+**Le repli destructeur est borné.** `fallbackToDestructiveMigrationFrom(1..15)` ne couvre plus que les
+versions antérieures à la première migration écrite, pour lesquelles aucun chemin n'existe et aucun ne
+sera écrit. Partout ailleurs, un chemin manquant fait désormais **échouer l'ouverture** au lieu d'effacer
+en silence : un plantage au démarrage se corrige par une mise à jour, des couches effacées ne reviennent
+pas.
+
+Ce durcissement n'est tenable que parce qu'un test garde la chaîne. `MigrationChainTest` vérifie qu'aucune
+version ne manque entre la plus ancienne et celle que déclare le schéma, qu'aucune ne se déclare deux fois,
+et que la chaîne atteint bien la version courante. Il attrape les deux oublis symétriques - la migration
+écrite mais non enregistrée, et la migration enregistrée sans incrémenter la version - qui sont exactement
+ce qui menait au repli destructeur.
+
+La version du schéma est pour cela une constante nommée (`DB_VERSION`) et non un littéral dans
+l'annotation : `@Database` a une rétention binaire, sa valeur n'est pas lisible à l'exécution, donc pas
+vérifiable.
 
 > La valeur `DEFAULT` d'une colonne ajoutée est une décision produit. Elle s'applique aux bases
 > existantes et détermine ce que voient les utilisateurs après mise à jour.
@@ -446,7 +484,7 @@ cas nominal, jamais comme une exception.
 | Service | Usage | URL réglable | Dégradation |
 |---|---|---|---|
 | Tuiles (IGN, OSM, MapTiler...) | Fond de carte | oui, catalogue | Cache MapLibre, puis fond gris |
-| **Valhalla** ou **BRouter** | Itinéraires | oui | `null` ; l'écran annonce l'échec |
+| **BRouter** (défaut) ou **Valhalla** | Itinéraires | oui | `null` ; l'écran annonce l'échec |
 | **Photon** | Géocodage direct et inverse | oui | Deux tentatives, puis état `Failed` affiché |
 | **DATAtourisme** | Points d'intérêt (France) | oui | Liste vide, cache pris en relais |
 | **Overpass** | Points d'intérêt (monde, et restauration en France) | oui | `null` distinct d'une liste vide, frein de 60 s |
@@ -502,14 +540,21 @@ Points chauds identifiés et traités :
 
 ### 9.3 Testabilité
 
-765 tests, 71 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
+808 tests, 76 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
 
 La stratégie est de faire **descendre les règles importantes** dans du code pur pour qu'elles y
 deviennent testables. `poiStream` a été extrait de `PoiRepository` uniquement pour cela : il se teste
 avec deux fonctions factices, là où le dépôt entier demanderait deux services en ligne et une base.
 
-Non couvert : `MainScreen` (une `MapView` ne se charge pas sur la JVM), le moteur de téléchargement, la
-mise à jour.
+`MainScreen` échappait à cette stratégie, parce qu'il ne calcule presque rien : il **câble**. Les réglages
+aux ornements de la carte, les gestes de la carte aux infobulles, les modes de saisie exclusifs entre eux.
+Rien de cela ne descend nulle part, et rien n'en était vérifié - un seul appel, `MapLibreView`, rendait
+les 1800 lignes incomposables sur la JVM. La surface de carte est passée en paramètre (`MapSurface`) et
+l'écran entier se compose désormais en test, avec sa vraie base, ses vrais réglages et son vrai ViewModel.
+
+Reste hors d'atteinte, et pour de bon : le rendu des tuiles, les gestes réels, et tout ce qui **s'ancre à
+un point de carte** - la position à l'écran vient de la projection de MapLibre, qui n'existe pas sans
+carte. Le moteur de téléchargement et la mise à jour ne sont pas couverts non plus.
 
 ### 9.4 Vie privée
 
@@ -539,140 +584,304 @@ Deux points d'attention connus :
 
 ## 10. Décisions d'architecture
 
-Format court : contexte, décision, conséquences. Les décisions marquées *(révisée)* ont changé au moins
-une fois, et l'entrée dit pourquoi.
+Chaque décision est présentée dans le même ordre : **le problème** qui force un choix, **les options**
+qu'on avait, **la décision**, ce qu'elle **coûte**, et **ce qui la ferait tomber**.
+
+Ces entrées décrivent l'état **courant**. Plusieurs de ces décisions en ont remplacé une autre ; le
+cheminement, les mesures qui l'ont imposé et les fautes relevées en route sont dans
+[`CONTEXT.md`](CONTEXT.md), dont c'est l'objet.
+
+Les problèmes qui viennent d'Android sont expliqués : ce document doit se lire sans connaître la
+plateforme.
 
 ### AD-1 : une seule Activity, pas de composant de navigation
 
-**Contexte.** Deux écrans seulement, la carte et les réglages. La carte porte une `MapView`, coûteuse à
-créer et qui perd sa position à la recréation.
+**Le problème.** Une `Activity` est un écran, au sens d'Android : le système la crée, la met en pause, la
+détruit et la recrée à sa guise - une simple rotation d'écran suffit. Une application à plusieurs écrans
+utilise donc d'ordinaire un composant de navigation, qui empile et dépile ces écrans.
 
-**Décision.** Pas de `NavHost`. `AppRoot` superpose `SettingsScreen` à `MainScreen` dans une `Box`.
+Trailog a deux écrans : la carte et les réglages. Mais la carte porte une `MapView`, un objet lourd du SDK
+cartographique, coûteux à créer et qui perd sa position quand on le recrée.
 
-**Conséquences.** La carte n'est jamais détruite, aucun scintillement, aucune position perdue. En
-contrepartie, `MainScreen` reste composé sous les réglages, et un troisième écran demanderait de
-reconsidérer ce choix. `navigation-compose` figure dans les dépendances sans être utilisé (dette D1).
+**Les options.** Un vrai composant de navigation (`navigation-compose`), qui détruit l'écran quitté. Ou
+superposer le second écran au premier, qui reste vivant dessous.
+
+**Décision.** La superposition. `AppRoot` empile `SettingsScreen` par-dessus `MainScreen` dans une `Box`,
+qui est l'équivalent d'un `FrameLayout` : les enfants se recouvrent, le dernier déclaré au-dessus.
+
+**Ce qu'elle coûte.** `MainScreen` reste composé sous les réglages, donc en mémoire, et ses effets
+continuent de tourner. C'est le prix d'une carte qui ne scintille pas et ne perd pas sa position.
+
+**Ce qui la ferait tomber.** Un troisième écran. À deux, une `Box` se lit ; à trois, on réinvente une pile
+de navigation en moins bien.
 
 ### AD-2 : Room pour le catalogue, fichiers pour la géométrie
 
-**Contexte.** Une trace fait des milliers de points. MapLibre sait lire un GeoJSON par URI.
+**Le problème.** Une trace GPX fait des milliers de points. Où les ranger ?
 
-**Décision.** La base porte les métadonnées ; le disque porte la géométrie (`.map`) et le profil
-précalculé (`.prof`), écrits une fois à l'import.
+Room est la couche de correspondance objet-relationnel d'Android, l'équivalent réduit de JPA au-dessus de
+SQLite. Y mettre les points imposerait, à chaque affichage, une requête, une désérialisation et un tri -
+alors que le moteur de carte sait lire un fichier GeoJSON directement, par son chemin.
 
-**Conséquences.** Affichage instantané d'un profil déjà consulté. En contrepartie, deux sources de
-vérité à garder cohérentes : supprimer une couche doit supprimer ses fichiers, et une sauvegarde doit
-emporter les deux (`data/backup/BackupArchive`).
+**Les options.** Tout en base, avec le coût de lecture à chaque affichage. Ou séparer : les métadonnées en
+base, la géométrie en fichier.
+
+**Décision.** La séparation. La base porte le catalogue - nom, dossier, couleur, emprise, statistiques.
+Le disque porte deux fichiers dérivés par couche, écrits **une seule fois, à l'import** : un GeoJSON prêt
+pour la carte (`.map`) et un profil altimétrique précalculé (`.prof`).
+
+**Ce qu'elle coûte.** Deux sources de vérité à garder cohérentes. Supprimer une couche doit supprimer ses
+fichiers ; une sauvegarde doit emporter les deux (`data/backup/BackupArchive`). Un fichier orphelin ne
+casse rien mais occupe de la place ; une ligne sans fichier casse l'affichage.
+
+**Ce qui la ferait tomber.** Un besoin d'interroger la géométrie - « quelles traces passent dans ce
+rectangle » se répond aujourd'hui par l'emprise stockée en base, ce qui suffit. Une vraie recherche
+spatiale demanderait une extension SQLite.
 
 ### AD-3 : pas d'injection de dépendances
 
-**Contexte.** Application mono-module, un développeur, un seul graphe d'objets.
+**Le problème, et il vient d'Android.** Sur un serveur, un conteneur comme Spring construit vos objets et
+remplit leurs constructeurs. Sur Android, **c'est le système qui instancie vos classes**, et il appelle
+des constructeurs **sans argument** :
 
-**Décision.** Le dépôt est créé dans `TrailogApp` et récupéré par transtypage depuis les ViewModels.
+```
+Activity a = MainActivity.class.newInstance();   // en substance
+a.onCreate(...);
+```
 
-**Conséquences.** Zéro configuration, zéro génération de code, graphe lisible d'un coup d'œil. En
-contrepartie, remplacer le dépôt dans un test demanderait une réécriture : c'est la raison pour laquelle
-les tests portent sur des règles pures plutôt que sur des composants montés (dette D2).
+Il en va de même pour les `Service` et pour les `ViewModel`, ces derniers étant créés par le framework
+pour survivre à la rotation de l'écran. On ne peut donc pas écrire `MainActivity(repository)` : personne
+n'appellerait ce constructeur.
+
+C'est exactement le trou que Dagger et Hilt, les conteneurs d'injection d'Android, viennent boucher : ils
+génèrent le code qui va chercher les dépendances et les pose dans des champs, faute de pouvoir passer par
+un constructeur.
+
+**Les options.** Ajouter Hilt - un processeur d'annotations, des modules de configuration, du code
+généré. Ou se passer de conteneur et câbler à la main.
+
+**Décision.** À la main. Il existe un objet qu'Android crée **avant tout le reste et une seule fois par
+processus** : la classe `Application`. Le dépôt y vit, et les quatre classes qui en ont besoin l'y
+prennent par transtypage :
+
+```kotlin
+// dans TrailogApp.onCreate
+repository = TrailogRepository(this)
+
+// dans MainViewModel, SettingsViewModel, MainActivity, LocationService
+private val repo = (app as TrailogApp).repository
+```
+
+Quatre lignes dans tout le projet.
+
+**Ce qu'elle coûte, et la mesure qui a tranché.** L'argument pour un conteneur est la testabilité :
+pouvoir substituer un faux dépôt, comme un `@MockBean`. Mesuré, il ne tient pas ici :
+
+- le dépôt **est** testé, directement et bout en bout. `TrailogRepositoryTest` monte une vraie base et de
+  vrais fichiers sous Robolectric, sans la moindre abstraction ;
+- ce qui mérite un test dans un `ViewModel` n'est jamais l'orchestration mais le **calcul** qu'elle
+  contient - et un calcul s'extrait au lieu de se simuler. `sameStyleSettings`, `droppedOrder`,
+  `displayedProviders` et `layersToScan` ont quitté `MainViewModel` pour cette raison, et sont testés sans
+  aucune doublure.
+
+Un test avec faux dépôt aurait vérifié qu'un appel a lieu. Les tests obtenus vérifient qu'un résultat est
+juste, ce qui n'est pas le même travail.
+
+**Ce qui la ferait tomber.** Un découpage en plusieurs modules Gradle - `TrailogApp` cesserait d'être
+visible depuis les modules bas, et le câblage à la main deviendrait impossible. Une seconde implémentation
+du dépôt. Ou un besoin avéré de simuler une orchestration, et non un calcul.
 
 ### AD-4 : un contrôleur impératif pour la carte
 
-**Contexte.** MapLibre est impératif et antérieur à Compose.
+**Le problème.** L'interface est écrite en Jetpack Compose, qui est **déclaratif** : on décrit à quoi
+l'écran doit ressembler pour un état donné, et le framework rappelle cette description quand l'état
+change. On ne met jamais rien à jour soi-même.
 
-**Décision.** `MapController`, objet ordinaire, détient la `MapLibreMap` et expose des verbes. L'écran
-lui parle par des `LaunchedEffect` ; la carte parle à l'écran par des rappels qui incrémentent des
-compteurs (`moveTick` à chaque image, `idleTick` à l'arrêt).
+Le moteur de carte, lui, est une bibliothèque Android classique, **impérative** et antérieure à Compose :
+on lui donne des ordres - ajoute cette couche, déplace la caméra. Et sa vue est coûteuse : la recréer
+coûte un écran noir et une position perdue.
 
-**Conséquences.** La frontière entre les deux mondes est en un seul endroit. En contrepartie, tout état
-qui doit survivre à un rechargement de style doit figurer dans les clés d'un effet portant `styleTick` :
-l'oublier fait disparaître cet élément au prochain changement de fond, silencieusement.
+**Les options.** Redessiner la carte à chaque changement d'état, ce que son coût interdit. Ou isoler la
+frontière entre les deux mondes en un seul endroit.
 
-### AD-5 : deux sources de points d'intérêt, partagées géographiquement *(révisée)*
+**Décision.** Un `MapController` : un objet ordinaire, sans annotation Compose, qui détient la carte et
+expose des verbes (`setLayers`, `setCursor`, `fitTo`). Les deux sens sont explicites :
 
-**Contexte.** DATAtourisme est la base publique française du tourisme ; hors de France, la couche était
-vide. En France, elle ignore largement ce qui sert sur le terrain.
+| Sens | Mécanisme |
+|---|---|
+| Écran vers carte | un effet, relancé quand son état change, qui appelle le contrôleur |
+| Carte vers écran | des rappels posés sur le contrôleur, qui incrémentent un compteur d'état |
+
+Le compteur mérite un mot : `moveTick` et `idleTick` ne portent aucune information, ils **changent**, et
+ce changement suffit à déclencher ce qui doit l'être. Le premier s'incrémente à chaque image d'un
+déplacement, le second seulement à l'arrêt.
+
+**Ce qu'elle coûte.** Tout état qui doit survivre à un rechargement de style doit figurer dans les clés de
+l'effet qui le pose, avec le compteur `styleTick`. Changer de fond de carte reconstruit le style, qui
+emporte avec lui toutes les couches posées dessus : oublier ce compteur dans un seul effet fait
+disparaître cet élément-là, silencieusement, au prochain changement de fond.
+
+**Ce qui la ferait tomber.** Un moteur de carte nativement compatible Compose. Il n'y en a pas.
+
+### AD-5 : deux sources de points d'intérêt, partagées géographiquement
+
+**Le problème.** DATAtourisme est la base publique du tourisme **français**. Hors de France, la couche
+était vide, sans que rien ne l'explique. En France même, elle ignore largement ce qui sert sur le terrain,
+et sa couverture varie d'un facteur 70 selon la région : pour la même question, 10 lieux de restauration à
+Albi, 729 à Marseille. On ne peut donc s'y fier ni partout, ni pour tout.
+
+**Les options.** Une seule source, avec ses trous. Ou deux, et il faut alors dire qui répond où - sans
+quoi on paie deux requêtes pour le même lieu, ou l'on affiche deux marqueurs pour un seul endroit.
 
 **Décision.** Hors de France, OpenStreetMap répond seul. En France, DATAtourisme garde l'hébergement et
-les loisirs ; OpenStreetMap complète le groupe *pratique* et la *restauration*.
+les loisirs ; OpenStreetMap complète le groupe *pratique* et la *restauration*. Les doublons sont écartés
+à la fusion, par catégorie et par distance (50 m).
 
-**Révision.** La restauration a d'abord été laissée à DATAtourisme, sur la foi d'une mesure faite sur
-les **hôtels** (49 contre 38 autour de Grenoble) étendue aux restaurants sans les mesurer. Relevé sur le
-centre d'Albi : **6 restaurants contre 150**, et les 6 étaient des hôtels. La couverture de la base
-touristique varie de surcroît d'un facteur 70 selon la région (10 lieux de restauration à Albi, 729 à
-Marseille).
+**Ce qui fonde le partage**, mesuré à emprise égale pour les deux sources :
 
-**Conséquences.** Deux requêtes Overpass au plus en France au lieu d'une, d'où le réglage
-*Compléter avec OpenStreetMap* pour qui préfère une carte immédiate.
+| Catégories | DATAtourisme | OpenStreetMap |
+|---|---|---|
+| hôtels (Grenoble) | 49 | 38 |
+| points d'eau, toilettes, pique-nique (Grenoble) | 0 | 200 |
+| restaurants (centre d'Albi) | **6**, tous des hôtels | **150** |
+| bars, cafés (centre d'Albi) | 1 | 23 |
 
-### AD-6 : la catégorie d'un lieu est intrinsèque *(révisée)*
+Un restaurant de quartier n'est pas un objet touristique : il n'entre dans cette base que s'il est adossé
+à un hébergement. Les hôtels et les loisirs, eux, y sont bien décrits et illustrés de photos.
 
-**Contexte.** Un lieu de DATAtourisme porte couramment huit classes. Un hôtel-restaurant est à la fois
-`Hotel` et `Restaurant`.
+**Ce qu'elle coûte.** Deux requêtes Overpass au plus en France au lieu d'une. D'où le réglage
+*Compléter avec OpenStreetMap*, pour qui préfère une carte immédiate à une carte complète.
 
-**Décision initiale.** La résolution se bornait aux catégories cochées, pour qu'un lieu paraisse sous
-celle que l'utilisateur avait demandée.
+**Ce qui la ferait tomber.** Une amélioration nette de la couverture de DATAtourisme - vérifiable en
+rejouant la mesure d'Albi.
 
-**Révision.** C'était une promesse fausse. Sous le seul filtre « Restaurants », le centre d'Albi rendait
-six marqueurs, et les six étaient des hôtels. Le même défaut ramenait des toilettes en campings dès
-qu'on décochait les toilettes.
+### AD-6 : la catégorie d'un lieu est intrinsèque
 
-**Décision.** `PoiCategory.of()` et `ofOsm()` parcourent **toutes** les catégories ;
-`visibleDans(c, retenues)` écarte ensuite ce qui est masqué.
+**Le problème.** Un lieu de DATAtourisme porte couramment huit classes à la fois. Un hôtel-restaurant est
+`Hotel` **et** `Restaurant` ; des toilettes publiques y sont aussi `CampingAndCaravanning`. L'application
+n'affiche qu'une catégorie par marqueur : laquelle ?
 
-**Conséquences.** Un lieu dont la catégorie intrinsèque est masquée disparaît entièrement, même s'il
-porte la classe d'une catégorie affichée. C'est le sens voulu du filtre.
+**Les options.** Choisir celle que l'utilisateur a demandée - le lieu paraît alors sous le filtre actif.
+Ou choisir selon un ordre fixe, indépendant du filtre.
+
+La première est tentante et elle est fausse : sous le seul filtre « Restaurants », le centre d'Albi rend
+six marqueurs, et **les six sont des hôtels** - n'ayant plus que cette issue, ils s'affichent en
+restaurants. Le même raisonnement ramène des toilettes en campings dès qu'on décoche les toilettes.
+
+**Décision.** L'ordre fixe. `PoiCategory.of()` parcourt **toutes** les catégories, puis `visibleDans()`
+écarte ce qui est masqué. Ce qu'un lieu **est** ne dépend plus de ce qu'on a demandé.
+
+**Ce qu'elle coûte.** Un lieu dont la catégorie intrinsèque est masquée disparaît entièrement, même s'il
+porte la classe d'une catégorie affichée. C'est le sens qu'on veut donner au filtre : masquer les
+restaurants masque les restaurants, et rien d'autre ne vient prendre leur place.
+
+**Ce qui la ferait tomber.** Rien de prévisible. L'ordre de résolution, lui, peut évoluer et est documenté
+dans `PoiCategory.ORDRE_DE_RESOLUTION`.
 
 ### AD-7 : une emprise n'est retenue que si le chargement va à son terme
 
-**Contexte.** Les sources publient chacune à son arrivée. La première suffisait à marquer l'emprise
-chargée, alors que DATAtourisme répond en une seconde et Overpass en trois à trente.
+**Le problème.** Les deux sources publient chacune dès qu'elle répond, pour que la carte se peuple sans
+attendre la plus lente. Mais l'écran retient l'emprise chargée pour ne pas la redemander au moindre geste
+- et il la retenait **dès la première réponse**. Or DATAtourisme répond en une seconde et Overpass en met
+trois à trente.
 
-**Décision.** `poiStream` émet une **clôture** quand toutes les sources ont répondu ; elle seule porte
-`PoiLoad.complete`, et elle seule autorise `PoiState` à retenir l'emprise. `Overpass.around` rend `null`
-quand l'instance n'a pas répondu, ce qui ne vaut pas une liste vide.
+Conséquence relevée sur Albi : un geste de plus annulait le chargement entre les deux, la vue suivante
+était contenue dans l'emprise « chargée », et plus rien n'était redemandé. La carte restait sur les seuls
+lieux de la source rapide, définitivement.
 
-**Conséquences.** Un chargement interrompu ne laisse aucune trace et le geste suivant redemande. Sans
-frein, cela produit une rafale : d'où le délai de 60 s après échec, indissociable de cette décision.
-Le paramètre `complete` de `PoiState.publish` n'a **volontairement pas de valeur par défaut**, pour que
-son oubli ne compile pas.
+**Les options.** Ne jamais retenir d'emprise, et payer une requête à chaque geste. Ou distinguer un
+chargement terminé d'un chargement en cours.
+
+**Décision.** Une **émission de clôture** : quand toutes les sources ont répondu, le flux émet une
+dernière fois, et elle seule porte `PoiLoad.complete`. Seule cette émission autorise à retenir l'emprise.
+En complément, `Overpass.around` rend `null` quand l'instance n'a pas répondu, ce qui ne vaut pas une
+liste vide.
+
+**Ce qu'elle coûte, et le piège qu'elle a ouvert.** Une emprise en échec n'étant plus retenue, chaque
+geste relançait la requête que le service venait de refuser. Relevé sur le terrain, traces à l'appui :
+**huit gestes de carte, vingt-cinq requêtes, vingt-cinq refus de connexion**. Le service ne refusait pas
+une requête trop lourde, il refusait l'appelant. La décision est donc indissociable de son frein : 60 s
+avant de redemander une zone en échec, et une seule requête simultanée.
+
+Le paramètre `complete` de `PoiState.publish` n'a **volontairement pas de valeur par défaut** : son oubli
+ne compile pas.
+
+**Ce qui la ferait tomber.** Une source à quota illimité, qui rendrait le frein inutile - pas la clôture,
+qui reste juste.
 
 ### AD-8 : le suivi de position hors de la composition
 
-**Contexte.** Le suivi était porté par l'écran. La composition s'arrête dès que la carte n'est plus
-visible, et le suivi s'arrêtait avec elle, au moment précis où il sert.
+**Le problème, et il vient d'Android.** L'interface Compose vit dans une *composition*, qui s'arrête dès
+que l'écran n'est plus visible. Le suivi de position y était porté : téléphone en poche, écran éteint, il
+s'arrêtait - au moment précis où il sert.
 
-**Décision.** `LocationService`, service de premier plan, alimente `LocationHub` (un objet de
-processus). L'écran n'en est qu'un lecteur, via `ui/location/LocationControls`.
+Android n'offre qu'une façon de faire tourner du travail en arrière-plan sans se faire tuer : un **service
+de premier plan**, qui doit afficher une notification permanente et non masquable.
 
-**Conséquences.** Le suivi survit à l'écran éteint et à l'arrière-plan. Il impose une notification
-permanente, ce qui est un contrat social autant que technique.
+**Les options.** Garder le suivi dans l'écran et demander à l'utilisateur de ne pas éteindre. Ou sortir le
+suivi de l'interface.
 
-### AD-9 : Valhalla comme moteur par défaut
+**Décision.** `LocationService`, service de premier plan, écoute le capteur et publie dans `LocationHub`,
+un objet de processus. L'écran n'en est plus qu'un **lecteur**, via `ui/location/LocationControls`.
 
-**Contexte.** Cinq disciplines à servir depuis une instance publique gratuite.
+**Ce qu'elle coûte.** Une notification permanente, que l'utilisateur ne peut pas masquer. C'est un contrat
+social autant que technique : il voit en permanence que quelque chose tourne, et peut l'arrêter d'un tap.
 
-**Décision.** Valhalla, dont les cinq disciplines sortent d'une **seule** instance. OSRM imposerait cinq
-serveurs, GraphHopper n'a pas d'instance publique sans clé. BRouter est offert en second choix.
+**Ce qui la ferait tomber.** Rien. C'est ce montage qui rendra possible l'enregistrement de trace, comme
+le dit l'en-tête de `LocationHub`.
 
-**Conséquences.** `Router` normalise les deux clients derrière un même `RouteResult`. BRouter impose une
-conversation en deux temps (dépôt de profil, puis calcul), et donc deux caches mémoire.
+### AD-9 : deux moteurs d'itinéraire, BRouter par défaut
 
----
+**Le problème.** Calculer un itinéraire demande un graphe routier et un modèle de coût, soit bien plus que
+ce qu'un téléphone peut porter. Il faut donc un service distant, et l'application doit servir **cinq
+disciplines** : route, gravel, VTC, VTT, à pied.
+
+**Les options, et ce qui les départage.**
+
+| Moteur | Écarté ou retenu |
+|---|---|
+| OSRM | Écarté : impose **un serveur par profil**, soit cinq à héberger |
+| GraphHopper | Écarté : pas d'instance publique sans clé d'API |
+| **Valhalla** | Retenu : les cinq disciplines sortent d'une **seule** instance |
+| **BRouter** | Retenu ensuite, et devenu le défaut |
+
+Les deux retenus ne répondent pas à la même question. Valhalla porte son modèle de coût **dans son code**
+et n'en expose qu'une poignée de curseurs. BRouter lit un **profil** - un texte qu'on écrit et qu'on
+envoie avec la requête, décrivant le coût étiquette par étiquette.
+
+**Décision.** Les deux sont offerts, et **BRouter est le défaut**, y compris sur une installation en place
+(la migration écrit `DEFAULT 'brouter'`).
+
+**Pourquoi BRouter est le défaut**, et c'est une mesure et non une préférence : à pied, Moulin-Neuf -
+Mirepoix passe de **15 à 87 %** de voies douces, la voie verte étant enfin empruntée, et Revel - Sorèze de
+**24 à 57 %** de chemins. Ce que Valhalla interdit de dire - privilégier un sentier au marcheur, accepter
+une voie verte gravillonnée - s'écrit dans un profil BRouter.
+
+**Ce qu'elle coûte.** Une conversation en deux temps avec BRouter : on dépose le texte du profil, le
+service rend un identifiant, puis on demande l'itinéraire sous cet identifiant. D'où deux caches mémoire,
+l'un pour les textes de profils, l'autre pour les identifiants rendus. Et cinq profils à tenir, un par
+discipline. Valhalla reste offert d'un tap : son graphe est hiérarchique, donc plus rapide sur les longues
+distances.
+
+`Router` normalise les deux clients derrière un même `RouteResult`, ce qui rend la comparaison honnête :
+on demande la même chose aux deux, dans le vocabulaire de l'utilisateur.
+
+**Ce qui la ferait tomber.** Un modèle de coût configurable chez Valhalla, ou une instance BRouter
+publique qui cesserait de répondre - le réglage d'URL permettant alors d'en viser une autre.
 
 ## 11. Risques et dettes connues
 
+Les entrées ci-dessous sont **ouvertes**. Ce qui a été corrigé n'y figure plus : le détail des
+corrections vit dans l'historique git et, pour ce qui portait une leçon, dans [`CONTEXT.md`](CONTEXT.md).
+
+Les numéros ne sont pas réattribués. Une dette fermée laisse son numéro vacant, ce qui évite qu'un renvoi
+écrit ailleurs ne désigne un jour autre chose que ce qu'il visait.
+
 | # | Sujet | Nature | Impact |
 |---|---|---|---|
-| D1 | ~~`navigation-compose` et `datastore-preferences` déclarés, non utilisés~~ | **Corrigée** | Retirés du catalogue de versions et du module. Vestiges du squelette initial ; `AppRoot` n'a jamais utilisé de composant de navigation (AD-1), et les réglages vivent dans Room. |
-| D2 | Aucune abstraction du dépôt | Dette assumée (AD-3) | Un test de composant monté demanderait une réécriture |
-| D3 | ~~`data/repo` importe `ui/offline/OfflineDownloadRequest`~~ | **Corrigée** | `OfflineDownloadRequest` et `OfflineCorridor` sont descendus dans `map/offline`, chez le moteur qui les consomme. `map/offline/OfflineTileDownloader` portait la même inversion, elle tombe avec. |
-| D4 | ~~`SettingsScreen.kt` : 2 022 lignes~~ | **Corrigée** | Découpé en six fichiers : un par onglet (Carte, Tuiles, Trajets, Système), `SettingsWidgets` pour les briques partagées par les quatre, et le squelette de l'écran, qui garde son aiguillage et les sélecteurs système. Le plus gros fait 537 lignes. |
+| D2 | Aucune abstraction du dépôt | **Compromis, pas dette** | Le dépôt est testé bout en bout (`TrailogRepositoryTest`) et la logique des ViewModels est extraite plutôt que simulée : l'absence d'abstraction ne coûte aujourd'hui aucun test. Redevient une dette aux trois conditions listées en AD-3. |
 | D5 | Clés d'API en dur, dépôt public | Risque accepté | Quota épuisable par un tiers ; inacceptable en store |
-| D6 | `MainScreen` non testé | Limite structurelle | `MapView` ne se charge pas sur la JVM |
 | D7 | Dépendance à des instances publiques à quota | Risque externe | Atténué par AD-7 et le réglage d'URL, pas supprimé |
-| D8 | `fallbackToDestructiveMigration()` actif | Risque | Une migration oubliée efface les données de l'utilisateur |
-| D9 | ~~`location/LocationService` importe `ui/alert/AlertSound`~~ | **Corrigée** | `AlertSound.kt` est descendu dans `location/`, chez le service qui joue le son. L'écran de réglages y descend pour afficher le nom du son retenu, ce qui est le sens autorisé. |
-
----
 
 ## 12. Points d'extension
 
