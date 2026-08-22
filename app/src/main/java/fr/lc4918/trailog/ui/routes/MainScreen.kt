@@ -8,35 +8,70 @@ import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
 import android.provider.OpenableColumns
-import android.view.Surface
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Directions
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,7 +85,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,32 +93,36 @@ import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.DefaultOffTrackAlertM
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
-import fr.lc4918.trailog.data.db.SettingsEntity
-import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.data.db.routePrefs
-import fr.lc4918.trailog.ui.edit.CutTarget
-import fr.lc4918.trailog.ui.edit.EditTool
-import fr.lc4918.trailog.ui.edit.SegmentRef
-import fr.lc4918.trailog.ui.edit.TrackEditState
+import fr.lc4918.trailog.data.db.routeUrl
+import fr.lc4918.trailog.data.imp.ImportInbox
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
+import fr.lc4918.trailog.domain.model.PlannerHistory
+import fr.lc4918.trailog.domain.model.PoiFilters
+import fr.lc4918.trailog.domain.model.RouteEngine
+import fr.lc4918.trailog.domain.model.RoutingPrefs
+import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.location.TrackWatch
-import fr.lc4918.trailog.net.ServiceUrl
-import fr.lc4918.trailog.map.CoverageBounds
-import fr.lc4918.trailog.map.CoverageProbe
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflinePhase
+import fr.lc4918.trailog.net.ServiceUrl
+import fr.lc4918.trailog.poi.Datatourisme
+import fr.lc4918.trailog.poi.PoiRepository
+import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.TrackChooserDialog
@@ -92,60 +130,52 @@ import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
 import fr.lc4918.trailog.ui.components.MapPromptBar
+import fr.lc4918.trailog.ui.components.PoiMarker
+import fr.lc4918.trailog.ui.edit.CutTarget
+import fr.lc4918.trailog.ui.edit.EditTool
+import fr.lc4918.trailog.ui.edit.SegmentRef
+import fr.lc4918.trailog.ui.edit.TrackEditState
+import fr.lc4918.trailog.ui.geocode.GeocodeBubble
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
+import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
+import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.mappoint.MeasureState
-import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
-import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
-import fr.lc4918.trailog.ui.geocode.GeocodeBubble
-import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
-import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
-import fr.lc4918.trailog.ui.points.BubblePlacement
-import fr.lc4918.trailog.ui.points.InfoBubble
-import fr.lc4918.trailog.ui.points.InfoBubbleLoading
-import fr.lc4918.trailog.ui.points.PropertyEditor
-import fr.lc4918.trailog.ui.points.computeBubblePlacement
-import fr.lc4918.trailog.ui.points.computeGeocodePlacement
-import fr.lc4918.trailog.domain.model.RouteEngine
-import fr.lc4918.trailog.domain.model.RoutingPrefs
-import fr.lc4918.trailog.domain.model.RoutingProfile
-import fr.lc4918.trailog.data.db.AppDatabase
-import fr.lc4918.trailog.data.imp.ImportInbox
-import fr.lc4918.trailog.poi.Datatourisme
-import fr.lc4918.trailog.poi.PoiRepository
-import fr.lc4918.trailog.domain.model.PlannerHistory
-import fr.lc4918.trailog.domain.model.PoiFilters
-import fr.lc4918.trailog.ui.poi.PoiState
-import fr.lc4918.trailog.ui.poi.PoiBubble
-import fr.lc4918.trailog.ui.poi.PoiLoading
-import fr.lc4918.trailog.ui.poi.poiGroupColor
-import fr.lc4918.trailog.ui.poi.poiCategoryLabelRes
-import fr.lc4918.trailog.ui.poi.poiIcon
-import fr.lc4918.trailog.ui.components.PoiMarker
-import fr.lc4918.trailog.routing.GpxWriter
-import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.RouteState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
+import fr.lc4918.trailog.ui.poi.PoiBubble
+import fr.lc4918.trailog.ui.poi.PoiLoading
+import fr.lc4918.trailog.ui.poi.PoiState
+import fr.lc4918.trailog.ui.poi.poiCategoryLabelRes
+import fr.lc4918.trailog.ui.poi.poiGroupColor
+import fr.lc4918.trailog.ui.poi.poiIcon
+import fr.lc4918.trailog.ui.points.BubblePlacement
+import fr.lc4918.trailog.ui.points.InfoBubble
+import fr.lc4918.trailog.ui.points.InfoBubbleLoading
+import fr.lc4918.trailog.ui.points.PropertyEditor
+import fr.lc4918.trailog.ui.points.computeBubblePlacement
+import fr.lc4918.trailog.ui.points.computeGeocodePlacement
 import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlin.math.abs
-import kotlin.math.hypot
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -843,95 +873,38 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         uri?.let { u -> pendingImageCallback?.let { cb -> vm.importFeatureImage(u, cb) } }
     }
 
-    // appliquer les couches à la carte
     val density = LocalDensity.current
     val markerPx = with(density) { (settings?.markerSize ?: 36).dp.toPx() }
-    LaunchedEffect(renderLayers, styleTick, markerPx) { if (controller.style != null) controller.setLayers(renderLayers, markerPx) }
-    // Coins/rectangle du tracé bbox hors-ligne (SPEC section 2) : source/couches dédiées (croix "viseur"),
-    // indépendantes du système de couches importées ci-dessus.
-    LaunchedEffect(offlineBboxPoints, styleTick) { if (controller.style != null) controller.setBboxDraw(offlineBboxPoints) }
-    // Marqueurs noirs du géocodage : le lieu trouvé, et le point de référence d'une mesure de distance.
-    // Calques carte (comme le marqueur sélectionné) : ils suivent seuls le pan et le zoom.
-    LaunchedEffect(geo.place, styleTick, markerPx) {
-        controller.setGeocodeMarker(false, geo.place?.lon, geo.place?.lat, markerPx)
-    }
-    // Marqueurs noirs des deux bouts d'une mesure sur trace : mêmes épingles, même calque carte.
-    LaunchedEffect(measure.markers, styleTick, markerPx) {
-        controller.setMeasureMarkers(measure.markers, markerPx)
-    }
-    // Épingles noires du point désigné par un appui long et de son point de référence : mêmes épingles
-    // encore, sur leur propre calque - les deux fonctions peuvent être à l'écran en même temps.
-    LaunchedEffect(mapPoint.markers, styleTick, markerPx) {
-        controller.setMapPointMarkers(mapPoint.markers, markerPx)
-    }
-    // Symbole du repère de position, tel que les réglages le décrivent. Rejoué sur styleTick : un
-    // changement de fond recharge le style, qui emporte sources et couches - le repère est reposé avec la
-    // dernière position connue, sans attendre que le capteur en donne une nouvelle.
-    LaunchedEffect(gpsMarker, gpsMarkerColor, gpsMarkerSizeDp, styleTick) {
-        controller.setUserMarker(gpsMarker, gpsMarkerColor, gpsMarkerSizeDp)
-    }
-    LaunchedEffect(cursor, computed) {
-        val along = cursor; val s = computed?.samples
-        val p = if (along != null && s != null) TrackMath.sampleAt(s, along) else null
-        if (p != null) {
-            controller.setCursor(p.lon, p.lat)
-            // Curseur sorti de l'ecran : la carte le rejoint. Deplacer le curseur sur le profil, c'est
-            // demander a voir cet endroit-la ; le laisser hors champ rendrait le geste muet des qu'on
-            // s'eloigne de la portion visible.
-            if (!controller.isOnScreen(p.lon, p.lat)) controller.centerOn(p.lat, p.lon)
-        } else {
-            controller.clearCursor()
-        }
-    }
-    // Synchronisation carte <-> zoom du profil : on recadre UNIQUEMENT sur l'emprise de la portion zoomée
-    // (sélection A/B). Un simple tap sur une trace, sans zoom actif, ne déplace jamais la carte : on garde la
-    // vue courante de l'utilisateur (pas de "zoom global" sur toute la trace, qui recadrait brutalement et
-    // dont l'animation ralentissait l'affichage du premier profil). L'"expand" jusqu'à la vue complète laisse
-    // donc la carte là où elle est. Fermer le profil ne redéclenche rien ici (profileZoomStack revidé).
-    LaunchedEffect(profileZoom, computed) {
-        val range = profileZoom ?: return@LaunchedEffect
-        val samples = computed?.samples ?: return@LaunchedEffect
-        if (range.last >= samples.size) return@LaunchedEffect
-        val sub = samples.subList(range.first, range.last + 1)
-        controller.fitTo(sub.minOf { it.lon }, sub.minOf { it.lat }, sub.maxOf { it.lon }, sub.maxOf { it.lat })
-    }
+    MapOverlayEffects(
+        controller = controller,
+        styleTick = styleTick,
+        markerPx = markerPx,
+        renderLayers = renderLayers,
+        bboxPoints = offlineBboxPoints,
+        geo = geo,
+        measure = measure,
+        mapPoint = mapPoint,
+        gpsMarker = gpsMarker,
+        gpsMarkerColor = gpsMarkerColor,
+        gpsMarkerSizeDp = gpsMarkerSizeDp,
+    )
+    ProfileCursorEffects(
+        controller = controller,
+        cursor = cursor,
+        computed = computed,
+        profileZoom = profileZoom,
+    )
 
-    // positionnement initial : dernier affichage si enregistré, sinon données visibles, sinon France
-    var positioned by remember { mutableStateOf(false) }
-    LaunchedEffect(styleTick, settings, renderLayers) {
-        val st = settings ?: return@LaunchedEffect
-        if (positioned || styleTick == 0) return@LaunchedEffect
-        if (st.hasCamera) {
-            controller.moveTo(st.lastLat, st.lastLon, st.lastZoom); positioned = true
-        } else {
-            val ls = layers.filter { it.visible }
-            val w = ls.map { it.west }.filter { it != 0.0 }.minOrNull()
-            val s = ls.map { it.south }.filter { it != 0.0 }.minOrNull()
-            val e = ls.map { it.east }.filter { it != 0.0 }.maxOrNull()
-            val n = ls.map { it.north }.filter { it != 0.0 }.maxOrNull()
-            if (w != null && s != null && e != null && n != null) controller.fitTo(w, s, e, n)
-            else controller.moveTo(46.6, 2.4, 4.8)   // centre France
-            positioned = true
-        }
-    }
-
-    // Activer un fond national alors que la carte regarde un autre pays ne montre rien : le service ne
-    // sert pas cette zone, il ne reste que le gris de no-tile-background ou le blanc que renvoient les
-    // WMS hors de chez eux. On recadre alors sur l'emprise du fond. Les 2 s laissent aux tuiles le temps
-    // d'arriver sur une connexion lente : recadrer une carte qui allait s'afficher serait pire que ne
-    // rien faire. Relancé sur styleTick, pas seulement sur l'identifiant : le style met un instant à
-    // s'appliquer, et sonder avant que la caméra ne soit posée donnerait une emprise sans rapport.
-    LaunchedEffect(settings?.defaultBasemapId, styleTick) {
-        if (styleTick == 0 || !positioned) return@LaunchedEffect
-        val id = settings?.defaultBasemapId ?: return@LaunchedEffect
-        val provider = providers.firstOrNull { it.id == id } ?: return@LaunchedEffect
-        val bounds = CoverageBounds.of(provider) ?: return@LaunchedEffect
-        delay(2_000)
-        val viewport = controller.visibleBounds() ?: return@LaunchedEffect
-        val zoom = controller.cameraState()?.third?.toInt() ?: return@LaunchedEffect
-        if (CoverageProbe.probe(provider, viewport, zoom) != CoverageProbe.Coverage.EMPTY) return@LaunchedEffect
-        controller.fitTo(bounds.west, bounds.south, bounds.east, bounds.north)
-    }
+    // `by` et non `=` : ce drapeau est relu a chaque arret de la camera, depuis un rappel pose une seule
+    // fois (cf. rememberCameraPlacement).
+    val positioned by rememberCameraPlacement(
+        controller = controller,
+        styleTick = styleTick,
+        settings = settings,
+        layers = layers,
+        renderLayers = renderLayers,
+        providers = providers,
+    )
 
     // infobulle
     var idleTick by remember { mutableIntStateOf(0) }

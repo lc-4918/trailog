@@ -57,6 +57,7 @@ app/src/main/java/fr/lc4918/trailog/
    │                              MainScreen (carte, etats, effets), MainViewModel,
    │                              MainDrawer (menu lateral et son arborescence),
    │                              MapChrome (commandes posees sur la carte, echelle, legende),
+   │                              MapEffects (ce que l'ecran demande au controleur MapLibre),
    │                              ProfilePanels, TrackEditUi, MainDialogs, DeviceHeading, ImportPicker
    ├─ location/                  le suivi de position vu de l'ecran : autorisations, allumage, position ponctuelle
    ├─ alert/                     alerte d'eloignement : banniere, choix de la trace, son
