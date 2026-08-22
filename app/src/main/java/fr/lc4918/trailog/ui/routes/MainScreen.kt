@@ -956,7 +956,18 @@ fun MainScreen(
                                 Icon(Icons.Filled.Menu, stringResource(R.string.action_menu), tint = chromeFg)
                             }
                         }
-                        if (settings?.showGpsButton == true) {
+                        /*
+                         * `!= false` et non `== true` : tant que les reglages ne sont pas revenus de la
+                         * base, ils valent null, et `== true` faisait alors disparaitre le bouton.
+                         *
+                         * Ce n'est pas une precaution theorique. Un testeur a decrit exactement cela : plus
+                         * de repere, et "le bouton a disparu". Le processus tue en cours de sortie, l'ecran
+                         * rallume, l'activite recreee - et la carte ne portait plus QUE le burger, le temps
+                         * que Room rende une ligne. Trois lectures traitaient l'inconnu comme un "non" alors
+                         * que le defaut du reglage est "oui" ; tout le reste de ce fichier lit deja son
+                         * defaut (cf. showScale plus bas). C'etaient les trois seules.
+                         */
+                        if (settings?.showGpsButton != false) {
                             IconButton(
                                 onClick = { location.onGpsButtonTap() },
                                 // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
@@ -1059,7 +1070,9 @@ fun MainScreen(
                             Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend), tint = chromeFg)
                         }
                     }
-                    if (settings?.showBasemapControlButton == true) {
+                    // `!= false` : le defaut du reglage est "oui", et un reglage non encore charge ne doit
+                    // pas se lire comme un "non" (cf. le bouton GPS).
+                    if (settings?.showBasemapControlButton != false) {
                         IconButton(onClick = { basemapControlOpen = true }, modifier = controlBg) {
                             // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
                             // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
@@ -1462,7 +1475,9 @@ fun MainScreen(
                         }
                     }
                     // Masqué tant que sa bande est ouverte, qu'il ne servirait qu'à rouvrir.
-                    if (settings?.routePlannerEnabled == true && !planner.open) {
+                    // `!= false` : meme raison que le bouton GPS. C'est l'autre bouton que le testeur a vu
+                    // disparaitre, et par le meme chemin.
+                    if (settings?.routePlannerEnabled != false && !planner.open) {
                         IconButton(onClick = {
                             if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
                                 showNoConnectionDialog = true
