@@ -1,13 +1,8 @@
 package fr.lc4918.trailog.ui.routes
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
 import android.os.SystemClock
-import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -87,7 +82,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -100,7 +94,6 @@ import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.routeUrl
-import fr.lc4918.trailog.data.imp.ImportInbox
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
@@ -146,16 +139,20 @@ import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
+import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
 import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
+import fr.lc4918.trailog.ui.mappoint.MapPointEffects
+import fr.lc4918.trailog.ui.planner.PlannerEffects
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.RouteState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
 import fr.lc4918.trailog.ui.poi.PoiBubble
+import fr.lc4918.trailog.ui.poi.PoiEffects
 import fr.lc4918.trailog.ui.poi.PoiLoading
 import fr.lc4918.trailog.ui.poi.PoiState
 import fr.lc4918.trailog.ui.poi.poiCategoryLabelRes
@@ -190,26 +187,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     var legendAnchor by remember { mutableStateOf(IntOffset.Zero) }
 
     // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
-    var offlineDrawingActive by remember { mutableStateOf(false) }
-    var offlineBboxPoints by remember { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }  // (lon, lat)
-    var offlineConfigBbox by remember { mutableStateOf<Bbox?>(null) }
-    // Deux facons de dire CE QU'ON TELECHARGE, proposees a l'appui du bouton (cf. OfflineExtentDialog) :
-    // un rectangle trace sur la carte, ou le couloir qui borde une trace.
-    var offlineExtentChoice by remember { mutableStateOf(false) }
-    var offlinePickTrack by remember { mutableStateOf(false) }
-    // Trace a border, et son parcours : garde en memoire le temps de l'ecran de configuration.
-    var offlineCorridor by remember { mutableStateOf<Pair<LayerEntity, List<Pair<Double, Double>>>?>(null) }
-    // Referme complètement le flux (annulation ou fin de config) : sans réinitialiser les points, le
-    // rectangle tracé resterait affiché indéfiniment sur la carte une fois l'écran de config quitté.
-    fun closeOfflineFlow() {
-        offlineConfigBbox = null; offlineBboxPoints = emptyList(); offlineCorridor = null
-    }
-    // Quitte le tracé de bbox (bouton "Annuler" ou retour système) : contrairement à "Réinitialiser",
-    // referme aussi entièrement le mode de saisie, pas seulement les points déjà posés.
-    fun cancelOfflineDrawing() { offlineDrawingActive = false; offlineBboxPoints = emptyList() }
-    // Hauteur mesurée de la barre de tracé bbox, pour décaler l'échelle graphique au-dessus (SPEC).
-    var offlineBarHeightPx by remember { mutableIntStateOf(0) }
-    // Hauteur mesurée de la barre de consigne du géocodage, même usage que ci-dessus.
+    val offline = remember { OfflineFlowState() }
     // Hauteur mesurée du panneau de profil (superposé à la carte, qui garde toujours sa taille pleine),
     // pour décaler les infos du curseur juste au-dessus.
     var profileBarHeightPx by remember { mutableIntStateOf(0) }
@@ -400,84 +378,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // discipline elle-même ; sans réglages chargés, celles que la discipline porte par défaut.
     val measurePrefs = settings?.routePrefs(routingProfile) ?: RoutingPrefs.defaultFor(routingProfile)
 
-    /**
-     * Adresse du point désigné (géocodage inverse).
-     *
-     * Relancée sur le seul point : le service, lui, ne change qu'en réglages, et l'adresse d'un point déjà
-     * affiché n'a aucune raison de changer sous les yeux de qui la lit.
-     *
-     * Une seconde tentative avant d'abandonner, comme la recherche par le nom : le premier appel paie
-     * l'ouverture de la liaison et échoue parfois au délai.
-     */
-    LaunchedEffect(mapPoint.point) {
-        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
-        mapPoint.publishAddress(AddressState.Loading)
-        val lang = ctx.resources.configuration.locales[0].language
-        val r = Photon.reverse(geocodingBase, lon, lat, lang) ?: Photon.reverse(geocodingBase, lon, lat, lang)
-        val adresse = r?.firstOrNull()
-        mapPoint.publishAddress(when {
-            r == null -> AddressState.Failed
-            adresse == null -> AddressState.NotFound
-            else -> AddressState.Done(adresse.lines)
-        })
-        // L'adresse trouvee entre dans l'historique du planificateur (cf. PlannerHistory) : on vient de
-        // montrer un endroit et d'en lire le nom, c'est un candidat pour un prochain trajet.
-        //
-        // Aux coordonnees DESIGNEES, non a celles que rend le geocodeur : l'epingle est restee sur le point
-        // qu'on a montre, l'adresse n'en est que le nom, et c'est de la qu'on voudra partir.
-        //
-        // Rien a retenir quand le service n'a rien rendu : un historique sans libelle ne se relit pas, et
-        // "44.56, 6.08" ne dirait rien a personne trois jours plus tard.
-        if (adresse != null) vm.rememberPlannerPlace(GeocodePlace(adresse.lines, lon, lat))
-    }
-
-    /**
-     * Un itinéraire depuis (fromLat, fromLon) jusqu'au point désigné, traduit en état affichable. Les
-     * deux points sont donnés en (lat, lon), comme les attend le moteur.
-     *
-     * Les points rendus par le moteur passent par le même calcul que les traces importées : distance
-     * cumulée, lissage de l'altitude au réglage de l'utilisateur, pente par point. La ligne sur la carte et
-     * sa teinte sortent ensuite de ces mêmes points.
-     *
-     * Aucune décimation (contrairement aux traces, ramenées à 2000 points) : ici les points dessinent aussi
-     * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché.
-     */
-    suspend fun measureTo(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): MeasureState {
-        val r = Router.route(ctx, routeEngine, routingUrl, listOf(fromLat to fromLon, toLat to toLon),
-            routingProfile, measurePrefs) ?: return MeasureState.Failed
-        val track = withContext(Dispatchers.Default) {
-            if (r.points.size < 2) null
-            else TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
-        }
-        return MeasureState.Done(r.meters, r.seconds, track)
-    }
-
-    // Origine de la mesure depuis la position, figée dès qu'une position est connue : le repère affiché en
-    // livre une toutes les 2 s, et les suivre lancerait autant de requêtes d'itinéraire.
-    //
-    // La position vient du capteur, éteint ou allumé côté affichage (cf. LocationControls.currentPosition) : mesurer d'où
-    // l'on est n'oblige plus à poser le repère sur la carte.
-    //
-    // Sans position - autorisation refusée, localisation éteinte, ou capteur muet jusqu'au bout du délai
-    // que le système s'accorde -, la mesure est abandonnée : son spinner tournerait indéfiniment.
-    LaunchedEffect(mapPoint.positionMeasure) {
-        if (mapPoint.positionMeasure != MeasureState.Loading || mapPoint.positionOrigin != null) return@LaunchedEffect
-        val fix = location.currentPosition()
-        if (fix == null) mapPoint.publishPositionMeasure(MeasureState.Failed)
-        else mapPoint.fixPositionOrigin(fix.first, fix.second)
-    }
-    LaunchedEffect(mapPoint.point, mapPoint.positionOrigin, routingUrl, routingProfile, measurePrefs) {
-        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
-        val (la, lo) = mapPoint.positionOrigin ?: return@LaunchedEffect
-        mapPoint.publishPositionMeasure(MeasureState.Loading)
-        mapPoint.publishPositionMeasure(measureTo(la, lo, lat, lon))
-    }
-    LaunchedEffect(mapPoint.point, mapPoint.refPoint, routingUrl, routingProfile, measurePrefs) {
-        val (lon, lat) = mapPoint.point ?: return@LaunchedEffect
-        val (refLon, refLat) = mapPoint.refPoint ?: return@LaunchedEffect
-        mapPoint.publishPointMeasure(MeasureState.Loading)
-        mapPoint.publishPointMeasure(measureTo(refLat, refLon, lat, lon))
-    }
+    MapPointEffects(
+        state = mapPoint,
+        geocodingBase = geocodingBase,
+        routeEngine = routeEngine,
+        routingUrl = routingUrl,
+        routingProfile = routingProfile,
+        prefs = measurePrefs,
+        smoothingM = profileSmoothingM,
+        currentPosition = { location.currentPosition() },
+        onPlaceFound = { lieu -> vm.rememberPlannerPlace(lieu) },
+    )
 
     // ---------- planificateur d'itinéraire ----------
     val planner = remember { RoutePlannerState() }
@@ -577,103 +488,24 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // pour que le suivant soit cadre a son tour - c'est le cas des trois etapes dont on en retire deux.
     var routeFramed by remember { mutableStateOf(false) }
     var framePending by remember { mutableStateOf(false) }
-    /*
-     * La vue courante est-elle encore celle que NOUS avons cadree ?
-     *
-     * Tant qu'elle l'est, tout changement de la surface de carte reellement visible - la bande qui se
-     * replie, se redeploie ou se ferme - doit rejouer le cadrage sur cette nouvelle surface. Des que
-     * l'utilisateur touche la carte, en la faisant glisser ou en pincant, ce drapeau retombe : la vue est
-     * desormais la sienne, et rien ne doit plus la lui reprendre.
-     */
-    var autoFramed by remember { mutableStateOf(false) }
-    // Les préférences suivent la discipline CHOISIE DANS LA BANDE, non celle des réglages : le planificateur
-    // change de discipline sans quitter la carte, et passer au VTT doit amener avec lui ce qu'on demande à
-    // un VTT. Changer un réglage pendant qu'un parcours est affiché le recalcule (la clé de l'effet).
-    val plannerPrefs = settings?.routePrefs(planner.profile) ?: RoutingPrefs.defaultFor(planner.profile)
-    LaunchedEffect(planner.revision, routingUrl, planner.profile, plannerPrefs, profileSmoothingM) {
-        val targets = planner.targets
-        if (targets.size < 2) {
-            planner.publish(RouteState.Idle); routeFramed = false; framePending = false
-            return@LaunchedEffect
-        }
-        planner.beginRecompute()
-        val pts = targets.map { t ->
-            when (t) {
-                is StepTarget.Place -> t.place.lat to t.place.lon
-                // Demandee au capteur, que le repere soit affiche ou non (cf. LocationControls.currentPosition) : composer
-                // un parcours depuis chez soi n'oblige pas a poser sa position sur la carte.
-                StepTarget.CurrentPosition -> location.currentPosition() ?: run {
-                    planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
-                }
-            }
-        }
-        val r = Router.route(ctx, routeEngine, routingUrl, pts, planner.profile, plannerPrefs)
-        if (r == null || r.points.size < 2) {
-            planner.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
-        }
-        val track = withContext(Dispatchers.Default) {
-            TrackMath.compute(r.points, smoothingM = profileSmoothingM, maxPoints = 0, ignoreStops = false)
-        }
-        planner.publish(RouteState.Done(r.meters, r.seconds, track))
-        if (!routeFramed) framePending = true
-    }
-    /*
-     * Cadrage differe, et non enchaine au calcul : au moment ou le parcours arrive, la bande n'a pas encore
-     * grandi de sa zone resultats, et sa hauteur mesuree est celle d'AVANT. Cadrer tout de suite laissait
-     * donc la fin du trajet cachee derriere la bande, qui s'etendait juste apres.
-     *
-     * L'effet depend de la hauteur de la bande : il se relance a chaque etape de sa croissance, et le court
-     * delai annule les passes intermediaires. Le cadrage n'a lieu qu'une fois la bande stabilisee.
-     */
-    LaunchedEffect(framePending, plannerBandHeightPx, planner.route) {
-        if (!framePending) return@LaunchedEffect
-        val s = planner.done?.track?.samples ?: return@LaunchedEffect
-        delay(120)
-        controller.fitTo(
-            s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
-            topPaddingPx = statusBarTopPx, bottomPaddingPx = plannerBandHeightPx,
-        )
-        routeFramed = true
-        autoFramed = true
-        framePending = false
-    }
-    /*
-     * La carte suit le zoom du profil : grossir une portion du graphique recadre la carte sur cette
-     * portion, revenir a la vue complete la recadre sur tout le parcours. Les deux representent le meme
-     * trajet, et regarder de pres sur l'un sans l'autre oblige a refaire le rapprochement de tete.
-     *
-     * Relance sur la seule fenetre de zoom, et non sur le parcours : un recalcul ne doit pas deplacer la
-     * carte (cf. routeFramed), et la fenetre retombant a null au meme moment, la cle ne change pas.
-     */
-    LaunchedEffect(planner.zoomRange) {
-        val all = planner.done?.track?.samples ?: return@LaunchedEffect
-        val s = planner.zoomRange?.let { z -> all.subList(z.first, (z.last + 1).coerceAtMost(all.size)) } ?: all
-        if (s.size < 2) return@LaunchedEffect
-        controller.fitTo(
-            s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
-            topPaddingPx = statusBarTopPx, bottomPaddingPx = plannerBandHeightPx,
-        )
-    }
-    // Le planificateur désactivé dans les réglages pendant qu'il est ouvert le referme : sans cela sa bande
-    // survivrait au réglage qui l'a fait naître.
-    LaunchedEffect(settings?.routePlannerEnabled) {
-        if (settings?.routePlannerEnabled == false && planner.open) planner.close()
-    }
-    // Tracés posés sur la carte, teintés par classe de pente comme l'aire du profil : le parcours du
-    // planificateur, et les itinéraires mesurés depuis un point de la carte. Un seul calque pour les trois :
-    // ils ont même style, et rien n'impose d'ordre entre eux.
-    // Relancé sur le numéro d'ordre des mesures et non sur les itinéraires eux-mêmes (cf. measureRevision).
-    val routeSlopeTint = settings?.profileSlope != false
-    LaunchedEffect(planner.revision, planner.route, mapPoint.measureRevision, styleTick, routeSlopeTint) {
-        controller.setRouteLines(listOfNotNull(planner.done?.track) + mapPoint.routeTracks, routeSlopeTint)
-    }
-    // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
-    // planificateur fermant le profil ouvert quand il s'ouvre (cf. plus bas).
-    LaunchedEffect(planner.cursor, planner.route) {
-        val s = planner.done?.track?.samples ?: return@LaunchedEffect
-        val p = planner.cursor?.let { TrackMath.sampleAt(s, it) }
-        if (p != null) controller.setCursor(p.lon, p.lat) else controller.clearCursor()
-    }
+    PlannerEffects(
+        state = planner,
+        controller = controller,
+        routeEngine = routeEngine,
+        routingUrl = routingUrl,
+        // Les préférences suivent la discipline choisie dans la BANDE, non celle des réglages : le
+        // planificateur change de discipline sans quitter la carte.
+        prefs = settings?.routePrefs(planner.profile) ?: RoutingPrefs.defaultFor(planner.profile),
+        smoothingM = profileSmoothingM,
+        slopeTint = settings?.profileSlope != false,
+        styleTick = styleTick,
+        enabled = settings?.routePlannerEnabled,
+        topPaddingPx = statusBarTopPx,
+        bandHeightPx = plannerBandHeightPx,
+        routeTracks = mapPoint.routeTracks,
+        routeRevision = mapPoint.measureRevision,
+        currentPosition = { location.currentPosition() },
+    )
 
     /** Octets GPX du parcours calculé, sous [name] : servent au téléchargement comme à l'import. */
     fun routeGpx(name: String): ByteArray? {
@@ -742,7 +574,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     LaunchedEffect(controller) {
         controller.onCameraMove = { moveTick++ }
         controller.onUserMoveBegin = {
-            autoFramed = false
             // Un geste rend la carte à son propriétaire : le suivi de position se tait le temps du silence
             // (cf. MapFollow). Ce rappel ne se déclenche que sur un geste humain - centerOn et fitTo ne le
             // font pas -, sans quoi le suivi s'interdirait lui-même à son premier recentrage.
@@ -760,10 +591,10 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
     // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
     // reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offlineDrawingActive, measure.picking, mapPoint.pickingPoint, edit.awaitingTap) {
+    LaunchedEffect(controller, offline.drawingActive, measure.picking, mapPoint.pickingPoint, edit.awaitingTap) {
         when {
-            offlineDrawingActive -> controller.onRawTap = { lon, lat ->
-                if (offlineBboxPoints.size < 2) offlineBboxPoints = offlineBboxPoints + (lon to lat)
+            offline.drawingActive -> controller.onRawTap = { lon, lat ->
+                if (offline.bboxPoints.size < 2) offline.bboxPoints = offline.bboxPoints + (lon to lat)
             }
             // Le point retenu n'est pas celui du doigt mais son projeté sur la trace : le calcul passe par
             // le ViewModel, seul à savoir lire les profils des couches (cf. pickMeasureStart).
@@ -804,66 +635,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     // import : dossier -> fichier (une couche peut contenir points et/ou traces, pas de choix de type en amont)
-    var pendingFolder by remember { mutableStateOf<Long?>(null) }
-    var folderPicker by remember { mutableStateOf(false) }
-    var newFolderDialog by remember { mutableStateOf(false) }
-    val defaultFolderName = stringResource(R.string.label_new_folder)
-    /** Importe des fichiers designes par leur URI, quelle que soit la main qui les a choisis : le selecteur
-     *  de l'application, ou une autre application qui nous les confie (cf. [ImportInbox]). */
-    fun importUris(uris: List<Uri>, folderId: Long?) {
-        uris.forEach { uri ->
-            val name = ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
-                val i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (c.moveToFirst() && i >= 0) c.getString(i) else null
-            } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "import"
-            val bytes = runCatching {
-                ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            }.getOrNull() ?: return@forEach
-            vm.importLayer(bytes, name, folderId)
-        }
-    }
-    val picker = rememberLauncherForActivityResult(remember { PickFile() }) { uris ->
-        importUris(uris, pendingFolder)
-    }
-    // Photos locales des waypoints (GPX OruxMaps/OsmAnd/Locus/Garmin) : lues en acces fichier direct dans le
-    // stockage partage a l'import (resolveLocalImages) -> permission de lecture des images. Demandee juste
-    // avant le selecteur de fichier ; un refus n'empeche pas l'import (les photos afficheront "introuvable").
-    val mediaPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-        Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-    fun doLaunchPicker() { picker.launch(settings?.importDir?.takeIf { it.isNotBlank() }?.toUri()) }
-    val mediaPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { doLaunchPicker() }
-    fun launchPicker() {
-        if (ContextCompat.checkSelfPermission(ctx, mediaPermission) == PackageManager.PERMISSION_GRANTED) doLaunchPicker()
-        else mediaPermissionLauncher.launch(mediaPermission)
-    }
-
-    /*
-     * ---------- fichiers ouverts depuis une autre application ----------
-     *
-     * Le meme chemin que le bouton Importer, a ceci pres que les fichiers sont deja choisis : c'est le
-     * dossier d'accueil qui manque, et non les fichiers. Le choix de dossier s'ouvre donc de lui-meme, et
-     * ce qu'il rendra ira aux fichiers qui attendent au lieu d'ouvrir le selecteur.
-     */
-    val inbox by ImportInbox.pending.collectAsState()
-    LaunchedEffect(inbox) {
-        if (inbox.isNotEmpty()) { pendingFolder = null; folderPicker = true }
-    }
-
-    /**
-     * Suite du choix d'un dossier : importer ce qui attend, ou aller chercher des fichiers.
-     *
-     * Le menu s'ouvre sur un import venu d'ailleurs, et lui seul : la couche arrive dans un dossier que
-     * rien a l'ecran ne montre, et sans cela l'application ne repondrait que par le silence a un fichier
-     * qu'on vient de lui confier. Sa fermeture cadre ensuite la carte sur ce qui a ete importe, comme
-     * apres n'importe quel import.
-     */
-    fun proceedImport(folderId: Long?) {
-        pendingFolder = folderId
-        val attendus = ImportInbox.consume()
-        if (attendus.isEmpty()) { launchPicker(); return }
-        importUris(attendus, folderId)
-        scope.launch { drawerState.open() }
-    }
+    val importFlow = rememberImportFlow(
+        importDir = settings?.importDir,
+        onImportLayer = { bytes, name, folderId -> vm.importLayer(bytes, name, folderId) },
+        // Un import venu d'ailleurs ouvre le menu : sa couche arrive dans un dossier que rien a l'ecran ne
+        // montre, et sans cela l'application ne repondrait que par le silence. Sa fermeture cadre ensuite la
+        // carte sur ce qui a ete importe, comme apres n'importe quel import.
+        onFilesEntrusted = { scope.launch { drawerState.open() } },
+    )
 
     // import d'image pour un champ IMAGE d'infobulle (PropertyEditor) : callback enregistré au moment du tap
     var pendingImageCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
@@ -878,7 +657,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
         styleTick = styleTick,
         markerPx = markerPx,
         renderLayers = renderLayers,
-        bboxPoints = offlineBboxPoints,
+        bboxPoints = offline.bboxPoints,
         geo = geo,
         measure = measure,
         mapPoint = mapPoint,
@@ -922,62 +701,17 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
      * plus que le delai lui-meme (cf. PoiLoading).
      */
     val poi = remember { PoiState() }
-    val poiRepo = remember(ctx) { PoiRepository(AppDatabase.get(ctx).pois()) }
-    LaunchedEffect(settings?.poiEnabled) {
-        if (settings?.poiEnabled == false) poi.hide()
-    }
-    val poiFilters = remember(settings?.poiHiddenCategories, settings?.poiBikeGroups) {
-        PoiFilters.of(settings?.poiHiddenCategories, settings?.poiBikeGroups)
-    }
-    LaunchedEffect(poi.visible, idleTick, poiFilters) {
-        if (!poi.visible) return@LaunchedEffect
-        // Le zoom se lit AVANT l'attente et la requete, et le message se leve avec lui : la camera est deja
-        // posee quand cet effet part (il suit l'arret de la carte), et attendre pour le lever laissait
-        // l'ecran reclamer un zoom qu'on venait de faire.
-        val zoom = controller.cameraState()?.third ?: return@LaunchedEffect
-        if (zoom < PoiLoading.MIN_ZOOM) { poi.tooFar(); return@LaunchedEffect }
-        poi.nearEnough()
-        // Tout ce qui suit peut s'interrompre - un geste de plus annule cet effet - d'ou le finally : sans
-        // lui, l'attente resterait allumee et le bouton tournerait sur une requete qui n'existe plus.
-        try {
-            delay(PoiLoading.DEBOUNCE_MS)
-            val vue = controller.visibleBounds() ?: return@LaunchedEffect
-            if (!poi.needsLoad(vue, poiFilters)) return@LaunchedEffect
-            val box = PoiLoading.grow(vue)
-            poi.beginLoad()
-            // Deux requetes au plus : celles qui se contentent du catalogue, et celles limitees au theme
-            // velo. Un groupe sans categorie cochee ne pese dans aucune des deux. Le depot se charge du
-            // cache - service d'abord, dernier connu si le reseau manque (cf. PoiRepository).
-            val (libres, velo) = poiFilters.queries()
-            // Un flux et non une liste : les deux sources repondent en parallele, et chacune s'affiche des
-            // son arrivee. DATAtourisme repond en une seconde la ou OpenStreetMap en met trente sur une
-            // ville dense - les faire attendre l'une l'autre, c'etait trente secondes de carte nue.
-            poiRepo.load(Datatourisme.DEFAULT_URL, box, libres, velo).collect { charge ->
-                // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a
-                // pas repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.
-                val horsLigne = charge.pois.isEmpty() && !NetworkStatus.hasInternet(ctx)
-                poi.publish(box, poiFilters, charge.pois, charge.fromCache, horsLigne, charge.partial)
-                poi.dropSelectionIfGone()
-            }
-        } finally {
-            poi.endLoad()
-        }
-    }
-    // Les marqueurs suivent la liste, l'extinction de la couche, et le RECHARGEMENT DU STYLE : changer de
-    // fond de carte reconstruit le style, qui emporte avec lui les couches posees dessus. Sans styleTick,
-    // les marqueurs disparaissaient avec l'ancien fond et rien ne les reposait - la couche restait allumee,
-    // vide, et le prochain chargement la trouvait deja a jour (cf. needsLoad).
-    LaunchedEffect(poi.pois, poi.visible, markerPx, styleTick) {
-        controller.setPoiMarkers(
-            if (poi.visible) poi.pois.map {
-                PoiMarker(it.uuid, it.lon, it.lat, poiGroupColor(it.category.group), poiIcon(it.category))
-            } else emptyList(),
-            markerPx,
-        )
-    }
-    LaunchedEffect(controller) {
-        controller.onPickPoi = { uuid, _, _ -> poi.selectById(uuid) }
-    }
+    PoiEffects(
+        state = poi,
+        controller = controller,
+        enabled = settings?.poiEnabled,
+        filters = remember(settings?.poiHiddenCategories, settings?.poiBikeGroups) {
+            PoiFilters.of(settings?.poiHiddenCategories, settings?.poiBikeGroups)
+        },
+        idleTick = idleTick,
+        markerPx = markerPx,
+        styleTick = styleTick,
+    )
     // Un point d'interet devient une etape comme un lieu cherche : meme type, donc meme chemin dans le
     // planificateur, et rien a dupliquer.
     fun placeOf(p: fr.lc4918.trailog.poi.Poi) = GeocodePlace(
@@ -1121,8 +855,8 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
     // Retour = annule le tracé bbox / ferme la config, plutôt que de quitter l'app (priorité la plus haute :
     // ces deux états ne sont jamais actifs simultanément, mais l'ordre reflète "config au-dessus du tracé").
-    BackHandler(enabled = offlineDrawingActive) { cancelOfflineDrawing() }
-    BackHandler(enabled = offlineConfigBbox != null) { closeOfflineFlow() }
+    BackHandler(enabled = offline.drawingActive) { offline.cancelDrawing() }
+    BackHandler(enabled = offline.configBbox != null) { offline.closeFlow() }
     // Géocodage, du plus général au plus prioritaire (déclaré après = intercepté en premier) : le retour
     // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
     // Le retour système replie d'abord la bande, puis la ferme : deux appuis pour perdre un trajet saisi,
@@ -1157,12 +891,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     open = drawerState.isOpen,
                     onSettings = { scope.launch { drawerState.snapTo(DrawerValue.Closed) }; onSettings() },
                     onClose = { scope.launch { drawerState.close() } },
-                    onImport = { folderPicker = true },
+                    onImport = { importFlow.askFolder() },
                     showOfflineButton = offlineButtonVisible,
                     onDownloadOffline = {
                         scope.launch { drawerState.close() }
-                        offlineBboxPoints = emptyList()
-                        offlineExtentChoice = true
+                        offline.bboxPoints = emptyList()
+                        offline.extentChoice = true
                     },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
@@ -1334,7 +1068,7 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
                     // navigationBarsPadding quand il n'y en a aucune.
                     val bottomBarPx = when {
-                        offlineDrawingActive -> offlineBarHeightPx
+                        offline.drawingActive -> offline.barHeightPx
                         measure.picking -> measureBarHeightPx
                         mapPoint.pickingPoint -> pointBarHeightPx
                         else -> 0
@@ -1840,20 +1574,20 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
                 )
                 // tracé de la bounding box hors-ligne (SPEC section 2)
-                if (offlineDrawingActive) {
+                if (offline.drawingActive) {
                     BboxDrawingOverlay(
-                        pointCount = offlineBboxPoints.size,
+                        pointCount = offline.bboxPoints.size,
                         dark = darkChrome,
-                        onCancelPoint = { offlineBboxPoints = offlineBboxPoints.dropLast(1) },
-                        onCancelAll = { cancelOfflineDrawing() },
+                        onCancelPoint = { offline.bboxPoints = offline.bboxPoints.dropLast(1) },
+                        onCancelAll = { offline.cancelDrawing() },
                         onValidate = {
-                            val (lon1, lat1) = offlineBboxPoints[0]
-                            val (lon2, lat2) = offlineBboxPoints[1]
-                            offlineConfigBbox = Bbox.of(lon1, lat1, lon2, lat2)
-                            offlineDrawingActive = false
+                            val (lon1, lat1) = offline.bboxPoints[0]
+                            val (lon2, lat2) = offline.bboxPoints[1]
+                            offline.configBbox = Bbox.of(lon1, lat1, lon2, lat2)
+                            offline.drawingActive = false
                         },
                         modifier = Modifier.align(Alignment.BottomCenter)
-                            .onGloballyPositioned { offlineBarHeightPx = it.size.height },
+                            .onGloballyPositioned { offline.barHeightPx = it.size.height },
                     )
                 }
                 TrackProfileLayer(
@@ -1928,30 +1662,30 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
             // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
-            if (offlineExtentChoice) {
+            if (offline.extentChoice) {
                 OfflineExtentDialog(
                     dark = isDarkTheme(settings?.theme),
-                    onDismiss = { offlineExtentChoice = false },
+                    onDismiss = { offline.extentChoice = false },
                     onArea = {
-                        offlineExtentChoice = false
-                        offlineCorridor = null
-                        offlineDrawingActive = true
+                        offline.extentChoice = false
+                        offline.corridor = null
+                        offline.drawingActive = true
                     },
-                    onTrack = { offlineExtentChoice = false; offlinePickTrack = true },
+                    onTrack = { offline.extentChoice = false; offline.pickTrack = true },
                 )
             }
-            if (offlinePickTrack) {
+            if (offline.pickTrack) {
                 OfflineTrackPickDialog(
                     candidates = layers.filter { it.hasLine },
-                    onDismiss = { offlinePickTrack = false },
+                    onDismiss = { offline.pickTrack = false },
                     onPick = { l ->
-                        offlinePickTrack = false
+                        offline.pickTrack = false
                         // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le couloir se
                         // calcule sur les points reels, et l'estimation doit etre juste des la premiere image.
                         vm.trackPointsOf(l) { pts ->
                             if (pts.isNotEmpty()) {
-                                offlineCorridor = l to pts
-                                offlineConfigBbox = Bbox.of(
+                                offline.corridor = l to pts
+                                offline.configBbox = Bbox.of(
                                     pts.minOf { it.first }, pts.minOf { it.second },
                                     pts.maxOf { it.first }, pts.maxOf { it.second },
                                 )
@@ -1960,12 +1694,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     },
                 )
             }
-            offlineConfigBbox?.let { bbox ->
+            offline.configBbox?.let { bbox ->
                 val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
                 OfflineDownloadConfigScreen(
                     bbox = bbox,
-                    corridorPoints = offlineCorridor?.second,
-                    corridorName = offlineCorridor?.first?.name.orEmpty(),
+                    corridorPoints = offline.corridor?.second,
+                    corridorName = offline.corridor?.first?.name.orEmpty(),
                     providerMinZoom = currentProvider?.minZoom ?: 0,
                     providerMaxZoom = currentProvider?.maxZoom ?: 19,
                     dark = darkChrome,
@@ -1973,12 +1707,12 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                     // La case n'apparait que si la couche des points d'interet est allumee : proposer
                     // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
                     poiAvailable = settings?.poiEnabled == true,
-                    onDismiss = { closeOfflineFlow() },
+                    onDismiss = { offline.closeFlow() },
                     onDownload = { request ->
                         // Domaine B : lance le moteur, puis revient à la carte ou la popup de progression
                         // (observée via vm.offlineDownload) prend le relais.
                         vm.startOfflineDownload(request)
-                        closeOfflineFlow()
+                        offline.closeFlow()
                     },
                 )
             }
@@ -2002,14 +1736,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     // choix du dossier de destination avant le sélecteur de fichier
-    if (folderPicker) {
+    if (importFlow.folderPicker) {
         ImportFolderDialog(
             folders = folders,
-            onNewFolder = { folderPicker = false; newFolderDialog = true },
-            onPick = { folderId -> folderPicker = false; proceedImport(folderId) },
+            onNewFolder = { importFlow.folderPicker = false; importFlow.newFolderDialog = true },
+            onPick = { folderId -> importFlow.folderPicker = false; importFlow.proceed(folderId) },
             // Renoncer au dossier, c'est renoncer a l'import : les fichiers qu'une autre application nous a
             // confies sont relaches, sans quoi ils repartiraient au prochain import, celui d'autre chose.
-            onDismiss = { folderPicker = false; ImportInbox.clear() },
+            onDismiss = { importFlow.cancel() },
         )
     }
 
@@ -2036,11 +1770,14 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     // création d'un dossier puis poursuite de l'import dedans
-    if (newFolderDialog) {
+    if (importFlow.newFolderDialog) {
         NewFolderDialog(
-            fallbackName = defaultFolderName,
-            onCreate = { n -> newFolderDialog = false; vm.createFolder(n, null) { id -> proceedImport(id) } },
-            onDismiss = { newFolderDialog = false },
+            fallbackName = stringResource(R.string.label_new_folder),
+            onCreate = { n ->
+                importFlow.newFolderDialog = false
+                vm.createFolder(n, null) { id -> importFlow.proceed(id) }
+            },
+            onDismiss = { importFlow.newFolderDialog = false },
         )
     }
 
