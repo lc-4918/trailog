@@ -103,7 +103,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**755 tests, 71 fichiers**, tous verts.
+**765 tests, 71 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -397,12 +397,12 @@ des sous-dossiers d'une autre couleur.
 |---|---|---|
 | `DatatourismeTest` | 18 | requête et lecture de la réponse de DATAtourisme, table des 27 catégories |
 | `OverpassTest` | 13 | requête et lecture de la réponse d'OpenStreetMap, la seconde source |
-| `PoiSourcesTest` | 16 | qui répond où, pour quelles catégories, le découpage par groupe et la réunion des réponses |
-| `PoiStreamTest` | 12 | l'ordre d'affichage des sources, et l'aveu d'un affichage partiel |
+| `PoiSourcesTest` | 18 | qui répond où, pour quelles catégories, le découpage par groupe et la réunion des réponses |
+| `PoiStreamTest` | 14 | l'ordre d'affichage des sources, et l'aveu d'un affichage partiel |
 | `PoiFiltersTest` | 13 | ce qu'on coche, ce que le service reçoit, et la forme enregistrée |
 | `PoiLoadingTest` | 15 | quand redemander, et ce que la carte dit quand elle ne peut rien montrer |
-| `PoiStateTest` | 7 | le message de zoom, l'attente, et ce qu'une emprise tronquée doit redemander |
-| `PoiCategoryTest` | 9 | à quelle catégorie revient un lieu qui en porte plusieurs |
+| `PoiStateTest` | 10 | le message de zoom, l'attente, et ce qu'une emprise tronquée ou en échec doit redemander |
+| `PoiCategoryTest` | 12 | à quelle catégorie revient un lieu qui en porte plusieurs |
 
 Ces trois-là gardent une fonction dont **aucune faute ne se voit** : un filtre mal traduit, une condition mal
 écrite ou un chemin de champ inexact ne lèvent rien - ils rendent zéro point d'intérêt, et une carte sans
@@ -423,15 +423,24 @@ muettes y sont symétriques : l'emprise s'écrit `(sud,ouest,nord,est)`, soit **
 l'autre service, et une surface dessinée en contour n'a de coordonnées que dans son `center`. Chacune, prise
 seule, rend une carte vide sans lever.
 
-`PoiSourcesTest` garde la règle de partage : hors de France, OpenStreetMap répond seul ; en France, il ne
-complète que les services du terrain, le tourisme restant à la base qui l'illustre de photos. Il verrouille
-aussi la réunion des deux réponses - un même lieu connu des deux bases n'est jamais pointé au même mètre, et
-deux marqueurs superposés se recouvrent sans qu'on puisse ouvrir celui du dessous.
+`PoiSourcesTest` garde la règle de partage : hors de France, OpenStreetMap répond seul ; en France, il
+complète les services du terrain **et la restauration**, l'hébergement et les loisirs restant à la base qui
+les illustre de photos. Deux tests y gardent la portée du réglage *Compléter avec OpenStreetMap* : éteint, il
+rend la France à la base touristique seule, et **il ne vide pas la couche hors de France**, où rien d'autre
+ne répondrait. Il verrouille aussi la réunion des deux réponses - un même lieu connu des deux bases n'est
+jamais pointé au même mètre, et deux marqueurs superposés se recouvrent sans qu'on puisse ouvrir celui du
+dessous.
 
-`PoiCategoryTest` part d'un cas relevé sur le terrain : des toilettes publiques affichées en "Campings et
-aires de camping-car" (Souillac, 46). Leurs huit classes réelles sont recopiées dans le test, et il
-verrouille les deux moitiés de la règle - le groupe pratique passe devant, **et un hôtel-restaurant reste un
-hôtel**, ce qu'une priorité plus large aurait cassé.
+`PoiCategoryTest` part de deux cas relevés sur le terrain : des toilettes publiques affichées en "Campings et
+aires de camping-car" (Souillac, 46), et six hôtels d'Albi affichés en "Restaurants" sous le seul filtre de
+la restauration. Leurs classes réelles sont recopiées dans le test, et il verrouille la règle qui règle les
+deux : ce qu'un lieu **est** ne dépend pas de ce qu'on a coché. Un hôtel-restaurant reste un hôtel et ne
+passe pas le filtre restauration ; un restaurant de quartier, lui, y passe.
+
+`PoiStreamTest` garde aussi l'**émission de clôture**, celle qui dit que toutes les sources sont arrivées et
+qui seule autorise à retenir l'emprise : un flux interrompu n'en émet pas, et une source en échec ne la rend
+pas complète. Sans cette distinction, un dézoom suivi d'un zoom faisait disparaître les restaurants d'Albi
+sans retour.
 
 `PoiStreamTest` garde ce qu'aucune liste finale ne montre : l'**ordre d'affichage**. Deux sources bidon dont
 on choisit l'ordre d'arrivée suffisent à vérifier que chacune publie dès qu'elle répond, que la lente
@@ -445,7 +454,10 @@ le drapeau ne se défait pas à la réponse suivante, et une zone bien rendue ne
 
 `PoiStateTest` verrouille trois états qui se ressemblent à l'écran et ne veulent pas dire la même chose :
 trop loin, en train de charger, chargé. Les deux transitions signalées comme trompeuses à l'usage y sont :
-le message de zoom se lève **avant** les points, et l'attente survit à la **première** source.
+le message de zoom se lève **avant** les points, et l'attente survit à la **première** source. Trois tests y
+gardent le frein posé après un échec - une zone qui vient d'échouer attend une minute, le frein ne vaut que
+pour elle, et rallumer la couche l'oublie -, sans quoi chaque geste de carte relançait la requête que le
+service venait de refuser.
 
 `PoiFiltersTest` verrouille un choix qui se lit mal dans le code : ce sont les catégories **masquées** qui
 sont enregistrées. Un réglage vierge montre alors tout, et une catégorie ajoutée par une version ultérieure

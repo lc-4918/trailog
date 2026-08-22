@@ -458,13 +458,26 @@ base publique française du tourisme (Licence Ouverte Etalab 2.0), et **OpenStre
 deux mentionnées dans l'onglet Trajets.
 
 **Qui répond, et où.** Hors de France, DATAtourisme n'a rien à dire : OpenStreetMap répond seul, pour toutes
-les catégories cochées. En France, DATAtourisme garde le tourisme - qu'il décrit mieux et illustre de photos -
-et OpenStreetMap ne complète que le groupe *pratique*, celui des services. Le partage n'a rien d'arbitraire :
-sur un écran de carte autour de Grenoble, DATAtourisme rend 49 hôtels contre 38 à OSM, mais **zéro** point
-d'eau, zéro toilettes publiques, zéro aire de pique-nique et zéro borne de recharge, là où OSM en porte
-plusieurs centaines. Un même lieu connu des deux ne paraît qu'une fois. Un groupe limité au thème vélo, lui,
-reste à DATAtourisme où qu'on soit : OpenStreetMap ne porte pas l'équivalent de ce thème, et montrer des
-hébergements quelconques sous un filtre "vélo" serait promettre ce qu'on ne sait pas.
+les catégories cochées. En France, DATAtourisme garde **l'hébergement et les loisirs** - qu'il décrit mieux et
+illustre de photos - et OpenStreetMap complète le groupe *pratique*, celui des services, **et la
+restauration**. Le partage n'a rien d'arbitraire : sur un écran de carte autour de Grenoble, DATAtourisme rend
+49 hôtels contre 38 à OSM, mais **zéro** point d'eau, zéro toilettes publiques, zéro aire de pique-nique et
+zéro borne de recharge, là où OSM en porte plusieurs centaines. Sur le centre d'Albi, il rend **6 restaurants
+contre 150**, et les six sont des hôtels : un restaurant de quartier n'est pas un objet touristique, il
+n'entre dans cette base que s'il est adossé à un hébergement. Un même lieu connu des deux ne paraît qu'une
+fois. Un groupe limité au thème vélo, lui, reste à DATAtourisme où qu'on soit : OpenStreetMap ne porte pas
+l'équivalent de ce thème, et montrer des hébergements quelconques sous un filtre "vélo" serait promettre ce
+qu'on ne sait pas.
+
+**Le complément se coupe.** Une requête OpenStreetMap est longue, et un réglage - *Compléter avec
+OpenStreetMap* - rend la France à la base touristique seule, pour qui préfère une carte immédiate à une carte
+complète. Il ne touche que le complément : hors de France, OpenStreetMap répond quoi qu'il arrive, faute de
+quoi la couche serait vide sans que rien ne l'explique.
+
+**Un lieu est ce qu'il est, pas ce qu'on a coché.** Un hôtel-restaurant est un hôtel, et ne s'affiche pas
+sous le seul filtre "Restaurants" ; des toilettes publiques que la base classe aussi en camping-car restent
+des toilettes, et disparaissent si l'on masque les toilettes. Les filtres décident de ce qu'on **voit**,
+jamais de ce qu'un lieu **est** - faute de quoi la carte promet des restaurants et montre des hôtels.
 
 Un lieu d'OpenStreetMap n'a **pas toujours de nom** - une fontaine ou des toilettes n'en portent presque
 jamais - et son infobulle prend alors le nom de sa catégorie. Son bouton n'apparaît sur
@@ -501,7 +514,12 @@ au hasard - et la carte le dit. **Au-dessus de ce zoom, si une source connaît p
 rend, la carte le dit aussi** : le taire donnait un affichage qui avait l'air juste et dont les marqueurs
 changeaient d'un déplacement au suivant. Une emprise ainsi tronquée n'est **pas** retenue comme chargée :
 tout geste la redemande, zoom compris - et c'est justement le zoom qui rend la réponse complète, puisqu'il
-resserre le cadre. **Ce message-là se tape**, et amène la carte au zoom minimum qui
+resserre le cadre. **Une emprise n'est d'ailleurs retenue que si le chargement va à son terme**, toutes
+sources arrivées : les sources publient chacune à son arrivée, et retenir l'emprise sur la première laissait
+la carte figée sur elle dès qu'un geste annulait le reste - à Albi, un dézoom suivi d'un zoom faisait
+disparaître les restaurants sans retour. Une source qui **n'a pas répondu** met en revanche la zone au repos
+une minute avant qu'on la redemande : sans ce frein, chaque geste relançait la requête que le service venait
+de refuser, et il la refusait d'autant plus fort. **Ce message-là se tape**, et amène la carte au zoom minimum qui
 charge, autour du centre courant : une consigne qu'on peut exécuter soi-même est une consigne de trop. Il
 disparaît **dès que le zoom est suffisant**, sans attendre les points : le laisser pendant le chargement
 faisait zoomer encore et encore, croyant n'être jamais assez près.

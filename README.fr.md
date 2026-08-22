@@ -75,9 +75,10 @@ sans dépendre d'un service en ligne.
   loisirs et services, tirés de **DATAtourisme** en France et d'**OpenStreetMap** partout - y compris,
   donc, hors de France. Filtrables par catégorie, avec photo et lien vers le site du lieu, et trois gestes
   pour en faire un départ, une arrivée ou une étape. OpenStreetMap apporte en France ce que la base
-  touristique ignore : les points d'eau, les toilettes, les aires de pique-nique, les bornes de recharge et
-  les réparateurs de vélos. Ce qui a été vu une fois reste consultable sans réseau, et *Réglages / Trajets*
-  vide ce cache d'un bouton si une fiche vous paraît fausse.
+  touristique ignore : les restaurants et les bars de quartier, les points d'eau, les toilettes, les aires
+  de pique-nique, les bornes de recharge et les réparateurs de vélos. Ce complément se coupe d'un réglage
+  si vous préférez une carte immédiate à une carte complète. Ce qui a été vu une fois reste consultable
+  sans réseau, et *Réglages / Trajets* vide ce cache d'un bouton si une fiche vous paraît fausse.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache. Une case permet d'emporter
   aussi les **points d'intérêt** de la zone : ils resteront consultables là où il n'y a pas de signal.

@@ -75,9 +75,11 @@ them on a map with a synchronised elevation profile, without depending on any on
 - **Points of interest along the way** (enable in settings): lodging, food, leisure and services, from
   **DATAtourisme** in France and **OpenStreetMap** everywhere - outside France included. Filterable by
   category, with a photo and a link to the venue's website, and three gestures to make it a start, an end
-  or a waypoint. OpenStreetMap brings what the tourism database ignores in France too: drinking water,
-  public toilets, picnic areas, charging points and bicycle repairers. What has been seen once stays
-  available offline, and *Settings / Routes* clears that cache in one tap if an entry looks wrong.
+  or a waypoint. OpenStreetMap brings what the tourism database ignores in France too: neighbourhood
+  restaurants and bars, drinking water, public toilets, picnic areas, charging points and bicycle
+  repairers. A setting turns that complement off if you would rather have an immediate map than a complete
+  one. What has been seen once stays available offline, and *Settings / Routes* clears that cache in one
+  tap if an entry looks wrong.
 - **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
   basemaps, and tiles already viewed stay in cache. A checkbox also takes the area's **points of interest**
   along: they stay available where there is no signal.

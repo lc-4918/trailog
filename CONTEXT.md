@@ -257,6 +257,20 @@ musée, camping ou restaurant ne porte de classe pratique, si bien que ce groupe
 priorité plus large ferait des dégâts - **117 hôtels sur 250** portent une classe de restauration, et
 passer la restauration devant l'hébergement afficherait la moitié des hôtels en restaurants.
 
+**Cette priorité ne dépendait que des cases cochées, et c'était une promesse fausse.** La recherche se
+bornait aux catégories affichées, pour qu'un lieu qui en porte plusieurs paraisse sous celle qu'on avait
+demandée. En ne cochant que "Restaurants", le centre d'Albi rendait donc six marqueurs, et les six étaient
+des hôtels : Mercure, Ibis Styles, Grand Hôtel d'Orléans, Ibis, Hôtel du Parc, Hôtel Alchimy. Tous portent
+`Restaurant` en plus de `Hotel`, et n'ayant plus que cette issue, ils s'affichaient en restaurants. Sur cinq
+villes et 520 lieux rendus par une requête de restauration, **7 % portent une classe d'hébergement - 80 % à
+Albi**. Le même défaut valait pour les toilettes : les décocher en gardant les campings les ramenait en
+campings, la priorité du groupe pratique ne s'appliquant elle non plus qu'aux cases cochées.
+
+Ce qu'un lieu **est** ne dépend donc plus de ce qu'on a demandé : la résolution parcourt toutes les
+catégories, et le filtre écarte ensuite. Le prix est assumé - un lieu dont la catégorie intrinsèque est
+masquée disparaît, même s'il porte la classe d'une catégorie affichée. C'est le sens qu'on veut donner au
+filtre : masquer les restaurants masque les restaurants, et rien d'autre ne vient prendre leur place.
+
 **Ses 384 classes ne sont pas des catégories.** Un même lieu en porte plusieurs - un hôtel-restaurant est
 `Hotel`, `Restaurant`, `Accommodation` et `LodgingBusiness` - et personne ne veut cocher 384 cases. D'où la
 table qui fait le pont entre les 27 catégories de France Vélo Tourisme et les classes qui les remplissent.
@@ -278,8 +292,32 @@ mesurant, sur un écran de carte autour de Grenoble :
 
 La base touristique décrit bien le tourisme - et l'illustre de photos, que l'infobulle montre - mais ignore
 largement ce qui sert sur le terrain. D'où le partage retenu (`poi/PoiSources`) : hors de France, OSM répond
-seul ; en France, il ne complète que le groupe *pratique*. Ce n'est pas un repli, c'est une division du
-travail.
+seul ; en France, il complète le groupe *pratique* et la *restauration*. Ce n'est pas un repli, c'est une
+division du travail.
+
+**La restauration y a été ajoutée après coup, et l'erreur mérite d'être notée.** Le tableau ci-dessus
+mesurait les *hôtels*, et l'on en a conclu que les restaurants étaient comparables eux aussi. Ils ne le sont
+pas, et personne ne l'avait mesuré. Sur le centre d'Albi, même emprise pour les deux sources :
+
+| Catégories | DATAtourisme | OpenStreetMap |
+|---|---|---|
+| restaurants | **6** | **150** |
+| bars, cafés, pubs | 1 | 23 |
+
+Et les six de DATAtourisme sont **tous des hôtels**. Un restaurant de quartier n'est pas un objet
+touristique : il n'entre dans cette base que s'il est adossé à un hébergement. La couverture varie d'ailleurs
+énormément d'une région à l'autre, ce qui interdit de s'y fier - pour la même question, la base rend 10 lieux
+de restauration à Albi, 46 à Grenoble, 29 à Nantes, 185 à Strasbourg et 729 à Marseille. Ce ne sont pas des
+villes de tailles si différentes ; ce sont des comités régionaux qui ne publient pas les mêmes choses.
+
+L'hébergement et les loisirs, eux, restent à la base touristique, et le **contenu** le justifie autant que le
+nombre : sur le centre d'Albi elle rend les quatorze hôtels de la ville, nommés, et cinquante-deux lieux de
+loisirs dont les circuits de découverte, les bouclettes de randonnée urbaine, le petit train touristique et
+les marchés de producteurs - autant d'objets qui n'existent tout simplement pas dans OpenStreetMap.
+
+**Le complément se coupe** (réglage *Compléter avec OpenStreetMap*), parce qu'une requête Overpass est longue
+et que tout le monde n'en veut pas. Il ne gouverne que le complément : hors de France il est ignoré, OSM y
+étant la seule source - un réglage qui parle du complément ne doit pas pouvoir supprimer le principal.
 
 **Ce qu'OSM ne peut pas dire.** Un groupe limité au thème vélo reste à DATAtourisme où qu'on soit :
 OpenStreetMap ne porte pas l'équivalent de ce thème, et rendre des hébergements quelconques sous un filtre
@@ -294,8 +332,24 @@ ville dense met **une trentaine de secondes**, quand DATAtourisme répond en une
 OpenStreetMap est en outre découpé **par groupe** (`PoiSources.osmGroups`), une requête chacun. Les mêmes
 mesures, à Berlin : hébergements 3,1 s, restauration 2,9 s, loisirs 15,9 s, pratique 23,3 s. Ce ne sont pas
 les trente secondes qui gênaient, c'est de n'avoir rien pendant trente secondes - l'écran se peuple
-désormais au bout de trois. Deux requêtes au plus à la fois : l'instance publique n'accorde que deux
-créneaux par adresse, et au-delà elle refuse d'un 504 au lieu de faire patienter.
+désormais au bout de trois. **Une seule requête à la fois**, et c'est une correction : l'instance publique
+n'accorde que deux créneaux par adresse, on les prenait tous les deux d'un coup, et il ne restait rien pour
+le geste suivant.
+
+**Ce que coûte un chargement qu'on n'a pas laissé finir.** Les sources publiant chacune à son arrivée, la
+première suffisait à marquer l'emprise chargée - or DATAtourisme répond en une seconde et Overpass en met
+trois à trente. Un geste de plus annulait le chargement entre les deux, et la vue suivante, contenue dans
+celle-ci, ne redemandait plus rien : la carte restait sur les seuls lieux de la source rapide,
+définitivement. Un dézoom suivi d'un zoom sur Albi faisait ainsi disparaître les cent cinquante restaurants
+sans retour. Une émission de **clôture** dit désormais que tout est arrivé, et elle seule autorise à retenir
+l'emprise.
+
+La correction se retourne contre elle-même sans un frein, et c'est le relevé de terrain qui l'a montré :
+**huit gestes de carte, vingt-cinq requêtes Overpass, vingt-cinq échecs de connexion**. L'emprise en échec
+n'étant plus retenue, chaque geste relançait la requête que le service venait de refuser, et il refusait
+d'autant plus fort. Une zone en échec attend donc une minute - l'échec seul : une réponse simplement tronquée
+se redemande toujours au geste suivant, puisque le service a répondu. Une requête qui n'aboutit pas se
+distingue enfin d'une zone déserte, ce qui n'était pas le cas : les deux rendaient une liste vide.
 
 **Le plafond de la réponse ne se tait plus.** Chaque source rend au plus 250 lieux par requête - le maximum
 que DATAtourisme accorde. Il était de 100, choisi pour la lisibilité, et c'était une perte silencieuse :
