@@ -28,12 +28,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Edit
@@ -45,8 +42,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -103,7 +98,6 @@ import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.TrackChooserDialog
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
-import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView
 import fr.lc4918.trailog.ui.components.MapPromptBar
@@ -801,7 +795,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     var folderPicker by remember { mutableStateOf(false) }
     var newFolderDialog by remember { mutableStateOf(false) }
     val defaultFolderName = stringResource(R.string.label_new_folder)
-    var newFolderName by remember { mutableStateOf(defaultFolderName) }
     /** Importe des fichiers designes par leur URI, quelle que soit la main qui les a choisis : le selecteur
      *  de l'application, ou une autre application qui nous les confie (cf. [ImportInbox]). */
     fun importUris(uris: List<Uri>, folderId: Long?) {
@@ -2433,49 +2426,38 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 }
             }
             // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
-        if (offlineExtentChoice) {
-            OfflineExtentDialog(
-                dark = isDarkTheme(settings?.theme),
-                onDismiss = { offlineExtentChoice = false },
-                onArea = {
-                    offlineExtentChoice = false
-                    offlineCorridor = null
-                    offlineDrawingActive = true
-                },
-                onTrack = { offlineExtentChoice = false; offlinePickTrack = true },
-            )
-        }
-        if (offlinePickTrack) {
-            val candidates = layers.filter { it.hasLine }
-            AlertDialog(
-                onDismissRequest = { offlinePickTrack = false },
-                title = { Text(stringResource(R.string.offline_extent_track)) },
-                text = {
-                    if (candidates.isEmpty()) Text(stringResource(R.string.offline_extent_no_track))
-                    else Column(Modifier.verticalScroll(rememberScrollState())) {
-                        candidates.forEach { l ->
-                            TextButton(onClick = {
-                                offlinePickTrack = false
-                                // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le
-                                // couloir se calcule sur les points reels, et l'estimation doit etre juste des
-                                // la premiere image.
-                                vm.trackPointsOf(l) { pts ->
-                                    if (pts.isNotEmpty()) {
-                                        offlineCorridor = l to pts
-                                        offlineConfigBbox = Bbox.of(
-                                            pts.minOf { it.first }, pts.minOf { it.second },
-                                            pts.maxOf { it.first }, pts.maxOf { it.second },
-                                        )
-                                    }
-                                }
-                            }) { Text(l.name) }
+            if (offlineExtentChoice) {
+                OfflineExtentDialog(
+                    dark = isDarkTheme(settings?.theme),
+                    onDismiss = { offlineExtentChoice = false },
+                    onArea = {
+                        offlineExtentChoice = false
+                        offlineCorridor = null
+                        offlineDrawingActive = true
+                    },
+                    onTrack = { offlineExtentChoice = false; offlinePickTrack = true },
+                )
+            }
+            if (offlinePickTrack) {
+                OfflineTrackPickDialog(
+                    candidates = layers.filter { it.hasLine },
+                    onDismiss = { offlinePickTrack = false },
+                    onPick = { l ->
+                        offlinePickTrack = false
+                        // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le couloir se
+                        // calcule sur les points reels, et l'estimation doit etre juste des la premiere image.
+                        vm.trackPointsOf(l) { pts ->
+                            if (pts.isNotEmpty()) {
+                                offlineCorridor = l to pts
+                                offlineConfigBbox = Bbox.of(
+                                    pts.minOf { it.first }, pts.minOf { it.second },
+                                    pts.maxOf { it.first }, pts.maxOf { it.second },
+                                )
+                            }
                         }
-                    }
-                },
-                confirmButton = {},
-                dismissButton = { TextButton(onClick = { offlinePickTrack = false }) { Text(stringResource(R.string.action_close)) } },
-            )
-        }
+                    },
+                )
+            }
             offlineConfigBbox?.let { bbox ->
                 val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
                 OfflineDownloadConfigScreen(
@@ -2519,119 +2501,44 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
 
     // choix du dossier de destination avant le sélecteur de fichier
     if (folderPicker) {
-        AlertDialog(
+        ImportFolderDialog(
+            folders = folders,
+            onNewFolder = { folderPicker = false; newFolderDialog = true },
+            onPick = { folderId -> folderPicker = false; proceedImport(folderId) },
             // Renoncer au dossier, c'est renoncer a l'import : les fichiers qu'une autre application nous a
             // confies sont relaches, sans quoi ils repartiraient au prochain import, celui d'autre chose.
-            onDismissRequest = { folderPicker = false; ImportInbox.clear() },
-            title = { Text(stringResource(R.string.dialog_import_into_title)) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    TextButton(onClick = { newFolderName = ""; folderPicker = false; newFolderDialog = true }) {
-                        Icon(Icons.Outlined.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.label_new_folder))
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                    TextButton(onClick = { folderPicker = false; proceedImport(null) }) { Text(stringResource(R.string.label_root)) }
-                    folders.forEach { f ->
-                        TextButton(onClick = { folderPicker = false; proceedImport(f.id) }) { Text(f.name) }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { folderPicker = false; ImportInbox.clear() }) { Text(stringResource(R.string.action_cancel)) }
-            },
+            onDismiss = { folderPicker = false; ImportInbox.clear() },
         )
     }
 
-    // Import du parcours calculé en couche : on demande d'abord son nom, puis son dossier d'accueil - dans
-    // cet ordre parce que le nom est obligatoire et le dossier facultatif. Le choix de dossier ne s'affiche
-    // que s'il y en a : sans dossier, la couche va forcément à la racine, et l'offrir serait une question
-    // sans réponse possible.
-    // Inverser efface les horodatages (cf. TrackEdit.reverse) : on le demande avant, et seulement quand la
-    // trace en porte - une confirmation pour rien s'apprend a ignorer.
     reverseConfirm?.let { layer ->
-        AlertDialog(
-            onDismissRequest = { reverseConfirm = null },
-            title = { Text(stringResource(R.string.reverse_confirm_title)) },
-            text = { Text(stringResource(R.string.reverse_confirm)) },
-            confirmButton = {
-                TextButton(onClick = { vm.reverseLayer(layer); reverseConfirm = null }) {
-                    Text(stringResource(R.string.action_ok))
-                }
-            },
-            dismissButton = { TextButton(onClick = { reverseConfirm = null }) { Text(stringResource(R.string.action_cancel)) } },
+        ReverseConfirmDialog(
+            onConfirm = { vm.reverseLayer(layer); reverseConfirm = null },
+            onDismiss = { reverseConfirm = null },
         )
     }
-    // Ce que la retouche a refuse, ou ce sur quoi elle s'est repliee.
     edit.message?.let { message ->
-        AlertDialog(
-            onDismissRequest = { edit.message = null },
-            text = { Text(message) },
-            confirmButton = { TextButton(onClick = { edit.message = null }) { Text(stringResource(R.string.action_ok)) } },
-        )
+        EditMessageDialog(message = message, onDismiss = { edit.message = null })
     }
 
     if (importDialog) {
-        var layerName by remember { mutableStateOf(defaultRouteName(planner.targets, currentPositionLabel)) }
-        val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
-        fun doImport(folderId: Long?) {
-            routeGpx(layerName)?.let { vm.importLayer(it, GpxWriter.fileName(layerName), folderId) }
-            importDialog = false
-        }
-        AlertDialog(
-            onDismissRequest = { importDialog = false },
-            title = { Text(stringResource(R.string.planner_import_layer)) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    CompactOutlinedTextField(
-                        value = layerName, onValueChange = { layerName = it }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                        label = { Text(stringResource(R.string.planner_layer_name)) },
-                    )
-                    if (folders.isNotEmpty()) {
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        Text(stringResource(R.string.dialog_import_into_title),
-                            style = MaterialTheme.typography.bodyMedium)
-                        TextButton(onClick = { doImport(null) }) { Text(stringResource(R.string.label_root)) }
-                        folders.forEach { f -> TextButton(onClick = { doImport(f.id) }) { Text(f.name) } }
-                    }
-                }
+        RouteImportDialog(
+            defaultName = defaultRouteName(planner.targets, currentPositionLabel),
+            folders = folders,
+            onImport = { name, folderId ->
+                routeGpx(name)?.let { vm.importLayer(it, GpxWriter.fileName(name), folderId) }
+                importDialog = false
             },
-            // Sans dossier, rien ne reste à choisir : le bouton de validation suffit à conclure. Avec des
-            // dossiers, c'est le tap sur l'un d'eux qui conclut, et ce bouton disparaît.
-            confirmButton = {
-                if (folders.isEmpty()) {
-                    TextButton(onClick = { doImport(null) }, enabled = layerName.isNotBlank()) {
-                        Text(stringResource(R.string.action_ok))
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { importDialog = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
+            onDismiss = { importDialog = false },
         )
     }
 
     // création d'un dossier puis poursuite de l'import dedans
     if (newFolderDialog) {
-        val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
-        AlertDialog(
-            onDismissRequest = { newFolderDialog = false },
-            title = { Text(stringResource(R.string.label_new_folder)) },
-            text = {
-                CompactOutlinedTextField(newFolderName, { newFolderName = it }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth().focusRequester(focus))
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val n = newFolderName.ifBlank { defaultFolderName }
-                    newFolderDialog = false
-                    vm.createFolder(n, null) { id -> proceedImport(id) }
-                }) { Text(stringResource(R.string.action_create_and_import)) }
-            },
-            dismissButton = { TextButton(onClick = { newFolderDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+        NewFolderDialog(
+            fallbackName = defaultFolderName,
+            onCreate = { n -> newFolderDialog = false; vm.createFolder(n, null) { id -> proceedImport(id) } },
+            onDismiss = { newFolderDialog = false },
         )
     }
 
@@ -2646,76 +2553,25 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     if (importReport.isNotEmpty()) {
-        val res = LocalContext.current.resources
-        val invalid = importReport.filter { it.error == MainViewModel.ImportError.INVALID }.map { it.fileName }
-        val empty = importReport.filter { it.error == MainViewModel.ImportError.EMPTY }.map { it.fileName }
-        AlertDialog(
-            onDismissRequest = { importReport = emptyList() },
-            title = { Text(stringResource(R.string.dialog_import_result_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Un lot peut contenir les deux sortes de refus : chacune a sa phrase, accordée en nombre.
-                    if (invalid.isNotEmpty()) {
-                        Text(res.getQuantityString(R.plurals.import_invalid_files, invalid.size, invalid.joinToString(", ")))
-                    }
-                    if (empty.isNotEmpty()) {
-                        Text(res.getQuantityString(R.plurals.import_empty_files, empty.size, empty.joinToString(", ")))
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { importReport = emptyList() }) { Text(stringResource(R.string.action_ok)) } },
-        )
+        ImportReportDialog(failures = importReport, onDismiss = { importReport = emptyList() })
     }
 
-    // Le planificateur refuse au-dela de 25 etapes : un tap sur "ajouter l'etape" doit le dire, sans quoi
-    // il reste sans effet et l'on croit l'infobulle cassee.
     if (plannerFullMessage) {
-        AlertDialog(
-            onDismissRequest = { plannerFullMessage = false },
-            text = { Text(stringResource(R.string.poi_planner_full)) },
-            confirmButton = {
-                TextButton(onClick = { plannerFullMessage = false }) { Text(stringResource(R.string.action_ok)) }
-            },
-        )
+        PlannerFullDialog(onDismiss = { plannerFullMessage = false })
     }
 
-    // Recherche demandée sans accès à Internet, alors que le service visé en exige un (cf. needsInternet :
-    // une instance auto-hébergée sur le réseau local n'est pas concernée).
     if (showNoConnectionDialog) {
-        AlertDialog(
-            onDismissRequest = { showNoConnectionDialog = false },
-            title = { Text(stringResource(R.string.dialog_no_connection_title)) },
-            text = { Text(stringResource(R.string.dialog_no_connection_text)) },
-            confirmButton = {
-                TextButton(onClick = { showNoConnectionDialog = false }) { Text(stringResource(R.string.action_ok)) }
-            },
-        )
+        NoConnectionDialog(onDismiss = { showNoConnectionDialog = false })
     }
 
-    // "Distance depuis la position" demandée sans localisation active : on propose de l'activer. Répondre
-    // oui fait aussi apparaître le bouton GPS sur la carte, sans quoi la position s'allumerait sans que
-    // rien ne le montre ni ne permette de l'éteindre. La suite du parcours (permission, capteur éteint)
-    // est celle du bouton lui-même, et la distance s'affiche dès la première position reçue.
-
-    // Cloche tapée capteur éteint : l'alerte n'a rien à surveiller tant qu'aucune position n'arrive. On
-    // propose donc de l'allumer, et répondre oui emprunte exactement le chemin du bouton GPS - permission,
-    // puis réglages du système si le capteur est coupé, puis démarrage. Le choix de la trace attend la fin
-    // de ce parcours (alertChooserPending), qui passe par des écrans hors de l'application.
     if (showAlertNeedsGpsDialog) {
-        AlertDialog(
-            onDismissRequest = { showAlertNeedsGpsDialog = false },
-            title = { Text(stringResource(R.string.dialog_location_off_title)) },
-            text = { Text(stringResource(R.string.alert_needs_gps_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showAlertNeedsGpsDialog = false
-                    alertChooserPending = true
-                    location.onGpsButtonTap()
-                }) { Text(stringResource(R.string.action_enable)) }
+        AlertNeedsGpsDialog(
+            onEnable = {
+                showAlertNeedsGpsDialog = false
+                alertChooserPending = true
+                location.onGpsButtonTap()
             },
-            dismissButton = {
-                TextButton(onClick = { showAlertNeedsGpsDialog = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
+            onDismiss = { showAlertNeedsGpsDialog = false },
         )
     }
 
@@ -2731,17 +2587,9 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
     }
 
     if (location.showDisabledDialog) {
-        AlertDialog(
-            onDismissRequest = { location.showDisabledDialog = false },
-            title = { Text(stringResource(R.string.dialog_gps_disabled_title)) },
-            text = { Text(stringResource(R.string.dialog_gps_disabled_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    location.showDisabledDialog = false
-                    location.openLocationSettings()
-                }) { Text(stringResource(R.string.action_enable)) }
-            },
-            dismissButton = { TextButton(onClick = { location.showDisabledDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+        LocationDisabledDialog(
+            onEnable = { location.showDisabledDialog = false; location.openLocationSettings() },
+            onDismiss = { location.showDisabledDialog = false },
         )
     }
 }
