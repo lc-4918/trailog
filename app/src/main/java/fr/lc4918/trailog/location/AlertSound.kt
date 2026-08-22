@@ -1,4 +1,4 @@
-package fr.lc4918.trailog.ui.alert
+package fr.lc4918.trailog.location
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -14,6 +14,11 @@ import kotlinx.coroutines.withContext
  * Aucun fichier livre avec l'application, et aucune notification postee non plus : l'alerte s'affiche a
  * l'ecran, sous les yeux de qui marche avec la carte ouverte. Le son ne fait que la rendre audible poche
  * fermee - il emprunte donc la sonnerie du systeme, celle que l'utilisateur reconnait deja.
+ *
+ * **Ici et non dans `ui/alert`**, ou ce fichier a d'abord vecu : il ne depend pas de Compose, seulement
+ * d'Android, et c'est [LocationService] qui le joue - une couche basse, qui n'a pas a remonter vers
+ * l'interface pour cela. L'ecran de reglages, lui, a le droit de descendre ici pour afficher le nom du
+ * son retenu.
  */
 
 /** URI du son retenu : celui choisi, ou a defaut celui que le telephone donne pour ses notifications. */

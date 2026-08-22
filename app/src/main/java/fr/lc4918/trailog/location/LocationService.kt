@@ -25,7 +25,6 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMeasure
-import fr.lc4918.trailog.ui.alert.playAlertSound
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

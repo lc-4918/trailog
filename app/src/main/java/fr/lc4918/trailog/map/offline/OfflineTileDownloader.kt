@@ -1,7 +1,6 @@
 package fr.lc4918.trailog.map.offline
 
 import fr.lc4918.trailog.data.db.ProviderEntity
-import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel

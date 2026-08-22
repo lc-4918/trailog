@@ -32,7 +32,7 @@ import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.map.offline.OfflineTileDownloader
-import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
+import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack

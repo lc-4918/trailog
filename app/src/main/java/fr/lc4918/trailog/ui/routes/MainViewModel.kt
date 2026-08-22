@@ -37,7 +37,7 @@ import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.alert.TrackCandidate
 import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.ui.measure.MeasurePoint
-import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
+import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.ui.profile.ProfileZoom
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

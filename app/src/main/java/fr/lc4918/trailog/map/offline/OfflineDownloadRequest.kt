@@ -1,9 +1,14 @@
-package fr.lc4918.trailog.ui.offline
+package fr.lc4918.trailog.map.offline
 
-import fr.lc4918.trailog.map.offline.Bbox
-
-/** Paramètres validés à l'étape de configuration (SPEC offline_map.md section 3), avant que le moteur
- *  de téléchargement (domaine B) ne les consomme. */
+/**
+ * Paramètres validés à l'étape de configuration (SPEC offline_map.md section 3), avant que le moteur
+ * de téléchargement (domaine B) ne les consomme.
+ *
+ * **Ici et non dans `ui/offline`**, où ce type a d'abord vécu : l'écran de configuration le PRODUIT,
+ * mais ce sont le moteur ([OfflineTileDownloader]) et le dépôt qui le CONSOMMENT. Le laisser dans la
+ * couche d'interface obligeait les deux à en dépendre, soit une couche basse important une couche
+ * haute - la seule inversion de dépendance du projet.
+ */
 data class OfflineDownloadRequest(
     val bbox: Bbox,
     val minZoom: Int,

@@ -1,6 +1,5 @@
 package fr.lc4918.trailog.map.offline
 
-import fr.lc4918.trailog.ui.offline.OfflineDownloadRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

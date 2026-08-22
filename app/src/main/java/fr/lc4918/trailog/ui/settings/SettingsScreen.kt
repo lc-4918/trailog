@@ -96,7 +96,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import fr.lc4918.trailog.ui.alert.alertSoundTitle
+import fr.lc4918.trailog.location.alertSoundTitle
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable

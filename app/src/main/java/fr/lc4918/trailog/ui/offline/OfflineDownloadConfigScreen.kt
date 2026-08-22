@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.Bbox
+import fr.lc4918.trailog.map.offline.OfflineCorridor
+import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreView

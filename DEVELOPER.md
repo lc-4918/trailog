@@ -43,7 +43,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
 ├─ elevation/                   altitudes manquantes : IGN en France, OpenTopography ailleurs
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
-├─ location/                    suivi de position hors de l'ecran : service de premier plan, veille sur la trace
+├─ location/                    suivi de position hors de l'ecran : service de premier plan, veille sur la trace, son de l'alerte
 ├─ net/                         ServiceUrl (reseau local ou service externe)
 ├─ poi/                         points d'interet : DATAtourisme, Overpass (OSM), regle de partage, cache
 ├─ routing/                     Valhalla et BRouter (itineraire, duree, trace ; 5 disciplines), Polyline

@@ -107,8 +107,17 @@ pas des choix.
 plus importante du dépôt, et la seule dont la violation se détecte mécaniquement :
 
 ```bash
-grep -rn "^import android" app/src/main/java/fr/lc4918/trailog/domain/   # doit rendre zéro ligne
+# domain/ ne connaît ni Android ni Compose
+grep -rn "^import android" app/src/main/java/fr/lc4918/trailog/domain/
+
+# aucune couche sous ui/ ne remonte vers ui/
+grep -rn "^import fr.lc4918.trailog.ui\." \
+  app/src/main/java/fr/lc4918/trailog/{domain,data,map,poi,routing,geocode,elevation,location,net,update}/
 ```
+
+Les deux rendent aujourd'hui zéro ligne. Toute ligne qu'elles rendraient est une régression
+d'architecture, pas un détail de rangement : une couche basse qui remonte vers l'interface rend son
+test impossible sans émulateur, et son extraction impossible sans réécriture.
 
 Les autres dépendances autorisées :
 
@@ -119,7 +128,7 @@ Les autres dépendances autorisées :
 | `data/db` | `domain/` | oui |
 | services (`poi/`, `routing/`...) | `domain/`, `map/offline/TileHttp` | oui |
 | `domain/` | *rien* | **non** |
-| `data/*` | `ui/*` | **non**, sauf `ui/offline/OfflineDownloadRequest` (voir dette D3) |
+| `data/*`, services | `ui/*` | **non**, sans exception |
 
 ### 3.3 Le cas particulier des règles pures dans `ui/`
 
@@ -655,12 +664,13 @@ conversation en deux temps (dépôt de profil, puis calcul), et donc deux caches
 |---|---|---|---|
 | D1 | `navigation-compose` et `datastore-preferences` déclarés, non utilisés | Dette | Poids inutile, confusion à la lecture. Supprimables. |
 | D2 | Aucune abstraction du dépôt | Dette assumée (AD-3) | Un test de composant monté demanderait une réécriture |
-| D3 | `data/repo` importe `ui/offline/OfflineDownloadRequest` | Violation de la règle de dépendance | Le type devrait descendre dans `map/offline` |
+| D3 | ~~`data/repo` importe `ui/offline/OfflineDownloadRequest`~~ | **Corrigée** | `OfflineDownloadRequest` et `OfflineCorridor` sont descendus dans `map/offline`, chez le moteur qui les consomme. `map/offline/OfflineTileDownloader` portait la même inversion, elle tombe avec. |
 | D4 | `SettingsScreen.kt` : 2 022 lignes | Dette | Répétitif plus que complexe ; découpable sans risque |
 | D5 | Clés d'API en dur, dépôt public | Risque accepté | Quota épuisable par un tiers ; inacceptable en store |
 | D6 | `MainScreen` non testé | Limite structurelle | `MapView` ne se charge pas sur la JVM |
 | D7 | Dépendance à des instances publiques à quota | Risque externe | Atténué par AD-7 et le réglage d'URL, pas supprimé |
 | D8 | `fallbackToDestructiveMigration()` actif | Risque | Une migration oubliée efface les données de l'utilisateur |
+| D9 | ~~`location/LocationService` importe `ui/alert/AlertSound`~~ | **Corrigée** | `AlertSound.kt` est descendu dans `location/`, chez le service qui joue le son. L'écran de réglages y descend pour afficher le nom du son retenu, ce qui est le sens autorisé. |
 
 ---
 
