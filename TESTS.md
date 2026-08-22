@@ -42,8 +42,9 @@ n'a pas d'émulateur - un test qui n'y tourne pas ne garde rien -, et un dévelo
 un téléphone pour valider une infobulle. `createComposeRule()` compose donc pour de vrai sous
 Robolectric : les taps, le focus et les recompositions sont ceux de l'appareil. La contrepartie est
 nette et il faut la connaître : **rien de ce qui touche MapLibre ne peut être composé ici**, ses
-bibliothèques natives ne se chargeant pas sur la JVM (cf. les pièges plus bas). L'écran principal, qui
-porte la carte, reste donc hors d'atteinte ; ses composables, eux, s'appellent un par un.
+bibliothèques natives ne se chargeant pas sur la JVM (cf. les pièges plus bas). L'écran principal, lui,
+se compose entier : sa surface de carte est passée en paramètre, et c'est la seule chose qu'un test
+remplace (cf. plus bas).
 
 ## Couverture mesurée
 
@@ -55,44 +56,50 @@ Chiffres réels, produits par Jacoco, non estimés.
 | `data/seed` | 110/110 | 100 % |
 | `data` (LocalePrefs) | 26/26 | 100 % |
 | `data/backup` | 62/62 | 100 % |
+| `domain/model` | 263/269 | 98 % |
 | `elevation` | 214/221 | 97 % |
-| `domain/model` | 257/266 | 97 % |
 | `data/imp` | 199/216 | 92 % |
-| `domain/geo` | 275/302 | 91 % |
+| `domain/geo` | 275/301 | 91 % |
+| `ui/alert` | 71/83 | 86 % |
+| `ui/edit` | 80/96 | 83 % |
 | `routing` | 253/309 | 82 % |
 | `geocode` | 48/67 | 72 % |
-| `ui/alert` | 65/97 | 67 % |
-| `data/db` | 240/360 | 67 % |
-| `poi` | 129/195 | 66 % |
-| `ui/edit` | 63/96 | 66 % |
+| `data/db` | 246/370 | 66 % |
+| `poi` | 183/278 | 66 % |
 | `map` (StyleBuilder) | 121/189 | 64 % |
-| `ui/poi` | 121/199 | 61 % |
-| `ui/planner` | 253/436 | 58 % |
-| `data/repo` | 303/618 | 49 % |
-| `ui/mappoint` | 56/139 | 40 % |
+| `ui/poi` | 152/246 | 62 % |
+| `ui/planner` | 281/490 | 57 % |
+| `ui/location` | 66/126 | 52 % |
+| `data/repo` | 311/599 | 52 % |
+| **`ui/routes`** | **1168/2972** | **39 %** |
+| `ui/mappoint` | 67/179 | 37 % |
 | `ui/geocode` | 49/174 | 28 % |
+| `ui/measure` | 36/135 | 27 % |
+| `map/offline` | 85/361 | 24 % |
+| `ui/nav`, `ui/theme`, racine (`MainActivity`, `TrailogApp`) | 16/67 | 24 % |
 | `update` | 29/132 | 22 % |
-| `map/offline` | 76/350 | 22 % |
-| `location` | 31/173 | 18 % |
-| `ui/points` | 77/495 | 16 % |
+| `location` | 35/190 | 18 % |
+| `ui/points` | 82/517 | 16 % |
+| `ui/components` | 167/1053 | 16 % |
 | `ui/profile` | 29/301 | 10 % |
-| `ui/measure` | 9/100 | 9 % |
-| `ui/components` | 68/1049 | 7 % |
-| `ui/offline` | 9/283 | 3 % |
-| `ui/settings` | 37/1727 | 2 % |
-| `ui/routes` | 44/3113 | 1 % |
-| `ui/nav`, `ui/theme`, racine (`MainActivity`, `TrailogApp`) | 0/63 | 0 % |
+| `ui/offline` | 8/288 | 3 % |
+| `ui/settings` | 34/1760 | 2 % |
 
-Les quatre paquets `ui` de tête - `alert`, `poi`, `planner`, `edit` - le doivent à deux choses : leur
-**logique extraite** (placement d'infobulle, transitions d'état, règles de chargement), et depuis peu
-leurs **tests d'interface**, qui atteignent enfin les composables eux-mêmes. `ui/planner` est passé de
-14 à 58 %, `ui/poi` de 23 à 61 %, sans qu'une ligne de production change.
+Les paquets `ui` de tête - `alert`, `edit`, `poi`, `planner` - le doivent à deux choses : leur **logique
+extraite** (placement d'infobulle, transitions d'état, règles de chargement), et leurs **tests
+d'interface**, qui atteignent les composables eux-mêmes.
+
+**`ui/routes` est passé de 1 % à 39 %** en une fois, et c'est le seul chiffre de ce tableau qui dise
+quelque chose de nouveau. Il portait 3000 lignes couvertes par 44 : l'écran principal ne se composait
+pas. Sept tests le composent maintenant en entier, avec ses effets, ses dialogues et son menu. Aucune
+ligne de production n'a changé de comportement pour cela - seule la surface de carte est passée en
+paramètre.
 
 | Ensemble | Couvert | % |
 |---|---|---|
-| **Hors UI** (cible des tests unitaires) | 2385/3645 | **65,4 %** |
-| UI Compose | 880/8235 | 10,7 % |
-| **Total du code source** | 3265/11880 | **27,5 %** |
+| **Hors UI** (cible des tests unitaires) | 2482/3753 | **66,1 %** |
+| UI Compose | 2296/8446 | 27,2 % |
+| **Total du code source** | 4778/12199 | **39,2 %** |
 
 Le chiffre à retenir reste celui du code que les tests de logique peuvent atteindre. Le total ne dit
 rien de la qualité des tests : il mesure surtout la part de Compose dans l'application.
@@ -103,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**765 tests, 71 fichiers**, tous verts.
+**808 tests, 76 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -459,6 +466,47 @@ gardent le frein posé après un échec - une zone qui vient d'échouer attend u
 pour elle, et rallumer la couche l'oublie -, sans quoi chaque geste de carte relançait la requête que le
 service venait de refuser.
 
+### `data/db` - la chaîne des migrations
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `MigrationChainTest` | 6 | Qu'aucune migration ne manque, ne double, ni ne saute une version |
+
+`MigrationsTest` rejoue chaque migration une par une et vérifie qu'elle fait ce qu'elle annonce. Il ne dit
+rien du cas qui détruit vraiment des données : une migration **absente**.
+
+Le défaut visé est facile à commettre seul. On ajoute une colonne, on écrit son SQL, on incrémente la
+version, et l'on oublie d'enregistrer la migration. Rien ne le signale : le code compile, les 55 autres
+tests passent, l'application démarre sur une base neuve. Elle ne se casse que chez quelqu'un qui avait déjà
+des couches importées - et Room se rabattait alors sur un repli destructeur qui supprimait ses tables.
+
+Ces six tests sont ce qui a permis de **borner ce repli** aux seules versions préhistoriques : ils font
+échouer la CI avant la mise en ligne, plutôt que le téléphone après. Leur capacité à échouer a été
+vérifiée en retirant volontairement une migration de la liste, puis en oubliant volontairement
+d'incrémenter la version : trois tests tombent dans le premier cas, deux dans le second.
+
+### `ui/routes` - le calcul extrait des ViewModels
+
+| Fichier | Tests | Ce qui est verrouillé |
+|---|---|---|
+| `StyleSettingsTest` | 5 | Quels réglages imposent de reconstruire le style de carte |
+| `TreeReorderTest` | 9 | Où se pose un élément lâché dans une arborescence |
+| `DisplayedBasemapsTest` | 12 | Quels fonds sont réellement à l'écran, donc quelle légende proposer |
+| `NearestTracksTest` | 9 | Combien de couches ouvrir pour trouver la trace la plus proche |
+
+Ces quatre-là ne testent pas un ViewModel : ils testent ce qu'on en a **sorti**. Un ViewModel orchestre,
+et une orchestration se teste mal - un faux dépôt vérifierait qu'un appel a lieu, pas qu'un résultat est
+juste. Le calcul, lui, s'extrait et se verrouille.
+
+`TreeReorderTest` a une raison d'être supplémentaire : le calcul était écrit **deux fois**, mot pour mot,
+une fois pour le menu latéral et une fois pour le catalogue des fonds. Une correction sur l'un aurait
+laissé l'autre en place, et le défaut ne se serait vu que dans un seul des deux écrans.
+
+`DisplayedBasemapsTest` couvre les trois replis d'un composite mal formé - éteint, fond disparu, calque
+disparu - plus l'exclusion du relief des deux côtés. Ce qui s'y décide est la légende proposée par le
+bouton « info » : une légende qui ne décrit pas ce qu'on regarde est pire qu'une absence de légende, elle
+a l'air juste.
+
 `PoiFiltersTest` verrouille un choix qui se lit mal dans le code : ce sont les catégories **masquées** qui
 sont enregistrées. Un réglage vierge montre alors tout, et une catégorie ajoutée par une version ultérieure
 apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur aille la chercher.
@@ -646,13 +694,14 @@ l'utilisateur, et le téléchargement d'une version plus récente pas encore ins
 
 ## Tests d'interface
 
-**20 tests, 3 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
+**27 tests, 4 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
 autres dans `app/src/test/`, joués par Robolectric sur la JVM (le pourquoi est plus haut).
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PoiBubbleUiTest` | 6 | l'infobulle d'un point d'intérêt : nom, catégorie, les trois actions d'itinéraire, le lieu sans nom |
 | `OffTrackAlertUiTest` | 9 | la bannière d'alerte et le choix de la trace à suivre |
+| `MainScreenUiTest` | 7 | l'écran de carte entier : les réglages, le menu, et les modes qui se disputent les taps |
 | `RoutePlannerBandUiTest` | 5 | la bande du planificateur, dont le retour sur une étape déjà remplie |
 
 `RoutePlannerBandUiTest` existe **à cause d'un plantage** : toucher le champ de départ d'un itinéraire
@@ -669,8 +718,37 @@ cherche - l'infobulle prend alors le nom de la catégorie plutôt que de s'ouvri
 distance et le nom de la trace arrivent bien sous les yeux, dans les unités réglées, et que les gestes de la
 boîte de dialogue mènent où ils annoncent.
 
-Ce qui reste hors d'atteinte : l'écran principal lui-même, qui porte la `MapView`. Ses composables
-s'appellent un par un, mais l'assemblage - la carte, ses gestes, ses couches - demande un appareil.
+### L'écran principal, et ce qu'il a fallu pour l'atteindre
+
+`MainScreen` ne calcule presque rien : il **câble**. Aucun test de logique ne peut voir ce câblage, et
+rien n'en était vérifié - un seul appel sur 1800 lignes rendait l'écran incomposable, `MapLibreView`
+construisant une `MapView` dont les bibliothèques natives n'existent pas sur la JVM. Mesuré plutôt que
+supposé : `MapLibre.getInstance` lève `UnsatisfiedLinkError`, `MapView(context)` lève
+`MapLibreConfigurationException`.
+
+Deux coutures ont suffi, et aucune ne change ce que fait l'application :
+
+- **la surface de carte passe en paramètre** (`MapSurface`), sa valeur par défaut étant la vraie ;
+- **`TrailogApp` isole deux points d'entrée** : l'init du moteur natif, et ce que le démarrage lance en
+  tâche de fond. Le second parce que le semis y écrit les réglages sur un autre thread : un test qui pose
+  les siens juste après courait contre lui, et perdait une fois sur dix.
+
+Tout le reste est de production - la base, le dépôt, les réglages, le ViewModel, les effets.
+
+**Le fil qu'on tient à la place de MapLibre est `MapController`**, par lequel la carte parle déjà à
+l'écran. La surface le reçoit en paramètre, donc le test le capture sans que l'écran ait à l'exposer : ce
+qui permet de vérifier à qui reviennent les taps selon le mode actif, une règle qui ne s'écrit qu'ici.
+
+**Ce que ces tests n'atteignent pas**, et pour de bon : le rendu des tuiles, les gestes réels, et tout ce
+qui **s'ancre à un point de carte**. La position à l'écran d'une infobulle vient de `controller.screenOf`,
+c'est-à-dire de la projection de MapLibre. Un appui long est bien reçu en test, mais sa bulle n'a aucun
+endroit où se poser. Falsifier cette projection reviendrait à tester une invention.
+
+Leur capacité à échouer a été vérifiée par trois mutations du code de production. Croiser deux réglages -
+la règle obéissant au réglage de la retouche - fait tomber 3 tests ; c'est pour l'attraper que les deux
+tests de réglages sont **complémentaires** plutôt que tout-allumé puis tout-éteint : deux boutons qui
+échangent leurs réglages apparaissent et disparaissent ensemble, donc toujours au bon moment. Retirer la
+capture des taps du mode mesure, ou le retrait du burger en mode glissement, fait tomber 1 test chacun.
 
 ## Ce que les tests ont révélé
 
@@ -697,11 +775,15 @@ dossier. Le bug est donc ailleurs (geste, défilement, ou visibilité de la cibl
 
 Trois réglages, sans lesquels rien ne fonctionne.
 
-**`robolectric.properties`** (`app/src/test/resources/`) impose une `Application` neutre. La vraie
-(`TrailogApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas sur
-la JVM : tous les tests Robolectric échouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
-besoin de la carte - et c'est la même limite qui borne les tests d'interface : un composable qui embarque
-une `MapView` ne peut pas être joué ici, quelle que soit l'`Application`.
+**`robolectric.properties`** (`app/src/test/resources/`) impose une `Application` neutre par défaut. La
+vraie (`TrailogApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas
+sur la JVM : tous les tests Robolectric échouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
+besoin de la carte.
+
+`MainScreenUiTest`, lui, en a besoin d'une vraie - il monte le dépôt et les réglages. Il déclare donc la
+sienne, `@Config(application = TestTrailogApp::class)`, qui hérite de `TrailogApp` et ne neutralise que
+deux points d'entrée : le moteur natif, et le démarrage en tâche de fond. Une `Application` déclarée par
+classe l'emporte sur `robolectric.properties`.
 
 **`isIncludeNoLocationClasses`** (`app/build.gradle.kts`) rend visibles à Jacoco les classes chargées
 par Robolectric. Sans lui, le rapport annonce 0 % sur du code pourtant couvert.

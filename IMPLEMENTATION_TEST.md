@@ -1,23 +1,29 @@
 # État des tests - Trailog
 
-Document de travail personnel, **non versionné** (hors dépôt). Il recense ce qui est testé
-aujourd'hui et ce qui reste à implémenter, pour le jour où l'on reprendra les tests
-d'instrumentation et e2e. La documentation de test versionnée, elle, est `TESTS.md` (qui ne
-référence pas ce fichier, volontairement).
+Document de travail personnel. Il recense ce qui est testé aujourd'hui et ce qui reste à implémenter,
+pour le jour où l'on reprendra les tests d'instrumentation et e2e. La documentation de test versionnée,
+elle, est `TESTS.md` (qui ne référence pas ce fichier, volontairement).
+
+> **À trancher.** L'en-tête annonçait "non versionné (hors dépôt)". C'est faux : le fichier est suivi par
+> git depuis `78b0e4b`. Soit on le retire du dépôt et l'on rétablit la phrase, soit on l'assume comme
+> document de suivi versionné - ce que la phrase dit maintenant.
 
 ## Tests réalisés
 
-### Tests unitaires (JVM + Robolectric)
+### Tests unitaires et d'interface (JVM + Robolectric)
 
-- **159 tests unitaires**, infrastructure Robolectric + couverture Jacoco réelle.
-- Couverture réelle : **58,8 % du code hors UI**, 18,6 % du total.
-- Le module `update/` est couvert : `UpdateCheckTest` (vérification inerte en debug, trois issues
-  distinctes) et `ReleaseInfoTest` (manifeste CI relu tel quel, ordre des `versionCode`, champ
-  inconnu ignoré, changelog multi-lignes).
+- **808 tests, 76 fichiers**, dont **27 tests d'interface** qui composent pour de vrai.
+- Couverture réelle : **66,1 % du code hors UI**, 39,2 % du total.
 
-**Plafond de couverture.** 5293 des 9100 lignes vivent dans des fichiers `@Composable`, hors
-d'atteinte d'un test unitaire JVM. L'indicateur à suivre est donc le code **hors UI** (58,8 %), pas
-le total.
+**Le plafond de couverture a bougé.** Il était posé comme une fatalité : les lignes `@Composable` étaient
+réputées hors d'atteinte d'un test JVM, et l'indicateur à suivre devait donc être le code hors UI. Ce
+n'était vrai que d'une partie d'entre elles. Robolectric compose pour de vrai, et depuis que la surface de
+carte est passée en paramètre (`MapSurface`), `MainScreen` se compose entier : `ui/routes` est passé de
+1 % à 39 %, et le total de 27,5 % à 39,2 %.
+
+Ce qui reste hors d'atteinte est plus étroit qu'annoncé, et se nomme précisément : le rendu des tuiles,
+les gestes réels, et tout ce qui **s'ancre à un point de carte** - la position à l'écran vient de la
+projection de MapLibre, qui n'existe pas sans carte.
 
 ### Tests d'instrumentation (androidTest)
 
@@ -25,9 +31,29 @@ le total.
   surtout que l'infrastructure `androidTest` compile et tourne sur appareil/émulateur.
 - Les dossiers `androidTest/.../e2e/` et `androidTest/.../ui/` existent mais sont vides.
 
+### Ce qui est passé de la liste d'attente aux tests joués
+
+Sur la JVM, et non en instrumentation comme prévu ici.
+
+| # | Ce qui est couvert | Ce qui ne l'est pas | Où |
+|---|---|---|---|
+| C-1 | le bouton GPS apparaît et disparaît de la carte selon `showGpsButton` | l'écriture du réglage par l'interrupteur, le second bouton (recentrage) | `MainScreenUiTest` |
+| C-3 | le bouton du gestionnaire de fonds suit `showBasemapControlButton` | l'écriture du réglage par l'interrupteur | `MainScreenUiTest` |
+| S-3 | en `swipe`, le burger disparaît de la carte | les deux autres modes | `MainScreenUiTest` |
+| I-1 | toucher une étape remplie ouvre son champ sans emporter l'application | - | `RoutePlannerBandUiTest` |
+
+I-2 (la frappe par-dessus un lieu retenu) reste à faire : elle attend toujours que le géocodeur soit
+injecté plutôt qu'appelé en dur depuis le composable.
+
+**Et trois choses qui n'étaient sur aucune liste**, parce qu'on les croyait hors de portée : à qui
+reviennent les taps selon le mode de saisie actif, l'aller-retour complet du mode mesure (la règle
+s'efface, sa bande porte la consigne, sa croix rend les taps à la sélection), et l'ouverture du menu
+latéral. C'est le câblage de `MainScreen`, et il ne vit nulle part ailleurs.
+
 ## Tests à implémenter
 
-**38 tests d'instrumentation et 12 e2e** listés ci-dessous : un par réglage des 4 onglets de
+**38 tests d'instrumentation et 12 e2e** listés ci-dessous (dont trois désormais couverts en partie sur
+la JVM, cf. ci-dessus) : un par réglage des 4 onglets de
 `SettingsScreen.kt` (28 rubriques recensées), plus 2 sur le planificateur d'itinéraire, qui ne relève
 d'aucun onglet. Rien n'est implémenté au-delà du `MigrationInstrumentedTest`.
 
