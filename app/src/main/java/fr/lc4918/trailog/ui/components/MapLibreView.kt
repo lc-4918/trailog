@@ -366,8 +366,6 @@ class MapController {
         }
     }
 
-    fun clearLayers() = setLayers(emptyList(), 96f)
-
     private val shadowImages = mutableSetOf<String>()
 
     /**

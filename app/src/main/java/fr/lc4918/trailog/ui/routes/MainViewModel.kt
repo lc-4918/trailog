@@ -767,13 +767,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         db.settings().upsert(s.copy(defaultBasemapId = id))
     }
 
-    /** Fait apparaître le bouton de localisation sur la carte : la position ne doit pas s'allumer sans que
-     *  rien ne le montre. */
-    fun setShowGpsButton(show: Boolean) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
-        if (s.showGpsButton != show) db.settings().upsert(s.copy(showGpsButton = show))
-    }
-
     /**
      * Retient un lieu dans l'historique du planificateur (cf. PlannerHistory).
      *
@@ -804,25 +797,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (s.plannerHistory != maj) db.settings().upsert(s.copy(plannerHistory = maj))
     }
 
-    /** Vide l'historique du planificateur : le bouton des reglages. */
-    fun clearPlannerHistory() = viewModelScope.launch {
-        val s = settings.value ?: return@launch
-        if (s.plannerHistory.isNotEmpty()) db.settings().upsert(s.copy(plannerHistory = ""))
-    }
-
     /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
      *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
     fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {
         val s = settings.value ?: return@launch
         if (s.profileSlopeLegend != shown) db.settings().upsert(s.copy(profileSlopeLegend = shown))
-    }
-
-    /** Active/désactive le relief (tap sur son entrée dans le gestionnaire de couches) : contrairement aux
-     *  autres fonds, le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes illisibles
-     *  telles quelles) - tapoter dessus bascule simplement son affichage en overlay sur le fond courant. */
-    fun toggleProviderEnabled(id: String) = viewModelScope.launch {
-        val p = providers.value.firstOrNull { it.id == id } ?: return@launch
-        db.providers().upsert(p.copy(enabled = !p.enabled))
     }
 
     /** Tap sur le relief dans le gestionnaire : allume ou éteint son ombrage. Ne touche pas au fond DEM

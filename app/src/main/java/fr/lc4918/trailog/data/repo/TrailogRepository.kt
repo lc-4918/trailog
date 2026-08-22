@@ -521,45 +521,6 @@ class TrailogRepository(private val ctx: Context) {
         return route.points.drop(1).dropLast(1).ifEmpty { null }
     }
 
-    /**
-     * Coupe la trace au point le plus proche de (lon, lat) : la couche garde le premier morceau, le second
-     * devient une couche voisine.
-     *
-     * Faux quand la coupe ne donnerait pas deux morceaux parcourables (cf. [TrackEdit.splitAt]) - au tout
-     * début ou à la toute fin de la trace, donc.
-     *
-     * **Les marqueurs restent avec la couche d'origine.** Les répartir supposerait de décider à quel
-     * morceau appartient un point posé à cent mètres de la coupe, ce qu'aucune règle ne dit ; les laisser
-     * ensemble est au moins prévisible, et un déplacement reste possible à la main.
-     */
-    suspend fun splitLayer(layer: LayerEntity, lon: Double, lat: Double): Boolean {
-        val g = geometryOf(layer)
-        val (segment, index) = TrackEdit.nearest(g.lines, lon, lat) ?: return false
-        val (head, tail) = TrackEdit.splitAt(g.lines, segment, index) ?: return false
-        rewriteLayer(layer, g.points, head)
-        val written = writeGeometry(emptyList(), tail)
-        db.layers().insert(
-            LayerEntity(
-                name = ctx.getString(R.string.layer_part_two, layer.name),
-                folderId = layer.folderId, source = layer.source,
-                // Une couleur distincte de celles du dossier : deux morceaux d'une même trace se suivent
-                // sur la carte, et rien ne dirait où l'un finit s'ils partageaient sa couleur.
-                color = Palette.pick(db.layers().colorsInFolder(layer.folderId)),
-                sortOrder = db.layers().maxSort(layer.folderId) + 1,
-                geometryFile = written.fileName, visible = layer.visible,
-            ).describedBy(written)
-        )
-        return true
-    }
-
-    /** Fusionne [other] dans [layer], puis supprime [other] : ses segments viennent à la suite. */
-    suspend fun mergeLayers(layer: LayerEntity, other: LayerEntity) {
-        val a = geometryOf(layer)
-        val b = geometryOf(other)
-        rewriteLayer(layer, a.points + b.points, TrackEdit.merge(a.lines, b.lines))
-        deleteLayer(other)
-    }
-
     /** Les dossiers que la sauvegarde emporte : les géométries et les photos de waypoints. */
     private fun backupDirs() = listOf(
         BackupDir("layers", layersDir),

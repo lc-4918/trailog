@@ -217,10 +217,6 @@ object TrackEdit {
 
     private fun gap(p: TrackPoint, q: TrackPoint) = TrackMath.haversine(p.lon, p.lat, q.lon, q.lat)
 
-    /** Les deux extremites d'un segment, dans l'ordre ou elles se presentent. */
-    fun endpoints(seg: List<TrackPoint>): Pair<TrackPoint, TrackPoint>? =
-        if (seg.isEmpty()) null else seg.first() to seg.last()
-
     /**
      * Coupe en deux au point ([segment], [index]).
      *
