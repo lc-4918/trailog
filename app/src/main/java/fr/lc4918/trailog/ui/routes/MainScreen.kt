@@ -77,7 +77,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -162,12 +161,11 @@ import fr.lc4918.trailog.ui.poi.PoiState
 import fr.lc4918.trailog.ui.poi.poiCategoryLabelRes
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
-import fr.lc4918.trailog.ui.points.BubblePlacement
+import fr.lc4918.trailog.ui.points.AnchoredBubble
+import fr.lc4918.trailog.ui.points.BubbleGeometry
 import fr.lc4918.trailog.ui.points.InfoBubble
 import fr.lc4918.trailog.ui.points.InfoBubbleLoading
 import fr.lc4918.trailog.ui.points.PropertyEditor
-import fr.lc4918.trailog.ui.points.computeBubblePlacement
-import fr.lc4918.trailog.ui.points.computeGeocodePlacement
 import fr.lc4918.trailog.ui.settings.routingProfileLabel
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.Dispatchers
@@ -1364,70 +1362,45 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                 // propriétés chargent, il fallait réserver l'encombrement maximal possible, et la carte
                 // bougeait le plus souvent bien plus que nécessaire - parfois là où la bulle réelle, plus
                 // courte, n'exigeait aucun mouvement.
+                // Geometrie commune aux quatre infobulles : la barre de statut a degager, l'air qu'elles
+                // gardent au bord de l'ecran, et l'ecart qui les separe du point designe.
+                val bubbleGeom = BubbleGeometry(
+                    topInset = WindowInsets.statusBars.getTop(density),
+                    margin = with(density) { 8.dp.roundToPx() },
+                    gap = with(density) { 10.dp.roundToPx() },
+                    markerHeight = markerPx.toInt(),
+                )
+                val bubblePos = BubblePosition.of(settings?.bubblePosition)
+                val panMap: (Int, Int) -> Unit = { x, y -> controller.panByScreen(x.toFloat(), y.toFloat()) }
+
                 val off = bubbleOffset
                 if (off != null && selectedMarkerId != null && !editing) {
                     val maxH = constraints.maxHeight
-                    val topInset = WindowInsets.statusBars.getTop(density)
-                    val margin = with(density) { 8.dp.roundToPx() }
-                    val gap = with(density) { 10.dp.roundToPx() }
-                    val markerPxI = markerPx.toInt()
                     // Hauteur max de l'infobulle : elle tient sous la barre de statut (avec marges) sans
                     // jamais couvrir plus de 60 % de l'écran, pour laisser voir la carte autour.
                     val maxBubbleHeightDp = with(density) {
-                        minOf(maxH - topInset - 2 * margin, (maxH * BubbleMaxHeightRatio).toInt()).toDp()
+                        minOf(maxH - bubbleGeom.topInset - 2 * bubbleGeom.margin,
+                            (maxH * BubbleMaxHeightRatio).toInt()).toDp()
                     }
-                    val bubblePos = BubblePosition.of(settings?.bubblePosition)
-                    // Dernier placement calculé au layout : sert au recentrage de carte (hors AUTO).
-                    // Publié seulement une fois les propriétés arrivées : mesurée à la taille du spinner, la
-                    // bulle tient presque toujours à l'écran et le recentrage (à usage unique) aurait été
-                    // consommé pour rien, laissant la vraie bulle simplement bornée dans l'écran.
-                    var placement by remember(selectedMarkerId) { mutableStateOf<BubblePlacement?>(null) }
-                    val contentReady = selectedFeature != null
-                    Layout(
-                        content = {
-                            if (selectedFeature != null) {
-                                InfoBubble(feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
-                                    fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
-                                    titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
-                                    maxHeightDp = maxBubbleHeightDp,
-                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                                    onEdit = { editing = true }, onClose = { vm.closeMarker() })
-                            } else {
-                                InfoBubbleLoading()
-                            }
-                        },
-                    ) { measurables, cs ->
-                        val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
-                        val pl = computeBubblePlacement(
-                            pos = bubblePos, markerX = off.x, markerY = off.y,
-                            bubbleW = p.width, bubbleH = p.height,
-                            viewW = cs.maxWidth, viewH = cs.maxHeight,
-                            topInset = topInset, margin = margin, gap = gap, markerHeight = markerPxI,
-                        )
-                        if (contentReady && placement != pl) placement = pl
-                        layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
-                    }
-                    // Recentrage de la carte quand le placement demandé ne tient pas (jamais en AUTO). Le
-                    // placement n'étant publié qu'à la bulle réelle, le mouvement part quand le spinner
-                    // s'efface : la bulle est déjà posée à sa place définitive à l'écran, et c'est la carte
-                    // qui vient se ranger dessous.
-                    //
-                    // Une seule fois par marqueur : la carte bouge -> le marqueur bouge -> nouveau placement,
-                    // qui tient cette fois ; sans ce garde-fou, les deux se relanceraient mutuellement, et un
-                    // déplacement fait à la main serait défait.
-                    var pannedFor by remember { mutableStateOf<String?>(null) }
-                    LaunchedEffect(selectedMarkerId, placement) {
-                        val pl = placement ?: return@LaunchedEffect
-                        if (bubblePos == BubblePosition.AUTO || pannedFor == selectedMarkerId) return@LaunchedEffect
-                        if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                        pannedFor = selectedMarkerId
+                    AnchoredBubble(
+                        key = selectedMarkerId,
+                        publish = selectedFeature != null,
+                        panAllowed = bubblePos != BubblePosition.AUTO,
+                        onPan = panMap,
+                        placement = { bw, bh, vw, vh -> bubbleGeom.at(bubblePos, off.x, off.y, bw, bh, vw, vh) },
+                    ) {
+                        if (selectedFeature != null) {
+                            InfoBubble(feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
+                                fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
+                                titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
+                                maxHeightDp = maxBubbleHeightDp,
+                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                                onEdit = { editing = true }, onClose = { vm.closeMarker() })
+                        } else {
+                            InfoBubbleLoading()
+                        }
                     }
                 }
-                /*
-                 * Infobulle d'un point d'interet, posee comme celle d'un lieu trouve : dans celui des
-                 * quatre coins qui deplace le moins la carte. Elle suit son marqueur a chaque image du
-                 * deplacement (moveTick), sans quoi elle resterait sur place puis le rejoindrait d'un saut.
-                 */
                 /*
                  * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle
                  * ne peut rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la
@@ -1501,68 +1474,37 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         controller.screenOf(selPoi.lon, selPoi.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
                     if (pOff != null) {
-                        val topInset = WindowInsets.statusBars.getTop(density)
-                        val margin = with(density) { 8.dp.roundToPx() }
-                        val gap = with(density) { 10.dp.roundToPx() }
-                        val posBulle = BubblePosition.of(settings?.bubblePosition)
-                        var placementPoi by remember(selPoi) { mutableStateOf<BubblePlacement?>(null) }
-                        Layout(
-                            content = {
-                                PoiBubble(
-                                    poi = selPoi,
-                                    onOpenWeb = { url ->
-                                        runCatching {
-                                            ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                                        }
-                                    },
-                                    // Les trois actions remplissent le planificateur et l'ouvrent : c'est
-                                    // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
-                                    // pour lui laisser la place (cf. RoutePlannerState).
-                                    onSetStart = { ouvrePlanificateur(); planner.setStart(placeOf(selPoi)); poi.select(null) },
-                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOf(selPoi)); poi.select(null) },
-                                    onAddStep = {
-                                        ouvrePlanificateur()
-                                        if (planner.addWaypoint(placeOf(selPoi))) poi.select(null)
-                                        else plannerFullMessage = true
-                                    },
-                                    onClose = { poi.select(null) },
-                                    fontSp = settings?.bubbleFont ?: 14,
-                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                                )
-                            },
-                        ) { measurables, cs ->
-                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
+                        AnchoredBubble(
+                            key = selPoi.uuid,
+                            publish = true,
                             // La position reglee pour les infobulles (cf. BubblePosition), et non le coin
                             // qui deplace le moins la carte : un point d'interet est un marqueur comme un
                             // autre, son infobulle doit s'ouvrir la ou l'utilisateur l'attend.
-                            val pl = computeBubblePlacement(
-                                pos = posBulle,
-                                markerX = pOff.x, markerY = pOff.y,
-                                bubbleW = p.width, bubbleH = p.height,
-                                viewW = cs.maxWidth, viewH = cs.maxHeight,
-                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
+                            panAllowed = bubblePos != BubblePosition.AUTO,
+                            onPan = panMap,
+                            placement = { bw, bh, vw, vh -> bubbleGeom.at(bubblePos, pOff.x, pOff.y, bw, bh, vw, vh) },
+                        ) {
+                            PoiBubble(
+                                poi = selPoi,
+                                onOpenWeb = { url ->
+                                    runCatching {
+                                        ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                                    }
+                                },
+                                // Les trois actions remplissent le planificateur et l'ouvrent : c'est
+                                // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
+                                // pour lui laisser la place (cf. RoutePlannerState).
+                                onSetStart = { ouvrePlanificateur(); planner.setStart(placeOf(selPoi)); poi.select(null) },
+                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOf(selPoi)); poi.select(null) },
+                                onAddStep = {
+                                    ouvrePlanificateur()
+                                    if (planner.addWaypoint(placeOf(selPoi))) poi.select(null)
+                                    else plannerFullMessage = true
+                                },
+                                onClose = { poi.select(null) },
+                                fontSp = settings?.bubbleFont ?: 14,
+                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
                             )
-                            if (placementPoi != pl) placementPoi = pl
-                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
-                        }
-                        /*
-                         * Recadrage de la carte quand la position demandee ne tient pas a l'ecran, comme
-                         * pour l'infobulle d'un waypoint - et c'est ce qui manquait : sans lui, le
-                         * placement etait simplement rogne dans l'ecran, et la bulle paraissait ignorer le
-                         * reglage des qu'un marqueur touchait un bord.
-                         *
-                         * Une seule fois par point d'interet : la carte bouge, donc le marqueur bouge, donc
-                         * un nouveau placement arrive - qui tient, cette fois. Sans ce garde-fou les deux
-                         * se relanceraient l'un l'autre, et un deplacement fait a la main serait defait.
-                         */
-                        var recadrePour by remember { mutableStateOf<String?>(null) }
-                        LaunchedEffect(selPoi.uuid, placementPoi) {
-                            val pl = placementPoi ?: return@LaunchedEffect
-                            if (posBulle == BubblePosition.AUTO || recadrePour == selPoi.uuid) return@LaunchedEffect
-                            if (pl.panX != 0 || pl.panY != 0) {
-                                controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                            }
-                            recadrePour = selPoi.uuid
                         }
                     }
                 }
@@ -1577,39 +1519,6 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         controller.screenOf(gPlace.lon, gPlace.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
                     if (gOff != null) {
-                        val topInset = WindowInsets.statusBars.getTop(density)
-                        val margin = with(density) { 8.dp.roundToPx() }
-                        val gap = with(density) { 10.dp.roundToPx() }
-                        var placement by remember(gPlace) { mutableStateOf<BubblePlacement?>(null) }
-                        Layout(
-                            content = {
-                                GeocodeBubble(
-                                    lines = gPlace.lines,
-                                    // Le lieu part tel quel dans le planificateur : il porte deja son
-                                    // adresse et ses coordonnees, c'est exactement ce qu'attend une etape.
-                                    onSetStart = { ouvrePlanificateur(); planner.setStart(gPlace); geo.clear() },
-                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(gPlace); geo.clear() },
-                                    onAddStep = {
-                                        ouvrePlanificateur()
-                                        if (planner.addWaypoint(gPlace)) geo.clear()
-                                        else plannerFullMessage = true
-                                    },
-                                    onClose = { geo.clear() },
-                                    fontSp = settings?.bubbleFont ?: 14,
-                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                                )
-                            },
-                        ) { measurables, cs ->
-                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
-                            val pl = computeGeocodePlacement(
-                                markerX = gOff.x, markerY = gOff.y,
-                                bubbleW = p.width, bubbleH = p.height,
-                                viewW = cs.maxWidth, viewH = cs.maxHeight,
-                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
-                            )
-                            if (placement != pl) placement = pl
-                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
-                        }
                         // Décalage de carte pour que l'épingle ET la bulle tiennent à l'écran ; le lieu
                         // hors de la vue courante ramène l'ensemble au centre (cf. computeGeocodePlacement).
                         //
@@ -1618,16 +1527,29 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                         // vol - un décalage calculé dessus s'ajouterait au mouvement en cours au lieu de le
                         // corriger, et posait le lieu hors de la carte. Son immobilisation incrémente
                         // idleTick, d'où la comparaison au tick du moment où le lieu a été retenu.
-                        //
-                        // Une seule fois par lieu, comme pour un marqueur : sans ce garde-fou, un
-                        // déplacement fait à la main serait aussitôt défait.
                         val pickedAtTick = remember(gPlace) { idleTick }
-                        var pannedFor by remember { mutableStateOf<GeocodePlace?>(null) }
-                        LaunchedEffect(gPlace, placement, idleTick) {
-                            val pl = placement ?: return@LaunchedEffect
-                            if (idleTick == pickedAtTick || pannedFor == gPlace) return@LaunchedEffect
-                            if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                            pannedFor = gPlace
+                        AnchoredBubble(
+                            key = gPlace,
+                            publish = true,
+                            panAllowed = idleTick != pickedAtTick,
+                            onPan = panMap,
+                            placement = { bw, bh, vw, vh -> bubbleGeom.atNearestCorner(gOff.x, gOff.y, bw, bh, vw, vh) },
+                        ) {
+                            GeocodeBubble(
+                                lines = gPlace.lines,
+                                // Le lieu part tel quel dans le planificateur : il porte deja son
+                                // adresse et ses coordonnees, c'est exactement ce qu'attend une etape.
+                                onSetStart = { ouvrePlanificateur(); planner.setStart(gPlace); geo.clear() },
+                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(gPlace); geo.clear() },
+                                onAddStep = {
+                                    ouvrePlanificateur()
+                                    if (planner.addWaypoint(gPlace)) geo.clear()
+                                    else plannerFullMessage = true
+                                },
+                                onClose = { geo.clear() },
+                                fontSp = settings?.bubbleFont ?: 14,
+                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                            )
                         }
                     }
                 }
@@ -1641,68 +1563,45 @@ fun MainScreen(onSettings: () -> Unit, settingsOpen: Boolean = false, vm: MainVi
                             ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
                     }
                     if (mOff != null) {
-                        val topInset = WindowInsets.statusBars.getTop(density)
-                        val margin = with(density) { 8.dp.roundToPx() }
-                        val gap = with(density) { 10.dp.roundToPx() }
-                        // Dernier placement calculé au layout : sert au recentrage de carte. Publié une
-                        // fois l'adresse arrivée : mesurée au spinner, la bulle est plus courte que la
-                        // bulle réelle, et le recentrage - à usage unique - serait consommé sur une
-                        // hauteur qui n'est pas la sienne.
-                        var placement by remember(mPoint) { mutableStateOf<BubblePlacement?>(null) }
-                        val addressReady = mapPoint.address != AddressState.Loading
-                        Layout(
-                            content = {
-                                MapPointBubble(
-                                    address = mapPoint.address,
-                                    profileLabel = routingProfileLabel(routingProfile),
-                                    // La localisation éteinte dans le téléphone, la ligne disparaît : une
-                                    // mesure depuis une position inconnue ne partirait jamais (cf.
-                                    // MapPointBubble). L'affichage du repère, lui, n'y est pour rien - le
-                                    // capteur suffit. Une mesure déjà demandée retient la ligne : son
-                                    // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
-                                    // sur la carte - rien ne l'expliquerait plus.
-                                    showPositionRow = location.sensorEnabled || mapPoint.positionMeasure != null,
-                                    positionMeasure = mapPoint.positionMeasure,
-                                    pointMeasure = mapPoint.pointMeasure,
-                                    imperial = imperialUnits,
-                                    onDistanceFromPosition = { onDistanceFromPositionTap() },
-                                    onDistanceFromPoint = { onDistanceFromPointTap() },
-                                    onSetStart = { ouvrePlanificateur(); planner.setStart(placeOfPoint()); mapPoint.clear() },
-                                    onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOfPoint()); mapPoint.clear() },
-                                    onAddStep = {
-                                        ouvrePlanificateur()
-                                        if (planner.addWaypoint(placeOfPoint())) mapPoint.clear()
-                                        else plannerFullMessage = true
-                                    },
-                                    onClose = { mapPoint.clear() },
-                                    fontSp = settings?.bubbleFont ?: 14,
-                                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                                )
-                            },
-                        ) { measurables, cs ->
-                            val p = measurables.first().measure(cs.copy(minWidth = 0, minHeight = 0))
-                            val pl = computeGeocodePlacement(
-                                markerX = mOff.x, markerY = mOff.y,
-                                bubbleW = p.width, bubbleH = p.height,
-                                viewW = cs.maxWidth, viewH = cs.maxHeight,
-                                topInset = topInset, margin = margin, gap = gap, markerHeight = markerPx.toInt(),
-                            )
-                            if (addressReady && placement != pl) placement = pl
-                            layout(cs.maxWidth, cs.maxHeight) { p.place(pl.x, pl.y) }
-                        }
                         // Décalage de carte seulement si aucun des quatre coins ne tenait : le point désigné
                         // est en plein écran dans le cas ordinaire, et rien ne bouge. L'épingle, elle, ne
                         // bouge jamais d'un pouce : elle reste sur le point, c'est la carte qui glisse.
-                        //
-                        // Une seule fois par point, comme pour un marqueur : la carte bouge -> le point
-                        // bouge à l'écran -> nouveau placement, qui tient cette fois. Sans ce garde-fou, un
-                        // déplacement fait à la main serait aussitôt défait.
-                        var pannedFor by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-                        LaunchedEffect(mPoint, placement) {
-                            val pl = placement ?: return@LaunchedEffect
-                            if (pannedFor == mPoint) return@LaunchedEffect
-                            if (pl.panX != 0 || pl.panY != 0) controller.panByScreen(pl.panX.toFloat(), pl.panY.toFloat())
-                            pannedFor = mPoint
+                        AnchoredBubble(
+                            key = mPoint,
+                            // Publié une fois l'adresse arrivée : mesurée au spinner, la bulle est plus
+                            // courte que la bulle réelle, et le recentrage - à usage unique - serait
+                            // consommé sur une hauteur qui n'est pas la sienne.
+                            publish = mapPoint.address != AddressState.Loading,
+                            panAllowed = true,
+                            onPan = panMap,
+                            placement = { bw, bh, vw, vh -> bubbleGeom.atNearestCorner(mOff.x, mOff.y, bw, bh, vw, vh) },
+                        ) {
+                            MapPointBubble(
+                                address = mapPoint.address,
+                                profileLabel = routingProfileLabel(routingProfile),
+                                // La localisation éteinte dans le téléphone, la ligne disparaît : une
+                                // mesure depuis une position inconnue ne partirait jamais (cf.
+                                // MapPointBubble). L'affichage du repère, lui, n'y est pour rien - le
+                                // capteur suffit. Une mesure déjà demandée retient la ligne : son
+                                // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
+                                // sur la carte - rien ne l'expliquerait plus.
+                                showPositionRow = location.sensorEnabled || mapPoint.positionMeasure != null,
+                                positionMeasure = mapPoint.positionMeasure,
+                                pointMeasure = mapPoint.pointMeasure,
+                                imperial = imperialUnits,
+                                onDistanceFromPosition = { onDistanceFromPositionTap() },
+                                onDistanceFromPoint = { onDistanceFromPointTap() },
+                                onSetStart = { ouvrePlanificateur(); planner.setStart(placeOfPoint()); mapPoint.clear() },
+                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOfPoint()); mapPoint.clear() },
+                                onAddStep = {
+                                    ouvrePlanificateur()
+                                    if (planner.addWaypoint(placeOfPoint())) mapPoint.clear()
+                                    else plannerFullMessage = true
+                                },
+                                onClose = { mapPoint.clear() },
+                                fontSp = settings?.bubbleFont ?: 14,
+                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                            )
                         }
                     }
                 }

@@ -62,7 +62,7 @@ app/src/main/java/fr/lc4918/trailog/
    ├─ location/                  le suivi de position vu de l'ecran : autorisations, allumage, position ponctuelle
    ├─ alert/                     alerte d'eloignement : banniere, choix de la trace, son
    ├─ poi/                       couche des points d'interet : marqueurs, infobulle, chargement
-   ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement
+   ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement, AnchoredBubble
    ├─ geocode/                   barre de recherche, infobulle du lieu, etat de la recherche
    ├─ mappoint/                  point designe par un appui long : adresse et mesures de distance
    ├─ measure/                   mesure d'une distance entre deux points d'une trace

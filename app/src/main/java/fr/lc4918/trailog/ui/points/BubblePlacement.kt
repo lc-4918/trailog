@@ -2,6 +2,29 @@ package fr.lc4918.trailog.ui.points
 
 import fr.lc4918.trailog.domain.model.BubblePosition
 
+/**
+ * Ce qui ne change pas d'une infobulle a l'autre : les bords qu'elles respectent, et l'epingle a degager.
+ *
+ * L'ecran principal en porte quatre, toutes posees dans la meme geometrie - la barre de statut a laisser
+ * libre, l'air qu'elles gardent au bord, l'ecart qui les separe du point, la hauteur de l'epingle reglee.
+ * Ces quatre nombres se recalculaient a l'identique quatre fois, et les passer un par un a chaque appel
+ * noyait la seule chose qui distingue vraiment les bulles : le coin ou elles s'ouvrent.
+ */
+data class BubbleGeometry(
+    val topInset: Int,
+    val margin: Int,
+    val gap: Int,
+    val markerHeight: Int,
+) {
+    /** A la position reglee pour les infobulles, autour du point (cf. [computeBubblePlacement]). */
+    fun at(pos: BubblePosition, anchorX: Int, anchorY: Int, bubbleW: Int, bubbleH: Int, viewW: Int, viewH: Int) =
+        computeBubblePlacement(pos, anchorX, anchorY, bubbleW, bubbleH, viewW, viewH, topInset, margin, gap, markerHeight)
+
+    /** Dans celui des quatre coins du point qui deplace le moins la carte (cf. [computeGeocodePlacement]). */
+    fun atNearestCorner(anchorX: Int, anchorY: Int, bubbleW: Int, bubbleH: Int, viewW: Int, viewH: Int) =
+        computeGeocodePlacement(anchorX, anchorY, bubbleW, bubbleH, viewW, viewH, topInset, margin, gap, markerHeight)
+}
+
 /** Placement calculé de l'infobulle : coin haut-gauche dans la vue, et décalage de carte à appliquer.
  *  [panX]/[panY] = de combien le marqueur doit se déplacer à l'écran pour que le placement demandé tienne
  *  entièrement ; 0 en mode AUTO (la carte ne bouge jamais) et quand le placement demandé tient déjà. */
