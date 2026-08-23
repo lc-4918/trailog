@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.edit
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.domain.geo.TrackEdit
 
 /** Un segment designe du doigt : dans quelle couche, et lequel. */
@@ -51,6 +52,15 @@ class TrackEditState {
 
     /** Message a montrer a l'utilisateur : refus, ou repli sur la ligne droite. */
     var message by mutableStateOf<String?>(null)
+
+    /**
+     * Couche dont l'inversion attend confirmation, ou null.
+     *
+     * Seules les traces HORODATEES passent par la : inverser efface l'ordre des horaires, et donc la
+     * sortie telle qu'elle s'est deroulee. Une trace sans temps n'a rien a perdre a etre relue a l'envers,
+     * et se retourne sans qu'on demande rien.
+     */
+    var reverseConfirm by mutableStateOf<LayerEntity?>(null)
 
     /** La barre attend-elle un tap sur la carte ? C'est ce qui detourne les taps du profil. */
     val awaitingTap: Boolean get() = open && tool != EditTool.NONE

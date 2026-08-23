@@ -2,7 +2,6 @@ package fr.lc4918.trailog.ui.offline
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.data.db.LayerEntity
@@ -39,8 +38,6 @@ class OfflineFlowState {
     /** L'emprise retenue : sa presence ouvre l'ecran de configuration. */
     var configBbox by mutableStateOf<Bbox?>(null)
 
-    /** Hauteur mesuree de la barre de trace, pour decaler l'echelle graphique au-dessus (SPEC). */
-    var barHeightPx by mutableIntStateOf(0)
 
     /**
      * Referme completement le flux (annulation ou fin de configuration).

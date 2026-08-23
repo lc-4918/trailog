@@ -17,6 +17,17 @@ import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.domain.model.PointFeature
+import fr.lc4918.trailog.domain.model.SchemaItem
+import fr.lc4918.trailog.location.TrackWatch
+import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.ui.alert.OffTrackAlertState
+import fr.lc4918.trailog.ui.alert.TrackChooserDialog
+import fr.lc4918.trailog.ui.edit.TrackEditState
+import fr.lc4918.trailog.ui.location.LocationControls
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
+import fr.lc4918.trailog.ui.planner.defaultRouteName
+import fr.lc4918.trailog.ui.points.PropertyEditor
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.settings.ProvideSettingsPalette
 import fr.lc4918.trailog.ui.settings.settingsPalette
@@ -364,4 +375,134 @@ internal fun LocationDisabledDialog(onEnable: () -> Unit, onDismiss: () -> Unit)
         confirmButton = { TextButton(onClick = onEnable) { Text(stringResource(R.string.action_enable)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
+}
+
+/**
+ * Tout ce que l'ecran de carte pose PAR-DESSUS lui : treize boites, rendues d'un seul endroit.
+ *
+ * **Ce que la reunion change.** Elles etaient declarees a la file au bas de `MainScreen`, chacune sur son
+ * `if`, et l'on ne pouvait pas savoir combien il y en avait sans les compter. Surtout, chacune tenait a un
+ * `var` de la composition, ce qui obligeait la moitie de l'ecran a connaitre l'existence de la boite qu'un
+ * seul de ses boutons ouvre. Les drapeaux sont depuis passes dans le porteur de leur sujet - la
+ * confirmation d'inversion dans [TrackEditState], le refus du planificateur dans [RoutePlannerState], le
+ * rapport d'import dans [ImportFlow] -, et ce qu'il en reste tient dans [MainDialogState].
+ *
+ * **L'ordre n'est pas indifferent.** Deux boites peuvent etre demandees en meme temps - un import qui se
+ * termine mal pendant qu'un parcours attend son nom -, et c'est la derniere posee qui est au-dessus. Elles
+ * gardent donc l'ordre qu'elles avaient : du chemin d'import vers les annonces de l'ecran.
+ *
+ * Aucune ne lit l'etat de l'ecran : chacune recoit ce qu'elle affiche et rend ce qu'on en a fait.
+ */
+@Composable
+internal fun MainDialogs(
+    folders: List<FolderEntity>,
+    importFlow: ImportFlow,
+    dialogs: MainDialogState,
+    edit: TrackEditState,
+    alert: OffTrackAlertState,
+    planner: RoutePlannerState,
+    location: LocationControls,
+    vm: MainViewModel,
+    selectedFeature: PointFeature?,
+    schema: List<SchemaItem>,
+    followed: TrackWatch.Followed?,
+    imperial: Boolean,
+    alertDistanceM: Int,
+    currentPositionLabel: String,
+    onPickImage: (((String) -> Unit)) -> Unit,
+    routeGpx: (String) -> ByteArray?,
+) {
+    // choix du dossier de destination avant le sélecteur de fichier
+    if (importFlow.folderPicker) {
+        ImportFolderDialog(
+            folders = folders,
+            onNewFolder = { importFlow.folderPicker = false; importFlow.newFolderDialog = true },
+            onPick = { folderId -> importFlow.folderPicker = false; importFlow.proceed(folderId) },
+            // Renoncer au dossier, c'est renoncer a l'import : les fichiers qu'une autre application nous a
+            // confies sont relaches, sans quoi ils repartiraient au prochain import, celui d'autre chose.
+            onDismiss = { importFlow.cancel() },
+        )
+    }
+
+    // création d'un dossier puis poursuite de l'import dedans
+    if (importFlow.newFolderDialog) {
+        NewFolderDialog(
+            fallbackName = stringResource(R.string.label_new_folder),
+            onCreate = { n ->
+                importFlow.newFolderDialog = false
+                vm.createFolder(n, null) { id -> importFlow.proceed(id) }
+            },
+            onDismiss = { importFlow.newFolderDialog = false },
+        )
+    }
+
+    if (importFlow.report.isNotEmpty()) {
+        ImportReportDialog(failures = importFlow.report, onDismiss = { importFlow.report = emptyList() })
+    }
+
+    edit.reverseConfirm?.let { layer ->
+        ReverseConfirmDialog(
+            onConfirm = { vm.reverseLayer(layer); edit.reverseConfirm = null },
+            onDismiss = { edit.reverseConfirm = null },
+        )
+    }
+    edit.message?.let { message ->
+        EditMessageDialog(message = message, onDismiss = { edit.message = null })
+    }
+
+    if (planner.importDialog) {
+        RouteImportDialog(
+            defaultName = defaultRouteName(planner.targets, currentPositionLabel),
+            folders = folders,
+            onImport = { name, folderId ->
+                routeGpx(name)?.let { vm.importLayer(it, GpxWriter.fileName(name), folderId) }
+                planner.importDialog = false
+            },
+            onDismiss = { planner.importDialog = false },
+        )
+    }
+
+    if (planner.full) {
+        PlannerFullDialog(onDismiss = { planner.full = false })
+    }
+
+    if (dialogs.editingFeature) {
+        // Même dérivation que l'infobulle : un vm.selectedFeature() ici ne serait pas observé par Compose.
+        if (selectedFeature != null) PropertyEditor(
+            feature = selectedFeature, schema = schema,
+            onSave = { vm.saveFeature(it); dialogs.editingFeature = false },
+            onCancel = { dialogs.editingFeature = false },
+            onDelete = { vm.deleteFeature(selectedFeature); dialogs.editingFeature = false },
+            onPickImage = { onImported -> onPickImage(onImported) },
+        )
+    }
+
+    if (dialogs.noConnection) {
+        NoConnectionDialog(onDismiss = { dialogs.noConnection = false })
+    }
+
+    if (alert.needsGpsDialog) {
+        AlertNeedsGpsDialog(
+            onEnable = { alert.awaitGps(); location.onGpsButtonTap() },
+            onDismiss = { alert.dismissNeedsGps() },
+        )
+    }
+
+    if (alert.chooserOpen) {
+        TrackChooserDialog(
+            candidates = alert.candidates,
+            followed = followed,
+            imperial = imperial,
+            onPick = { alert.follow(it, alertDistanceM.toDouble()) },
+            onStop = { TrackWatch.stop(); alert.closeChooser() },
+            onDismiss = { alert.closeChooser() },
+        )
+    }
+
+    if (location.showDisabledDialog) {
+        LocationDisabledDialog(
+            onEnable = { location.showDisabledDialog = false; location.openLocationSettings() },
+            onDismiss = { location.showDisabledDialog = false },
+        )
+    }
 }

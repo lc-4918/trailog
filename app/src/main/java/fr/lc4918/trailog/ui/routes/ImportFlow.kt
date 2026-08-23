@@ -48,6 +48,14 @@ class ImportFlow internal constructor(
     /** Creation d'un dossier depuis ce choix, pour y importer dans la foulee. */
     var newFolderDialog by mutableStateOf(false)
 
+    /**
+     * Les fichiers refuses, presentes en une seule fois.
+     *
+     * Rempli quand plus aucun import ne tourne, et pas au fil de l'eau : un lot de trente fichiers dont
+     * cinq sont fautifs ouvrirait cinq boites l'une apres l'autre, en plein import.
+     */
+    var report by mutableStateOf<List<MainViewModel.ImportFailure>>(emptyList())
+
     /** Dossier retenu, ou null pour la racine : le selecteur de fichier le rend a son retour. */
     private var pendingFolder: Long? = null
 

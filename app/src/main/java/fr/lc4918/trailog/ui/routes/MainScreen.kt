@@ -1,22 +1,17 @@
 package fr.lc4918.trailog.ui.routes
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,35 +22,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Directions
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -70,31 +44,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.DefaultOffTrackAlertM
-import fr.lc4918.trailog.data.db.LayerEntity
-import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.routeUrl
-import fr.lc4918.trailog.domain.geo.Format
-import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.domain.model.PlannerHistory
@@ -102,7 +67,6 @@ import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
-import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.location.LocationHub
@@ -113,9 +77,7 @@ import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.net.ServiceUrl
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
-import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
-import fr.lc4918.trailog.ui.alert.TrackChooserDialog
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreSurface
@@ -125,47 +87,31 @@ import fr.lc4918.trailog.ui.edit.CutTarget
 import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.SegmentRef
 import fr.lc4918.trailog.ui.edit.TrackEditState
-import fr.lc4918.trailog.ui.geocode.GeocodeBubble
-import fr.lc4918.trailog.ui.geocode.GeocodeSearchBar
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
-import fr.lc4918.trailog.ui.location.LocationNoticeBar
 import fr.lc4918.trailog.ui.location.rememberLocationControls
-import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointEffects
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
-import fr.lc4918.trailog.ui.offline.OfflineDownloadCard
-import fr.lc4918.trailog.ui.offline.OfflineDownloadConfigScreen
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
-import fr.lc4918.trailog.ui.offline.OfflineMinimizedButton
+import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.PlannerEffects
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
-import fr.lc4918.trailog.ui.poi.PoiBubble
 import fr.lc4918.trailog.ui.poi.PoiEffects
+import fr.lc4918.trailog.ui.poi.PoiStatusBanner
 import fr.lc4918.trailog.ui.poi.PoiLoading
 import fr.lc4918.trailog.ui.poi.PoiState
-import fr.lc4918.trailog.ui.poi.poiCategoryLabelRes
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
-import fr.lc4918.trailog.ui.points.AnchoredBubble
-import fr.lc4918.trailog.ui.points.BubbleGeometry
-import fr.lc4918.trailog.ui.points.InfoBubble
-import fr.lc4918.trailog.ui.points.InfoBubbleLoading
-import fr.lc4918.trailog.ui.points.PropertyEditor
-import fr.lc4918.trailog.ui.settings.routingProfileLabel
-import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.hypot
-import kotlin.math.roundToInt
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -183,16 +129,14 @@ fun MainScreen(
     val composites by vm.composites.collectAsState()
     val basemapFolders by vm.basemapFolders.collectAsState()
     val settings by vm.settings.collectAsState()
-    var basemapControlOpen by remember { mutableStateOf(false) }
-    var legendOpen by remember { mutableStateOf(false) }
-    // Coin haut-gauche du bouton "info", en px fenêtre : la légende s'y adosse (cf. BasemapLegend).
-    var legendAnchor by remember { mutableStateOf(IntOffset.Zero) }
+    // Ce que les commandes du haut ouvrent : la legende du fond, le gestionnaire de couches.
+    val chromeState = remember { MapChromeState() }
 
     // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
     val offline = remember { OfflineFlowState() }
-    // Hauteur mesurée du panneau de profil (superposé à la carte, qui garde toujours sa taille pleine),
-    // pour décaler les infos du curseur juste au-dessus.
-    var profileBarHeightPx by remember { mutableIntStateOf(0) }
+    // Ce que les bandes de l'ecran recouvrent, mesure a l'affichage : la colonne de boutons du haut, le
+    // panneau de profil, la bande du planificateur, la barre de consigne du moment (cf. MapInsetsState).
+    val insets = remember { MapInsetsState() }
     // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC section 1.
     // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
     // téléchargement en masse et renvoie des tuiles "access blocked".
@@ -202,14 +146,8 @@ fun MainScreen(
         } == true
 
     val renderLayers by vm.renderLayers.collectAsState()
-    // Fichiers refusés à l'import : présentés en une seule popup, et seulement quand plus aucun import
-    // n'est en cours. Les afficher au fil de l'eau ouvrirait une popup par fichier fautif, en plein lot.
     val importInProgress by vm.importing.collectAsState()
     val importFailures by vm.importFailures.collectAsState()
-    var importReport by remember { mutableStateOf<List<MainViewModel.ImportFailure>>(emptyList()) }
-    LaunchedEffect(importInProgress.isEmpty(), importFailures.isNotEmpty()) {
-        if (importInProgress.isEmpty() && importFailures.isNotEmpty()) importReport = vm.consumeImportFailures()
-    }
     val offlineDownload by vm.offlineDownload.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
     val computed by vm.computed.collectAsState()
@@ -286,18 +224,7 @@ fun MainScreen(
     val alert = remember { OffTrackAlertState() }
     val alertEnabled = settings?.offTrackAlertVisible == true
     val alertDistanceM = settings?.offTrackAlertDistanceM ?: DefaultOffTrackAlertM
-    var showAlertNeedsGpsDialog by remember { mutableStateOf(false) }
-    // Choix demandé alors que le capteur était éteint : il s'ouvrira dès qu'il sera allumé, et non au
-    // retour de la boîte de dialogue - l'utilisateur passe par les réglages du système entre-temps.
-    var alertChooserPending by remember { mutableStateOf(false) }
-
-    fun onAlertButtonTap() {
-        if (location.gpsActive) alert.openChooser() else showAlertNeedsGpsDialog = true
-    }
-
-    LaunchedEffect(location.gpsActive, alertChooserPending) {
-        if (alertChooserPending && location.gpsActive) { alertChooserPending = false; alert.openChooser() }
-    }
+    LaunchedEffect(location.gpsActive, alert.chooserPending) { alert.openPendingChooser(location.gpsActive) }
     // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
     // couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
     LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
@@ -319,9 +246,7 @@ fun MainScreen(
     LaunchedEffect(alertEnabled, location.gpsActive) {
         if (!alertEnabled || !location.gpsActive) {
             TrackWatch.stop()
-            alert.closeChooser()
-            alertChooserPending = false
-            showAlertNeedsGpsDialog = false
+            alert.reset()
         }
     }
     // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
@@ -332,7 +257,8 @@ fun MainScreen(
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
     val geo = remember { GeocodeSearchState() }
-    var showNoConnectionDialog by remember { mutableStateOf(false) }
+    // Les deux boites que l'ecran ouvre pour son compte : service injoignable, editeur de proprietes.
+    val dialogs = remember { MainDialogState() }
 
     // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
     // le service public le refuserait, et les réponses arriveraient dans le désordre.
@@ -356,8 +282,6 @@ fun MainScreen(
 
     // ---------- mesure sur trace ----------
     val measure = remember { TrackMeasureState() }
-    // Hauteur mesurée de la bande de consigne, pour décaler l'échelle graphique au-dessus (cf. bbox).
-    var measureBarHeightPx by remember { mutableIntStateOf(0) }
     // La mesure désactivée dans les réglages alors qu'elle est en cours efface tout : sans cela les
     // marqueurs noirs et leur infobulle survivraient au réglage qui les a fait naître (cf. géocodage).
     LaunchedEffect(settings?.trackMeasureEnabled) {
@@ -382,9 +306,6 @@ fun MainScreen(
 
     // ---------- point quelconque de la carte (appui long) ----------
     val mapPoint = remember { MapPointState() }
-    // Hauteur mesurée de la barre de consigne du choix d'un point, pour décaler l'échelle graphique
-    // au-dessus (cf. bbox et mesure sur trace).
-    var pointBarHeightPx by remember { mutableIntStateOf(0) }
     // Discipline des mesures : celle réglée dans les réglages, et non celle du planificateur, qui la choisit
     // pour le trajet qu'on y compose. Une distance demandée sur la carte n'a pas de composition derrière elle.
     val routingProfile = RoutingProfile.of(settings?.routingProfile)
@@ -416,7 +337,6 @@ fun MainScreen(
     LaunchedEffect(settings?.trackEditEnabled) {
         if (settings?.trackEditEnabled == false) edit.close()
     }
-    var reverseConfirm by remember { mutableStateOf<LayerEntity?>(null) }
     val sameSegmentMessage = stringResource(R.string.edit_same_segment)
     val cannotSplitMessage = stringResource(R.string.split_impossible)
     val routedFellBack = stringResource(R.string.join_fell_back_straight)
@@ -434,7 +354,7 @@ fun MainScreen(
         val layer = layers.firstOrNull { it.id == id }?.takeIf { it.hasLine } ?: return
         when (edit.tool) {
             EditTool.REVERSE -> {
-                if (layer.hasTime) reverseConfirm = layer else vm.reverseLayer(layer)
+                if (layer.hasTime) edit.reverseConfirm = layer else vm.reverseLayer(layer)
                 edit.choose(EditTool.NONE)
             }
             EditTool.CUT -> {
@@ -456,39 +376,17 @@ fun MainScreen(
             EditTool.NONE -> Unit
         }
     }
-    var importDialog by remember { mutableStateOf(false) }
-    /**
-     * Fond des boutons poses sur la carte, quand le reglage le demande.
-     *
-     * Sa taille est reglee (cf. SettingsEntity.mapButtonSizeDp) et ne touche QUE le carre dessine : la zone
-     * tactile reste aux 48 dp de Material, quel que soit le curseur.
-     *
-     * Tous les boutons le recoivent, y compris le GPS allume : son etat se lit desormais a la couleur de
-     * son dessin, non a un aplat qui le distinguait de ses voisins.
-     */
-    val mapButtonSize = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
-    // Ornements poses sur la carte : en theme sombre, le fond et le dessin s'echangent (cf. MapChromeBg).
-    val darkChrome = isDarkTheme(settings?.theme)
-    val chromeBg = mapChromeBg(darkChrome)
-    val chromeFg = mapChromeFg(darkChrome)
-    val controlBg: Modifier = if (settings?.controlButtonsBackground != true) Modifier
-        else Modifier.mapButtonBackground(chromeBg.copy(alpha = ControlButtonBgAlpha), mapButtonSize)
-    // Hauteur reelle de la bande, mesuree : le cadrage du parcours doit degager ce qu'elle recouvre, et
-    // elle varie avec le nombre d'etapes et la presence du profil.
-    var plannerBandHeightPx by remember { mutableIntStateOf(0) }
-    /*
-     * Hauteur a degager en haut de la carte lors d'un cadrage.
-     *
-     * Ce n'est pas seulement la barre de statut, sous laquelle la carte passe en mode bord-a-bord : la
-     * colonne de boutons du coin haut-gauche (menu, GPS, recentrage, geocodeur, planificateur) la recouvre
-     * aussi, et un parcours cadre au plus juste passait dessous. On mesure donc cette colonne - sa hauteur
-     * varie avec le nombre de boutons affiches - et elle comprend deja la marge de barre de statut.
-     */
-    var topControlsHeightPx by remember { mutableIntStateOf(0) }
-    val statusBarTopPx = maxOf(
-        WindowInsets.statusBars.getTop(LocalDensity.current),
-        topControlsHeightPx,
-    )
+    // Ornements poses sur la carte - les deux couleurs et le fond des boutons, qui se lisent ensemble
+    // (cf. MapChrome). Tous les boutons recoivent ce fond, y compris le GPS allume : son etat se lit a la
+    // couleur de son dessin, non a un aplat qui le distinguait de ses voisins.
+    val chrome = rememberMapChrome(settings)
+    val chromeBg = chrome.bg
+    val chromeFg = chrome.fg
+    val darkChrome = chrome.dark
+    val controlBg = chrome.buttonBackground
+    // Ce qu'il faut degager en haut d'un cadrage : la colonne de boutons du coin haut-gauche, plus basse
+    // que la barre de statut sous laquelle la carte passe en bord-a-bord (cf. MapInsetsState.topCoverPx).
+    val statusBarTopPx = insets.topCoverPx(WindowInsets.statusBars.getTop(LocalDensity.current))
 
     /**
      * Calcul du parcours, relancé par tout ce qui le rend caduc (cf. RoutePlannerState.revision).
@@ -515,7 +413,7 @@ fun MainScreen(
         styleTick = styleTick,
         enabled = settings?.routePlannerEnabled,
         topPaddingPx = statusBarTopPx,
-        bandHeightPx = plannerBandHeightPx,
+        bandHeightPx = insets.plannerBandPx,
         routeTracks = mapPoint.routeTracks,
         routeRevision = mapPoint.measureRevision,
         currentPosition = { location.currentPosition() },
@@ -546,13 +444,13 @@ fun MainScreen(
      * position" n'est proposé que le capteur allumé (cf. MapPointBubble), il n'a donc pas à s'en soucier.
      */
     fun onDistanceFromPositionTap() {
-        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
+        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
         else location.withLocationPermission { mapPoint.requestDistanceFromPosition() }
     }
 
     /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
     fun onDistanceFromPointTap() {
-        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) showNoConnectionDialog = true
+        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
         else mapPoint.startPickingPoint()
     }
 
@@ -562,7 +460,7 @@ fun MainScreen(
         val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         when {
             geo.searchOpen -> geo.closeSearch()
-            ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> showNoConnectionDialog = true
+            ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> dialogs.noConnection = true
             else -> geo.openSearch()
         }
     }
@@ -657,15 +555,23 @@ fun MainScreen(
         // carte sur ce qui a ete importe, comme apres n'importe quel import.
         onFilesEntrusted = { scope.launch { drawerState.open() } },
     )
+    // Fichiers refusés à l'import : présentés en une seule popup, et seulement quand plus aucun import
+    // n'est en cours. Les afficher au fil de l'eau ouvrirait une popup par fichier fautif, en plein lot.
+    LaunchedEffect(importInProgress.isEmpty(), importFailures.isNotEmpty()) {
+        if (importInProgress.isEmpty() && importFailures.isNotEmpty()) importFlow.report = vm.consumeImportFailures()
+    }
 
-    // import d'image pour un champ IMAGE d'infobulle (PropertyEditor) : callback enregistré au moment du tap
-    var pendingImageCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
+    // import d'image pour un champ IMAGE d'infobulle (PropertyEditor) : le rendez-vous est pris au tap
+    // (cf. MainDialogState.awaitImage), et tenu ici au retour du selecteur.
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { u -> pendingImageCallback?.let { cb -> vm.importFeatureImage(u, cb) } }
+        uri?.let { u -> dialogs.pendingImageCallback?.let { cb -> vm.importFeatureImage(u, cb) } }
     }
 
     val density = LocalDensity.current
     val markerPx = with(density) { (settings?.markerSize ?: 36).dp.toPx() }
+    // Geometrie commune aux quatre infobulles : ce qu'elles degagent, ou elles se posent, et le glissement
+    // de carte qu'elles demandent pour tenir a l'ecran (cf. BubbleFrame).
+    val bubbleFrame = rememberBubbleFrame(settings, markerPx, controller)
     MapOverlayEffects(
         controller = controller,
         styleTick = styleTick,
@@ -728,14 +634,6 @@ fun MainScreen(
         markerPx = markerPx,
         styleTick = styleTick,
     )
-    // Un point d'interet devient une etape comme un lieu cherche : meme type, donc meme chemin dans le
-    // planificateur, et rien a dupliquer.
-    fun placeOf(p: fr.lc4918.trailog.poi.Poi) = GeocodePlace(
-        // Le nom de la categorie a defaut de nom propre, comme dans l'infobulle : un lieu d'OpenStreetMap
-        // en est souvent depourvu, et une etape sans libelle ne se relit pas dans l'historique.
-        listOfNotNull(p.label.ifBlank { ctx.getString(poiCategoryLabelRes(p.category)) }, p.city),
-        p.lon, p.lat,
-    )
     /*
      * Un point d'interet CONSULTE alimente l'historique du planificateur (cf. PlannerHistory), sans
      * attendre qu'on en fasse une etape : ouvrir son infobulle, c'est deja s'y interesser, et les trois
@@ -746,7 +644,7 @@ fun MainScreen(
      * couche rendent des objets distincts pour le meme endroit, qui relanceraient l'effet pour rien.
      */
     LaunchedEffect(poi.selected?.uuid) {
-        poi.selected?.let { vm.rememberPlannerPlace(placeOf(it)) }
+        poi.selected?.let { vm.rememberPlannerPlace(placeOfPoi(it, ctx)) }
     }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {
@@ -755,26 +653,6 @@ fun MainScreen(
         planner.openPlanner()
         planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
     }
-    // Le planificateur refuse au-dela de 25 etapes : le dire, plutot que de laisser un tap sans effet.
-    var plannerFullMessage by remember { mutableStateOf(false) }
-    /*
-     * Le point d'un appui long, en lieu d'etape.
-     *
-     * Son adresse quand on la connait, ses COORDONNEES sinon : un point au milieu d'un bois est une etape
-     * parfaitement legitime - c'est peut-etre le depart du sentier - et refuser d'en faire une parce que le
-     * geocodeur n'a pas de nom a lui donner reviendrait a n'accepter que les endroits qui ont une adresse.
-     *
-     * Point decimal impose : la virgule d'une locale francaise separerait a la fois les decimales et les
-     * deux valeurs, et donnerait "44,56, 6,08" (cf. Photon.parse, meme repli).
-     */
-    fun placeOfPoint(): GeocodePlace {
-        val (lon, lat) = mapPoint.point ?: (0.0 to 0.0)
-        val adresse = (mapPoint.address as? AddressState.Done)?.lines
-        return GeocodePlace(
-            adresse ?: listOf("%.5f, %.5f".format(java.util.Locale.US, lat, lon)), lon, lat,
-        )
-    }
-
     /*
      * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
      * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
@@ -830,7 +708,6 @@ fun MainScreen(
             controller.screenOf(lon, lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
         }
     }
-    var editing by remember { mutableStateOf(false) }
     // conserve le dernier profil pour l'animation de disparition
     var lastComputed by remember { mutableStateOf<ComputedTrack?>(null) }
     LaunchedEffect(computed) { if (computed != null) lastComputed = computed }
@@ -937,149 +814,30 @@ fun MainScreen(
                 Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
-                // Colonne des boutons du coin haut-gauche : la barre habituelle, puis le bouton de recherche
-                // de lieu juste dessous, à l'écart vertical qui sépare déjà le burger du bouton GPS.
-                //
-                // Les icones sont toutes AU TRAIT. Ce n'est pas une preference de style : le menu, la
-                // loupe et la regle le sont deja dans le jeu plein de Material - ce sont des dessins
-                // lineaires par nature -, tandis que l'epingle, le marteau et le panneau de direction y
-                // sont des aplats. Melangees, trois taches pleines cotoyaient quatre traits dans la meme
-                // colonne. Leurs variantes "Outlined" remettent tout le monde au meme poids.
-                Column(
-                    Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
-                        .onGloballyPositioned { topControlsHeightPx = it.size.height },
-                    verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(MapControlSpacing)) {
-                        if (mode != "swipe") {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }, modifier = controlBg) {
-                                Icon(Icons.Filled.Menu, stringResource(R.string.action_menu), tint = chromeFg)
-                            }
-                        }
-                        /*
-                         * `!= false` et non `== true` : tant que les reglages ne sont pas revenus de la
-                         * base, ils valent null, et `== true` faisait alors disparaitre le bouton.
-                         *
-                         * Ce n'est pas une precaution theorique. Un testeur a decrit exactement cela : plus
-                         * de repere, et "le bouton a disparu". Le processus tue en cours de sortie, l'ecran
-                         * rallume, l'activite recreee - et la carte ne portait plus QUE le burger, le temps
-                         * que Room rende une ligne. Trois lectures traitaient l'inconnu comme un "non" alors
-                         * que le defaut du reglage est "oui" ; tout le reste de ce fichier lit deja son
-                         * defaut (cf. showScale plus bas). C'etaient les trois seules.
-                         */
-                        if (settings?.showGpsButton != false) {
-                            IconButton(
-                                onClick = { location.onGpsButtonTap() },
-                                // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
-                                // bleu, comme le bouton de retouche. Le bouton portait auparavant un aplat
-                                // bleu plein, seul de son espece dans la colonne - il se lisait comme un
-                                // objet d'une autre famille, la ou tous les autres gardent le fond commun
-                                // des ornements de carte.
-                                modifier = controlBg,
-                            ) {
-                                val gpsTint = if (location.gpsActive) MapChromeActive else chromeFg
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Outlined.Place, stringResource(R.string.content_desc_gps_position),
-                                        modifier = Modifier.size(GpsIconSize), tint = gpsTint)
-                                    Text(stringResource(R.string.gps_label), fontSize = GpsLabelSp.sp,
-                                        lineHeight = GpsLabelSp.sp, color = gpsTint)
-                                }
-                            }
-                        }
-                        // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
-                        // GPS, dans la même barre (donc même espacement latéral de 4.dp).
-                        offlineDownload?.takeIf { it.minimized }?.let { dl ->
-                            OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
-                        }
-                    }
-                    // La recherche de lieu ouvre sa barre de saisie juste dessous : elle reste donc dans la
-                    // colonne du haut, là où la barre a la place de se déplier.
-                    if (settings?.geocodingEnabled == true) {
-                        IconButton(onClick = { onGeocodeButtonTap() }, modifier = controlBg) {
-                            // Loupe posée sur un globe, et non la cible de visée d'avant : celle-ci disait
-                            // "se repérer", quand ce bouton cherche un lieu par son nom. Le globe distingue
-                            // au passage cette recherche-là d'une recherche de texte dans l'application.
-                            Icon(Icons.Filled.Search, stringResource(R.string.content_desc_geocode_search), tint = chromeFg)
-                        }
-                    }
-                    // Sous la recherche, et à sa place quand elle est masquée : la colonne se resserre
-                    // d'elle-même, aucun des deux boutons ne réserve son rang.
-                    // Masqué pendant le choix des points, que sa bande porte déjà entièrement.
-                    if (settings?.trackMeasureEnabled == true && !measure.picking) {
-                        IconButton(onClick = {
-                            // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
-                            // planificateur se replie dans son coin (son trajet, lui, est conservé).
-                            vm.closeProfile()
-                            if (planner.open) planner.collapse(true)
-                            measure.open()
-                        }, modifier = controlBg) {
-                            Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title), tint = chromeFg)
-                        }
-                    }
-                    // Retouche des traces : un bouton, et non une barre permanente. Ouvrir le mode est un
-                    // geste conscient - il detourne les taps de la carte, qui n'ouvrent plus de profil tant
-                    // qu'un outil attend son point. Dans la colonne de gauche, sous le burger, avec les
-                    // deux autres fonctions qui s'ouvrent en mode.
-                    if (settings?.trackEditEnabled == true) {
-                        IconButton(onClick = { edit.toggleBar() }, modifier = controlBg) {
-                            Icon(
-                                // Un crayon plutot qu'un marteau : deux traits contre une silhouette
-                                // pleine d'outils croises, illisible a 22 dp au-dessus d'une carte.
-                                Icons.Outlined.Edit, stringResource(R.string.edit_toolbar),
-                                tint = if (edit.open) MapChromeActive else chromeFg,
-                            )
-                        }
-                    }
-                    if (geo.searchOpen) {
-                        GeocodeSearchBar(
-                            query = geo.query, results = geo.results, searching = geo.searching,
-                            onQueryChange = { geo.query = it },
-                            onPick = { place ->
-                                geo.select(place)
-                                // Un lieu cherche par son nom alimente l'historique du planificateur : le
-                                // chercher est deja dire qu'il nous interesse, et le retaper demain dans un
-                                // champ d'etape serait refaire le meme travail (cf. PlannerHistory).
-                                vm.rememberPlannerPlace(place)
-                                controller.centerOnAtLeast(place.lat, place.lon, GeocodeMinZoom)
-                            },
-                            onClose = { geo.closeSearch() },
-                        )
-                    }
-                }
-                // réinitialisation de l'orientation (visible seulement si la carte est tournée) + Basemap Control
-                Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(MapControlSpacing)) {
-                    if (kotlin.math.abs(bearing) > 0.5) {
-                        IconButton(onClick = { controller.resetNorth() }, modifier = controlBg) {
-                            Icon(Icons.Filled.ArrowUpward, stringResource(R.string.action_reset_north),
-                                modifier = Modifier.graphicsLayer { rotationZ = -bearing.toFloat() }, tint = chromeFg)
-                        }
-                    }
-                    // Légende du fond affiché, s'il en fournit une (cf. ProviderEntity.legendAsset) : à
-                    // gauche du gestionnaire de couches, l'image se déployant vers la gauche depuis ici.
-                    // Le bouton reporte sa position : la légende s'y adosse sans supposer de largeur de
-                    // barre, celle-ci variant selon les boutons affichés (nord, gestionnaire de couches).
-                    if (activeLegends.isNotEmpty()) {
-                        IconButton(
-                            onClick = { legendOpen = !legendOpen },
-                            modifier = Modifier.onGloballyPositioned {
-                                val p = it.positionInRoot()          // coin haut-gauche du bouton
-                                legendAnchor = IntOffset(p.x.roundToInt(), p.y.roundToInt())
-                            },
-                        ) {
-                            Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend), tint = chromeFg)
-                        }
-                    }
-                    // `!= false` : le defaut du reglage est "oui", et un reglage non encore charge ne doit
-                    // pas se lire comme un "non" (cf. le bouton GPS).
-                    if (settings?.showBasemapControlButton != false) {
-                        IconButton(onClick = { basemapControlOpen = true }, modifier = controlBg) {
-                            // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
-                            // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
-                            Icon(Icons.Outlined.Layers, stringResource(R.string.content_desc_basemap_control), tint = chromeFg)
-                        }
-                    }
-                }
+                MapTopLeftControls(
+                    settings = settings,
+                    chrome = chrome,
+                    insets = insets,
+                    controller = controller,
+                    location = location,
+                    geo = geo,
+                    measure = measure,
+                    planner = planner,
+                    edit = edit,
+                    vm = vm,
+                    offlineDownload = offlineDownload,
+                    burgerVisible = mode != "swipe",
+                    onMenu = { scope.launch { drawerState.open() } },
+                    onGeocodeTap = { onGeocodeButtonTap() },
+                )
+                MapTopRightControls(
+                    settings = settings,
+                    chrome = chrome,
+                    chromeState = chromeState,
+                    controller = controller,
+                    bearing = bearing,
+                    activeLegends = activeLegends,
+                )
                 // échelle graphique, dans le coin bas-gauche (uniquement quand ni le profil ni la bande du
                 // planificateur déployée n'occupent le bas de l'écran) : décalée au-dessus de la barre de
                 // consigne du moment tant qu'elle est affichée, pour ne pas être recouverte. Réduit, le
@@ -1096,12 +854,7 @@ fun MainScreen(
                 if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
                     // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
                     // navigationBarsPadding quand il n'y en a aucune.
-                    val bottomBarPx = when {
-                        offline.drawingActive -> offline.barHeightPx
-                        measure.picking -> measureBarHeightPx
-                        mapPoint.pickingPoint -> pointBarHeightPx
-                        else -> 0
-                    }
+                    val bottomBarPx = insets.promptBarPx
                     val base = Modifier.align(Alignment.BottomStart)
                     ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f,
                         bg = chromeBg, fg = chromeFg,
@@ -1110,391 +863,58 @@ fun MainScreen(
                 }
                 BasemapLegend(
                     legends = activeLegends,
-                    visible = legendOpen && activeLegends.isNotEmpty(),
-                    anchor = legendAnchor,
-                    onDismiss = { legendOpen = false },
+                    visible = chromeState.legendOpen && activeLegends.isNotEmpty(),
+                    anchor = chromeState.legendAnchor,
+                    onDismiss = { chromeState.legendOpen = false },
                 )
-                // Infobulle. Affichée dès le tap (spinner tant que les propriétés chargent), placée selon le
-                // réglage Carte / Infobulles. Le placement est calculé dans la phase de layout, une fois la
-                // taille réelle mesurée : la bulle apparaît donc directement au bon endroit, sans le saut que
-                // provoquait un premier passage à taille nulle.
-                //
-                // Le décalage de carte qu'impose ce placement attend la même mesure : il part à l'instant où
-                // la bulle remplace le spinner, les deux mouvements se lisant alors comme un seul. Décaler
-                // dès le tap a été essayé et retiré : la hauteur de la bulle étant inconnue tant que ses
-                // propriétés chargent, il fallait réserver l'encombrement maximal possible, et la carte
-                // bougeait le plus souvent bien plus que nécessaire - parfois là où la bulle réelle, plus
-                // courte, n'exigeait aucun mouvement.
-                // Geometrie commune aux quatre infobulles : la barre de statut a degager, l'air qu'elles
-                // gardent au bord de l'ecran, et l'ecart qui les separe du point designe.
-                val bubbleGeom = BubbleGeometry(
-                    topInset = WindowInsets.statusBars.getTop(density),
-                    margin = with(density) { 8.dp.roundToPx() },
-                    gap = with(density) { 10.dp.roundToPx() },
-                    markerHeight = markerPx.toInt(),
+                MarkerBubbleLayer(
+                    settings = settings,
+                    frame = bubbleFrame,
+                    vm = vm,
+                    dialogs = dialogs,
+                    selectedMarkerId = selectedMarkerId,
+                    selectedFeature = selectedFeature,
+                    schema = markerLayerData?.schema ?: emptyList(),
+                    bubbleOffset = bubbleOffset,
+                    maxHeightPx = constraints.maxHeight,
                 )
-                val bubblePos = BubblePosition.of(settings?.bubblePosition)
-                val panMap: (Int, Int) -> Unit = { x, y -> controller.panByScreen(x.toFloat(), y.toFloat()) }
-
-                val off = bubbleOffset
-                if (off != null && selectedMarkerId != null && !editing) {
-                    val maxH = constraints.maxHeight
-                    // Hauteur max de l'infobulle : elle tient sous la barre de statut (avec marges) sans
-                    // jamais couvrir plus de 60 % de l'écran, pour laisser voir la carte autour.
-                    val maxBubbleHeightDp = with(density) {
-                        minOf(maxH - bubbleGeom.topInset - 2 * bubbleGeom.margin,
-                            (maxH * BubbleMaxHeightRatio).toInt()).toDp()
-                    }
-                    AnchoredBubble(
-                        key = selectedMarkerId,
-                        publish = selectedFeature != null,
-                        panAllowed = bubblePos != BubblePosition.AUTO,
-                        onPan = panMap,
-                        placement = { bw, bh, vw, vh -> bubbleGeom.at(bubblePos, off.x, off.y, bw, bh, vw, vh) },
-                    ) {
-                        if (selectedFeature != null) {
-                            InfoBubble(feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
-                                fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
-                                titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
-                                maxHeightDp = maxBubbleHeightDp,
-                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                                onEdit = { editing = true }, onClose = { vm.closeMarker() })
-                        } else {
-                            InfoBubbleLoading()
-                        }
-                    }
-                }
-                /*
-                 * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle
-                 * ne peut rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la
-                 * carte reste simplement vide, et l'on croit la couche cassee.
-                 */
-                if (poi.visible && (poi.tooFar || poi.needsNetwork || poi.fromCache || poi.partial)) {
-                    /*
-                     * Le message du zoom se TAPE, et zoome. Les deux autres ne sont que des constats -
-                     * pas de reseau, points du cache - que rien ni personne ne leve d'un doigt, et les
-                     * rendre tapables promettrait une action qui n'existe pas.
-                     *
-                     * Une consigne qu'on peut executer soi-meme est une consigne de trop : "Zoomez pour
-                     * voir les points d'interet" dit exactement le geste que ce tap fait a notre place.
-                     */
-                    val zoomable = poi.tooFar
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                        // Couleur de contenu imposee : un fond translucide n'est plus l'une des couleurs du
-                        // theme, et contentColorFor n'y reconnait donc rien. Sans elle le texte hérite du
-                        // LocalContentColor ambiant, dont le defaut est le noir - illisible sur le fond
-                        // sombre de ce meme bandeau en theme sombre (cf. GeocodeSearchBar, meme remede).
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.align(Alignment.TopCenter)
-                            .padding(top = with(density) { (topControlsHeightPx + 16).toDp() })
-                            .then(
-                                if (!zoomable) Modifier
-                                else Modifier.clickable(role = Role.Button) {
-                                    // Le zoom minimum qui charge, pas un cran de plus : c'est le plus grand
-                                    // territoire que le service accepte de peupler, donc celui qui montre le
-                                    // plus de lieux d'un coup (cf. PoiLoading.MIN_ZOOM).
-                                    //
-                                    // Autour du centre courant, qu'on ne deplace pas : c'est la zone qu'on
-                                    // regarde qu'on veut voir peuplee, et une carte qui saute ailleurs au
-                                    // moment ou elle se remplit ferait perdre l'endroit qu'on tenait.
-                                    //
-                                    // Rien de plus a declencher : la camera qui s'immobilise relance le
-                                    // chargement, comme apres un geste de la main.
-                                    controller.cameraState()?.let { (la, lo, _) ->
-                                        controller.centerOnAtLeast(la, lo, PoiLoading.MIN_ZOOM)
-                                    }
-                                }
-                            ),
-                    ) {
-                        Text(
-                            stringResource(
-                                when {
-                                    poi.tooFar -> R.string.poi_zoom_in
-                                    poi.needsNetwork -> R.string.poi_needs_network
-                                    poi.fromCache -> R.string.poi_from_cache
-                                    // En dernier : les trois autres disent pourquoi la carte est vide ou
-                                    // vieille, celui-ci pourquoi elle est incomplete - c'est le moins grave.
-                                    else -> R.string.poi_partial
-                                }
-                            ),
-                            fontSize = 12.sp,
-                            // La couleur des commandes quand le message en est une, celle du texte ordinaire
-                            // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un
-                            // doigt des deux constats qu'on ne peut que lire.
-                            color = if (zoomable) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        )
-                    }
-                }
-                val selPoi = poi.selected
-                if (selPoi != null) {
-                    // idleTick SEUL, sans moveTick : l'infobulle garde sa place pres de son point pendant
-                    // le geste, comme celle d'un waypoint, au lieu de courir apres la carte a chaque image.
-                    val pOff = remember(selPoi, idleTick) {
-                        controller.screenOf(selPoi.lon, selPoi.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
-                    }
-                    if (pOff != null) {
-                        AnchoredBubble(
-                            key = selPoi.uuid,
-                            publish = true,
-                            // La position reglee pour les infobulles (cf. BubblePosition), et non le coin
-                            // qui deplace le moins la carte : un point d'interet est un marqueur comme un
-                            // autre, son infobulle doit s'ouvrir la ou l'utilisateur l'attend.
-                            panAllowed = bubblePos != BubblePosition.AUTO,
-                            onPan = panMap,
-                            placement = { bw, bh, vw, vh -> bubbleGeom.at(bubblePos, pOff.x, pOff.y, bw, bh, vw, vh) },
-                        ) {
-                            PoiBubble(
-                                poi = selPoi,
-                                onOpenWeb = { url ->
-                                    runCatching {
-                                        ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                                    }
-                                },
-                                // Les trois actions remplissent le planificateur et l'ouvrent : c'est
-                                // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
-                                // pour lui laisser la place (cf. RoutePlannerState).
-                                onSetStart = { ouvrePlanificateur(); planner.setStart(placeOf(selPoi)); poi.select(null) },
-                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOf(selPoi)); poi.select(null) },
-                                onAddStep = {
-                                    ouvrePlanificateur()
-                                    if (planner.addWaypoint(placeOf(selPoi))) poi.select(null)
-                                    else plannerFullMessage = true
-                                },
-                                onClose = { poi.select(null) },
-                                fontSp = settings?.bubbleFont ?: 14,
-                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                            )
-                        }
-                    }
-                }
-                // Infobulle du lieu trouvé : posée dans celui des quatre coins du lieu qui déplace le moins
-                // la carte (cf. computeGeocodePlacement), et non à la position réglée pour les marqueurs.
-                val gPlace = geo.place
-                if (gPlace != null) {
-                    // Recalculee a chaque image du deplacement (moveTick) et non a la seule immobilisation :
-                    // l'infobulle reste ainsi collee a son epingle pendant tout le geste, au lieu de rester
-                    // sur place puis de la rejoindre d'un saut. Seul son coin change en cours de route.
-                    val gOff = remember(gPlace, idleTick, moveTick) {
-                        controller.screenOf(gPlace.lon, gPlace.lat)?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
-                    }
-                    if (gOff != null) {
-                        // Décalage de carte pour que l'épingle ET la bulle tiennent à l'écran ; le lieu
-                        // hors de la vue courante ramène l'ensemble au centre (cf. computeGeocodePlacement).
-                        //
-                        // Attendu que la caméra soit arrêtée : retenir un lieu la lance vers lui
-                        // (centerOnAtLeast), et tant qu'elle vole, la projection lue est celle d'AVANT le
-                        // vol - un décalage calculé dessus s'ajouterait au mouvement en cours au lieu de le
-                        // corriger, et posait le lieu hors de la carte. Son immobilisation incrémente
-                        // idleTick, d'où la comparaison au tick du moment où le lieu a été retenu.
-                        val pickedAtTick = remember(gPlace) { idleTick }
-                        AnchoredBubble(
-                            key = gPlace,
-                            publish = true,
-                            panAllowed = idleTick != pickedAtTick,
-                            onPan = panMap,
-                            placement = { bw, bh, vw, vh -> bubbleGeom.atNearestCorner(gOff.x, gOff.y, bw, bh, vw, vh) },
-                        ) {
-                            GeocodeBubble(
-                                lines = gPlace.lines,
-                                // Le lieu part tel quel dans le planificateur : il porte deja son
-                                // adresse et ses coordonnees, c'est exactement ce qu'attend une etape.
-                                onSetStart = { ouvrePlanificateur(); planner.setStart(gPlace); geo.clear() },
-                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(gPlace); geo.clear() },
-                                onAddStep = {
-                                    ouvrePlanificateur()
-                                    if (planner.addWaypoint(gPlace)) geo.clear()
-                                    else plannerFullMessage = true
-                                },
-                                onClose = { geo.clear() },
-                                fontSp = settings?.bubbleFont ?: 14,
-                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                            )
-                        }
-                    }
-                }
-                // Infobulle du point désigné par un appui long : même placement que celle d'un lieu trouvé,
-                // dans celui des quatre coins du point qui déplace le moins la carte.
-                val mPoint = mapPoint.point
-                if (mPoint != null && mapPoint.bubbleVisible) {
-                    // Suit l'epingle image par image, comme celle d'un lieu trouve (cf. gOff).
-                    val mOff = remember(mPoint, idleTick, moveTick) {
-                        controller.screenOf(mPoint.first, mPoint.second)
-                            ?.let { p -> IntOffset(p.x.toInt(), p.y.toInt()) }
-                    }
-                    if (mOff != null) {
-                        // Décalage de carte seulement si aucun des quatre coins ne tenait : le point désigné
-                        // est en plein écran dans le cas ordinaire, et rien ne bouge. L'épingle, elle, ne
-                        // bouge jamais d'un pouce : elle reste sur le point, c'est la carte qui glisse.
-                        AnchoredBubble(
-                            key = mPoint,
-                            // Publié une fois l'adresse arrivée : mesurée au spinner, la bulle est plus
-                            // courte que la bulle réelle, et le recentrage - à usage unique - serait
-                            // consommé sur une hauteur qui n'est pas la sienne.
-                            publish = mapPoint.address != AddressState.Loading,
-                            panAllowed = true,
-                            onPan = panMap,
-                            placement = { bw, bh, vw, vh -> bubbleGeom.atNearestCorner(mOff.x, mOff.y, bw, bh, vw, vh) },
-                        ) {
-                            MapPointBubble(
-                                address = mapPoint.address,
-                                profileLabel = routingProfileLabel(routingProfile),
-                                // La localisation éteinte dans le téléphone, la ligne disparaît : une
-                                // mesure depuis une position inconnue ne partirait jamais (cf.
-                                // MapPointBubble). L'affichage du repère, lui, n'y est pour rien - le
-                                // capteur suffit. Une mesure déjà demandée retient la ligne : son
-                                // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
-                                // sur la carte - rien ne l'expliquerait plus.
-                                showPositionRow = location.sensorEnabled || mapPoint.positionMeasure != null,
-                                positionMeasure = mapPoint.positionMeasure,
-                                pointMeasure = mapPoint.pointMeasure,
-                                imperial = imperialUnits,
-                                onDistanceFromPosition = { onDistanceFromPositionTap() },
-                                onDistanceFromPoint = { onDistanceFromPointTap() },
-                                onSetStart = { ouvrePlanificateur(); planner.setStart(placeOfPoint()); mapPoint.clear() },
-                                onSetEnd = { ouvrePlanificateur(); planner.setEnd(placeOfPoint()); mapPoint.clear() },
-                                onAddStep = {
-                                    ouvrePlanificateur()
-                                    if (planner.addWaypoint(placeOfPoint())) mapPoint.clear()
-                                    else plannerFullMessage = true
-                                },
-                                onClose = { mapPoint.clear() },
-                                fontSp = settings?.bubbleFont ?: 14,
-                                backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
-                            )
-                        }
-                    }
-                }
-                // Position hors du centre de la carte : c'est ce qui fait apparaître le bouton de
-                // recentrage, et rien d'autre.
-                //
-                // Mesuré à l'écran plutôt que sur les coordonnées : la question est "la position est-elle
-                // au milieu de ce que je vois", et sa réponse doit valoir à tout zoom. Suivie à chaque
-                // image du déplacement (moveTick), comme les infobulles.
-                val centerTolPx = with(density) { 16.dp.toPx() }
-                val viewCenterX = constraints.maxWidth / 2f
-                val viewCenterY = constraints.maxHeight / 2f
-                val positionOffCenter = remember(location.lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
-                    location.lastUserLocation?.let { (la, lo) -> controller.screenOf(lo, la) }?.let { p ->
-                        hypot(p.x - viewCenterX, p.y - viewCenterY) > centerTolPx
-                    } ?: false
-                }
-                // Commandes du coin bas-droit, à portée du pouce : le recentrage sur la position, puis le
-                // planificateur au plus près du coin - c'est celui qui reste, l'autre n'apparaissant que le
-                // capteur allumé, et un bouton qui change de place au gré du GPS se chercherait à chaque fois.
-                //
-                // Position FIXE, à la seule barre de navigation près : elles ne se rangent pas au-dessus de
-                // ce qui occupe le bas (profil, bande du planificateur), contrairement à l'échelle. Un
-                // bouton qui saute de trois cents pixels à l'ouverture d'un panneau se cherche à chaque
-                // fois ; il vaut mieux qu'il attende sous lui, là où la main l'a laissé.
-                //
-                // Posées AVANT tout ce qui occupe le bas, donc DESSOUS : la bande du planificateur, les
-                // consignes de saisie et le profil les recouvrent au lieu de les pousser. Elles restent
-                // au-dessus des infobulles, elles, qui ne doivent pas rendre un bouton intouchable.
-                // Meme ecart sous le dernier bouton qu'entre les deux : la colonne se lit alors d'un
-                // bloc, sans que le bas de l'ecran serre plus que ses propres intervalles. La barre de
-                // navigation l'emporte si elle est plus haute - un bouton ne se glisse pas dessous.
-                val navBottomDp = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
-                Column(
-                    Modifier.align(Alignment.BottomEnd)
-                        .padding(end = 8.dp, bottom = maxOf(MapControlSpacing, navBottomDp)),
-                    verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    // Affiche seulement quand il a quelque chose a faire : la position centree, le bouton
-                    // disparait plutot que de proposer un geste sans effet. Il s'efface donc de lui-meme au
-                    // bout du recentrage qu'on vient de lui demander.
-                    //
-                    // Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et
-                    // c'est ce bouton-ci qui s'ajoute ou se retire par le haut.
-                    if (location.gpsActive && positionOffCenter) {
-                        IconButton(onClick = { location.recenterOnGps() }, modifier = controlBg) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location), tint = chromeFg)
-                                // Disque central au bleu du point de position : le bouton n'existant que
-                                // hors centre, c'est sa seule teinte.
-                                Canvas(Modifier.size(MyLocationDotSize)) { drawCircle(color = RecenterDotColor) }
-                            }
-                        }
-                    }
-                    // Cloche de l'alerte d'éloignement, juste au-dessus du planificateur : la fonction sert
-                    // PENDANT la sortie, et le pouce la trouve au même endroit que le reste.
-                    //
-                    // Elle se lit à la couleur de son dessin, comme les autres commandes de la carte : gris
-                    // tant qu'aucune trace n'est suivie, bleu dès qu'on en suit une, rouge quand on s'en est
-                    // écarté - la bannière du bas dit alors de combien, mais la cloche l'annonce déjà à qui
-                    // regarde la carte.
-                    if (alertEnabled) {
-                        IconButton(onClick = { onAlertButtonTap() }, modifier = controlBg) {
-                            Icon(
-                                Icons.Outlined.NotificationsNone,
-                                stringResource(R.string.content_desc_off_track_alert),
-                                tint = when {
-                                    alerting -> OffTrackAlertColor
-                                    followed != null -> MapChromeActive
-                                    else -> chromeFg
-                                },
-                            )
-                        }
-                    }
-                    // Points d'interet : la pastille s'allume quand la couche est affichee, comme le
-                    // suivi de position et l'alerte d'eloignement le font pour la leur.
-                    //
-                    // Un marque-page, et non l'epingle : celle-ci est deja le dessin des marqueurs que ce
-                    // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
-                    // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
-                    // qu'on retient le long du parcours.
-                    if (settings?.poiEnabled == true) {
-                        IconButton(onClick = { poi.toggle() }, modifier = controlBg) {
-                            val teinte = if (poi.visible) MapChromeActive else chromeFg
-                            /*
-                             * L'attente prend la place du pictogramme, DANS le bouton.
-                             *
-                             * Le chargement ne se voyait nulle part : on deplacait la carte et les
-                             * marqueurs arrivaient une seconde ou deux plus tard, sans que rien n'ait dit
-                             * qu'on les cherchait. Ici, la ou l'on vient de taper.
-                             *
-                             * Exactement la taille du pictogramme qu'il remplace (24 dp, la taille par
-                             * defaut d'une icone Material) : un rond plus petit ferait sauter le bouton a
-                             * chaque requete, et c'est le genre de tressautement qu'on remarque bien plus
-                             * que l'attente elle-meme.
-                             */
-                            if (poi.loading) {
-                                CircularProgressIndicator(
-                                    Modifier.size(PoiButtonIconSize), color = teinte, strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
-                                    tint = teinte,
-                                )
-                            }
-                        }
-                    }
-                    // Masqué tant que sa bande est ouverte, qu'il ne servirait qu'à rouvrir.
-                    // `!= false` : meme raison que le bouton GPS. C'est l'autre bouton que le testeur a vu
-                    // disparaitre, et par le meme chemin.
-                    if (settings?.routePlannerEnabled != false && !planner.open) {
-                        IconButton(onClick = {
-                            if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
-                                showNoConnectionDialog = true
-                            } else {
-                                vm.closeProfile()          // les deux occupent le bas de l'écran
-                                // Le suivi allumé : on part d'où l'on est. Le bouton de la carte
-                                // seulement - les infobulles, elles, ouvrent le planificateur POUR y
-                                // poser le lieu qu'on vient de toucher, et pré-remplir le départ
-                                // décalerait ce que leur "Étape" va remplir.
-                                planner.openPlanner(fromCurrentPosition = location.gpsActive)
-                                planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
-                            }
-                        }, modifier = controlBg) {
-                            Icon(Icons.Outlined.Directions, stringResource(R.string.planner_title), tint = chromeFg)
-                        }
-                    }
-                }
+                PoiStatusBanner(poi = poi, controller = controller, topControlsPx = insets.topControlsPx)
+                PlaceBubblesLayer(
+                    settings = settings,
+                    frame = bubbleFrame,
+                    controller = controller,
+                    poi = poi,
+                    geo = geo,
+                    mapPoint = mapPoint,
+                    planner = planner,
+                    location = location,
+                    routingProfile = routingProfile,
+                    imperial = imperialUnits,
+                    idleTick = idleTick,
+                    moveTick = moveTick,
+                    onOpenPlanner = { ouvrePlanificateur() },
+                    onDistanceFromPosition = { onDistanceFromPositionTap() },
+                    onDistanceFromPoint = { onDistanceFromPointTap() },
+                )
+                MapBottomRightControls(
+                    settings = settings,
+                    chrome = chrome,
+                    controller = controller,
+                    location = location,
+                    poi = poi,
+                    planner = planner,
+                    vm = vm,
+                    routingUrl = routingUrl,
+                    alertEnabled = alertEnabled,
+                    alerting = alerting,
+                    followedTrack = followed != null,
+                    moveTick = moveTick,
+                    idleTick = idleTick,
+                    maxWidthPx = constraints.maxWidth,
+                    maxHeightPx = constraints.maxHeight,
+                    onBellTap = { alert.onBellTap(location.gpsActive) },
+                    onNoConnection = { dialogs.noConnection = true },
+                )
 
                 /*
                  * Barre de retouche : verticale, du MEME cote que le bouton qui l'ouvre - la colonne de
@@ -1507,7 +927,7 @@ fun MainScreen(
                 if (edit.open) {
                     TrackEditToolbar(
                         state = edit, canUndo = canUndo, chromeBg = chromeBg, chromeFg = chromeFg,
-                        topControlsHeightPx = topControlsHeightPx, onUndo = { vm.undoLastEdit() },
+                        topControlsHeightPx = insets.topControlsPx, onUndo = { vm.undoLastEdit() },
                     )
                 }
                 /*
@@ -1546,7 +966,7 @@ fun MainScreen(
                         // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
                         onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },
                         onPlaceForgotten = { lieu -> vm.forgetPlannerPlace(lieu.label) },
-                        onImport = { importDialog = true },
+                        onImport = { planner.importDialog = true },
                         onDownload = {
                             val name = defaultRouteName(planner.targets, currentPositionLabel)
                             gpxSaver.launch(GpxWriter.fileName(name))
@@ -1560,7 +980,7 @@ fun MainScreen(
                             // elle en prend le maximum, la sur ou la barre de navigation s'additionnerait
                             // a un clavier qui la recouvre deja.
                             .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
-                            .onGloballyPositioned { plannerBandHeightPx = it.size.height },
+                            .onGloballyPositioned { insets.plannerBandPx = it.size.height },
                     )
                 }
                 // Consigne de la mesure sur trace : le point à poser, et la croix qui referme la fonction.
@@ -1572,7 +992,7 @@ fun MainScreen(
                             else stringResource(R.string.measure_pick_end, started.layerName),
                         onClose = { measure.closeBand() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                            .onGloballyPositioned { measureBarHeightPx = it.size.height },
+                            .onGloballyPositioned { insets.measureBarPx = it.size.height },
                     )
                 }
                 // Consigne du choix d'un point de référence : même barre que la mesure sur trace, l'une et
@@ -1582,7 +1002,7 @@ fun MainScreen(
                         text = stringResource(R.string.geocode_pick_point_prompt),
                         onClose = { mapPoint.cancelPickingPoint() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
-                            .onGloballyPositioned { pointBarHeightPx = it.size.height },
+                            .onGloballyPositioned { insets.pointBarPx = it.size.height },
                     )
                 }
                 TrackEditPrompts(
@@ -1594,7 +1014,7 @@ fun MainScreen(
                     chromeFg = chromeFg,
                     moveTick = moveTick,
                     idleTick = idleTick,
-                    bottomCoverPx = profileBarHeightPx,
+                    bottomCoverPx = insets.profilePanelPx,
                     vm = vm,
                 )
                 MeasureBubbleLayer(
@@ -1602,7 +1022,7 @@ fun MainScreen(
                     controller = controller,
                     idleTick = idleTick,
                     // Le profil quand il est ouvert, la barre de navigation sinon.
-                    bottomCoverPx = if (activeLayerId != null) profileBarHeightPx
+                    bottomCoverPx = if (activeLayerId != null) insets.profilePanelPx
                         else WindowInsets.navigationBars.getBottom(density),
                     imperial = imperialUnits,
                     fontSp = settings?.bubbleFont ?: 14,
@@ -1622,7 +1042,7 @@ fun MainScreen(
                             offline.drawingActive = false
                         },
                         modifier = Modifier.align(Alignment.BottomCenter)
-                            .onGloballyPositioned { offline.barHeightPx = it.size.height },
+                            .onGloballyPositioned { insets.offlineBarPx = it.size.height },
                     )
                 }
                 TrackProfileLayer(
@@ -1638,71 +1058,22 @@ fun MainScreen(
                     imperial = imperialUnits,
                     gpsActive = location.gpsActive,
                     userLocation = location.lastUserLocation,
-                    onHeightChange = { profileBarHeightPx = it },
+                    onHeightChange = { insets.profilePanelPx = it },
                     onExpandZoom = { vm.expandProfileZoom() },
                     onToggleSlopeLegend = { vm.setSlopeLegend(it) },
                     onScrub = { vm.onProfileTap(it) },
                     onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
                     onDoubleTapZoom = { fraction -> vm.zoomProfile(2f, fraction) },
                 )
-                /*
-                 * Bannière de l'alerte d'éloignement, posée EN DERNIER : elle passe donc par-dessus tout ce
-                 * qui occupe le bas de l'écran - profil, bande du planificateur, consignes de saisie.
-                 *
-                 * C'est la seule barre du bas à s'accorder ce droit, et c'est ce qui la distingue : les
-                 * autres accompagnent un geste qu'on vient de faire et peuvent attendre leur tour, celle-ci
-                 * dit qu'on ne suit plus le chemin prévu. Une alerte qu'un panneau recouvre n'alerte
-                 * personne, et la refermer d'un tap sur sa croix reste à un doigt.
-                 */
-                followed?.takeIf { alertBanner }?.let { suivie ->
-                    OffTrackAlertBar(
-                        trackName = suivie.layerName,
-                        awayM = awayM ?: alertDistanceM.toDouble(),
-                        imperial = imperialUnits,
-                        onClose = { TrackWatch.silence() },
-                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-                    )
-                }
-                /*
-                 * Le suivi s'est arrete tout seul, ou le repere ne bouge plus.
-                 *
-                 * Au meme endroit et au meme rang que l'alerte d'eloignement : ce sont les deux seules
-                 * choses que la carte annonce d'elle-meme, et aucun panneau ne doit les recouvrir. Elles
-                 * ne se disputent jamais la place - un suivi arrete n'a plus d'ecart a mesurer, et une
-                 * position figee ne se mesure pas davantage.
-                 *
-                 * L'arret l'emporte sur la peremption : le repere efface est le fait le plus grave, et le
-                 * dire deux fois n'en dirait pas plus.
-                 */
-                val arret = stopNotice
-                if (arret != null) {
-                    LocationNoticeBar(
-                        text = stringResource(
-                            if (arret == LocationHub.StopReason.SENSOR_OFF) R.string.location_stopped_sensor
-                            else R.string.location_stopped_system,
-                        ),
-                        onDismiss = { location.dismissStopNotice() },
-                        actionLabel = stringResource(R.string.location_stopped_resume),
-                        onAction = { location.dismissStopNotice(); location.onGpsButtonTap() },
-                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-                    )
-                } else if (location.staleNoticeVisible) {
-                    /*
-                     * La croix referme la banniere, elle ne repare pas la position : le repere garde sa
-                     * couleur de peremption sur la carte. Refermer dit "j'ai lu", pas "c'est faux".
-                     *
-                     * Sans cela la banniere etait inutilisable : elle couvrait le bas de la carte pour
-                     * toute la duree du trou de reception, et la croix ne repondait pas.
-                     */
-                    LocationNoticeBar(
-                        text = stringResource(
-                            R.string.location_stale_banner,
-                            Format.duration((location.positionAgeMs ?: 0L) / 1000.0),
-                        ),
-                        onDismiss = { location.dismissStaleNotice() },
-                        modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-                    )
-                }
+                MapNoticeLayer(
+                    location = location,
+                    followed = followed,
+                    alerting = alertBanner,
+                    awayM = awayM,
+                    alertDistanceM = alertDistanceM,
+                    stopNotice = stopNotice,
+                    imperial = imperialUnits,
+                )
             }
             // ouverture du menu par swipe depuis le bord gauche
             if (mode != "burger") {
@@ -1717,199 +1088,67 @@ fun MainScreen(
                     })
             }
             // Basemap Control : panneau latéral droit (fonds activés, dossiers, drag & drop)
-            if (basemapControlOpen) {
+            if (chromeState.basemapControlOpen) {
                 Box(Modifier.fillMaxSize().clickable(
                     indication = null, interactionSource = remember { MutableInteractionSource() },
-                ) { basemapControlOpen = false })
+                ) { chromeState.basemapControlOpen = false })
                 Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight()) {
                     BasemapControlPanel(
                         folders = basemapFolders, providers = providers, composites = composites,
                         currentBasemapId = settings?.defaultBasemapId ?: "",
                         widthFraction = (settings?.basemapControlWidthPct ?: 50) / 100f,
                         backgroundAlpha = (settings?.basemapControlOpacityPct ?: 80) / 100f,
-                        onSelect = { id -> vm.selectBasemap(id); basemapControlOpen = false },
+                        onSelect = { id -> vm.selectBasemap(id); chromeState.basemapControlOpen = false },
                         onCreateFolder = { name, parentId -> vm.createBasemapFolder(name, parentId) },
                         onReorderDrop = { k, id, tk, tid, pos -> vm.reorderBasemapDrop(k, id, tk, tid, pos) },
                         reliefOn = settings?.hillshadeOn == true,
                         onToggleRelief = { vm.toggleHillshade() },
-                        onClose = { basemapControlOpen = false },
+                        onClose = { chromeState.basemapControlOpen = false },
                     )
                 }
             }
-            // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
-            if (offline.extentChoice) {
-                OfflineExtentDialog(
-                    dark = isDarkTheme(settings?.theme),
-                    onDismiss = { offline.extentChoice = false },
-                    onArea = {
-                        offline.extentChoice = false
-                        offline.corridor = null
-                        offline.drawingActive = true
-                    },
-                    onTrack = { offline.extentChoice = false; offline.pickTrack = true },
-                )
-            }
-            if (offline.pickTrack) {
-                OfflineTrackPickDialog(
-                    candidates = layers.filter { it.hasLine },
-                    onDismiss = { offline.pickTrack = false },
-                    onPick = { l ->
-                        offline.pickTrack = false
-                        // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le couloir se
-                        // calcule sur les points reels, et l'estimation doit etre juste des la premiere image.
-                        vm.trackPointsOf(l) { pts ->
-                            if (pts.isNotEmpty()) {
-                                offline.corridor = l to pts
-                                offline.configBbox = Bbox.of(
-                                    pts.minOf { it.first }, pts.minOf { it.second },
-                                    pts.maxOf { it.first }, pts.maxOf { it.second },
-                                )
-                            }
-                        }
-                    },
-                )
-            }
-            offline.configBbox?.let { bbox ->
-                val currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId }
-                OfflineDownloadConfigScreen(
-                    bbox = bbox,
-                    corridorPoints = offline.corridor?.second,
-                    corridorName = offline.corridor?.first?.name.orEmpty(),
-                    providerMinZoom = currentProvider?.minZoom ?: 0,
-                    providerMaxZoom = currentProvider?.maxZoom ?: 19,
-                    dark = darkChrome,
-                    styleJson = style?.styleJson, styleUrl = style?.styleUrl,
-                    // La case n'apparait que si la couche des points d'interet est allumee : proposer
-                    // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
-                    poiAvailable = settings?.poiEnabled == true,
-                    onDismiss = { offline.closeFlow() },
-                    onDownload = { request ->
-                        // Domaine B : lance le moteur, puis revient à la carte ou la popup de progression
-                        // (observée via vm.offlineDownload) prend le relais.
-                        vm.startOfflineDownload(request)
-                        offline.closeFlow()
-                    },
-                )
-            }
-            // Popup de progression du téléchargement hors-ligne (SPEC section 4), par-dessus la carte. Le mode
-            // réduit (bouton orange) est rendu dans la barre de boutons en haut à gauche, pas ici.
-            offlineDownload?.let { dl ->
-                if (!dl.minimized) {
-                    // Scrim opaque : bloque les interactions avec la carte derrière la popup.
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f))
-                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {})
-                    OfflineDownloadCard(
-                        state = dl,
-                        onMinimize = { vm.setOfflineDownloadMinimized(true) },
-                        onCancel = { vm.cancelOfflineDownload() },
-                        onClose = { vm.dismissOfflineDownload() },
-                        modifier = Modifier.align(Alignment.Center).padding(24.dp).widthIn(max = 420.dp),
-                    )
-                }
-            }
+            OfflineFlowUi(
+                offline = offline,
+                download = offlineDownload,
+                chrome = chrome,
+                vm = vm,
+                layers = layers,
+                currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId },
+                styleJson = style?.styleJson,
+                styleUrl = style?.styleUrl,
+                // La case n'apparait que si la couche des points d'interet est allumee : proposer
+                // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
+                poiAvailable = settings?.poiEnabled == true,
+            )
         }
     }
 
-    // choix du dossier de destination avant le sélecteur de fichier
-    if (importFlow.folderPicker) {
-        ImportFolderDialog(
-            folders = folders,
-            onNewFolder = { importFlow.folderPicker = false; importFlow.newFolderDialog = true },
-            onPick = { folderId -> importFlow.folderPicker = false; importFlow.proceed(folderId) },
-            // Renoncer au dossier, c'est renoncer a l'import : les fichiers qu'une autre application nous a
-            // confies sont relaches, sans quoi ils repartiraient au prochain import, celui d'autre chose.
-            onDismiss = { importFlow.cancel() },
-        )
-    }
-
-    reverseConfirm?.let { layer ->
-        ReverseConfirmDialog(
-            onConfirm = { vm.reverseLayer(layer); reverseConfirm = null },
-            onDismiss = { reverseConfirm = null },
-        )
-    }
-    edit.message?.let { message ->
-        EditMessageDialog(message = message, onDismiss = { edit.message = null })
-    }
-
-    if (importDialog) {
-        RouteImportDialog(
-            defaultName = defaultRouteName(planner.targets, currentPositionLabel),
-            folders = folders,
-            onImport = { name, folderId ->
-                routeGpx(name)?.let { vm.importLayer(it, GpxWriter.fileName(name), folderId) }
-                importDialog = false
-            },
-            onDismiss = { importDialog = false },
-        )
-    }
-
-    // création d'un dossier puis poursuite de l'import dedans
-    if (importFlow.newFolderDialog) {
-        NewFolderDialog(
-            fallbackName = stringResource(R.string.label_new_folder),
-            onCreate = { n ->
-                importFlow.newFolderDialog = false
-                vm.createFolder(n, null) { id -> importFlow.proceed(id) }
-            },
-            onDismiss = { importFlow.newFolderDialog = false },
-        )
-    }
-
-    if (editing) {
-        // Même dérivation que l'infobulle : un vm.selectedFeature() ici ne serait pas observé par Compose.
-        if (selectedFeature != null) PropertyEditor(
-            feature = selectedFeature, schema = markerLayerData?.schema ?: emptyList(),
-            onSave = { vm.saveFeature(it); editing = false }, onCancel = { editing = false },
-            onDelete = { vm.deleteFeature(selectedFeature); editing = false },
-            onPickImage = { onImported -> pendingImageCallback = onImported; imagePicker.launch("image/*") },
-        )
-    }
-
-    if (importReport.isNotEmpty()) {
-        ImportReportDialog(failures = importReport, onDismiss = { importReport = emptyList() })
-    }
-
-    if (plannerFullMessage) {
-        PlannerFullDialog(onDismiss = { plannerFullMessage = false })
-    }
-
-    if (showNoConnectionDialog) {
-        NoConnectionDialog(onDismiss = { showNoConnectionDialog = false })
-    }
-
-    if (showAlertNeedsGpsDialog) {
-        AlertNeedsGpsDialog(
-            onEnable = {
-                showAlertNeedsGpsDialog = false
-                alertChooserPending = true
-                location.onGpsButtonTap()
-            },
-            onDismiss = { showAlertNeedsGpsDialog = false },
-        )
-    }
-
-    if (alert.chooserOpen) {
-        TrackChooserDialog(
-            candidates = alert.candidates,
-            followed = followed,
-            imperial = imperialUnits,
-            onPick = { alert.follow(it, alertDistanceM.toDouble()) },
-            onStop = { TrackWatch.stop(); alert.closeChooser() },
-            onDismiss = { alert.closeChooser() },
-        )
-    }
-
-    if (location.showDisabledDialog) {
-        LocationDisabledDialog(
-            onEnable = { location.showDisabledDialog = false; location.openLocationSettings() },
-            onDismiss = { location.showDisabledDialog = false },
-        )
-    }
+    /*
+     * Tout ce qui se pose PAR-DESSUS la carte : treize boites, rendues d'un seul endroit (cf. MainDialogs).
+     *
+     * Hors du tiroir et hors de la boite de la carte, comme elles l'ont toujours ete : une boite de
+     * dialogue se place elle-meme au-dessus de tout, et l'inclure dans la pile de la carte lui donnerait
+     * pour voisins des calques dont elle n'a que faire.
+     */
+    MainDialogs(
+        folders = folders,
+        importFlow = importFlow,
+        dialogs = dialogs,
+        edit = edit,
+        alert = alert,
+        planner = planner,
+        location = location,
+        vm = vm,
+        selectedFeature = selectedFeature,
+        schema = markerLayerData?.schema ?: emptyList(),
+        followed = followed,
+        imperial = imperialUnits,
+        alertDistanceM = alertDistanceM,
+        currentPositionLabel = currentPositionLabel,
+        onPickImage = { onImported -> dialogs.awaitImage(onImported); imagePicker.launch("image/*") },
+        routeGpx = { name -> routeGpx(name) },
+    )
 }
-
-/** Part de la hauteur d'écran que l'infobulle ne dépasse pas ; au-delà, ses propriétés défilent. */
-private const val BubbleMaxHeightRatio = 0.6f
 
 /** Propositions demandées au géocodeur. Plus que les 4 visibles : le défilement de la liste n'a de sens
  *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
@@ -1917,7 +1156,3 @@ private const val GeocodeResultLimit = 10
 
 /** Part de la hauteur d'ecran que la bande du planificateur ne depasse jamais. */
 private const val PlannerMaxHeightRatio = 0.6f
-
-/** Zoom minimal garanti sur le lieu trouvé, un zoom plus serré étant conservé. À 12, la ville et ses
- *  abords tiennent à l'écran : de quoi situer l'épingle, sans plonger sur une adresse à la parcelle. */
-private const val GeocodeMinZoom = 12.0

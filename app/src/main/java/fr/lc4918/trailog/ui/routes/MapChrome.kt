@@ -48,6 +48,7 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.map.legendAssetModel
 import fr.lc4918.trailog.ui.components.MapController
+import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
@@ -59,6 +60,53 @@ import kotlin.math.pow
  * autres - et qu'elles etaient dispersees sur trois cents lignes en bas de `MainScreen`, entre deux
  * composables sans rapport. La legende d'un fond y a rejoint son bouton, pour la meme raison.
  */
+
+/**
+ * L'apparence commune de tout ce qui se pose sur la carte : les deux couleurs, le fond des boutons, et la
+ * taille du carre qu'il dessine.
+ *
+ * **Pourquoi les reunir.** Les quatre valeurs se deduisent des memes deux reglages - le theme et la taille
+ * des boutons - et n'ont de sens qu'ensemble : un bouton dont le fond viendrait d'un theme et le dessin
+ * d'un autre serait illisible. Elles circulaient separement dans l'ecran, quatre parametres de plus a
+ * chaque composable extrait, et la moindre coupe supplementaire en rallongeait toutes les signatures.
+ *
+ * [buttonBackground] est vide quand le reglage ne demande pas de fond : c'est le meme modificateur dans
+ * les deux cas, et l'appelant n'a pas a savoir lequel des deux il tient.
+ */
+@Stable
+data class MapChrome(
+    /** Theme sombre : le fond et le dessin s'echangent. */
+    val dark: Boolean,
+    /** Le fond des ornements - aplat des boutons, des bulles, de l'echelle. */
+    val bg: Color,
+    /** Le dessin pose dessus : pictogrammes, chiffres de l'echelle. */
+    val fg: Color,
+    /**
+     * Le fond des boutons, quand le reglage le demande.
+     *
+     * Sa taille est reglee et ne touche QUE le carre dessine : la zone tactile reste aux 48 dp de Material,
+     * quel que soit le curseur.
+     */
+    val buttonBackground: Modifier,
+)
+
+/** Les ornements de la carte, tels que les reglages les decident. */
+@Composable
+internal fun rememberMapChrome(settings: SettingsEntity?): MapChrome {
+    val dark = isDarkTheme(settings?.theme)
+    val size = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
+    val withBg = settings?.controlButtonsBackground == true
+    val bg = mapChromeBg(dark)
+    return remember(dark, size, withBg, bg) {
+        MapChrome(
+            dark = dark,
+            bg = bg,
+            fg = mapChromeFg(dark),
+            buttonBackground = if (!withBg) Modifier
+                else Modifier.mapButtonBackground(bg.copy(alpha = ControlButtonBgAlpha), size),
+        )
+    }
+}
 
 /** Un bouton d'une barre du bas : le choix principal se distingue par son fond. */
 @Composable

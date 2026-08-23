@@ -311,8 +311,24 @@ class RoutePlannerState {
     fun setEnd(place: GeocodePlace) = choose(steps.last(), StepTarget.Place(place))
 
     /**
+     * "Enregistrer comme trace" : la boite qui demande son nom et son dossier est ouverte.
+     *
+     * Ici plutot que dans l'ecran : c'est la bande qui porte le bouton, et le parcours qu'elle enregistre
+     * est celui qu'elle vient de calculer.
+     */
+    var importDialog by mutableStateOf(false)
+
+    /**
+     * Le planificateur est plein et vient de le refuser : l'ecran le DIT.
+     *
+     * Pose par [addWaypoint] lui-meme, et non par ses trois appelants : le refus et son annonce sont le
+     * meme fait, et les separer laissait a chaque bulle le soin de se souvenir de le dire.
+     */
+    var full by mutableStateOf(false)
+
+    /**
      * Ajoute [place] comme etape. Faux quand le planificateur est plein (cf. [MaxPlannerSteps]) - le
-     * moteur refuse au-dela, et l'appelant doit le dire plutot que de laisser un tap sans effet.
+     * moteur refuse au-dela, et [full] le fait dire plutot que de laisser un tap sans effet.
      *
      * Une ligne vierge existante d'abord : c'est celle que l'utilisateur voit vide devant lui, et la
      * remplir est ce qu'il attend. A defaut, l'etape s'insere AVANT l'arrivee - une etape ajoutee est un
@@ -321,7 +337,7 @@ class RoutePlannerState {
     fun addWaypoint(place: GeocodePlace): Boolean {
         val vierge = steps.firstOrNull { it.target == null }
         if (vierge != null) { choose(vierge, StepTarget.Place(place)); return true }
-        if (!canAddStep) return false
+        if (!canAddStep) { full = true; return false }
         val etape = PlannerStep(nextId++)
         steps.add(steps.size - 1, etape)
         choose(etape, StepTarget.Place(place))
