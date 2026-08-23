@@ -167,7 +167,8 @@
     <string name="measure_pick_end">Pick the measurement end point on track %1$s</string>
     <string name="planner_title">Route</string>
     <string name="planner_collapse">Collapse</string>
-    <string name="planner_expand">Reopen planner</string>
+    <string name="planner_cancel_title">A route is being created</string>
+    <string name="planner_cancel_question">Do you want to cancel?</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Finish</string>
     <string name="planner_via">Waypoint</string>
@@ -485,6 +486,7 @@
     <string name="alert_pick_track_empty">No visible track nearby.</string>
     <string name="alert_track_away">%1$s away</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_track_planned">Route in progress</string>
     <string name="alert_stop_following">Stop following</string>
     <string name="alert_off_track_banner">You are %1$s from the track \"%2$s\"</string>
     <string name="alert_needs_gps_text">The off-track alert needs your position. Turn GPS location on?</string>

@@ -3,9 +3,13 @@ package fr.lc4918.trailog.ui.routes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
+import fr.lc4918.trailog.ui.alert.PlannedRouteLayerId
 import fr.lc4918.trailog.ui.location.LocationControls
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Ce qui allume et ce qui eteint la veille sur la trace suivie.
@@ -21,6 +25,9 @@ import fr.lc4918.trailog.ui.location.LocationControls
  *
  * @param alertEnabled le reglage "alerte d'eloignement" est allume.
  * @param followed la trace actuellement suivie, telle que la veille la publie.
+ * @param routeSamples la geometrie du parcours que le planificateur affiche, s'il y en a un : elle se
+ *   propose au suivi comme une trace de la bibliotheque (cf. [PlannedRouteLayerId]).
+ * @param routeLabel le nom sous lequel ce parcours se propose et s'annonce.
  */
 @Composable
 internal fun OffTrackAlertEffects(
@@ -30,6 +37,8 @@ internal fun OffTrackAlertEffects(
     layers: List<LayerEntity>,
     followed: TrackWatch.Followed?,
     alertEnabled: Boolean,
+    routeSamples: List<Sample>?,
+    routeLabel: String,
 ) {
     LaunchedEffect(location.gpsActive, alert.chooserPending) { alert.openPendingChooser(location.gpsActive) }
     // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
@@ -37,7 +46,12 @@ internal fun OffTrackAlertEffects(
     LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
         if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
         val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
-        vm.nearestTracks(la, lo) { alert.candidates = it }
+        // Le parcours du planificateur passe EN TETE, hors classement : c'est celui qu'on vient de
+        // composer, et une trace de la bibliotheque qui passerait plus pres ne repond pas a la question
+        // qu'on pose en touchant la cloche. Projete a l'ecart de la composition - un itineraire fait
+        // couramment plusieurs milliers de points.
+        val enCours = withContext(Dispatchers.Default) { plannedCandidate(routeSamples, routeLabel, la, lo) }
+        vm.nearestTracks(la, lo) { alert.candidates = listOfNotNull(enCours) + it }
     }
     // Le réglage éteint, ou le capteur coupé : plus rien à suivre. La liste ouverte se referme avec.
     LaunchedEffect(alertEnabled, location.gpsActive) {
@@ -47,8 +61,17 @@ internal fun OffTrackAlertEffects(
         }
     }
     // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
+    // Le parcours du planificateur n'a pas de couche : c'est l'effet suivant qui veille sur lui.
     LaunchedEffect(layers, followed) {
         val suivie = followed ?: return@LaunchedEffect
+        if (suivie.layerId == PlannedRouteLayerId) return@LaunchedEffect
         if (layers.none { it.id == suivie.layerId && it.visible }) TrackWatch.stop()
+    }
+    // Même règle pour le parcours du planificateur : refermé ou redevenu incalculable, il quitte la carte,
+    // et suivre une trace qu'on ne voit plus n'aurait pas de sens. Un simple recalcul, lui, rend une autre
+    // géométrie mais jamais rien : le suivi le traverse sans s'arrêter.
+    LaunchedEffect(followed, routeSamples) {
+        val suivie = followed ?: return@LaunchedEffect
+        if (suivie.layerId == PlannedRouteLayerId && routeSamples == null) TrackWatch.stop()
     }
 }

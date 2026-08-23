@@ -27,6 +27,20 @@ data class TrackCandidate(
 )
 
 /**
+ * L'itineraire du planificateur, qui n'est encore dans aucune couche.
+ *
+ * Un parcours calcule se suit comme n'importe quelle trace - c'est meme le cas le plus courant : on
+ * compose son trajet, on part, et on veut etre prevenu si on le quitte. L'importer d'abord dans la
+ * bibliotheque serait un detour, et laisserait derriere soi une couche dont on ne voulait pas.
+ *
+ * Un identifiant NEGATIF, donc hors de portee des identifiants de couches (Room les attribue a partir de
+ * 1) : la trace suivie se designe partout par [TrackCandidate.layerId], et il fallait une valeur qui ne
+ * puisse jamais tomber sur une couche reelle. C'est aussi ce qui permet de reconnaitre le parcours
+ * temporaire la ou l'on verifie que la couche suivie est toujours a l'ecran (cf. OffTrackAlertEffects).
+ */
+const val PlannedRouteLayerId = -1L
+
+/**
  * Le CHOIX d'une trace a suivre : la liste ouverte, et les candidates qu'on y propose.
  *
  * **Ce qui n'est plus ici.** La trace suivie, l'ecart mesure et l'alerte qui en decoule vivaient dans cet

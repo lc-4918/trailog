@@ -240,11 +240,26 @@ class RoutePlannerState {
         choose(depart, StepTarget.CurrentPosition)
     }
 
+    /**
+     * Le retour Android demande a abandonner le trajet : la question est posee, rien n'est encore perdu.
+     *
+     * Elle ne se pose qu'au retour, et sur une bande DEJA repliee - le premier appui replie, le second
+     * demande. La croix de l'en-tete, elle, ferme sans rien demander : c'est un geste vise, pose sur le
+     * bouton qui dit "fermer", quand le retour est le meme geste que celui qui quitte l'application.
+     */
+    var cancelDialog by mutableStateOf(false)
+        private set
+
+    fun askCancel() { cancelDialog = true }
+
+    fun dismissCancel() { cancelDialog = false }
+
     /** Ferme et remet a zero : rouvrir le planificateur doit donner une feuille vierge, pas le trajet
      *  d'hier a moitie efface. */
     fun close() {
         open = false
         collapsed = false
+        cancelDialog = false
         steps.clear()
         steps.add(PlannerStep(nextId++))
         steps.add(PlannerStep(nextId++))

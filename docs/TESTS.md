@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**835 tests, 79 fichiers**, tous verts.
+**847 tests, 79 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -492,7 +492,7 @@ d'incrémenter la version : trois tests tombent dans le premier cas, deux dans l
 | `StyleSettingsTest` | 5 | Quels réglages imposent de reconstruire le style de carte |
 | `TreeReorderTest` | 9 | Où se pose un élément lâché dans une arborescence |
 | `DisplayedBasemapsTest` | 12 | Quels fonds sont réellement à l'écran, donc quelle légende proposer |
-| `NearestTracksTest` | 9 | Combien de couches ouvrir pour trouver la trace la plus proche |
+| `NearestTracksTest` | 13 | Combien de couches ouvrir pour trouver la trace la plus proche, et le parcours du planificateur propose en tete |
 
 Ces quatre-là ne testent pas un ViewModel : ils testent ce qu'on en a **sorti**. Un ViewModel orchestre,
 et une orchestration se teste mal - un faux dépôt vérifierait qu'un appel a lieu, pas qu'un résultat est
@@ -722,8 +722,8 @@ autres dans `app/src/test/`, joués par Robolectric sur la JVM (le pourquoi est 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PoiBubbleUiTest` | 6 | l'infobulle d'un point d'intérêt : nom, catégorie, les trois actions d'itinéraire, le lieu sans nom |
-| `OffTrackAlertUiTest` | 9 | la bannière d'alerte et le choix de la trace à suivre |
-| `MainScreenUiTest` | 11 | l'écran de carte entier : les réglages, le menu, les modes qui se disputent les taps, et l'annonce d'un suivi interrompu |
+| `OffTrackAlertUiTest` | 10 | la bannière d'alerte et le choix de la trace à suivre, parcours calculé compris |
+| `MainScreenUiTest` | 14 | l'écran de carte entier : les réglages, le menu, les modes qui se disputent les taps, le bouton unique du calcul d'itinéraire et ce que le retour Android y ferme, et l'annonce d'un suivi interrompu |
 | `RoutePlannerBandUiTest` | 5 | la bande du planificateur, dont le retour sur une étape déjà remplie |
 | `MainScreenSansReglagesTest` | 2 | la carte pendant que les réglages n'ont pas encore répondu |
 
@@ -739,7 +739,15 @@ cherche - l'infobulle prend alors le nom de la catégorie plutôt que de s'ouvri
 
 `OffTrackAlertUiTest` couvre l'autre moitié de l'alerte, celle que `TrackWatchTest` n'atteint pas : que la
 distance et le nom de la trace arrivent bien sous les yeux, dans les unités réglées, et que les gestes de la
-boîte de dialogue mènent où ils annoncent.
+boîte de dialogue mènent où ils annoncent. Le **parcours du planificateur** y figure : il se suit sans
+couche derrière lui, et son identifiant de convention doit traverser intact le choix et la veille.
+
+`MainScreenUiTest` garde depuis peu le **calcul d'itinéraire réduit**. Il posait son propre bouton au coin
+bas-gauche pendant que le bouton habituel s'effaçait au coin bas-droit : un itinéraire en cours en
+affichait donc un à chaque bout de l'écran, sans que rien ne dise lequel faisait quoi. Le retour Android,
+lui, quittait le calcul d'un seul appui - le même geste que celui qui quitte l'application, donc celui
+qu'on fait sans y penser. Ni l'un ni l'autre ne se voit ailleurs que dans l'écran entier : le bouton et la
+bande sont dans deux fichiers différents, et l'ordre des `BackHandler` dans un troisième.
 
 ### La fenêtre où les réglages n'existent pas encore
 

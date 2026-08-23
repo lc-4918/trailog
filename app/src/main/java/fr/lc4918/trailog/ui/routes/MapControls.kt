@@ -418,24 +418,40 @@ internal fun BoxScope.MapBottomRightControls(
                 }
             }
         }
-        // Masqué tant que sa bande est ouverte, qu'il ne servirait qu'à rouvrir.
+        // Masqué tant que sa bande est DÉPLOYÉE, qu'il ne servirait qu'à rouvrir. Réduite, il
+        // reparaît et redéploie le trajet en cours : c'est le MÊME bouton qui ouvre et qui
+        // rouvre. La bande réduite posait auparavant son propre bouton au coin bas-gauche, si
+        // bien qu'un itinéraire en cours en affichait un à chaque bout de l'écran - deux cibles
+        // pour une seule fonction, et rien pour dire laquelle faisait quoi.
+        //
         // `!= false` : meme raison que le bouton GPS. C'est l'autre bouton que le testeur a vu
         // disparaitre, et par le meme chemin.
-        if (settings?.routePlannerEnabled != false && !planner.open) {
+        if (settings?.routePlannerEnabled != false && !(planner.open && !planner.collapsed)) {
             IconButton(onClick = {
-                if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) {
-                    onNoConnection()
-                } else {
-                    vm.closeProfile()          // les deux occupent le bas de l'écran
-                    // Le suivi allumé : on part d'où l'on est. Le bouton de la carte
-                    // seulement - les infobulles, elles, ouvrent le planificateur POUR y
-                    // poser le lieu qu'on vient de toucher, et pré-remplir le départ
-                    // décalerait ce que leur "Étape" va remplir.
-                    planner.openPlanner(fromCurrentPosition = location.gpsActive)
-                    planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+                when {
+                    // Trajet en cours, simplement rangé : on le redéploie tel quel. Aucune
+                    // requête à faire, donc rien à demander au réseau - le parcours est déjà
+                    // calculé, et le sortir de sa réduction ne le recalcule pas.
+                    planner.open -> { vm.closeProfile(); planner.collapse(false) }
+                    ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> onNoConnection()
+                    else -> {
+                        vm.closeProfile()          // les deux occupent le bas de l'écran
+                        // Le suivi allumé : on part d'où l'on est. Le bouton de la carte
+                        // seulement - les infobulles, elles, ouvrent le planificateur POUR y
+                        // poser le lieu qu'on vient de toucher, et pré-remplir le départ
+                        // décalerait ce que leur "Étape" va remplir.
+                        planner.openPlanner(fromCurrentPosition = location.gpsActive)
+                        planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+                    }
                 }
             }, modifier = chrome.buttonBackground) {
-                Icon(Icons.Outlined.Directions, stringResource(R.string.planner_title), tint = chrome.fg)
+                // Bleu tant qu'un trajet est en cours, comme le suivi de position et la couche
+                // des points d'intérêt : le bouton ne dit plus seulement "calculer un
+                // itinéraire", il dit aussi "il y en a un rangé là-dessous".
+                Icon(
+                    Icons.Outlined.Directions, stringResource(R.string.planner_title),
+                    tint = if (planner.open) MapChromeActive else chrome.fg,
+                )
             }
         }
     }

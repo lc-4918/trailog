@@ -92,7 +92,9 @@ sans dépendre d'un service en ligne.
   derniers lieux** que vous avez rencontrés - une étape retenue, un lieu cherché, un point d'intérêt
   consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder. Chacun s'oublie
   d'une croix, et *Réglages / Itinéraires* vide la liste d'un coup : rien de tout cela ne quitte l'appareil,
-  et rien ne s'y installe sans que vous puissiez l'en retirer.
+  et rien ne s'y installe sans que vous puissiez l'en retirer. La bande **se réduit** pour rendre la carte
+  entière, et c'est le bouton habituel du calcul d'itinéraire qui la redéploie - il n'y en a jamais deux à
+  l'écran. Le retour du téléphone replie la bande, puis **demande** avant de perdre le trajet.
 - **Trois gestes vers l'itinéraire**, sur toute infobulle qui désigne un endroit - un lieu cherché, un point
   d'intérêt, un point touché longuement sur la carte : en faire le départ, l'arrivée, ou une étape de plus.
   Le planificateur s'ouvre déjà rempli.
@@ -103,7 +105,8 @@ sans dépendre d'un service en ligne.
   affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
 - **Alerte d'éloignement** (à activer dans les réglages) : choisissez la trace que vous suivez parmi
   les plus proches de vous, et Trailog vous prévient - bandeau en bas de l'écran, et son au choix -
-  dès que vous vous en écartez de plus que la distance réglée.
+  dès que vous vous en écartez de plus que la distance réglée. L'**itinéraire que vous venez de calculer**
+  est proposé en premier, sans avoir à l'importer dans la bibliothèque.
 - **Le suivi continue écran éteint** : une fois la position allumée, elle est suivie même l'application
   fermée et le téléphone en poche - c'est là que l'alerte d'éloignement sert. Une notification permanente
   vous le rappelle, dit votre écart à la trace suivie, et permet de tout arrêter d'un tap. Un réglage

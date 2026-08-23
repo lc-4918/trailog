@@ -167,7 +167,8 @@
     <string name="measure_pick_end">Elegir el punto final de la medición en el track %1$s</string>
     <string name="planner_title">Itinerario</string>
     <string name="planner_collapse">Reducir</string>
-    <string name="planner_expand">Reabrir el planificador</string>
+    <string name="planner_cancel_title">Se está creando un itinerario</string>
+    <string name="planner_cancel_question">¿Desea cancelarlo?</string>
     <string name="planner_start">Salida</string>
     <string name="planner_end">Llegada</string>
     <string name="planner_via">Punto intermedio</string>
@@ -485,6 +486,7 @@
     <string name="alert_pick_track_empty">Ninguna traza visible cerca.</string>
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_track_planned">Itinerario en curso</string>
     <string name="alert_stop_following">Dejar de seguir</string>
     <string name="alert_off_track_banner">Estás a %1$s de la traza \"%2$s\"</string>
     <string name="alert_needs_gps_text">La alerta de alejamiento necesita tu posición. ¿Activar la localización GPS?</string>

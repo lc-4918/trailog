@@ -152,6 +152,11 @@ L'arborescence des dossiers et des couches, pleine largeur, avec les cases d'aff
 bouton, par balayage, ou les deux (réglage). L'avatar en tête ouvre les réglages. Le gestionnaire de fonds
 y est accessible.
 
+La bande de geste du **balayage** occupe les 24 dp du bord gauche, mais **s'arrête au-dessus de la bande du
+planificateur** : sur toute la hauteur, elle recouvrait le centre du bouton « Réduire » de son en-tête, qui
+est justement collé au bord gauche, et prenait le tap. Le doigt tombant rarement pile au milieu, le bouton
+répondait une fois sur deux - le genre de défaut qu'on met sur le compte de sa propre maladresse.
+
 Un **champ de recherche** filtre les couches par leur nom, sans tenir compte de la casse ni des accents, et
 sur un fragment quelconque du nom. Il remplace l'arbre par la liste à plat de ce qu'il trouve, plutôt que de
 déplier les dossiers autour des résultats : une couche cherchée est une couche qu'on veut voir maintenant,
@@ -392,8 +397,22 @@ Les étapes se réordonnent et se suppriment ; le parcours se recalcule à chaqu
 discipline réglée. Le résultat se dessine sur la carte et porte son propre profil altimétrique, avec le
 même zoom et le même curseur que celui d'une trace.
 
-La bande se réduit à un bouton pour rendre la carte entière, et se referme sur une feuille vierge :
-rouvrir le planificateur ne doit pas ressortir le trajet précédent.
+La bande **se réduit** pour rendre la carte entière - c'est le geste attendu quand on veut regarder le tracé
+qu'on vient de calculer -, et se referme sur une feuille vierge : rouvrir le planificateur ne doit pas
+ressortir le trajet précédent.
+
+Réduite, elle ne pose **aucun bouton à elle** : c'est le bouton habituel du calcul d'itinéraire, au coin
+bas-droit, qui reparaît et redéploie le trajet en cours. Elle posait auparavant son propre bouton au coin
+bas-gauche pendant que l'autre s'effaçait, si bien qu'un itinéraire en cours en affichait un à chaque bout
+de l'écran, sans que rien ne dise lequel faisait quoi. Le bouton passe au bleu tant qu'un trajet est en
+cours, comme le suivi de position et la couche des points d'intérêt : il ne dit plus seulement « calculer
+un itinéraire », il dit aussi « il y en a un rangé là-dessous ».
+
+**Le retour Android ne fait pas perdre un trajet d'un seul geste.** Bande déployée, il la replie ; bande
+déjà réduite, il **demande** - « Un itinéraire est en cours de création / Voulez-vous annuler ? », *Non* ou
+*Oui*. C'est le même geste que celui qui quitte l'application, donc celui qu'on fait sans y penser, et un
+trajet composé étape par étape ne se perd pas comme cela. La croix de l'en-tête, elle, ferme sans rien
+demander : c'est un geste visé, posé sur le bouton qui dit « fermer ».
 
 ## 14 bis. Pendant la sortie
 
@@ -437,6 +456,14 @@ position, chacune avec son écart. Ce n'est pas la bibliothèque : suivre une tr
 laquelle on se tient, et un catalogue de deux cents entrées ne répondrait pas à la question. Les couches
 masquées n'y figurent pas, et une couche qui porte plusieurs segments les numérote. Le capteur éteint, la
 cloche propose d'abord de l'allumer, puis ouvre son choix une fois la position reçue.
+
+**Le parcours du planificateur y figure en premier**, dès qu'il en existe un, et sans avoir été importé
+dans la bibliothèque : c'est le cas le plus courant - on compose son trajet, on part, et on veut être
+prévenu si on le quitte. L'importer d'abord serait un détour, et laisserait derrière soi une couche dont on
+ne voulait pas. Il passe en tête hors classement, une trace de la bibliothèque qui passerait dix mètres
+plus près ne répondant pas à la question qu'on pose en touchant la cloche. Le suivi s'arrête si le calcul
+d'itinéraire est fermé - le parcours quitte alors la carte, comme une couche qu'on masque ; un simple
+recalcul, lui, ne l'interrompt pas.
 
 Ensuite, chaque position est projetée sur la trace suivie, et au-delà de l'**écart réglé** (de 20 à 500 m,
 par pas de 10) une bannière rouge s'affiche en bas de l'écran, avec la distance et le nom de la trace. Elle

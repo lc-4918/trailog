@@ -222,14 +222,6 @@ fun MainScreen(
     val silenced by TrackWatch.silenced.collectAsState()
     val awayM by TrackWatch.awayM.collectAsState()
     val alertBanner = alerting && !silenced
-    OffTrackAlertEffects(
-        alert = alert,
-        location = location,
-        vm = vm,
-        layers = layers,
-        followed = followed,
-        alertEnabled = alertEnabled,
-    )
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
     val geo = remember { GeocodeSearchState() }
@@ -334,6 +326,31 @@ fun MainScreen(
         routeRevision = mapPoint.measureRevision,
         currentPosition = { location.currentPosition() },
     )
+    /*
+     * Le parcours du planificateur se suit comme une trace de la bibliothèque, SANS y être importé : on
+     * compose son trajet, on part, et on veut être prévenu si on le quitte - l'importer d'abord serait un
+     * détour, et laisserait derrière soi une couche dont on ne voulait pas. Il est proposé en tête de la
+     * cloche tant qu'il est calculé (cf. plannedCandidate).
+     *
+     * Déclaré ICI et non avec les autres lectures de la veille, en haut : il lui faut le planificateur,
+     * qui naît quelques lignes plus haut.
+     */
+    OffTrackAlertEffects(
+        alert = alert,
+        location = location,
+        vm = vm,
+        layers = layers,
+        followed = followed,
+        alertEnabled = alertEnabled,
+        routeSamples = planner.done?.track?.samples,
+        routeLabel = stringResource(R.string.alert_track_planned),
+    )
+    // Bande repliée ou fermée : elle ne pose plus rien, et la hauteur relevée à sa dernière pose ne vaut
+    // plus. Sans cette remise à zéro, le cadrage d'un parcours dégagerait un bas d'écran désormais vide -
+    // `onGloballyPositioned` ne se rappelle pas d'un composable qui a disparu.
+    LaunchedEffect(planner.open, planner.collapsed) {
+        if (!planner.open || planner.collapsed) insets.plannerBandPx = 0
+    }
 
     /** Octets GPX du parcours calculé, sous [name] : servent au téléchargement comme à l'import. */
     fun routeGpx(name: String): ByteArray? {
@@ -758,8 +775,8 @@ fun MainScreen(
                     val visible = constraints.maxHeight - statusTopPx - maxOf(imeBottomPx, navInsetPx)
                     minOf((constraints.maxHeight * PlannerMaxHeightRatio).toInt(), visible.coerceAtLeast(0)).toDp()
                 }
-                // Bande du planificateur. Réduite, elle se range au coin bas-gauche ; déployée, elle
-                // occupe toute la largeur. Deux alignements pour un même composable, d'où le choix ici.
+                // Bande du planificateur, sur toute la largeur du bas. Réduite, elle ne pose plus rien :
+                // c'est le bouton du coin bas-droit qui la redéploie (cf. MapBottomRightControls).
                 if (planner.open) {
                     RoutePlannerBand(
                         state = planner,
@@ -783,7 +800,7 @@ fun MainScreen(
                             gpxSaver.launch(GpxWriter.fileName(name))
                         },
                         modifier = Modifier
-                            .align(if (planner.collapsed) Alignment.BottomStart else Alignment.BottomCenter)
+                            .align(Alignment.BottomCenter)
                             // Le clavier pousse la bande au-dessus de lui : sans cela il recouvrirait les
                             // propositions du champ qui vient de prendre le focus, c'est-a-dire
                             // precisement ce qu'on cherche a lire en tapant.
@@ -886,9 +903,28 @@ fun MainScreen(
                     imperial = imperialUnits,
                 )
             }
-            // ouverture du menu par swipe depuis le bord gauche
+            /*
+             * Ouverture du menu par glissement du bord gauche.
+             *
+             * **Elle s'arrête au-dessus de la bande du planificateur.** Sur toute la hauteur, ses 24 dp
+             * recouvraient le centre du bouton "Réduire" de l'en-tête, qui est justement collé au bord
+             * gauche : posée par-dessus la bande, elle prenait le tap, et le calcul d'itinéraire ne se
+             * repliait pas. Le doigt tombant rarement pile au milieu, le bouton répondait une fois sur
+             * deux - le genre de défaut qu'on met sur le compte de sa propre maladresse.
+             *
+             * La marge basse reprend celle de la bande elle-même (clavier ou barre de navigation, cf.
+             * RoutePlannerBand), sans quoi la bande de geste remonterait dans son bas.
+             */
             if (mode != "burger") {
-                Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().width(24.dp)
+                val bandePx = insets.plannerBandPx
+                val basCouvert = with(density) {
+                    if (bandePx == 0) 0.dp
+                    else (bandePx + maxOf(
+                        WindowInsets.ime.getBottom(this), WindowInsets.navigationBars.getBottom(this),
+                    )).toDp()
+                }
+                Box(Modifier.align(Alignment.TopStart).padding(bottom = basCouvert)
+                    .fillMaxHeight().width(24.dp)
                     .pointerInput(Unit) {
                         var total = 0f
                         detectHorizontalDragGestures(

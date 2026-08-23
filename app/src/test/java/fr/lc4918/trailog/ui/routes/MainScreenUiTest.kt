@@ -1,14 +1,16 @@
 package fr.lc4918.trailog.ui.routes
 
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -60,7 +62,12 @@ import org.robolectric.annotation.Config
 @Config(qualifiers = "fr", application = TestTrailogApp::class)
 class MainScreenUiTest {
 
-    @get:Rule val compose = createComposeRule()
+    /**
+     * Une activite reelle, et non la seule surface de composition : le retour Android passe par son
+     * `OnBackPressedDispatcher`, et c'est lui que les `BackHandler` de l'ecran interceptent (cf.
+     * `MapBackHandlers`). Sans activite, ce geste-la ne serait pas jouable.
+     */
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
     private val app = ApplicationProvider.getApplicationContext<TestTrailogApp>()
 
@@ -293,6 +300,99 @@ class MainScreenUiTest {
         attend { texte(R.string.location_stopped_system) }
         compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
         attend { !texte(R.string.location_stopped_system) }
+    }
+
+    // ---------- Le calcul d'itineraire : un seul bouton, et deux appuis pour le perdre ----------
+
+    /** Le geste du retour Android, tel que le systeme le remet a l'activite. */
+    private fun retour() = compose.runOnUiThread {
+        compose.activity.onBackPressedDispatcher.onBackPressed()
+    }
+
+    /**
+     * Le calcul d'itineraire, pointe sur un moteur local.
+     *
+     * Un moteur PUBLIC ferait passer le bouton par sa garde de connexion (cf. ServiceUrl.needsInternet),
+     * et le tap ouvrirait la boite "pas de connexion" au lieu de la bande. Une adresse de boucle locale
+     * est traitee comme une instance auto-hebergee : le bouton ouvre, et la requete echoue sur place -
+     * ce qu'on eprouve ici est le cablage, pas le moteur.
+     */
+    private fun calculLocal(reglage: SettingsEntity) =
+        reglage.copy(routePlannerEnabled = true, routeEngine = "brouter",
+            routingUrlBrouter = "http://127.0.0.1:1")
+
+    private fun ouvreLeCalcul() {
+        compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
+        attend { texte(R.string.planner_start) }
+    }
+
+    /**
+     * **Un seul bouton d'itineraire a l'ecran**, jamais deux.
+     *
+     * La bande reduite posait auparavant son propre bouton au coin bas-gauche, pendant que le bouton
+     * habituel s'effacait au coin bas-droit : un itineraire en cours en affichait donc un a chaque bout de
+     * l'ecran, sans que rien ne dise lequel faisait quoi. C'est le meme bouton qui ouvre et qui rouvre, et
+     * il ne bouge pas.
+     */
+    @Test fun `le meme bouton ouvre le calcul et rouvre celui qui est reduit`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+        assertFalse("le bouton s'efface sous sa propre bande", affiche(R.string.planner_title))
+
+        // EN PLEIN MILIEU du bouton, et c'est le point du test : la bande de 24 dp du bord gauche qui
+        // ouvre le menu au glissement recouvrait exactement ce centre-la, et prenait le tap.
+        compose.onNodeWithContentDescription(libelle(R.string.planner_collapse)).performClick()
+        attend { affiche(R.string.planner_title) }
+        assertFalse("la bande s'est retiree de l'ecran", texte(R.string.planner_start))
+
+        // Et il redeploie le trajet en cours, au lieu d'en commencer un autre.
+        compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
+        attend { texte(R.string.planner_start) }
+    }
+
+    /**
+     * Le retour Android replie d'abord, et DEMANDE ensuite.
+     *
+     * Il quittait le calcul d'un seul appui, emportant un trajet compose etape par etape - et c'est le
+     * meme geste que celui qui quitte l'application, donc celui qu'on fait sans y penser.
+     */
+    @Test fun `le retour replie le calcul, puis demande avant de le perdre`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+
+        retour()
+        attend { affiche(R.string.planner_title) }
+        assertFalse("la bande s'est repliee", texte(R.string.planner_start))
+        assertFalse("et rien n'est demande au premier appui", texte(R.string.planner_cancel_title))
+
+        retour()
+        attend { texte(R.string.planner_cancel_title) }
+        assertTrue("deux lignes : ce qu'on perd, puis la question",
+            texte(R.string.planner_cancel_question))
+
+        // "Non" : la boite se referme sur un trajet intact, que le bouton redeploie.
+        compose.onNodeWithText(libelle(R.string.action_no)).performClick()
+        attend { !texte(R.string.planner_cancel_title) }
+        compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
+        attend { texte(R.string.planner_start) }
+    }
+
+    /** La croix de l'en-tete, elle, ferme sans rien demander : c'est un geste vise, pose sur le bouton qui
+     *  dit "fermer". */
+    @Test fun `la croix du calcul ferme sans rien demander`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+
+        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
+        attend { !texte(R.string.planner_start) }
+        assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
+        assertTrue("le bouton est revenu", affiche(R.string.planner_title))
     }
 
     // ---------- Le menu lateral ----------

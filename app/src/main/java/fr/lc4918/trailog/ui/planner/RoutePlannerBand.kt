@@ -123,10 +123,6 @@ private val FieldGap = 3.dp
 private val AddButtonSize = 32.dp
 private val AddIconSize = 20.dp
 
-/** Fond du bouton de reouverture : un peu plus opaque que l'echelle graphique (0,7), qu'il cotoie dans le
- *  meme coin d'ecran et devant laquelle il doit se detacher. */
-private const val CollapsedAlpha = 0.85f
-
 /**
  * Bande du planificateur d'itineraire, posee au bas de l'ecran.
  *
@@ -135,8 +131,11 @@ private const val CollapsedAlpha = 0.85f
  * ou l'inverse - se lisait comme un morceau d'une autre application, et le bouton occupait la place d'une
  * commande du parcours pour un reglage qui n'en est pas un.
  *
- * Reduite, elle se retire dans un simple bouton du coin bas-gauche : la carte redevient entierement
- * visible, ce qui est le geste attendu quand on veut regarder le trace qu'on vient de calculer.
+ * **Reduite, elle ne pose plus rien** : la carte redevient entierement visible, ce qui est le geste attendu
+ * quand on veut regarder le trace qu'on vient de calculer. Elle laissait auparavant un bouton de
+ * reouverture au coin bas-gauche - un second bouton d'itineraire, en face de celui du coin bas-droit qui
+ * disparaissait pour lui. Deux boutons pour la meme fonction, chacun a un bout de l'ecran : c'est le bouton
+ * habituel qui rouvre desormais le trajet en cours (cf. MapBottomRightControls), et il ne bouge pas.
  */
 @Composable
 fun RoutePlannerBand(
@@ -155,38 +154,35 @@ fun RoutePlannerBand(
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (state.collapsed) {
-        CollapsedButton(onExpand = { state.collapse(false) }, modifier = modifier)
-    } else {
-        Surface(
-            modifier = modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shadowElevation = 8.dp,
+    if (state.collapsed) return
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shadowElevation = 8.dp,
+    ) {
+        // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle sert a
+        // composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les disciplines et les
+        // resultats gardant leur hauteur propre - une etape de plus fait donc defiler la liste plutot
+        // que grandir la bande.
+        Column(
+            // Le plancher cede devant le plafond : sur un petit ecran, un clavier haut peut ne laisser
+            // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
+            // nouveau deborder la bande hors de l'ecran.
+            Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
-            // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle sert a
-            // composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les disciplines et les
-            // resultats gardant leur hauteur propre - une etape de plus fait donc defiler la liste plutot
-            // que grandir la bande.
-            Column(
-                // Le plancher cede devant le plafond : sur un petit ecran, un clavier haut peut ne laisser
-                // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
-                // nouveau deborder la bande hors de l'ecran.
-                Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                BandHeader(
-                    recomputing = state.recomputing,
-                    onCollapse = { state.collapse(true) },
-                    onClose = { state.close() },
-                )
-                RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
-                StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,
-                    onPlaceForgotten,
-                    onImport, onDownload,
-                    Modifier.weight(1f, fill = false).padding(top = 10.dp))
-                ResultsZone(state, imperial, settings, lastLabelInsetPx)
-            }
+            BandHeader(
+                recomputing = state.recomputing,
+                onCollapse = { state.collapse(true) },
+                onClose = { state.close() },
+            )
+            RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
+            StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,
+                onPlaceForgotten,
+                onImport, onDownload,
+                Modifier.weight(1f, fill = false).padding(top = 10.dp))
+            ResultsZone(state, imperial, settings, lastLabelInsetPx)
         }
     }
 }
@@ -211,24 +207,6 @@ private fun BandHeader(
             if (recomputing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
             IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
-            }
-        }
-    }
-}
-
-/** Bande reduite : un seul bouton, au coin bas-gauche, qui la redeploie. */
-@Composable
-private fun CollapsedButton(onExpand: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier.padding(8.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = CollapsedAlpha),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 4.dp,
-    ) {
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            IconButton(onClick = onExpand, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Filled.ExpandLess, stringResource(R.string.planner_expand), Modifier.size(22.dp))
             }
         }
     }

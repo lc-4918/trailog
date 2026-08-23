@@ -200,4 +200,59 @@ class PlannerStepsTest {
         etat.type(depart, "")
         assertFalse(depart.untouched)
     }
+
+    // ---------- Abandonner un trajet en cours ----------
+
+    /**
+     * Le retour Android sur une bande deja repliee DEMANDE : il ne ferme pas.
+     *
+     * C'est le meme geste que celui qui quitte l'application, et un trajet compose etape par etape ne se
+     * perd pas sur un geste distrait. La question posee, rien n'est encore perdu.
+     */
+    @Test fun `la question posee ne ferme rien`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.askCancel()
+        assertTrue("la boite est ouverte", etat.cancelDialog)
+        assertTrue("le planificateur aussi", etat.open)
+        assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+    }
+
+    /** "Non" : la boite se referme sur un trajet intact. */
+    @Test fun `renoncer a annuler rend le trajet tel quel`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.askCancel()
+        etat.dismissCancel()
+        assertFalse(etat.cancelDialog)
+        assertTrue(etat.open)
+        assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+    }
+
+    /** "Oui" : tout part, la boite comprise - elle ne doit pas ressurgir a la reouverture. */
+    @Test fun `fermer emporte le trajet et la question`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.askCancel()
+        etat.close()
+        assertFalse(etat.cancelDialog)
+        assertFalse(etat.open)
+        assertNull("feuille vierge", etat.steps.first().target)
+    }
+
+    /** Repliee, la bande reste OUVERTE : c'est ce qui distingue les deux appuis du retour, et ce qui fait
+     *  que le bouton de la carte rouvre le trajet en cours au lieu d'en commencer un autre. */
+    @Test fun `replier ne ferme pas`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.collapse(true)
+        assertTrue(etat.open)
+        assertTrue(etat.collapsed)
+        etat.collapse(false)
+        assertTrue(etat.open)
+        assertFalse(etat.collapsed)
+    }
 }

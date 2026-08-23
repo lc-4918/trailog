@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
  *
  * **La gradation qui les gouverne** : le retour ferme d'abord ce qu'on REGARDE - un profil, un resultat,
  * une infobulle -, puis sort du MODE de saisie en cours, qui est ce qu'on est en train de faire. Le
- * planificateur fait exception dans l'autre sens : il se replie avant de se fermer, pour qu'il faille deux
- * appuis, et non un seul, pour perdre un trajet qu'on vient de composer.
+ * planificateur fait exception dans l'autre sens : il se replie d'abord, et le second appui ne ferme pas -
+ * il demande, parce qu'un trajet composé étape par étape ne se perd pas sur un geste distrait.
  */
 @Composable
 internal fun MapBackHandlers(
@@ -51,10 +51,12 @@ internal fun MapBackHandlers(
     BackHandler(enabled = offline.configBbox != null) { offline.closeFlow() }
     // Géocodage, du plus général au plus prioritaire (déclaré après = intercepté en premier) : le retour
     // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
-    // Le retour système replie d'abord la bande, puis la ferme : deux appuis pour perdre un trajet saisi,
-    // et non un seul. Placé avant les gestes du géocodage, plus anodins.
+    // Le retour système replie d'abord la bande, puis DEMANDE avant de la fermer : un trajet composé
+    // étape par étape ne se perd pas sur un geste qu'on fait sans y penser, celui-là même qui quitte
+    // l'application. La croix de l'en-tête, elle, ferme sans rien demander - elle est visée.
+    // Placé avant les gestes du géocodage, plus anodins.
     BackHandler(enabled = planner.open && !planner.collapsed) { planner.collapse(true) }
-    BackHandler(enabled = planner.open && planner.collapsed) { planner.close() }
+    BackHandler(enabled = planner.open && planner.collapsed) { planner.askCancel() }
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
     // Mesure sur trace, du plus général au plus prioritaire : le retour ferme d'abord le résultat affiché,

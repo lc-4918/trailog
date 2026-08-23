@@ -127,4 +127,33 @@ class OffTrackAlertUiTest {
         compose.onNodeWithText(ctx.getString(R.string.alert_pick_track_empty)).assertIsDisplayed()
     }
 
+    // ---------- Le parcours du planificateur, suivi sans etre importe ----------
+
+    /**
+     * Le parcours qu'on vient de calculer se suit comme une trace de la bibliotheque.
+     *
+     * Il n'a pourtant aucune couche derriere lui : son identifiant est [PlannedRouteLayerId], et c'est ce
+     * qui doit traverser intact le choix, la veille, et l'annonce de l'ecart. Importer d'abord serait un
+     * detour, et laisserait derriere soi une couche dont on ne voulait pas.
+     */
+    @Test fun `le parcours en cours se suit comme une trace`() {
+        val etat = OffTrackAlertState()
+        val enCours = candidate(PlannedRouteLayerId, "Itineraire en cours", 40.0)
+        compose.setContent {
+            TrackChooserDialog(
+                candidates = listOf(enCours, candidate(1, "GR 9", 300.0)),
+                followed = null, imperial = false,
+                onPick = { etat.follow(it, thresholdM = 100.0) }, onStop = {}, onDismiss = {},
+            )
+        }
+        compose.onNodeWithText("Itineraire en cours").assertIsDisplayed()
+        compose.onNodeWithText("Itineraire en cours").performClick()
+
+        val suivie = TrackWatch.followed.value
+        assertEquals(PlannedRouteLayerId, suivie?.layerId)
+        assertEquals("Itineraire en cours", suivie?.layerName)
+        assertEquals(enCours.samples, suivie?.samples)
+        TrackWatch.stop()
+    }
+
 }

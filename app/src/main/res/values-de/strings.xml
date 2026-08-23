@@ -167,7 +167,8 @@
     <string name="measure_pick_end">Endpunkt der Messung auf dem Track %1$s wählen</string>
     <string name="planner_title">Route</string>
     <string name="planner_collapse">Einklappen</string>
-    <string name="planner_expand">Planer wieder öffnen</string>
+    <string name="planner_cancel_title">Eine Route wird gerade erstellt</string>
+    <string name="planner_cancel_question">Möchten Sie abbrechen?</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Ziel</string>
     <string name="planner_via">Zwischenziel</string>
@@ -485,6 +486,7 @@
     <string name="alert_pick_track_empty">Keine sichtbare Spur in der Nähe.</string>
     <string name="alert_track_away">%1$s entfernt</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_track_planned">Laufende Route</string>
     <string name="alert_stop_following">Nicht mehr verfolgen</string>
     <string name="alert_off_track_banner">Sie sind %1$s von der Spur \"%2$s\" entfernt</string>
     <string name="alert_needs_gps_text">Der Abweichungsalarm braucht Ihre Position. GPS-Standort einschalten?</string>

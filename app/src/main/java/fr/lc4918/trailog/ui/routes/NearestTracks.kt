@@ -2,6 +2,9 @@ package fr.lc4918.trailog.ui.routes
 
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.domain.geo.OffTrack
+import fr.lc4918.trailog.domain.geo.TrackMeasure
+import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.ui.alert.PlannedRouteLayerId
 import fr.lc4918.trailog.ui.alert.TrackCandidate
 
 /**
@@ -61,3 +64,24 @@ fun closestCandidates(
     found: List<TrackCandidate>,
     limit: Int = NEAREST_TRACK_COUNT,
 ): List<TrackCandidate> = found.sortedBy { it.awayM }.take(limit)
+
+/**
+ * L'itineraire du planificateur, propose au suivi sans passer par la bibliotheque.
+ *
+ * **Hors classement, et toujours en tete** : c'est celui qu'on vient de composer, et une trace de la
+ * bibliotheque qui passerait dix metres plus pres ne repond pas a la question qu'on pose en touchant la
+ * cloche. L'ecart est calcule comme celui des autres - il sert a le reconnaitre sur la carte, pas a le
+ * classer.
+ *
+ * Rend null tant qu'il n'y a rien a suivre : pas de parcours calcule, ou une geometrie d'un seul point.
+ */
+fun plannedCandidate(
+    samples: List<Sample>?,
+    label: String,
+    lat: Double,
+    lon: Double,
+): TrackCandidate? {
+    if (samples == null || samples.size < 2) return null
+    val p = TrackMeasure.project(samples, lon, lat) ?: return null
+    return TrackCandidate(PlannedRouteLayerId, label, 0, 1, p.awayM, samples)
+}

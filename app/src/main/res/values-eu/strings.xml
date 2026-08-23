@@ -167,7 +167,8 @@
     <string name="measure_pick_end">Aukeratu neurketaren amaiera-puntua %1$s arrastoan</string>
     <string name="planner_title">Ibilbidea</string>
     <string name="planner_collapse">Txikitu</string>
-    <string name="planner_expand">Ireki berriro planifikatzailea</string>
+    <string name="planner_cancel_title">Ibilbide bat sortzen ari da</string>
+    <string name="planner_cancel_question">Bertan behera utzi nahi duzu?</string>
     <string name="planner_start">Irteera</string>
     <string name="planner_end">Helmuga</string>
     <string name="planner_via">Etapa</string>
@@ -485,6 +486,7 @@
     <string name="alert_pick_track_empty">Ez dago arrasto ikusgairik inguruan.</string>
     <string name="alert_track_away">%1$s-ra</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_track_planned">Ibilbidea sortzen</string>
     <string name="alert_stop_following">Utzi jarraitzeari</string>
     <string name="alert_off_track_banner">\"%2$s\" arrastotik %1$s-ra zaude</string>
     <string name="alert_needs_gps_text">Urruntze-alertak zure kokapena behar du. GPS kokapena aktibatu nahi duzu?</string>

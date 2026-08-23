@@ -167,7 +167,8 @@
     <string name="measure_pick_end">Triar el punt final del mesurament a la traça %1$s</string>
     <string name="planner_title">Itinerari</string>
     <string name="planner_collapse">Redueix</string>
-    <string name="planner_expand">Reobre el planificador</string>
+    <string name="planner_cancel_title">S\'està creant un itinerari</string>
+    <string name="planner_cancel_question">Voleu cancel·lar-lo?</string>
     <string name="planner_start">Sortida</string>
     <string name="planner_end">Arribada</string>
     <string name="planner_via">Etapa</string>
@@ -485,6 +486,7 @@
     <string name="alert_pick_track_empty">Cap traça visible a prop.</string>
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
+    <string name="alert_track_planned">Itinerari en curs</string>
     <string name="alert_stop_following">Deixar de seguir</string>
     <string name="alert_off_track_banner">Ets a %1$s de la traça \"%2$s\"</string>
     <string name="alert_needs_gps_text">L\'alerta d\'allunyament necessita la teva posició. Vols activar la localització GPS?</string>
