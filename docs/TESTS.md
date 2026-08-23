@@ -838,3 +838,27 @@ réels de l'app. Sans lui, aucun test ne peut lire une chaîne ou un asset.
 Enfin, la base est un **singleton** : les méthodes d'une même classe de test la partagent. Un test qui
 suppose un ordre de liste devient dépendant des autres. `TrailogRepositoryTest` vise donc explicitement
 la dernière couche insérée par son identifiant.
+
+## Ce qu'une classe de test peut casser chez les autres
+
+Toutes les classes partagent **une seule JVM** (`forkEvery = 0`) et le bac à sable Robolectric qui va
+avec. Deux états y sont globaux, et les toucher sans les refermer bloque tout ce qui suit. Les deux ont
+été découverts le même jour, par la même classe - `StaleNoticeTest`, qui ne compose pourtant rien.
+
+**L'horloge du bac à sable.** `ShadowSystemClock.advanceBy` avance le temps pour toutes les classes
+suivantes. Ce qui se mesure par une différence de dates se simule sur la **donnée**, jamais sur
+l'horloge : vieillir la mesure donne exactement le même calcul sans déborder sur personne.
+
+**Les écritures d'état Compose.** Écrire dans un `mutableStateOf` hors de toute composition laisse la
+modification en attente dans le snapshot global. Tout test d'interface qui suit y lit « il reste du
+travail à faire », et son attente d'inactivité tourne jusqu'à expirer. Ces écritures passent donc par
+`Snapshot.withMutableSnapshot { }`, qui les publie.
+
+**Le symptôme est trompeur, et c'est là tout le piège.** L'erreur ne pointe pas la classe fautive mais
+une **victime** - un `AppNotIdleException : Compose did not get idle` levé par un tout autre test
+d'interface, soixante secondes plus tard. La victime change selon la répartition des classes entre JVM,
+ce qui fait passer le défaut pour de l'instabilité aléatoire. Il n'en est rien : il est parfaitement
+déterministe, et il se cherche en retirant les classes une à une, pas en relançant la suite.
+
+Ordre de grandeur : ces deux fautes, dans quatre tests, ajoutaient **treize minutes** à une suite qui en
+dure une demie, et treize échecs répartis sur trois classes innocentes.

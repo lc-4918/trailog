@@ -1,10 +1,10 @@
 # Trailog
 
-<img src="app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français | [<img src="app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English](README.md)
+<img src="../app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français | [<img src="../app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English](README.md)
 
 **Cartographie et itinéraires hors-ligne pour Android.**
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](../LICENSE)
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
@@ -15,17 +15,17 @@ avec un fonctionnement pensé pour le hors-ligne.
 
 <table width="100%">
   <tr>
-    <td colspan="3" align="center"><img src="docs/screenshots/1.jpg" alt="Une trace sur la carte" width="330"><br><sub>Une trace sur la carte</sub></td>
+    <td colspan="3" align="center"><img src="screenshots/1.jpg" alt="Une trace sur la carte" width="330"><br><sub>Une trace sur la carte</sub></td>
   </tr>
   <tr>
-    <td align="center" width="33.3%"><img src="docs/screenshots/2.jpg" alt="Profil altimétrique synchronisé" width="100%"><br><sub>Le profil, synchronisé</sub></td>
-    <td align="center" width="33.3%"><img src="docs/screenshots/3.jpg" alt="Infobulle d'un marqueur avec photo" width="100%"><br><sub>Infobulle, photo comprise</sub></td>
-    <td align="center" width="33.3%"><img src="docs/screenshots/4.jpg" alt="Bibliothèque de dossiers et de couches" width="100%"><br><sub>Bibliothèque des couches</sub></td>
+    <td align="center" width="33.3%"><img src="screenshots/2.jpg" alt="Profil altimétrique synchronisé" width="100%"><br><sub>Le profil, synchronisé</sub></td>
+    <td align="center" width="33.3%"><img src="screenshots/3.jpg" alt="Infobulle d'un marqueur avec photo" width="100%"><br><sub>Infobulle, photo comprise</sub></td>
+    <td align="center" width="33.3%"><img src="screenshots/4.jpg" alt="Bibliothèque de dossiers et de couches" width="100%"><br><sub>Bibliothèque des couches</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/5.jpg" alt="Planificateur d'itinéraire" width="100%"><br><sub>Calcul d'itinéraire</sub></td>
-    <td align="center"><img src="docs/screenshots/6.jpg" alt="Gestionnaire de fonds de carte" width="100%"><br><sub>Gestionnaire de fonds</sub></td>
-    <td align="center"><img src="docs/screenshots/7.jpg" alt="Réglages, onglet Carte" width="100%"><br><sub>Réglages, onglet Carte</sub></td>
+    <td align="center"><img src="screenshots/5.jpg" alt="Planificateur d'itinéraire" width="100%"><br><sub>Calcul d'itinéraire</sub></td>
+    <td align="center"><img src="screenshots/6.jpg" alt="Gestionnaire de fonds de carte" width="100%"><br><sub>Gestionnaire de fonds</sub></td>
+    <td align="center"><img src="screenshots/7.jpg" alt="Réglages, onglet Carte" width="100%"><br><sub>Réglages, onglet Carte</sub></td>
   </tr>
 </table>
 
@@ -242,7 +242,7 @@ Le développement se fait ouvertement sur GitHub :
 
 ## Licence
 
-Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](LICENSE).
+Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](../LICENSE).
 
 Les profils de calcul d'itinéraire livrés dans `app/src/main/assets/brouter/` sont repris tels quels du
 projet [BRouter](https://github.com/abrensch/brouter) (licence MIT), qui en garde la paternité.

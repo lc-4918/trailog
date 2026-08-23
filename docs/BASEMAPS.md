@@ -1,7 +1,7 @@
 # Fonds de carte - Trailog
 
 Ce que Trailog sait afficher sous les traces, et comment un fond se décrit. Le catalogue livré vit dans
-[`data/seed/Providers.kt`](app/src/main/java/fr/lc4918/trailog/data/seed/Providers.kt) ; une fois semé,
+[`data/seed/Providers.kt`](../app/src/main/java/fr/lc4918/trailog/data/seed/Providers.kt) ; une fois semé,
 il vit en base et l'utilisateur le modifie. Ce document décrit les **règles** ; les URL exactes, elles,
 n'existent qu'à un seul endroit, le code semé, et les recopier ici les ferait diverger.
 

@@ -540,7 +540,7 @@ Points chauds identifiés et traités :
 
 ### 9.3 Testabilité
 
-808 tests, 76 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
+835 tests, 79 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
 
 La stratégie est de faire **descendre les règles importantes** dans du code pur pour qu'elles y
 deviennent testables. `poiStream` a été extrait de `PoiRepository` uniquement pour cela : il se teste
@@ -551,6 +551,13 @@ aux ornements de la carte, les gestes de la carte aux infobulles, les modes de s
 Rien de cela ne descend nulle part, et rien n'en était vérifié - un seul appel, `MapLibreView`, rendait
 les 1800 lignes incomposables sur la JVM. La surface de carte est passée en paramètre (`MapSurface`) et
 l'écran entier se compose désormais en test, avec sa vraie base, ses vrais réglages et son vrai ViewModel.
+
+Ces 1800 lignes sont depuis retombées à moins de mille, réparties par sujet : les grappes de boutons
+(`MapControls`), les infobulles (`MapBubbles`), les bannières (`MapNoticeLayer`), l'aiguillage des taps
+(`MapTapRouting`), les `BackHandler` et leur ordre (`MapBackHandlers`), les battements de la caméra
+(`MapCameraCallbacks`). Ce qui n'a **pas** été extrait est aussi instructif : la bande du planificateur et
+le panneau de profil sont des appels uniques de quinze à vingt arguments nommés, et les envelopper aurait
+déplacé ces arguments en ajoutant autant de paramètres, pour un gain nul.
 
 Reste hors d'atteinte, et pour de bon : le rendu des tuiles, les gestes réels, et tout ce qui **s'ancre à
 un point de carte** - la position à l'écran vient de la projection de MapLibre, qui n'existe pas sans

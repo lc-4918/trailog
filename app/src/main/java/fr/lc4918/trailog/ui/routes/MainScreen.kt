@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
@@ -82,7 +81,6 @@ import fr.lc4918.trailog.ui.geocode.GeocodeSearchEffects
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
 import fr.lc4918.trailog.ui.location.rememberLocationControls
-import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointEffects
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
@@ -97,9 +95,8 @@ import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
 import fr.lc4918.trailog.ui.poi.PoiEffects
-import fr.lc4918.trailog.ui.poi.PoiStatusBanner
-import fr.lc4918.trailog.ui.poi.PoiLoading
 import fr.lc4918.trailog.ui.poi.PoiState
+import fr.lc4918.trailog.ui.poi.PoiStatusBanner
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
 import kotlinx.coroutines.launch
@@ -298,14 +295,13 @@ fun MainScreen(
     LaunchedEffect(settings?.trackEditEnabled) {
         if (settings?.trackEditEnabled == false) edit.close()
     }
-    // Ornements poses sur la carte - les deux couleurs et le fond des boutons, qui se lisent ensemble
+    // Ornements poses sur la carte, les deux couleurs et le fond des boutons, qui se lisent ensemble
     // (cf. MapChrome). Tous les boutons recoivent ce fond, y compris le GPS allume : son etat se lit a la
     // couleur de son dessin, non a un aplat qui le distinguait de ses voisins.
     val chrome = rememberMapChrome(settings)
     val chromeBg = chrome.bg
     val chromeFg = chrome.fg
     val darkChrome = chrome.dark
-    val controlBg = chrome.buttonBackground
     // Ce qu'il faut degager en haut d'un cadrage : la colonne de boutons du coin haut-gauche, plus basse
     // que la barre de statut sous laquelle la carte passe en bord-a-bord (cf. MapInsetsState.topCoverPx).
     val statusBarTopPx = insets.topCoverPx(WindowInsets.statusBars.getTop(LocalDensity.current))
@@ -320,8 +316,6 @@ fun MainScreen(
     // l'ecran, l'utilisateur le fait glisser et zoome a sa guise, et recadrer a chaque etape ajoutee
     // defairait son travail. Un parcours qui disparait (moins de deux etapes, ou echec) remet le drapeau,
     // pour que le suivant soit cadre a son tour - c'est le cas des trois etapes dont on en retire deux.
-    var routeFramed by remember { mutableStateOf(false) }
-    var framePending by remember { mutableStateOf(false) }
     PlannerEffects(
         state = planner,
         controller = controller,

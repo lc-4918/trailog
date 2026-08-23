@@ -1,6 +1,6 @@
 # Trailog
 
-[<img src="app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français](README.fr.md) | <img src="app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English
+[<img src="app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français](docs/README.fr.md) | <img src="app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English
 
 **Offline mapping and routes for Android.**
 
@@ -228,12 +228,12 @@ itself whether a newer version exists and offers to install it.
 
 Development happens in the open on GitHub. The working documents are in French:
 
-- Full technical guide (setup, architecture, build): see [`DEVELOPER.md`](DEVELOPER.md).
-- What the application does, in detail: see [`SPEC.md`](SPEC.md); basemaps and the rules that
-  govern them: see [`BASEMAPS.md`](BASEMAPS.md).
-- Why it is built this way: see [`CONTEXT.md`](CONTEXT.md); what the tests lock down: see
-  [`TESTS.md`](TESTS.md).
-- How CI/CD and releases work: see [`WORKFLOW.md`](WORKFLOW.md).
+- Full technical guide (setup, architecture, build): see [`DEVELOPER.md`](docs/DEVELOPER.md).
+- What the application does, in detail: see [`SPEC.md`](docs/SPEC.md); basemaps and the rules that
+  govern them: see [`BASEMAPS.md`](docs/BASEMAPS.md).
+- Why it is built this way: see [`CONTEXT.md`](docs/CONTEXT.md); what the tests lock down: see
+  [`TESTS.md`](docs/TESTS.md).
+- How CI/CD and releases work: see [`WORKFLOW.md`](docs/WORKFLOW.md).
 - Report a bug or suggest a feature: [GitHub Issues](https://github.com/lc-4918/trailog/issues).
 
 ## Licence

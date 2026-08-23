@@ -5,7 +5,7 @@ APK de Trailog via GitHub Actions et GitHub Releases.
 
 ## 1. Vue d'ensemble
 
-Le workflow est défini dans [`.github/workflows/build-release.yml`](.github/workflows/build-release.yml)
+Le workflow est défini dans [`.github/workflows/build-release.yml`](../.github/workflows/build-release.yml)
 et se déclenche à chaque `push` sur le dépôt. Il a deux comportements distincts selon ce
 qui est poussé :
 
