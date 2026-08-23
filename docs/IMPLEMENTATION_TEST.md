@@ -12,7 +12,7 @@ elle, est `TESTS.md` (qui ne référence pas ce fichier, volontairement).
 
 ### Tests unitaires et d'interface (JVM + Robolectric)
 
-- **865 tests, 81 fichiers**, dont **44 tests d'interface** qui composent pour de vrai.
+- **875 tests, 82 fichiers**, dont **44 tests d'interface** qui composent pour de vrai.
 - Couverture réelle : **66,1 % du code hors UI**, 39,2 % du total.
 
 **Le plafond de couverture a bougé.** Il était posé comme une fatalité : les lignes `@Composable` étaient

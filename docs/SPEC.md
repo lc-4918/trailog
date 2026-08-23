@@ -207,6 +207,11 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
   **déployée**, le profil d'une trace ouvert, une infobulle ouverte. Aucune ne l'éteint - le suivi reprend
   en les fermant. La bande **réduite**, elle, ne suspend rien : c'est l'état dans lequel on roule en suivant
   un parcours calculé, et la carte doit alors suivre comme partout ailleurs.
+- **Une rotation ne défait pas le suivi.** Le système recrée l'écran à chaque quart de tour, et la carte
+  s'y replaçait comme à l'ouverture : sur le dernier cadrage enregistré, ou - faute de cadrage - sur
+  l'emprise de toutes les couches, ce qui la faisait dézoomer. On décentrait la carte, on tournait l'écran,
+  et elle sautait ailleurs. Le suivi allumé et le capteur en marche, elle se replace désormais **sur la
+  position**, au zoom qu'on avait : la rotation n'est pas une demande de changer d'endroit ni d'échelle.
 - **Les commandes se répartissent en trois coins.** En haut à gauche : le menu, l'interrupteur GPS, la
   recherche de lieu (dont la barre de saisie se déplie juste dessous, ce qui la retient là) et la mesure
   sur trace. En bas à droite, à portée du pouce : le recentrage sur la position, la cloche de l'alerte

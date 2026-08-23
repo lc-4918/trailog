@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**865 tests, 81 fichiers**, tous verts.
+**875 tests, 82 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -492,10 +492,18 @@ d'incrémenter la version : trois tests tombent dans le premier cas, deux dans l
 | `StyleSettingsTest` | 5 | Quels réglages imposent de reconstruire le style de carte |
 | `TreeReorderTest` | 9 | Où se pose un élément lâché dans une arborescence |
 | `DisplayedBasemapsTest` | 12 | Quels fonds sont réellement à l'écran, donc quelle légende proposer |
+| `CameraPlacementTest` | 10 | où la caméra se pose à l'ouverture - et à chaque rotation, qui recrée l'écran |
 | `MapFollowTest` | 11 | quand la carte suit la position, et ce qui la suspend - dont la bande du planificateur, deployee seulement |
 | `NearestTracksTest` | 13 | Combien de couches ouvrir pour trouver la trace la plus proche, et le parcours du planificateur propose en tete |
 
-Ces quatre-là ne testent pas un ViewModel : ils testent ce qu'on en a **sorti**. Un ViewModel orchestre,
+`CameraPlacementTest` vient du terrain, et de la même confusion que `MapFollowTest` : une rotation recrée
+l'activité, donc la `MapView`, donc le placement de caméra - qu'on croyait réservé à l'ouverture. Il se
+rejouait après coup et défaisait ce que l'utilisateur venait de faire : on décentrait la carte, on tournait
+l'écran, et elle sautait au cadrage d'hier. La décision a quatre branches et **l'ordre EST la règle** ;
+elle est descendue dans du code pur pour cette seule raison, `MapController` ne bougeant aucune caméra tant
+qu'aucune `MapView` n'existe.
+
+Ces cinq-là ne testent pas un ViewModel : ils testent ce qu'on en a **sorti**. Un ViewModel orchestre,
 et une orchestration se teste mal - un faux dépôt vérifierait qu'un appel a lieu, pas qu'un résultat est
 juste. Le calcul, lui, s'extrait et se verrouille.
 

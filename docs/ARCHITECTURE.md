@@ -549,7 +549,7 @@ Points chauds identifiés et traités :
 
 ### 9.3 Testabilité
 
-865 tests, 81 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
+875 tests, 82 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
 
 La stratégie est de faire **descendre les règles importantes** dans du code pur pour qu'elles y
 deviennent testables. `poiStream` a été extrait de `PoiRepository` uniquement pour cela : il se teste

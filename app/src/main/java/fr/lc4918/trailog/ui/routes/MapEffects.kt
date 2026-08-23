@@ -135,6 +135,15 @@ internal fun ProfileCursorEffects(
  * Rendu comme un [State] et non comme un booleen : ce drapeau est lu depuis le rappel `onCameraIdle`, pose
  * une seule fois pour toute la vie de l'ecran. Un booleen y serait CAPTURE a faux et le resterait, et plus
  * aucun cadrage ne serait jamais enregistre.
+ *
+ * **Ce placement se rejoue a chaque ROTATION**, et pas seulement a l'ouverture : l'activite est recreee, la
+ * `MapView` avec elle, et le drapeau reprend a faux. C'est ce qui faisait sauter la carte au cadrage
+ * d'hier - ou, sans camera enregistree, sur l'emprise de toutes les couches - juste apres qu'on l'ait
+ * amenee ou l'on voulait. D'ou [followsPosition] : quand le suivi de la carte est allume ET le capteur en
+ * marche, l'endroit ou la carte doit se poser n'est pas une question ouverte, c'est la position.
+ *
+ * @param followsPosition le reglage "Suivre ma position" est allume et le capteur tourne.
+ * @param userLocation la derniere position connue, qui survit a la rotation (cf. `LocationHub`).
  */
 @Composable
 internal fun rememberCameraPlacement(
@@ -144,25 +153,24 @@ internal fun rememberCameraPlacement(
     layers: List<LayerEntity>,
     renderLayers: List<RenderLayer>,
     providers: List<ProviderEntity>,
+    followsPosition: Boolean,
+    userLocation: Pair<Double, Double>?,
 ): State<Boolean> {
-    // positionnement initial : dernier affichage si enregistré, sinon données visibles, sinon France
+    // positionnement initial : la position si la carte la suit, sinon le dernier affichage enregistré,
+    // sinon les données visibles, sinon la France.
     val placed = remember { mutableStateOf(false) }
     var positioned by placed
-    LaunchedEffect(styleTick, settings, renderLayers) {
-        val st = settings ?: return@LaunchedEffect
+    LaunchedEffect(styleTick, settings, renderLayers, followsPosition, userLocation) {
         if (positioned || styleTick == 0) return@LaunchedEffect
-        if (st.hasCamera) {
-            controller.moveTo(st.lastLat, st.lastLon, st.lastZoom); positioned = true
-        } else {
-            val ls = layers.filter { it.visible }
-            val w = ls.map { it.west }.filter { it != 0.0 }.minOrNull()
-            val s = ls.map { it.south }.filter { it != 0.0 }.minOrNull()
-            val e = ls.map { it.east }.filter { it != 0.0 }.maxOrNull()
-            val n = ls.map { it.north }.filter { it != 0.0 }.maxOrNull()
-            if (w != null && s != null && e != null && n != null) controller.fitTo(w, s, e, n)
-            else controller.moveTo(46.6, 2.4, 4.8)   // centre France
-            positioned = true
+        // La decision, ses quatre branches et leur ordre vivent dans CameraPlacement, ou elles se testent.
+        when (val cible = CameraPlacement.target(followsPosition, userLocation, settings, layers)) {
+            is CameraTarget.Point ->
+                if (cible.zoom != null) controller.moveTo(cible.lat, cible.lon, cible.zoom)
+                else controller.centerOn(cible.lat, cible.lon)
+            is CameraTarget.Bounds ->
+                controller.fitTo(cible.west, cible.south, cible.east, cible.north)
         }
+        positioned = true
     }
 
     // Activer un fond national alors que la carte regarde un autre pays ne montre rien : le service ne

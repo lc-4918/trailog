@@ -486,6 +486,12 @@ fun MainScreen(
         layers = layers,
         renderLayers = renderLayers,
         providers = providers,
+        // Le suivi de la carte, dans sa forme la plus simple : le reglage et le capteur. Les trois choses
+        // qui SUSPENDENT le suivi continu (bande deployee, profil, infobulle) ne valent pas ici - elles
+        // protegent une camera que l'utilisateur a visee, et au moment du placement il n'y en a pas
+        // encore : la MapView vient de naitre.
+        followsPosition = settings.mapFollowPosition && location.gpsActive,
+        userLocation = location.lastUserLocation,
     )
 
     // Les deux compteurs que la camera fait avancer, et les rappels qui vont avec (cf. MapCameraCallbacks).
