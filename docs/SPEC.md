@@ -110,6 +110,11 @@ La force de l'ombrage se règle dans sa fiche.
   messagerie). Le format se choisit à part, chacun disant ce qu'il vaut : le **GPX** est lu partout mais ne
   garde que les champs standard d'un waypoint - photos, liens et champs libres n'y ont pas de place - ; le
   **GeoJSON** est le format de stockage de l'application et ne perd rien, au prix d'une diffusion moindre.
+  **Un export qui échoue le dit** - fichier non écrit, aucune application capable de recevoir ce qu'on
+  partage. Il ne laissait rien auparavant : ni fichier, ni message, un tap qui n'avait servi à rien. La
+  pire des deux issues n'est pas de croire l'application cassée, c'est de croire le fichier écrit et de
+  s'en apercevoir sur le terrain. La même règle vaut pour le téléchargement d'un parcours calculé et pour
+  l'ouverture du site d'un point d'intérêt.
 - **Retoucher une trace** : voir la section 6 bis. Ce ne sont pas des outils de dessin - ce sont les
   gestes qu'on fait sur un fichier reçu.
 
@@ -190,6 +195,18 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
   icône porte le bleu du point de position. La comparaison se fait à l'écran et non sur les coordonnées :
   la question est "la position est-elle au milieu de ce que je vois", et sa réponse doit valoir à tout
   zoom. Le planificateur, sous lui, ne bouge pas pour autant : la colonne est alignée en bas.
+- **Un repère figé passe au gris.** Au-delà de trente secondes sans mesure - une gorge, un couvert, un
+  tunnel - le repère affirme une position qu'il ne connaît plus, et un repère figé est visuellement
+  identique à un repère juste. La couleur le dit à l'endroit exact du fait. Aucune bannière ne l'annonce :
+  un ennui qu'on ne peut ni corriger ni éviter n'a pas à occuper le bas de la carte, et une alerte qu'on ne
+  peut pas faire taire finit par se lire comme un décor.
+- **Suivre ma position** (réglage, onglet Carte, allumé par défaut) recentre la carte à chaque mesure, et se
+  tait cinq secondes après chaque geste : regarder plus loin sur l'itinéraire est un besoin aussi réel que
+  le suivi, et une carte qui revient sous les doigts est inutilisable. Trois choses le **suspendent**, parce
+  qu'elles se servent de la carte ailleurs qu'à l'endroit où l'on se tient : la bande du planificateur
+  **déployée**, le profil d'une trace ouvert, une infobulle ouverte. Aucune ne l'éteint - le suivi reprend
+  en les fermant. La bande **réduite**, elle, ne suspend rien : c'est l'état dans lequel on roule en suivant
+  un parcours calculé, et la carte doit alors suivre comme partout ailleurs.
 - **Les commandes se répartissent en trois coins.** En haut à gauche : le menu, l'interrupteur GPS, la
   recherche de lieu (dont la barre de saisie se déplie juste dessous, ce qui la retient là) et la mesure
   sur trace. En bas à droite, à portée du pouce : le recentrage sur la position, la cloche de l'alerte
@@ -414,6 +431,12 @@ déjà réduite, il **demande** - « Un itinéraire est en cours de création / 
 trajet composé étape par étape ne se perd pas comme cela. La croix de l'en-tête, elle, ferme sans rien
 demander : c'est un geste visé, posé sur le bouton qui dit « fermer ».
 
+**Une rotation ne le perd pas non plus.** Le travail en cours de la carte - le trajet composé étape par
+étape, la mesure dont le premier point vient d'être posé, l'emprise hors-ligne à moitié tracée, le mode
+retouche - survit à un quart de tour du poignet. Il partait jusqu'ici avec l'activité, que le système
+recrée à chaque changement d'orientation, et le contraste était devenu gênant : le retour Android
+*demandait* avant de perdre un itinéraire, pendant qu'un mouvement du poignet l'emportait sans un mot.
+
 ## 14 bis. Pendant la sortie
 
 **Le suivi ne s'arrête pas avec l'écran.** Tant que la position est allumée, elle continue d'être reçue
@@ -423,6 +446,14 @@ la trace suivie quand il y en a une, et porte un bouton d'arrêt ; le bouton de 
 second. Le suivi s'arrête aussi de lui-même si la localisation est éteinte dans le téléphone, ou si
 l'application est balayée des tâches récentes : c'est une fonction de l'application, pas un agent qui lui
 survit.
+
+**La veille survit à la mort du processus.** Android reprend sa mémoire quand il en manque, et tue
+l'application même pendant une sortie - il relance ensuite le service, qui est fait pour cela. Le capteur
+repartait donc, et la notification aussi ; mais la trace suivie, elle, vivait en mémoire et revenait à
+rien : l'**alerte d'éloignement se retrouvait désarmée sans un mot**, téléphone en poche et notification
+affichée. Elle est désormais gardée sur le disque et reprise au redémarrage, parcours du planificateur
+compris. Elle n'y reste que le temps du suivi : l'arrêter l'efface, sans quoi un suivi arrêté à midi
+reprendrait tout seul le soir.
 
 **Garder l'écran allumé** est un réglage à part (onglet Carte, éteint par défaut), et il ne sert plus à ce
 qu'on croit : le suivi n'en a plus besoin pour vivre. Il sert à garder la carte **lisible** - téléphone sur
@@ -452,7 +483,11 @@ coupe le capteur serait une position qui tourne en cachette. Les deux réglages 
 sens - cocher l'alerte affiche le bouton GPS, décocher le bouton GPS éteint l'alerte.
 
 Un tap sur la cloche demande **quelle trace on suit**, en proposant celles qui passent le plus près de la
-position, chacune avec son écart. Ce n'est pas la bibliothèque : suivre une trace, c'est suivre celle sur
+position, chacune avec son écart. **Celle qu'on suit déjà se distingue** - un aplat, une cloche et le mot
+« Suivie » : la question posée en ouvrant cette liste est « laquelle est-ce que je suis en ce moment ? », et
+sur huit lignes qui portent le même genre de nom, une simple graisse de caractère se cherche. Elle reste
+choisissable comme les autres ; ce qui l'arrête est le bouton d'arrêt, à l'opposé. Ce n'est pas la
+bibliothèque : suivre une trace, c'est suivre celle sur
 laquelle on se tient, et un catalogue de deux cents entrées ne répondrait pas à la question. Les couches
 masquées n'y figurent pas, et une couche qui porte plusieurs segments les numérote. Le capteur éteint, la
 cloche propose d'abord de l'allumer, puis ouvre son choix une fois la position reçue.

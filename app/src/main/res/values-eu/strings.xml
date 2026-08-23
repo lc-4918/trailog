@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">GPS kokapena ez dago aktibo. Gaitu nahi duzu?</string>
     <string name="dialog_no_connection_title">Konexiorik ez</string>
     <string name="dialog_no_connection_text">Lekuen bilaketak lineako zerbitzu bat kontsultatzen du, eta telefonoak ez du Internet sarbiderik.</string>
+    <string name="error_file_not_written">Ezin izan da fitxategia idatzi.</string>
+    <string name="error_no_app_share">Ez dago fitxategi hau jaso dezakeen aplikaziorik.</string>
+    <string name="error_no_app_link">Ez dago esteka hau ireki dezakeen aplikaziorik.</string>
     <string name="dialog_move_to_title">Mugitu hona...</string>
     <string name="dialog_color_title">Bistaratze-kolorea</string>
     <string name="dialog_edit_bubble_title">Editatu informazio-burbuila</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">%1$s-ra</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Ibilbidea sortzen</string>
+    <string name="alert_track_following">Jarraitzen</string>
     <string name="alert_stop_following">Utzi jarraitzeari</string>
     <string name="alert_off_track_banner">\"%2$s\" arrastotik %1$s-ra zaude</string>
     <string name="alert_needs_gps_text">Urruntze-alertak zure kokapena behar du. GPS kokapena aktibatu nahi duzu?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Kokapena telefonoan itzalita: ez dago markarik. Jarraipena berrekingo da itzultzen denean.</string>
     <string name="location_stopped_system">Kokapenaren jarraipena bere kabuz gelditu da. Ez duzu markarik mapan.</string>
     <string name="location_stopped_resume">Berrekin</string>
-    <string name="location_stale_banner">Kokapena %1$s daramatza geldirik: marka okerra izan daiteke.</string>
     <string name="settings_section_route_prefs">Ibilbide-hobespenak</string>
     <string name="settings_label_route_ways">Bideak</string>
     <string name="settings_label_route_hills">Erliebea</string>

@@ -140,7 +140,7 @@ internal fun ProfileCursorEffects(
 internal fun rememberCameraPlacement(
     controller: MapController,
     styleTick: Int,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     layers: List<LayerEntity>,
     renderLayers: List<RenderLayer>,
     providers: List<ProviderEntity>,
@@ -171,9 +171,9 @@ internal fun rememberCameraPlacement(
     // d'arriver sur une connexion lente : recadrer une carte qui allait s'afficher serait pire que ne
     // rien faire. Relancé sur styleTick, pas seulement sur l'identifiant : le style met un instant à
     // s'appliquer, et sonder avant que la caméra ne soit posée donnerait une emprise sans rapport.
-    LaunchedEffect(settings?.defaultBasemapId, styleTick) {
+    LaunchedEffect(settings.defaultBasemapId, styleTick) {
         if (styleTick == 0 || !positioned) return@LaunchedEffect
-        val id = settings?.defaultBasemapId ?: return@LaunchedEffect
+        val id = settings.defaultBasemapId
         val provider = providers.firstOrNull { it.id == id } ?: return@LaunchedEffect
         val bounds = CoverageBounds.of(provider) ?: return@LaunchedEffect
         delay(2_000)

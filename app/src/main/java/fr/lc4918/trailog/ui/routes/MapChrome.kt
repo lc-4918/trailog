@@ -92,10 +92,10 @@ data class MapChrome(
 
 /** Les ornements de la carte, tels que les reglages les decident. */
 @Composable
-internal fun rememberMapChrome(settings: SettingsEntity?): MapChrome {
-    val dark = isDarkTheme(settings?.theme)
-    val size = (settings?.mapButtonSizeDp ?: MinMapButtonSizeDp).dp
-    val withBg = settings?.controlButtonsBackground == true
+internal fun rememberMapChrome(settings: SettingsEntity): MapChrome {
+    val dark = isDarkTheme(settings.theme)
+    val size = settings.mapButtonSizeDp.dp
+    val withBg = settings.controlButtonsBackground
     val bg = mapChromeBg(dark)
     return remember(dark, size, withBg, bg) {
         MapChrome(

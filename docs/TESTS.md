@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**847 tests, 79 fichiers**, tous verts.
+**865 tests, 81 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -492,6 +492,7 @@ d'incrémenter la version : trois tests tombent dans le premier cas, deux dans l
 | `StyleSettingsTest` | 5 | Quels réglages imposent de reconstruire le style de carte |
 | `TreeReorderTest` | 9 | Où se pose un élément lâché dans une arborescence |
 | `DisplayedBasemapsTest` | 12 | Quels fonds sont réellement à l'écran, donc quelle légende proposer |
+| `MapFollowTest` | 11 | quand la carte suit la position, et ce qui la suspend - dont la bande du planificateur, deployee seulement |
 | `NearestTracksTest` | 13 | Combien de couches ouvrir pour trouver la trace la plus proche, et le parcours du planificateur propose en tete |
 
 Ces quatre-là ne testent pas un ViewModel : ils testent ce qu'on en a **sorti**. Un ViewModel orchestre,
@@ -515,9 +516,10 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
-| `TrackWatchTest` | 9 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme |
+| `TrackWatchTest` | 13 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme, et la reprise après une mort du processus |
+| `FollowedStoreTest` | 5 | la trace suivie gardée sur le disque : ce qui traverse la mort du processus |
 | `LocationHubTest` | 9 | la différence entre un suivi qu'on arrête et un suivi qui s'arrête |
-| `StaleNoticeTest` | 4 | la bannière « position figée » se referme, et ne se tait que pour cette péremption |
+| `PositionStaleTest` | 4 | le repère qui ment : quand la carte le passe au gris, et quand il redevient honnête |
 
 `LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
 repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application ne savait plus où il était.
@@ -529,11 +531,11 @@ Deux mutations vérifient que ces tests attrapent bien le défaut d'origine. Fai
 comportement exact d'avant - fait tomber **5 tests** ; effacer l'intention à l'arrêt, ce qui supprimerait
 la reprise automatique, en fait tomber **3**.
 
-`StaleNoticeTest` (dans `ui/location`) vient d'un appui sans effet : la croix de la bannière « position
-figée depuis x » était branchée sur une lambda vide. La bannière occupait le bas de la carte pour toute la
-durée du trou de réception - sous un couvert, dans une gorge - et rien ne pouvait l'en déloger. Une alerte
-qu'on ne peut pas refermer finit par se lire comme un décor, ce qui est exactement ce qu'une alerte ne doit
-pas devenir.
+`PositionStaleTest` (dans `ui/location`) garde ce que la carte dit d'un repère qui ne bouge plus : passé le
+délai, il passe au gris là où il ment. Une bannière l'annonçait aussi - « Position figée depuis x » - et la
+moitié de ces cas portait sur sa croix ; elle a été retirée. Un trou de réception dure ce qu'il dure, une
+gorge, un couvert, un tunnel : une alerte qu'on ne peut ni corriger ni éviter occupait le bas de la carte
+pour rien, jusqu'à se lire comme un décor - ce qu'une alerte ne doit jamais devenir.
 
 Deux règles s'y décident. Refermer dit **« j'ai lu »**, pas « c'est faux » : le repère garde sa couleur de
 péremption sur la carte, le fait restant vrai. Et le silence ne vaut que pour **cette** péremption : la
@@ -716,16 +718,17 @@ l'utilisateur, et le téléchargement d'une version plus récente pas encore ins
 
 ## Tests d'interface
 
-**33 tests, 5 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
+**44 tests, 6 fichiers.** Ils composent pour de vrai - taps, focus, recompositions - et vivent avec les
 autres dans `app/src/test/`, joués par Robolectric sur la JVM (le pourquoi est plus haut).
 
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `PoiBubbleUiTest` | 6 | l'infobulle d'un point d'intérêt : nom, catégorie, les trois actions d'itinéraire, le lieu sans nom |
-| `OffTrackAlertUiTest` | 10 | la bannière d'alerte et le choix de la trace à suivre, parcours calculé compris |
-| `MainScreenUiTest` | 14 | l'écran de carte entier : les réglages, le menu, les modes qui se disputent les taps, le bouton unique du calcul d'itinéraire et ce que le retour Android y ferme, et l'annonce d'un suivi interrompu |
+| `OffTrackAlertUiTest` | 13 | la bannière d'alerte et le choix de la trace à suivre, parcours calculé compris, et la mise en évidence de celle qu'on suit |
+| `MainScreenUiTest` | 15 | l'écran de carte entier : les réglages, le menu, les modes qui se disputent les taps, le bouton unique du calcul d'itinéraire et ce que le retour Android y ferme, le travail en cours gardé dans le magasin de l'activité, et l'annonce d'un suivi interrompu |
 | `RoutePlannerBandUiTest` | 5 | la bande du planificateur, dont le retour sur une étape déjà remplie |
 | `MainScreenSansReglagesTest` | 2 | la carte pendant que les réglages n'ont pas encore répondu |
+| `MapFailureDialogTest` | 3 | ce qu'on dit quand un geste demandé n'a rien produit |
 
 `RoutePlannerBandUiTest` existe **à cause d'un plantage** : toucher le champ de départ d'un itinéraire
 calculé fermait l'application, net. Une étape remplie n'affiche pas son champ mais un cadre, qui demandait
@@ -741,6 +744,17 @@ cherche - l'infobulle prend alors le nom de la catégorie plutôt que de s'ouvri
 distance et le nom de la trace arrivent bien sous les yeux, dans les unités réglées, et que les gestes de la
 boîte de dialogue mènent où ils annoncent. Le **parcours du planificateur** y figure : il se suit sans
 couche derrière lui, et son identifiant de convention doit traverser intact le choix et la veille.
+
+`FollowedStoreTest` et les quatre cas de reprise de `TrackWatchTest` gardent ce qu'aucun autre test
+n'atteint : **ce qui traverse la mort du processus**. Le service est déjà construit pour elle - il rend
+`START_STICKY` -, mais `TrackWatch` vit en mémoire, et la trace suivie revenait à `null` : le capteur
+repartait, la notification aussi, et plus personne ne veillait. Le fichier est ce qui traverse la coupure ;
+il doit donc se relire tel qu'il a été écrit, échantillons compris, et **s'effacer** quand on arrête de
+suivre - sans quoi un suivi arrêté à midi reprendrait tout seul le soir.
+
+`MapFailureDialogTest` garde la voix des gestes qui échouent. Le déclenchement réel n'est pas jouable -
+il faudrait un système de fichiers qui refuse à la demande - mais le chemin qui reste l'est : que le
+message posé arrive sous les yeux, et qu'il s'en aille quand on l'a lu.
 
 `MainScreenUiTest` garde depuis peu le **calcul d'itinéraire réduit**. Il posait son propre bouton au coin
 bas-gauche pendant que le bouton habituel s'effaçait au coin bas-droit : un itinéraire en cours en
@@ -851,7 +865,8 @@ la dernière couche insérée par son identifiant.
 
 Toutes les classes partagent **une seule JVM** (`forkEvery = 0`) et le bac à sable Robolectric qui va
 avec. Deux états y sont globaux, et les toucher sans les refermer bloque tout ce qui suit. Les deux ont
-été découverts le même jour, par la même classe - `StaleNoticeTest`, qui ne compose pourtant rien.
+été découverts le même jour, par la même classe - `PositionStaleTest` (alors `StaleNoticeTest`), qui ne
+compose pourtant rien.
 
 **L'horloge du bac à sable.** `ShadowSystemClock.advanceBy` avance le temps pour toutes les classes
 suivantes. Ce qui se mesure par une différence de dates se simule sur la **donnée**, jamais sur

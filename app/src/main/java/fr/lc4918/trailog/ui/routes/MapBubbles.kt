@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.ui.mappoint.AddressState
 import fr.lc4918.trailog.domain.model.BubblePosition
@@ -69,7 +70,7 @@ data class BubbleFrame(
 /** La geometrie des infobulles, telle que les reglages et la taille des marqueurs la decident. */
 @Composable
 internal fun rememberBubbleFrame(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     markerPx: Float,
     controller: MapController,
 ): BubbleFrame {
@@ -77,10 +78,10 @@ internal fun rememberBubbleFrame(
     val topInset = WindowInsets.statusBars.getTop(density)
     val margin = with(density) { 8.dp.roundToPx() }
     val gap = with(density) { 10.dp.roundToPx() }
-    return remember(topInset, margin, gap, markerPx, settings?.bubblePosition, controller) {
+    return remember(topInset, margin, gap, markerPx, settings.bubblePosition, controller) {
         BubbleFrame(
             geom = BubbleGeometry(topInset, margin, gap, markerPx.toInt()),
-            position = BubblePosition.of(settings?.bubblePosition),
+            position = BubblePosition.of(settings.bubblePosition),
             pan = { x, y -> controller.panByScreen(x.toFloat(), y.toFloat()) },
         )
     }
@@ -102,7 +103,7 @@ internal fun rememberBubbleFrame(
  */
 @Composable
 internal fun BoxScope.MarkerBubbleLayer(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     frame: BubbleFrame,
     vm: MainViewModel,
     dialogs: MainDialogState,
@@ -131,10 +132,10 @@ internal fun BoxScope.MarkerBubbleLayer(
         ) {
             if (selectedFeature != null) {
                 InfoBubble(feature = selectedFeature, schema = schema,
-                    fontSp = settings?.bubbleFont ?: 14, bold = settings?.bubbleBold ?: false,
-                    titleFontSp = settings?.bubbleTitleFont ?: 14, titleBold = settings?.bubbleTitleBold ?: true,
+                    fontSp = settings.bubbleFont, bold = settings.bubbleBold,
+                    titleFontSp = settings.bubbleTitleFont, titleBold = settings.bubbleTitleBold,
                     maxHeightDp = maxBubbleHeightDp,
-                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                    backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                     onEdit = { dialogs.editingFeature = true }, onClose = { vm.closeMarker() })
             } else {
                 InfoBubbleLoading()
@@ -157,7 +158,7 @@ internal fun BoxScope.MarkerBubbleLayer(
  */
 @Composable
 internal fun BoxScope.PlaceBubblesLayer(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     frame: BubbleFrame,
     controller: MapController,
     poi: PoiState,
@@ -172,6 +173,8 @@ internal fun BoxScope.PlaceBubblesLayer(
     onOpenPlanner: () -> Unit,
     onDistanceFromPosition: () -> Unit,
     onDistanceFromPoint: () -> Unit,
+    // Un geste de l'infobulle n'a rien produit : l'ecran le dit (cf. MainDialogState.failure).
+    onFailure: (Int) -> Unit,
 ) {
     val ctx = LocalContext.current
     val selPoi = poi.selected
@@ -195,9 +198,10 @@ internal fun BoxScope.PlaceBubblesLayer(
                 PoiBubble(
                     poi = selPoi,
                     onOpenWeb = { url ->
-                        runCatching {
-                            ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                        }
+                        // Aucun navigateur installe : sans ce message, le lien serait une pastille qui
+                        // ne fait rien.
+                        runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+                            .onFailure { onFailure(R.string.error_no_app_link) }
                     },
                     // Les trois actions remplissent le planificateur et l'ouvrent : c'est
                     // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
@@ -209,8 +213,8 @@ internal fun BoxScope.PlaceBubblesLayer(
                         if (planner.addWaypoint(placeOfPoi(selPoi, ctx))) poi.select(null)
                     },
                     onClose = { poi.select(null) },
-                    fontSp = settings?.bubbleFont ?: 14,
-                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                    fontSp = settings.bubbleFont,
+                    backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                 )
             }
         }
@@ -253,8 +257,8 @@ internal fun BoxScope.PlaceBubblesLayer(
                         if (planner.addWaypoint(gPlace)) geo.clear()
                     },
                     onClose = { geo.clear() },
-                    fontSp = settings?.bubbleFont ?: 14,
-                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                    fontSp = settings.bubbleFont,
+                    backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                 )
             }
         }
@@ -304,8 +308,8 @@ internal fun BoxScope.PlaceBubblesLayer(
                         if (planner.addWaypoint(placeOfPoint(mapPoint))) mapPoint.clear()
                     },
                     onClose = { mapPoint.clear() },
-                    fontSp = settings?.bubbleFont ?: 14,
-                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                    fontSp = settings.bubbleFont,
+                    backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                 )
             }
         }

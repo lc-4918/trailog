@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">La localización GPS no está activa. ¿Quieres activarla?</string>
     <string name="dialog_no_connection_title">Sin conexión</string>
     <string name="dialog_no_connection_text">La búsqueda de lugares consulta un servicio en línea, y el teléfono no tiene acceso a Internet.</string>
+    <string name="error_file_not_written">No se ha podido escribir el archivo.</string>
+    <string name="error_no_app_share">Ninguna aplicación puede recibir este archivo.</string>
+    <string name="error_no_app_link">Ninguna aplicación puede abrir este enlace.</string>
     <string name="dialog_move_to_title">Mover a...</string>
     <string name="dialog_color_title">Color de visualización</string>
     <string name="dialog_edit_bubble_title">Editar la burbuja informativa</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Itinerario en curso</string>
+    <string name="alert_track_following">En seguimiento</string>
     <string name="alert_stop_following">Dejar de seguir</string>
     <string name="alert_off_track_banner">Estás a %1$s de la traza \"%2$s\"</string>
     <string name="alert_needs_gps_text">La alerta de alejamiento necesita tu posición. ¿Activar la localización GPS?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Ubicación desactivada en el teléfono: ya no hay marcador. El seguimiento se reanudará en cuanto vuelva.</string>
     <string name="location_stopped_system">El seguimiento de posición se ha detenido solo. Ya no tiene marcador en el mapa.</string>
     <string name="location_stopped_resume">Reanudar</string>
-    <string name="location_stale_banner">Posición congelada desde hace %1$s: el marcador puede ser falso.</string>
     <string name="settings_section_route_prefs">Preferencias de trazado</string>
     <string name="settings_label_route_ways">Vías</string>
     <string name="settings_label_route_hills">Relieve</string>

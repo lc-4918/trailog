@@ -160,7 +160,7 @@ internal fun NoElevationBanner(modifier: Modifier = Modifier) {
 internal fun RouteProfilePanel(
     track: ComputedTrack,
     title: String,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     imperial: Boolean,
     lineColor: Color,
     cursorX: Double?,
@@ -178,8 +178,8 @@ internal fun RouteProfilePanel(
             Modifier.padding(vertical = ProfileTitleGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, fontSize = (settings?.profTitleFont ?: 16).sp,
-                fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
+            Text(title, fontSize = (settings.profTitleFont).sp,
+                fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f))
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -190,31 +190,31 @@ internal fun RouteProfilePanel(
         }
         TrackInfoColumns(
             titleInfos(
-                track.stats, settings?.titleInfos ?: "dist,asc,desc", imperial,
+                track.stats, settings.titleInfos, imperial,
                 remember(track.samples) { TrackMath.toblerSeconds(track.samples) },
             ),
-            fontSp = settings?.profBarFont ?: 11,
-            bold = settings?.profBarBold == true,
+            fontSp = settings.profBarFont,
+            bold = settings.profBarBold,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (settings?.profileSlope != false && settings?.profileSlopeLegend == true) {
-            SlopeLegend(track.stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+        if (settings.profileSlope && settings.profileSlopeLegend) {
+            SlopeLegend(track.stats.maxAbsSlope, settings.profLegendFont,
                 Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                bold = settings?.profLegendBold == true)
+                bold = settings.profLegendBold)
         } else {
             Spacer(Modifier.height(ProfileGraphGap))
         }
         Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
             ElevationProfile(
                 samples = track.samples, stats = track.stats,
-                grid = settings?.profileGrid ?: true,
-                slope = settings?.profileSlope ?: true,
+                grid = settings.profileGrid,
+                slope = settings.profileSlope,
                 lineColor = lineColor,
-                axisFontSp = settings?.profAxisFont ?: 9,
-                axisBold = settings?.profAxisBold == true,
+                axisFontSp = settings.profAxisFont,
+                axisBold = settings.profAxisBold,
                 cursorX = cursorX, onScrub = onScrub,
                 lastLabelInsetPx = lastLabelInsetPx,
-                verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
+                verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             )
         }
@@ -247,7 +247,7 @@ internal fun BoxScope.TrackProfileLayer(
     cursor: Double?,
     title: String,
     lineColor: Color,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     imperial: Boolean,
     gpsActive: Boolean,
     userLocation: Pair<Double, Double>?,
@@ -320,9 +320,9 @@ internal fun BoxScope.TrackProfileLayer(
         // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
         CompositionLocalProvider(LocalContentColor provides Color.Black) {
             TrackInfoColumns(
-                cursorInfos(cursorSample, settings?.cursorInfos ?: "dist,ele,slope", imperial),
-                fontSp = settings?.profCursorFont ?: 11,
-                bold = settings?.profCursorBold == true,
+                cursorInfos(cursorSample, settings.cursorInfos, imperial),
+                fontSp = settings.profCursorFont,
+                bold = settings.profCursorBold,
                 arrangement = Arrangement.spacedBy(14.dp),
                 // Meme ecart a droite qu'entre le bas du bloc et le profil : le coin se lit alors comme un
                 // coin, et non comme deux marges qui ne se repondent pas.
@@ -372,11 +372,11 @@ internal fun BoxScope.TrackProfileLayer(
              * sous un rond blanc. Le titre s'ecrit desormais sur deux lignes au besoin, dans la largeur qui
              * reste - c'est-a-dire que la place du "i" est retiree a la colonne de texte, non prise au titre.
              */
-            val legendShown = settings?.profileSlope != false && settings?.profileSlopeLegend == true
-            val hasLegendButton = settings?.profileSlope != false
+            val legendShown = settings.profileSlope && settings.profileSlopeLegend
+            val hasLegendButton = settings.profileSlope
             Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
-                Text(title, fontSize = (settings?.profTitleFont ?: 16).sp,
-                    fontWeight = if (settings?.profTitleBold != false) FontWeight.Bold else FontWeight.Normal,
+                Text(title, fontSize = (settings.profTitleFont).sp,
+                    fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.padding(end = if (hasLegendButton) SlopeLegendGutter else 0.dp))
                 if (hasLegendButton) {
@@ -395,9 +395,9 @@ internal fun BoxScope.TrackProfileLayer(
                 // points.
                 val tobler = remember(windowSamples) { windowSamples?.let { TrackMath.toblerSeconds(it) } }
                 TrackInfoColumns(
-                    titleInfos(windowStats, settings?.titleInfos ?: "dist,asc,desc", imperial, tobler),
-                    fontSp = settings?.profBarFont ?: 11,
-                    bold = settings?.profBarBold == true,
+                    titleInfos(windowStats, settings.titleInfos, imperial, tobler),
+                    fontSp = settings.profBarFont,
+                    bold = settings.profBarBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -413,16 +413,16 @@ internal fun BoxScope.TrackProfileLayer(
                 else TrackMeasure.project(whole, userLocation.second, userLocation.first)
                     ?.let { it to TrackMath.remaining(whole, it.alongM) }
             }
-            if (gpsActive && onTrack != null && settings?.profileRemaining != false) {
+            if (gpsActive && onTrack != null && settings.profileRemaining) {
                 RemainingOnTrackRow(
                     projection = onTrack.first, remaining = onTrack.second, imperial = imperial,
-                    fontSp = settings?.profBarFont ?: 11,
+                    fontSp = settings.profBarFont,
                 )
             }
             if (windowStats != null && legendShown) {
-                SlopeLegend(windowStats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                SlopeLegend(windowStats.maxAbsSlope, settings.profLegendFont,
                     Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    bold = settings?.profLegendBold == true)
+                    bold = settings.profLegendBold)
             } else {
                 // Sans legende, les infos toucheraient le graphique : elle tenait lieu de respiration entre
                 // les deux.
@@ -436,16 +436,16 @@ internal fun BoxScope.TrackProfileLayer(
                 } else if (windowSamples != null && windowStats != null && !loading) {
                     ElevationProfile(
                         samples = windowSamples, stats = windowStats,
-                        grid = settings?.profileGrid ?: true,
-                        slope = settings?.profileSlope ?: true,
+                        grid = settings.profileGrid,
+                        slope = settings.profileSlope,
                         lineColor = if (lineColor != Color.Unspecified) lineColor else MaterialTheme.colorScheme.primary,
-                        axisFontSp = settings?.profAxisFont ?: 9,
-                        axisBold = settings?.profAxisBold == true,
+                        axisFontSp = settings.profAxisFont,
+                        axisBold = settings.profAxisBold,
                         cursorX = cursor, onScrub = onScrub,
                         onZoom = onZoom,
                         onDoubleTap = onDoubleTapZoom,
                         lastLabelInsetPx = lastLabelInsetPx,
-                        verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
+                        verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
                         modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                     )
                 } else {

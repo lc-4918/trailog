@@ -686,7 +686,7 @@ internal fun folderBbox(folderId: Long, folders: List<FolderEntity>, layers: Lis
 
 @Composable
 internal fun DrawerContent(
-    folders: List<FolderEntity>, layers: List<LayerEntity>, settings: SettingsEntity?,
+    folders: List<FolderEntity>, layers: List<LayerEntity>, settings: SettingsEntity,
     vm: MainViewModel,
     // Le tiroir reste COMPOSE une fois referme : sans ce drapeau, son contenu n'a aucun moyen de savoir
     // qu'il a disparu de l'ecran, et garde l'etat dans lequel on l'a laisse.
@@ -694,6 +694,9 @@ internal fun DrawerContent(
     onSettings: () -> Unit, onClose: () -> Unit, onImport: () -> Unit,
     showOfflineButton: Boolean, onDownloadOffline: () -> Unit,
     onZoom: (String, Long) -> Unit,
+    // Un geste du tiroir n'a rien produit : l'ecran le dit. Un rappel etroit plutot que le porteur des
+    // boites, dont le tiroir n'a aucune raison de lire le reste (cf. MainDialogState.failure).
+    onFailure: (Int) -> Unit,
 ) {
     var renameTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var renameValue by remember { mutableStateOf("") }
@@ -782,9 +785,12 @@ internal fun DrawerContent(
     ) { uri ->
         val bytes = gpxPending
         gpxPending = null
-        if (uri != null && bytes != null) {
-            runCatching { drawerCtx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
-        }
+        // Renoncer au selecteur n'est pas un echec ; ne rien ecrire en est un, et il se dit.
+        if (uri == null) return@rememberLauncherForActivityResult
+        val ecrit = bytes != null && runCatching {
+            drawerCtx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } != null
+        }.getOrDefault(false)
+        if (!ecrit) onFailure(R.string.error_file_not_written)
     }
     // L'export se fait en DEUX temps : on choisit d'abord le format, on nomme le fichier ensuite. Les deux
     // formats ne portent pas la meme chose (cf. ExportFormatDialog), et ce choix ne se devine pas depuis le
@@ -802,7 +808,10 @@ internal fun DrawerContent(
                 // sans ce drapeau, elle obtient une adresse qu'elle n'a pas le droit d'ouvrir.
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
+            // Aucune application capable de recevoir un GPX : le selecteur ne s'ouvre pas, et sans ce
+            // message le partage serait un bouton qui ne fait rien.
             runCatching { drawerCtx.startActivity(Intent.createChooser(send, shareLabel)) }
+                .onFailure { onFailure(R.string.error_no_app_share) }
         }
     }
     val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer)
@@ -833,7 +842,7 @@ internal fun DrawerContent(
                     Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(34.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(30.dp).clickable(onClick = onSettings)) {
-                            Avatar(settings?.avatarSource ?: "", size = 30.dp, contentDescription = stringResource(R.string.settings_title))
+                            Avatar(settings.avatarSource, size = 30.dp, contentDescription = stringResource(R.string.settings_title))
                         }
                         Spacer(Modifier.width(8.dp))
                         // Meme taille et meme graisse que le titre "Reglages" (17 sp, semi-gras) : ce sont
@@ -841,7 +850,7 @@ internal fun DrawerContent(
                         // a deux tailles. La maquette du tiroir en donnait 15 ; celle des reglages, plus
                         // recente, en donne 17, et c'est elle qui fait foi pour les deux.
                         // Fallback traduit si le titre personnalise est vide, au lieu de ne rien afficher.
-                        val title = settings?.customTitle?.ifBlank { stringResource(R.string.drawer_default_title) }
+                        val title = settings.customTitle.ifBlank { stringResource(R.string.drawer_default_title) }
                             ?: stringResource(R.string.drawer_default_title)
                         Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
@@ -959,7 +968,7 @@ internal fun DrawerContent(
 
     exportTarget?.let { layer ->
         ExportFormatDialog(
-            dark = isDarkTheme(settings?.theme),
+            dark = isDarkTheme(settings.theme),
             onDismiss = { exportTarget = null },
             onPick = { geoJson ->
                 exportTarget = null
@@ -976,7 +985,7 @@ internal fun DrawerContent(
     statsTarget?.let { f ->
         FolderStatsDialog(
             folder = f, folders = folders, layers = layers,
-            imperial = settings?.units == "imperial", dark = isDarkTheme(settings?.theme),
+            imperial = settings.units == "imperial", dark = isDarkTheme(settings.theme),
             onDismiss = { statsTarget = null },
         )
     }

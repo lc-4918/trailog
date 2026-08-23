@@ -94,7 +94,7 @@ class MapChromeState {
  */
 @Composable
 internal fun BoxScope.MapTopLeftControls(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     chrome: MapChrome,
     insets: MapInsetsState,
     controller: MapController,
@@ -129,17 +129,18 @@ internal fun BoxScope.MapTopLeftControls(
                 }
             }
             /*
-             * `!= false` et non `== true` : tant que les reglages ne sont pas revenus de la
-             * base, ils valent null, et `== true` faisait alors disparaitre le bouton.
+             * Une lecture nue, sans defaut recopie ici : les reglages ne sont plus nullables
+             * (cf. MainViewModel.settings), et une ligne pas encore lue rend les defauts de
+             * l'entite - donc "oui" pour ce bouton.
              *
-             * Ce n'est pas une precaution theorique. Un testeur a decrit exactement cela : plus
-             * de repere, et "le bouton a disparu". Le processus tue en cours de sortie, l'ecran
-             * rallume, l'activite recreee - et la carte ne portait plus QUE le burger, le temps
-             * que Room rende une ligne. Trois lectures traitaient l'inconnu comme un "non" alors
-             * que le defaut du reglage est "oui" ; tout le reste de ce fichier lit deja son
-             * defaut (cf. showScale plus bas). C'etaient les trois seules.
+             * Ce chemin-la a coute cher. Les reglages valaient null le temps que Room reponde,
+             * et trois lectures traitaient l'inconnu comme un "non" alors que le defaut du
+             * reglage est "oui". Un testeur l'a decrit sans le savoir : plus de repere, et "le
+             * bouton a disparu". Le processus tue en cours de sortie, l'ecran rallume,
+             * l'activite recreee - et la carte ne portait plus QUE le burger. Le type ne peut
+             * plus dire "je ne sais pas", et la faute ne peut plus s'ecrire.
              */
-            if (settings?.showGpsButton != false) {
+            if (settings.showGpsButton) {
                 IconButton(
                     onClick = { location.onGpsButtonTap() },
                     // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
@@ -166,7 +167,7 @@ internal fun BoxScope.MapTopLeftControls(
         }
         // La recherche de lieu ouvre sa barre de saisie juste dessous : elle reste donc dans la
         // colonne du haut, là où la barre a la place de se déplier.
-        if (settings?.geocodingEnabled == true) {
+        if (settings.geocodingEnabled) {
             IconButton(onClick = onGeocodeTap, modifier = chrome.buttonBackground) {
                 // Loupe posée sur un globe, et non la cible de visée d'avant : celle-ci disait
                 // "se repérer", quand ce bouton cherche un lieu par son nom. Le globe distingue
@@ -177,7 +178,7 @@ internal fun BoxScope.MapTopLeftControls(
         // Sous la recherche, et à sa place quand elle est masquée : la colonne se resserre
         // d'elle-même, aucun des deux boutons ne réserve son rang.
         // Masqué pendant le choix des points, que sa bande porte déjà entièrement.
-        if (settings?.trackMeasureEnabled == true && !measure.picking) {
+        if (settings.trackMeasureEnabled && !measure.picking) {
             IconButton(onClick = {
                 // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
                 // planificateur se replie dans son coin (son trajet, lui, est conservé).
@@ -192,7 +193,7 @@ internal fun BoxScope.MapTopLeftControls(
         // geste conscient - il detourne les taps de la carte, qui n'ouvrent plus de profil tant
         // qu'un outil attend son point. Dans la colonne de gauche, sous le burger, avec les
         // deux autres fonctions qui s'ouvrent en mode.
-        if (settings?.trackEditEnabled == true) {
+        if (settings.trackEditEnabled) {
             IconButton(onClick = { edit.toggleBar() }, modifier = chrome.buttonBackground) {
                 Icon(
                     // Un crayon plutot qu'un marteau : deux traits contre une silhouette
@@ -227,7 +228,7 @@ internal fun BoxScope.MapTopLeftControls(
  */
 @Composable
 internal fun BoxScope.MapTopRightControls(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     chrome: MapChrome,
     chromeState: MapChromeState,
     controller: MapController,
@@ -258,9 +259,7 @@ internal fun BoxScope.MapTopRightControls(
                 Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend), tint = chrome.fg)
             }
         }
-        // `!= false` : le defaut du reglage est "oui", et un reglage non encore charge ne doit
-        // pas se lire comme un "non" (cf. le bouton GPS).
-        if (settings?.showBasemapControlButton != false) {
+        if (settings.showBasemapControlButton) {
             IconButton(onClick = { chromeState.basemapControlOpen = true }, modifier = chrome.buttonBackground) {
                 // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
                 // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).
@@ -292,7 +291,7 @@ internal const val GeocodeMinZoom = 12.0
  */
 @Composable
 internal fun BoxScope.MapBottomRightControls(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     chrome: MapChrome,
     controller: MapController,
     location: LocationControls,
@@ -391,7 +390,7 @@ internal fun BoxScope.MapBottomRightControls(
         // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
         // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
         // qu'on retient le long du parcours.
-        if (settings?.poiEnabled == true) {
+        if (settings.poiEnabled) {
             IconButton(onClick = { poi.toggle() }, modifier = chrome.buttonBackground) {
                 val teinte = if (poi.visible) MapChromeActive else chrome.fg
                 /*
@@ -423,10 +422,7 @@ internal fun BoxScope.MapBottomRightControls(
         // rouvre. La bande réduite posait auparavant son propre bouton au coin bas-gauche, si
         // bien qu'un itinéraire en cours en affichait un à chaque bout de l'écran - deux cibles
         // pour une seule fonction, et rien pour dire laquelle faisait quoi.
-        //
-        // `!= false` : meme raison que le bouton GPS. C'est l'autre bouton que le testeur a vu
-        // disparaitre, et par le meme chemin.
-        if (settings?.routePlannerEnabled != false && !(planner.open && !planner.collapsed)) {
+        if (settings.routePlannerEnabled && !planner.expanded) {
             IconButton(onClick = {
                 when {
                     // Trajet en cours, simplement rangé : on le redéploie tel quel. Aucune
@@ -441,7 +437,7 @@ internal fun BoxScope.MapBottomRightControls(
                         // poser le lieu qu'on vient de toucher, et pré-remplir le départ
                         // décalerait ce que leur "Étape" va remplir.
                         planner.openPlanner(fromCurrentPosition = location.gpsActive)
-                        planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+                        planner.chooseProfile(RoutingProfile.of(settings.routingProfile))
                     }
                 }
             }, modifier = chrome.buttonBackground) {

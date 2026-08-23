@@ -17,13 +17,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun GeocodeSearchEffects(
     geo: GeocodeSearchState,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     resultLimit: Int,
 ) {
     val ctx = LocalContext.current
     // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
     // le service public le refuserait, et les réponses arriveraient dans le désordre.
-    LaunchedEffect(geo.query, settings?.geocodingUrl) {
+    LaunchedEffect(geo.query, settings.geocodingUrl) {
         val q = geo.query.trim()
         if (q.length < 3) { geo.results = emptyList(); geo.searching = false; return@LaunchedEffect }
         geo.searching = true
@@ -31,7 +31,7 @@ fun GeocodeSearchEffects(
         // Une seconde tentative avant d'abandonner, comme dans le planificateur : le premier appel paie
         // l'ouverture de la liaison et echoue parfois au delai. Un echec reste ici une liste vide - la
         // barre de recherche de la carte n'a pas de place pour un message.
-        val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+        val base = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         val lang = ctx.resources.configuration.locales[0].language
         geo.results = (Photon.search(base, q, lang, resultLimit)
             ?: Photon.search(base, q, lang, resultLimit)).orEmpty()
@@ -39,5 +39,5 @@ fun GeocodeSearchEffects(
     }
     // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
     // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
-    LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
+    LaunchedEffect(settings.geocodingEnabled) { if (!settings.geocodingEnabled) geo.clear() }
 }

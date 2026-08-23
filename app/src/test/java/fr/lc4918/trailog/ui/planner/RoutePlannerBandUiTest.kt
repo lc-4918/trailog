@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.geocode.GeocodePlace
 import org.junit.Assert.assertEquals
@@ -50,7 +51,7 @@ class RoutePlannerBandUiTest {
                 RoutePlannerBand(
                     state = state,
                     imperial = false,
-                    settings = null,
+                    settings = SettingsEntity(),
                     lastLabelInsetPx = 0f,
                     maxHeight = 600.dp,
                     onPickCurrentPosition = {},

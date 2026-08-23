@@ -21,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -92,8 +93,8 @@ fun OffTrackAlertBar(
  * tient, et un catalogue de deux cents entrees ne repondrait pas a la question. Chacune dit son ecart -
  * c'est ce qui permet de reconnaitre la bonne quand deux passent au meme endroit.
  *
- * [followedIndex] marque celle qu'on suit deja, s'il y en a une : elle reste dans la liste, avec son ecart
- * a jour, et le bouton d'arret est a cote.
+ * [followed] marque celle qu'on suit deja, s'il y en a une : elle reste dans la liste, avec son ecart a
+ * jour, et le bouton d'arret est a cote.
  */
 @Composable
 fun TrackChooserDialog(
@@ -117,22 +118,12 @@ fun TrackChooserDialog(
                 candidates.isEmpty() -> Text(stringResource(R.string.alert_pick_track_empty))
                 else -> Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
                     candidates.forEach { c ->
-                        val current = followed?.layerId == c.layerId && followed.trackIndex == c.trackIndex
-                        TextButton(onClick = { onPick(c) }, modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    trackLabel(c.layerName, c.trackIndex, c.trackCount),
-                                    textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth(),
-                                    fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
-                                )
-                                Text(
-                                    stringResource(R.string.alert_track_away, Format.shortDistance(c.awayM, imperial)),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
+                        TrackChoice(
+                            candidate = c,
+                            current = followed?.layerId == c.layerId && followed.trackIndex == c.trackIndex,
+                            imperial = imperial,
+                            onPick = onPick,
+                        )
                     }
                 }
             }
@@ -147,6 +138,71 @@ fun TrackChooserDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
     )
 }
+
+/**
+ * Une trace de la liste, et la mise en evidence de celle qu'on suit deja.
+ *
+ * **Trois marques et non une**, parce que la question posee est "laquelle est-ce que je suis en ce
+ * moment ?" et qu'une graisse de caractere n'y repondait pas : sur une liste de huit lignes qui portent
+ * toutes le meme genre de nom, la ligne en gras se cherche. Elle porte donc un FOND, une cloche, et le mot
+ * "Suivie" - l'aplat se voit d'un coup d'oeil, la cloche dit de quoi il s'agit, et le mot reste la seule
+ * marque que lit une synthese vocale.
+ *
+ * Elle reste CLIQUABLE comme les autres : la retoucher n'a pas d'effet, mais une ligne qui refuse le tap
+ * dans une liste ou tout se tape se lit comme une panne. Ce qui l'arrete est le bouton d'arret, a l'oppose.
+ */
+@Composable
+private fun TrackChoice(
+    candidate: TrackCandidate,
+    current: Boolean,
+    imperial: Boolean,
+    onPick: (TrackCandidate) -> Unit,
+) {
+    val fond = if (current) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    val encre = if (current) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSurface
+    Surface(
+        onClick = { onPick(candidate) },
+        shape = RoundedCornerShape(8.dp),
+        color = fond,
+        contentColor = encre,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    trackLabel(candidate.layerName, candidate.trackIndex, candidate.trackCount),
+                    textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth(),
+                    fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
+                )
+                Text(
+                    stringResource(R.string.alert_track_away, Format.shortDistance(candidate.awayM, imperial)),
+                    style = MaterialTheme.typography.bodySmall,
+                    // Sur l'aplat de la ligne suivie, la teinte "variante" du theme n'a plus le contraste
+                    // qu'elle a sur le fond de la boite : l'ecart s'y lisait plus pale que le reste.
+                    color = if (current) encre.copy(alpha = SecondaryTextAlpha)
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (current) {
+                Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(18.dp))
+                Text(
+                    stringResource(R.string.alert_track_following),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+/** Ce qui separe une ligne secondaire de son texte principal, sans la faire disparaitre. */
+private const val SecondaryTextAlpha = 0.8f
 
 /** Nom d'un segment : celui de sa couche, numerote seulement quand elle en porte plusieurs. */
 @Composable

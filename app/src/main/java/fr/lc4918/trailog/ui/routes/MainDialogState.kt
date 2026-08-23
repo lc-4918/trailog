@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +22,9 @@ import androidx.compose.runtime.setValue
  * - [editingFeature] ouvre l'editeur de proprietes d'un marqueur, qui n'est pas une boite de cet ecran
  *   mais un composant a part entiere. L'ecran n'en garde que l'interrupteur, et le rendez-vous que
  *   l'import d'image lui a donne.
+ * - [failure] annonce qu'un geste demande n'a rien produit, et vient d'endroits qui, eux non plus, ne se
+ *   connaissent pas : le telechargement d'un parcours, l'export d'une couche, son partage, l'ouverture
+ *   d'un lien. Meme raison que [noConnection] - une reponse commune se porte a l'endroit commun.
  */
 @Stable
 class MainDialogState {
@@ -33,6 +37,21 @@ class MainDialogState {
      * un service muet. La question se pose donc au moment du geste, pas au retour de la requete.
      */
     var noConnection by mutableStateOf(false)
+
+    /**
+     * Un geste demande n'a rien produit : on le DIT, plutot que de ne rien faire.
+     *
+     * **Un `runCatching` qui avale n'est pas une gestion d'erreur.** Ecrire un GPX par le selecteur du
+     * systeme, partager une trace, ouvrir le site d'un point d'interet : ce sont des gestes VOULUS, et
+     * leur echec ne laissait rien - pas de fichier, pas de message, un tap qui n'a servi a rien. On croit
+     * alors l'application cassee, ou pire, on croit le fichier ecrit.
+     *
+     * Un identifiant de ressource et non un texte : le message est le meme quel que soit l'endroit qui le
+     * pose, et il doit se lire dans la langue du telephone.
+     */
+    var failure by mutableStateOf<Int?>(null)
+
+    fun failed(@StringRes message: Int) { failure = message }
 
     /**
      * L'editeur de proprietes du marqueur selectionne est ouvert.

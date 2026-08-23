@@ -15,15 +15,17 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * La banniere "position figee" se referme.
+ * Le repere qui ment : quand la carte le passe au gris.
  *
- * **Ce test existe a cause d'un appui sans effet.** La croix de la banniere etait branchee sur une lambda
- * vide : la banniere occupait le bas de la carte pour toute la duree du trou de reception - sous un
- * couvert, dans une gorge - et rien ne pouvait l'en deloger. Une alerte qu'on ne peut pas refermer finit
- * par se lire comme un decor, ce qui est exactement ce qu'une alerte ne doit pas devenir.
+ * Un repere fige est visuellement identique a un repere juste - c'est le meme accident que la disparition,
+ * sous une forme plus sournoise : on regarde un point qui affirme ou l'on est, et il a raison depuis dix
+ * minutes. Passe [LocationControls.STALE_AFTER_MS] sans mesure, il change donc de couleur.
  *
- * Ce qui se decide ici tient en deux points : refermer dit "j'ai lu" et non "c'est faux" - le repere garde
- * sa couleur de peremption -, et le silence ne vaut que pour CETTE peremption.
+ * **Ce que ce fichier ne teste plus.** Une banniere annoncait la meme chose en bas de la carte - "Position
+ * figee depuis x" - et la moitie de ces cas portait sur sa croix. Elle a ete retiree : un trou de reception
+ * dure ce qu'il dure - une gorge, un couvert, un tunnel - et une alerte qu'on ne peut ni corriger ni eviter
+ * occupait le bas de la carte pour rien, jusqu'a se lire comme un decor. Le fait reste dit la ou il se
+ * produit, sur le repere lui-meme.
  *
  * ---
  *
@@ -41,10 +43,10 @@ import org.robolectric.RobolectricTestRunner
  *    secondes. Treize tests y sont passes. Un snapshot applique les publie et ne laisse rien derriere.
  *
  * Les deux fautes ont le meme visage : cette classe ne compose rien, mais elle touche a des etats que
- * Compose partage a l'echelle du processus. Ce qu'on y ecrit doit etre refermé derriere soi.
+ * Compose partage a l'echelle du processus. Ce qu'on y ecrit doit etre referme derriere soi.
  */
 @RunWith(RobolectricTestRunner::class)
-class StaleNoticeTest {
+class PositionStaleTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
     private val trackingState = mutableStateOf(true)
@@ -68,6 +70,7 @@ class StaleNoticeTest {
         )
         fixState.value = fix
         controls.onFix(fix)
+        controls.refreshStale()
     }
 
     /**
@@ -83,54 +86,36 @@ class StaleNoticeTest {
         controls.refreshStale()
     }
 
-    @Test fun `la croix referme la banniere`() {
+    @Test fun `une mesure fraiche ne perime rien`() {
         mesureRecue()
-        laisserVieillir()
-        assertTrue("le repere ment : la banniere est due", controls.staleNoticeVisible)
-
-        modifie { controls.dismissStaleNotice() }
-        assertFalse("la croix la referme", controls.staleNoticeVisible)
+        assertFalse(controls.positionStale)
     }
 
-    @Test fun `refermer ne rend pas la position bonne`() {
+    @Test fun `sans mesure, le repere finit par mentir`() {
         mesureRecue()
         laisserVieillir()
-        modifie { controls.dismissStaleNotice() }
-        assertTrue(
-            "le repere garde sa couleur de peremption : on a lu l'annonce, le fait reste",
-            controls.positionStale,
-        )
+        assertTrue("passe le delai, le repere affirme une position qu'il ne sait plus", controls.positionStale)
     }
 
-    @Test fun `une peremption suivante s'annonce a nouveau`() {
+    /** Le capteur revient : le repere redit la verite, et reprend sa couleur. */
+    @Test fun `une mesure nouvelle rend le repere honnete`() {
         mesureRecue()
         laisserVieillir()
-        modifie { controls.dismissStaleNotice() }
-
-        // Le capteur repond : ce trou-ci est fini, et le suivant est un autre ennui.
         mesureRecue()
-        modifie { controls.refreshStale() }
-        assertFalse("une mesure fraiche n'a rien a annoncer", controls.staleNoticeVisible)
-
-        laisserVieillir()
-        assertTrue("se taire pour celle-la reviendrait a se taire pour toujours", controls.staleNoticeVisible)
+        assertFalse(controls.positionStale)
     }
 
-    @Test fun `un suivi relance n'herite pas du silence de l'ancien`() {
+    /** Suivi arrete : il n'y a plus de repere du tout, donc plus rien a perimer. Sans cette remise a zero,
+     *  le gris survivrait a la disparition de ce qu'il colorait. */
+    @Test fun `un suivi arrete n'a plus de repere a perimer`() {
         mesureRecue()
         laisserVieillir()
-        modifie { controls.dismissStaleNotice() }
-
         modifie {
             trackingState.value = false
             controls.onTrackingStopped()
             fixState.value = null
             controls.refreshStale()
         }
-
-        modifie { trackingState.value = true }
-        mesureRecue()
-        laisserVieillir()
-        assertTrue("le suivi d'avant a emporte son silence avec lui", controls.staleNoticeVisible)
+        assertFalse(controls.positionStale)
     }
 }

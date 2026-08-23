@@ -2,6 +2,10 @@ package fr.lc4918.trailog.ui.routes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.location.TrackWatch
@@ -62,16 +66,29 @@ internal fun OffTrackAlertEffects(
     }
     // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
     // Le parcours du planificateur n'a pas de couche : c'est l'effet suivant qui veille sur lui.
+    //
+    // La liste VIDE ne vaut pas "aucune couche" mais "pas encore lue" : elle part de `emptyList()` et se
+    // remplit une fois la base revenue. Un suivi repris au démarrage (cf. FollowedStore) tomberait sinon
+    // sur cette première passe, et s'arrêterait à la seconde même où il vient d'être rétabli.
     LaunchedEffect(layers, followed) {
         val suivie = followed ?: return@LaunchedEffect
-        if (suivie.layerId == PlannedRouteLayerId) return@LaunchedEffect
+        if (suivie.layerId == PlannedRouteLayerId || layers.isEmpty()) return@LaunchedEffect
         if (layers.none { it.id == suivie.layerId && it.visible }) TrackWatch.stop()
     }
-    // Même règle pour le parcours du planificateur : refermé ou redevenu incalculable, il quitte la carte,
-    // et suivre une trace qu'on ne voit plus n'aurait pas de sens. Un simple recalcul, lui, rend une autre
-    // géométrie mais jamais rien : le suivi le traverse sans s'arrêter.
-    LaunchedEffect(followed, routeSamples) {
+    /*
+     * Même règle pour le parcours du planificateur : refermé ou redevenu incalculable, il quitte la carte,
+     * et suivre une trace qu'on ne voit plus n'aurait pas de sens. Un simple recalcul, lui, rend une autre
+     * géométrie mais jamais rien : le suivi le traverse sans s'arrêter.
+     *
+     * La règle ne vaut QUE pour un parcours vu dans CETTE session. Après une mort du processus, le
+     * planificateur repart vide alors que la veille, elle, a été reprise du disque : sans ce drapeau, le
+     * premier passage ici couperait le suivi que le service vient tout juste de rétablir. Un parcours
+     * qu'on n'a jamais vu n'a pas pu disparaître.
+     */
+    var parcoursVu by remember { mutableStateOf(false) }
+    LaunchedEffect(routeSamples != null) { if (routeSamples != null) parcoursVu = true }
+    LaunchedEffect(followed, routeSamples, parcoursVu) {
         val suivie = followed ?: return@LaunchedEffect
-        if (suivie.layerId == PlannedRouteLayerId && routeSamples == null) TrackWatch.stop()
+        if (suivie.layerId == PlannedRouteLayerId && parcoursVu && routeSamples == null) TrackWatch.stop()
     }
 }

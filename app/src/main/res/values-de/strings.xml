@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">Die GPS-Ortung ist nicht aktiv. Möchten Sie sie aktivieren?</string>
     <string name="dialog_no_connection_title">Keine Verbindung</string>
     <string name="dialog_no_connection_text">Die Ortssuche fragt einen Online-Dienst ab, und das Telefon hat keinen Internetzugang.</string>
+    <string name="error_file_not_written">Die Datei konnte nicht geschrieben werden.</string>
+    <string name="error_no_app_share">Keine App kann diese Datei empfangen.</string>
+    <string name="error_no_app_link">Keine App kann diesen Link öffnen.</string>
     <string name="dialog_move_to_title">Verschieben nach...</string>
     <string name="dialog_color_title">Anzeigefarbe</string>
     <string name="dialog_edit_bubble_title">Infoblase bearbeiten</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">%1$s entfernt</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Laufende Route</string>
+    <string name="alert_track_following">Verfolgt</string>
     <string name="alert_stop_following">Nicht mehr verfolgen</string>
     <string name="alert_off_track_banner">Sie sind %1$s von der Spur \"%2$s\" entfernt</string>
     <string name="alert_needs_gps_text">Der Abweichungsalarm braucht Ihre Position. GPS-Standort einschalten?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Standort im Telefon deaktiviert: keine Markierung mehr. Die Verfolgung wird fortgesetzt, sobald er zurückkehrt.</string>
     <string name="location_stopped_system">Die Positionsverfolgung wurde von selbst beendet. Sie haben keine Markierung mehr auf der Karte.</string>
     <string name="location_stopped_resume">Fortsetzen</string>
-    <string name="location_stale_banner">Position seit %1$s eingefroren: die Markierung kann falsch sein.</string>
     <string name="settings_section_route_prefs">Routenvorlieben</string>
     <string name="settings_label_route_ways">Wege</string>
     <string name="settings_label_route_hills">Gelände</string>

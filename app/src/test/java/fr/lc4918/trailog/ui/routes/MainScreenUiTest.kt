@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.routes
 
 import androidx.activity.ComponentActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -393,6 +394,29 @@ class MainScreenUiTest {
         attend { !texte(R.string.planner_start) }
         assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
         assertTrue("le bouton est revenu", affiche(R.string.planner_title))
+    }
+
+    /**
+     * Le travail en cours vit dans le VIEWMODEL DE L'ACTIVITE, et non dans la composition.
+     *
+     * C'est ce qui le fait survivre a une rotation : `MainActivity` n'annonce aucun `configChanges`, un
+     * quart de tour la recree, et un `remember` repartait de zero - l'itineraire compose etape par etape
+     * s'en allait sans un mot, la ou le retour Android, lui, demande avant de le perdre.
+     *
+     * On ne tourne pas l'ecran ici : `setContent` pose le contenu sur l'activite du test, et le recreer
+     * l'emporterait avec. Ce qui se verifie est la propriete qui compte et qui, elle, est a portee - que
+     * l'etat que l'ecran vient de modifier soit bien celui du magasin de l'activite, seul endroit qui
+     * traverse une recreation.
+     */
+    @Test fun `le trajet en cours vit dans le magasin de l'activite`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+
+        val garde = ViewModelProvider(compose.activity)[MapScreenStates::class.java]
+        assertTrue("le planificateur ouvert par l'ecran est celui du magasin", garde.planner.open)
+        assertFalse("et il est bien deploye", garde.planner.collapsed)
     }
 
     // ---------- Le menu lateral ----------

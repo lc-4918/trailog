@@ -103,6 +103,7 @@ class LocationService : Service() {
         }
         ContextCompat.registerReceiver(this, providerReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         watchSettings()
+        watchFollowed()
         watchTrack()
         watchNotice()
     }
@@ -337,6 +338,28 @@ class LocationService : Service() {
             }
             // Le reglage eteint pendant le suivi : la trace n'est plus suivie de personne.
             if (reglages != null && !reglages.offTrackAlertVisible) TrackWatch.stop()
+        }
+    }
+
+    /**
+     * La trace suivie, reprise du disque puis tenue a jour dessus (cf. [FollowedStore]).
+     *
+     * **La reprise d'abord, l'ecriture ensuite, et dans la MEME coroutine** : l'ordre est la regle. En
+     * collectant avant de reprendre, la premiere valeur emise serait le null de depart, qui effacerait le
+     * fichier - on aurait detruit la trace a reprendre en s'appretant a la reprendre.
+     *
+     * La reprise ne s'impose pas a un suivi en cours (cf. [TrackWatch.restore]) : le service peut etre
+     * relance alors que l'ecran vient de designer une autre trace.
+     */
+    private fun watchFollowed() = scope.launch {
+        TrackWatch.restore(FollowedStore.load(this@LocationService))
+        TrackWatch.followed.collect { suivie ->
+            FollowedStore.save(this@LocationService, suivie)
+            // Plus rien a suivre : la notification le dit TOUT DE SUITE. Elle ne se recalculait qu'a la
+            // position suivante (cf. watchTrack), si bien qu'apres un "Ne plus suivre" elle continuait
+            // d'annoncer l'ecart a une trace qu'on venait d'abandonner - et sous un couvert, sans mesure
+            // nouvelle, elle pouvait le faire longtemps.
+            if (suivie == null) notice.value = null
         }
     }
 

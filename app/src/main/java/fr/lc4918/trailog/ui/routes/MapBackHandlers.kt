@@ -55,7 +55,7 @@ internal fun MapBackHandlers(
     // étape par étape ne se perd pas sur un geste qu'on fait sans y penser, celui-là même qui quitte
     // l'application. La croix de l'en-tête, elle, ferme sans rien demander - elle est visée.
     // Placé avant les gestes du géocodage, plus anodins.
-    BackHandler(enabled = planner.open && !planner.collapsed) { planner.collapse(true) }
+    BackHandler(enabled = planner.expanded) { planner.collapse(true) }
     BackHandler(enabled = planner.open && planner.collapsed) { planner.askCancel() }
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }

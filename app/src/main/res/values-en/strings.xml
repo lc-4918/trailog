@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">GPS location is not active. Do you want to enable it?</string>
     <string name="dialog_no_connection_title">No connection</string>
     <string name="dialog_no_connection_text">Place search queries an online service, and the phone has no Internet access.</string>
+    <string name="error_file_not_written">The file could not be written.</string>
+    <string name="error_no_app_share">No app can receive this file.</string>
+    <string name="error_no_app_link">No app can open this link.</string>
     <string name="dialog_move_to_title">Move to...</string>
     <string name="dialog_color_title">Display color</string>
     <string name="dialog_edit_bubble_title">Edit info bubble</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">%1$s away</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Route in progress</string>
+    <string name="alert_track_following">Following</string>
     <string name="alert_stop_following">Stop following</string>
     <string name="alert_off_track_banner">You are %1$s from the track \"%2$s\"</string>
     <string name="alert_needs_gps_text">The off-track alert needs your position. Turn GPS location on?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Location turned off on the phone: no more marker. Tracking will resume as soon as it returns.</string>
     <string name="location_stopped_system">Location tracking stopped on its own. You no longer have a marker on the map.</string>
     <string name="location_stopped_resume">Resume</string>
-    <string name="location_stale_banner">Position frozen for %1$s: the marker may be wrong.</string>
     <string name="settings_section_route_prefs">Route preferences</string>
     <string name="settings_label_route_ways">Ways</string>
     <string name="settings_label_route_hills">Terrain</string>

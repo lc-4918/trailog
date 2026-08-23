@@ -272,6 +272,21 @@ class RoutePlannerState {
 
     fun collapse(v: Boolean) { collapsed = v }
 
+    /**
+     * La bande OCCUPE l'ecran, par opposition a [open], qui dit seulement qu'un trajet existe.
+     *
+     * **Les deux se confondaient, et cela se voyait.** Presque tout ce qui interroge le planificateur veut
+     * savoir s'il prend la place ou l'attention : l'echelle graphique se range sous la bande, le bouton de
+     * la carte s'efface sous elle, le suivi de la camera se suspend pendant qu'on compose un trajet. Ces
+     * questions-la parlent de la bande, pas du trajet - et lire [open] y repondait "oui" pour une bande
+     * reduite, c'est-a-dire justement quand la carte est rendue a l'utilisateur.
+     *
+     * Le prix se payait sur le terrain : suivre un parcours calcule demande de garder le planificateur
+     * ouvert, reduit dans son coin, et la carte cessait alors de suivre la position - le suivi automatique
+     * etait allume, et il ne se passait rien.
+     */
+    val expanded: Boolean get() = open && !collapsed
+
     fun chooseProfile(p: RoutingProfile) {
         if (p == profile) return
         profile = p

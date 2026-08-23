@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -96,8 +97,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.composites.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val basemapFolders: StateFlow<List<BasemapFolderEntity>> =
         repo.basemapFolders.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val settings: StateFlow<SettingsEntity?> =
-        repo.settingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /**
+     * Les reglages, JAMAIS null : la ligne absente - ou pas encore lue - rend les defauts de
+     * [SettingsEntity], qui sont precisement les valeurs qu'elle contiendrait.
+     *
+     * **Le null coutait trop cher.** Il disait "pas encore charge", et chacun des trente-cinq endroits qui
+     * lisaient un reglage devait alors se souvenir, seul, du defaut a appliquer. Trois s'en sont souvenus
+     * de travers, et la carte n'a plus porte que le burger apres une mort du processus en pleine sortie :
+     * ni bouton GPS, ni itineraire, ni gestionnaire de fonds (cf. MainScreenSansReglagesTest). Le defaut
+     * vit ou il est declare - dans l'entite - et le type ne peut plus mentir.
+     *
+     * L'ECRITURE, elle, garde le null (cf. SettingsViewModel) : modifier une ligne qu'on n'a pas encore
+     * lue reviendrait a ecrire des defauts par-dessus les reglages de quelqu'un.
+     */
+    val settings: StateFlow<SettingsEntity> =
+        repo.settingsFlow.map { it ?: SettingsEntity() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsEntity())
 
     // --- rendu carte (toutes les couches visibles ; une couche peut avoir points ET lignes) ---
     private val renderTick = MutableStateFlow(0)
@@ -147,7 +162,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
-                val simplify = settings.value?.simplifyRender ?: true
+                val simplify = settings.value.simplifyRender
                 val rl = withContext(Dispatchers.IO) {
                     list.filter { it.visible }.mapNotNull { ly ->
                         val f = repo.layerMapFile(ly, simplify) ?: return@mapNotNull null

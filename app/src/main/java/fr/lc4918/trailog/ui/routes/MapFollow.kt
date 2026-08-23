@@ -40,8 +40,11 @@ object MapFollow {
      *
      * Trois choses le suspendent, et pour la même raison : elles sont posées SUR la carte et s'en servent
      * ailleurs qu'à l'endroit où l'on se tient.
-     * - le planificateur cadre le parcours qu'il vient de calculer, et composer un trajet avec une carte
-     *   qui revient toutes les cinq secondes sur soi est impossible ;
+     * - la bande du planificateur DEPLOYEE cadre le parcours qu'elle vient de calculer, et composer un
+     *   trajet avec une carte qui revient toutes les cinq secondes sur soi est impossible. Reduite, elle
+     *   ne suspend plus rien : c'est meme l'etat dans lequel on roule en suivant le parcours calcule, et
+     *   la carte cessait alors de suivre la position alors que le reglage etait allume (cf.
+     *   RoutePlannerState.expanded) ;
      * - le profil d'une trace ouverte déplace la carte au curseur qu'on promène dessus, geste qui perdrait
      *   son résultat de la même façon ;
      * - une infobulle ouverte est accrochée à un point précis - un waypoint, un point d'intérêt, un lieu
@@ -55,10 +58,10 @@ object MapFollow {
     fun follows(
         enabled: Boolean,
         gpsActive: Boolean,
-        plannerOpen: Boolean,
+        plannerExpanded: Boolean,
         layerOpen: Boolean,
         bubbleOpen: Boolean,
-    ): Boolean = enabled && gpsActive && !plannerOpen && !layerOpen && !bubbleOpen
+    ): Boolean = enabled && gpsActive && !plannerExpanded && !layerOpen && !bubbleOpen
 
     /**
      * Attente restante avant de pouvoir recentrer, en millisecondes ; 0 quand le dernier geste est assez
@@ -91,7 +94,7 @@ object MapFollow {
  */
 @Composable
 internal fun MapFollowEffect(
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     location: LocationControls,
     planner: RoutePlannerState,
     controller: MapController,
@@ -132,9 +135,9 @@ internal fun MapFollowEffect(
         }
     }
     val followsPosition = MapFollow.follows(
-        enabled = settings?.mapFollowPosition != false,
+        enabled = settings.mapFollowPosition,
         gpsActive = location.gpsActive,
-        plannerOpen = planner.open,
+        plannerExpanded = planner.expanded,
         layerOpen = layerOpen,
         bubbleOpen = bubbleOpen,
     )

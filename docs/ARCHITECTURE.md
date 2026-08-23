@@ -469,10 +469,19 @@ traitées explicitement dans le code :
 | Élément | Survit à | Mécanisme |
 |---|---|---|
 | Suivi de position | l'écran éteint, l'app en arrière-plan, le capteur coupé puis revenu | `LocationService`, service de premier plan, seul propriétaire du capteur ; l'écran lit `LocationHub` |
+| **Trace suivie** | **la mort du processus** | `FollowedStore`, un fichier ; le service la reprend à son redémarrage |
 | État du ViewModel | la rotation | `ViewModel` |
+| **Travail en cours de la carte** | **la rotation** | `MapScreenStates`, un `ViewModel` : itinéraire, mesure, emprise, retouche |
 | Ouverture des réglages | la rotation, la mort du processus | `rememberSaveable` |
 | `MapView` | la sortie de composition | `destroyOnDispose = false` par défaut |
-| Porteurs d'état d'écran | rien | `remember` seul, et c'est assumé |
+| Mesures de pixels (`MapInsetsState`, `MapChromeState`) | rien, et c'est voulu | `remember` : elles se relèvent, et celles d'un écran qui a changé de dimensions ne valent plus |
+
+**La frontière est le critère.** Ce qui se perd en silence et **trompe** doit traverser la mort du
+processus : la trace suivie est la seule dans ce cas - le capteur repart, la notification aussi, et sans
+elle plus personne ne veille. Ce qui se perd **visiblement** n'a besoin de survivre qu'à la rotation :
+un itinéraire à moitié composé qu'on voit disparaître est une contrariété, pas un piège. Rien n'exige donc
+d'écrire un trajet sur le disque, et le `Bundle` d'instance ne saurait de toute façon pas porter ses
+milliers de points.
 
 ---
 
@@ -540,7 +549,7 @@ Points chauds identifiés et traités :
 
 ### 9.3 Testabilité
 
-847 tests, 79 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
+865 tests, 81 fichiers, **tous sur la JVM**, aucun émulateur (contrainte C4 : la CI n'en a pas).
 
 La stratégie est de faire **descendre les règles importantes** dans du code pur pour qu'elles y
 deviennent testables. `poiStream` a été extrait de `PoiRepository` uniquement pour cela : il se teste
@@ -854,14 +863,38 @@ d'un Samsung en fin de batterie - l'arrêtait pour le reste de la sortie. Le ser
 au lieu de renoncer, et se rebranche seul. Il ne rend plus `START_NOT_STICKY` sur une absence de capteur,
 qui est un état passager ; il ne le fait plus que sur l'autorisation manquante, qui n'en est pas un.
 
-**Un réglage qui n'a pas encore répondu n'est pas un réglage éteint.** `settings` vaut `null` le temps
-d'ouvrir la base, et cette fenêtre se rouvre à chaque recréation du ViewModel - donc après une mort du
+**Un réglage qui n'a pas encore répondu n'est pas un réglage éteint.** `settings` valait `null` le temps
+d'ouvrir la base, et cette fenêtre se rouvrait à chaque recréation du ViewModel - donc après une mort du
 processus, en pleine sortie. Trois lectures y traitaient l'inconnu comme un « non » quand le défaut du
 réglage est « oui » : la carte ne portait plus que le burger, ni bouton GPS ni itinéraire. C'est l'autre
 moitié du témoignage, celle que le service n'explique pas.
 
+Les trois oublis ont été corrigés un par un ; **la faute, elle, ne l'a été qu'en retirant le `null`**.
+Trente-cinq endroits lisaient un réglage, et chacun devait se souvenir seul du défaut à appliquer - une
+règle qui ne vit dans aucun type ne tient jamais très longtemps. `MainViewModel.settings` rend désormais un
+`StateFlow<SettingsEntity>` non nullable : la ligne absente, ou pas encore lue, donne les **défauts déclarés
+dans l'entité**, c'est-à-dire précisément les valeurs qu'elle contiendrait. Le type ne peut plus dire « je
+ne sais pas », et les `!= false` ont disparu avec lui. L'**écriture** garde le `null` (`SettingsViewModel`,
+et le champ du service) : modifier une ligne qu'on n'a pas encore lue reviendrait à écrire des défauts
+par-dessus les réglages de quelqu'un, et pour le service, « pas encore lu » et « alerte désactivée »
+n'appellent pas la même action.
+
+**Une veille qui ne survit pas au processus n'est pas une veille.** Le service était déjà construit pour
+sa propre mort - il rend `START_STICKY`, et le système le relance après avoir repris sa mémoire. Le
+capteur repartait donc, et la notification aussi, mais `TrackWatch` est un objet en mémoire que rien ne
+reconstituait : la trace suivie revenait à `null` et **l'alerte d'éloignement se retrouvait désarmée sans
+un mot**. La frontière de durabilité était incohérente - l'*intention* de suivre survivait, la *cible* non.
+`FollowedStore` écrit la trace suivie, échantillons compris, et le service la reprend à son démarrage
+(jamais par-dessus une trace qu'on vient de choisir). Les échantillons plutôt que l'identité de la couche :
+c'est le seul chemin de reprise qui vaille aussi pour le parcours du planificateur, lequel n'a aucune
+couche derrière lui.
+
 **Un repère figé est un repère qui ment.** `Fix` porte son heure de réception, sur l'horloge de l'appareil
-et non l'heure murale. Au-delà de trente secondes sans mesure, le repère passe au gris et la carte le dit.
+et non l'heure murale. Au-delà de trente secondes sans mesure, le repère **passe au gris**, là où il ment.
+Une bannière l'annonçait aussi ; elle a été retirée. Un trou de réception dure ce qu'il dure - une gorge, un
+couvert, un tunnel - et une alerte qu'on ne peut ni corriger ni éviter occupait le bas de la carte pour
+rien, jusqu'à se lire comme un décor. Une couleur posée sur l'objet même dont elle parle ne recouvre rien et
+ne demande rien.
 
 ### AD-9 : deux moteurs d'itinéraire, BRouter par défaut
 
@@ -901,6 +934,35 @@ on demande la même chose aux deux, dans le vocabulaire de l'utilisateur.
 
 **Ce qui la ferait tomber.** Un modèle de coût configurable chez Valhalla, ou une instance BRouter
 publique qui cesserait de répondre - le réglage d'URL permettant alors d'en viser une autre.
+
+### AD-10 : un `runCatching` qui avale n'est pas une gestion d'erreur
+
+**Le problème.** `runCatching` est partout dans le code - quatre-vingts appels - et il y sert trois choses
+qui n'ont rien à voir. La forme est la même, la responsabilité non, et rien ne les distinguait à la
+lecture.
+
+**La règle, en trois cas.**
+
+| Forme | Ce qu'elle veut dire | Exemples |
+|---|---|---|
+| `runCatching { … }.getOrNull()` rendu à l'appelant | **le `null` EST la signalisation** : un corps de réponse illisible, un fichier de profil abîmé | `Photon.parse`, `Valhalla.parse`, `LayerGeoJson.read` |
+| `runCatching { … }` sur un nettoyage ou un accessoire | **muet par nature** : désinscrire un récepteur déjà mort, relâcher un wake-lock, poser une notification, générer une miniature | `LocationService.onDestroy`, `OfflineThumbnails` |
+| `runCatching { … }` sur un geste **demandé par l'utilisateur** | **doit parler** | écrire un GPX, partager une trace, ouvrir un lien |
+
+**Ce que le troisième cas coûtait.** Le téléchargement d'un parcours en GPX passait par le sélecteur du
+système, puis écrivait dans un `runCatching` dont l'échec ne produisait **rien** : pas de fichier, pas de
+message, un tap qui n'a servi à rien. La pire des deux issues n'est pas de croire l'application cassée -
+c'est de croire le fichier écrit, et de s'en apercevoir sur le terrain. Quatre gestes étaient dans ce cas.
+
+**Décision.** `MainDialogState.failure` porte un identifiant de ressource, `MapFailureDialog` l'affiche, et
+les quatre gestes le posent. Une seule boîte pour les trois messages : ce qu'il y a à dire tient dans une
+phrase. Les composants qui n'ont pas de voix reçoivent un rappel étroit `onFailure: (Int) -> Unit`, jamais
+le porteur des boîtes - le tiroir n'a aucune raison de lire le reste.
+
+**Ce qui reste avalé, et c'est écrit sur place.** Le lien d'une infobulle de marqueur (`InfoBubble`) :
+la pastille est enfouie à quatre composables privés, lui donner une voix demanderait de faire descendre un
+rappel à travers tout l'éditeur de propriétés, et son seul échec possible - aucun navigateur installé - est
+déjà dit par la même action depuis l'infobulle d'un point d'intérêt.
 
 ## 11. Risques et dettes connues
 

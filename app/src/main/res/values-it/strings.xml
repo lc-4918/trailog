@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">La localizzazione GPS non è attiva. Vuoi attivarla?</string>
     <string name="dialog_no_connection_title">Nessuna connessione</string>
     <string name="dialog_no_connection_text">La ricerca di luoghi interroga un servizio online, e il telefono non ha accesso a Internet.</string>
+    <string name="error_file_not_written">Impossibile scrivere il file.</string>
+    <string name="error_no_app_share">Nessuna app può ricevere questo file.</string>
+    <string name="error_no_app_link">Nessuna app può aprire questo collegamento.</string>
     <string name="dialog_move_to_title">Sposta in...</string>
     <string name="dialog_color_title">Colore di visualizzazione</string>
     <string name="dialog_edit_bubble_title">Modifica il fumetto informativo</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Itinerario in corso</string>
+    <string name="alert_track_following">Seguita</string>
     <string name="alert_stop_following">Non seguire più</string>
     <string name="alert_off_track_banner">Sei a %1$s dalla traccia \"%2$s\"</string>
     <string name="alert_needs_gps_text">L\'allarme di allontanamento ha bisogno della posizione. Attivare la localizzazione GPS?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Posizione disattivata nel telefono: nessun indicatore. Il tracciamento riprenderà appena tornerà disponibile.</string>
     <string name="location_stopped_system">Il tracciamento della posizione si è fermato da solo. Non hai più un indicatore sulla mappa.</string>
     <string name="location_stopped_resume">Riprendi</string>
-    <string name="location_stale_banner">Posizione ferma da %1$s: l\'indicatore può essere sbagliato.</string>
     <string name="settings_section_route_prefs">Preferenze di percorso</string>
     <string name="settings_label_route_ways">Vie</string>
     <string name="settings_label_route_hills">Rilievo</string>

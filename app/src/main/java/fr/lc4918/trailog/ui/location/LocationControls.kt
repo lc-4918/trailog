@@ -260,15 +260,12 @@ class LocationControls internal constructor(
     internal fun onFix(fix: LocationHub.Fix) {
         controller.setUserLocation(fix.lon, fix.lat, fix.accuracyM)
         if (pendingCenter) { controller.centerOn(fix.lat, fix.lon); pendingCenter = false }
-        // La position est fraiche : ce qui avait ete referme portait sur une peremption revolue.
-        staleNoticeDismissed = false
     }
 
     /** Suivi arrete : plus de repere. */
     internal fun onTrackingStopped() {
         controller.clearUserLocation()
         pendingCenter = false
-        staleNoticeDismissed = false
     }
 
     /**
@@ -288,27 +285,14 @@ class LocationControls internal constructor(
      * Un repere fige est visuellement identique a un repere juste - c'est le meme accident que la
      * disparition, sous une forme plus sournoise : on regarde un point qui affirme ou l'on est, et il a
      * raison depuis dix minutes.
+     *
+     * **Il se dit par la COULEUR du repere, et par rien d'autre.** Une banniere l'annoncait aussi ; elle a
+     * ete retiree. Un trou de reception dure ce qu'il dure - une gorge, un couvert, un tunnel - et une
+     * banniere qu'on ne peut ni corriger ni eviter occupait le bas de la carte pour rien. Le gris, lui,
+     * est a l'endroit exact du fait qu'il rapporte, et ne recouvre rien.
      */
     var positionStale by mutableStateOf(false)
         private set
-
-    /**
-     * L'annonce de peremption a ete lue : la banniere se retire, le fait reste.
-     *
-     * Distinct de [positionStale], et c'est la tout l'objet : la croix ne rend pas la position bonne, elle
-     * dit seulement qu'on a compris. Le repere garde donc sa couleur de peremption sur la carte - refermer
-     * la banniere ne doit pas effacer ce qui reste vrai.
-     *
-     * Remis a faux des qu'une mesure arrive (cf. [onFix]) : la banniere suivante annoncera une AUTRE
-     * peremption, et se taire pour celle-la reviendrait a se taire pour toujours.
-     */
-    private var staleNoticeDismissed by mutableStateOf(false)
-
-    /** La banniere de peremption doit-elle etre a l'ecran : le repere ment, et on ne l'a pas encore lu. */
-    val staleNoticeVisible: Boolean get() = positionStale && !staleNoticeDismissed
-
-    /** L'annonce de peremption a ete lue : la banniere se retire jusqu'a la prochaine mesure. */
-    fun dismissStaleNotice() { staleNoticeDismissed = true }
 
     internal fun refreshStale() {
         val age = fixAgeMs()

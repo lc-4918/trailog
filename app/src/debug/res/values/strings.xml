@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Le build de dev porte un nom DISTINCT dans le lanceur.
+
+        Son applicationId l'est deja (suffixe .debug, cf. build.gradle.kts) : les deux applications
+        cohabitent sur le telephone sans conflit de signature. Mais elles portaient le meme libelle et la
+        meme icone, si bien que rien ne les distinguait au moment de choisir laquelle ouvrir - et l'on
+        teste alors la version officielle en croyant essayer ce qu'on vient de compiler.
+    -->
+    <string name="app_name">Trailog dev</string>
+</resources>

@@ -90,6 +90,49 @@ class TrackWatchTest {
         assertFalse(TrackWatch.silenced.value)
     }
 
+    // ---------- La reprise apres une mort du processus ----------
+
+    /**
+     * Le service est relance par le systeme (START_STICKY) apres qu'il a repris sa memoire : la trace
+     * retrouvee sur le disque redevient la trace suivie.
+     *
+     * Sans cela, le capteur repartait et la notification aussi, mais plus personne ne veillait - l'alerte
+     * d'eloignement se retrouvait desarmee SANS UN MOT, telephone en poche.
+     */
+    @Test fun `la trace retrouvee redevient la trace suivie`() {
+        TrackWatch.restore(trace)
+        assertEquals("GR 9", TrackWatch.followed.value?.layerName)
+        assertEquals(trace.samples, TrackWatch.followed.value?.samples)
+    }
+
+    /** L'ecart et l'alerte repartent a zero : ils se mesurent a la prochaine position, et celui d'avant
+     *  l'arret ne dit rien d'ou l'on est maintenant. */
+    @Test fun `la reprise ne rejoue pas l'ecart d'avant`() {
+        TrackWatch.restore(trace)
+        assertEquals(null, TrackWatch.awayM.value)
+        assertFalse(TrackWatch.alerting.value)
+        assertFalse(TrackWatch.silenced.value)
+    }
+
+    /**
+     * Elle ne s'impose JAMAIS a un suivi en cours.
+     *
+     * Le service peut etre relance alors que l'ecran vient de designer une autre trace : la trace d'hier
+     * ne doit pas reprendre la place de celle qu'on vient de choisir.
+     */
+    @Test fun `la reprise ne recouvre pas une trace deja choisie`() {
+        TrackWatch.follow(trace.copy(layerId = 2, layerName = "GR 5"), awayM = 5.0, thresholdM = 50.0)
+        TrackWatch.restore(trace)
+        assertEquals("GR 5", TrackWatch.followed.value?.layerName)
+        assertEquals(5.0, TrackWatch.awayM.value!!, 1e-9)
+    }
+
+    /** Rien a reprendre : le fichier n'existait pas, ou ne se relit plus. */
+    @Test fun `une reprise vide ne change rien`() {
+        TrackWatch.restore(null)
+        assertEquals(null, TrackWatch.followed.value)
+    }
+
     /** Changer de trace repart d'une alerte vierge : l'ecart de la precedente n'a rien a dire de celle-ci. */
     @Test fun `changer de trace repart d'une alerte vierge`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)

@@ -358,6 +358,22 @@ internal fun PlannerCancelDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
 }
 
 /**
+ * Un geste demande n'a rien produit : le fichier n'a pas pu s'ecrire, rien ne sait recevoir ce qu'on
+ * partage, rien ne sait ouvrir ce lien.
+ *
+ * Une seule boite pour les trois : ce qu'il y a a dire tient dans une phrase, et trois boites qui se
+ * ressemblent au mot pres ne diraient rien de plus.
+ */
+@Composable
+internal fun MapFailureDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = { Text(message) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+    )
+}
+
+/**
  * Recherche demandee sans acces a Internet, alors que le service vise en exige un.
  *
  * Cf. ServiceUrl.needsInternet : une instance auto-hebergee sur le reseau local n'est pas concernee.
@@ -511,6 +527,10 @@ internal fun MainDialogs(
 
     if (dialogs.noConnection) {
         NoConnectionDialog(onDismiss = { dialogs.noConnection = false })
+    }
+
+    dialogs.failure?.let { message ->
+        MapFailureDialog(stringResource(message), onDismiss = { dialogs.failure = null })
     }
 
     if (alert.needsGpsDialog) {

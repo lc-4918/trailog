@@ -117,19 +117,26 @@ fun MainScreen(
     val composites by vm.composites.collectAsState()
     val basemapFolders by vm.basemapFolders.collectAsState()
     val settings by vm.settings.collectAsState()
+    /*
+     * Le travail en cours de l'ecran, garde le temps d'une rotation (cf. MapScreenStates). Un ViewModel
+     * et non des `remember` : l'activite n'annonce aucun `configChanges`, un quart de tour la recree, et
+     * tout ce qui etait en cours partait avec elle - l'itineraire compose etape par etape, la mesure dont
+     * le premier point venait d'etre pose, l'emprise a moitie tracee.
+     */
+    val screen: MapScreenStates = viewModel()
     // Ce que les commandes du haut ouvrent : la legende du fond, le gestionnaire de couches.
     val chromeState = remember { MapChromeState() }
 
     // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
-    val offline = remember { OfflineFlowState() }
+    val offline = screen.offline
     // Ce que les bandes de l'ecran recouvrent, mesure a l'affichage : la colonne de boutons du haut, le
     // panneau de profil, la bande du planificateur, la barre de consigne du moment (cf. MapInsetsState).
     val insets = remember { MapInsetsState() }
     // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC section 1.
     // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
     // téléchargement en masse et renvoie des tuiles "access blocked".
-    val offlineButtonVisible = compositeIdFromBasemapId(settings?.defaultBasemapId ?: "") == null &&
-        providers.firstOrNull { it.id == settings?.defaultBasemapId }?.let {
+    val offlineButtonVisible = compositeIdFromBasemapId(settings.defaultBasemapId) == null &&
+        providers.firstOrNull { it.id == settings.defaultBasemapId }?.let {
             it.type != "MBTILES" && it.type != "DEM" && !it.urlTemplate.contains("tile.openstreetmap.org", ignoreCase = true)
         } == true
 
@@ -158,10 +165,10 @@ fun MainScreen(
     val controller = remember { MapController() }
     val ctx = LocalContext.current
 
-    val mode = settings?.sideMenuMode ?: "both"
-    controller.tapToleranceDp = settings?.tapToleranceDp ?: 10
-    controller.lineTapToleranceDp = settings?.lineTapToleranceDp ?: 16
-    controller.rotateGesturesEnabled = settings?.rotateGesturesEnabled ?: false
+    val mode = settings.sideMenuMode
+    controller.tapToleranceDp = settings.tapToleranceDp
+    controller.lineTapToleranceDp = settings.lineTapToleranceDp
+    controller.rotateGesturesEnabled = settings.rotateGesturesEnabled
     val style by vm.mapStyle.collectAsState()
     var styleTick by remember { mutableIntStateOf(0) }
 
@@ -174,17 +181,17 @@ fun MainScreen(
      *
      * L'ecran n'en garde que ce qu'il AFFICHE - le symbole du repere, ci-dessous - et ce qu'il en lit.
      */
-    val location = rememberLocationControls(controller, settings?.showGpsButton)
+    val location = rememberLocationControls(controller, settings.showGpsButton)
     // Ecran maintenu allume tant que le suivi tourne, si le reglage le demande (cf. KeepScreenOnEffect).
     // L'annonce d'un arret subi du suivi : voir la banniere posee avec celle de l'alerte d'eloignement.
     val stopNotice by LocationHub.stopNotice.collectAsState()
-    KeepScreenOnEffect(settings?.keepScreenOn == true && location.gpsActive)
+    KeepScreenOnEffect(settings.keepScreenOn && location.gpsActive)
 
     // Symbole du repère de position et sa couleur : celle réglée, sinon celle propre au symbole (le bleu de
     // la puce, le rouge des flèches et de la croix) - une couleur vide n'est pas un choix, c'est l'absence
     // de choix, et elle doit suivre le symbole quand on en change.
-    val gpsMarker = GpsMarkerStyle.of(settings?.gpsMarkerStyle)
-    val gpsMarkerColorReglee = settings?.gpsMarkerColor?.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
+    val gpsMarker = GpsMarkerStyle.of(settings.gpsMarkerStyle)
+    val gpsMarkerColorReglee = settings.gpsMarkerColor.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
     /**
      * Le repere passe au GRIS quand il ne dit plus la verite.
      *
@@ -195,7 +202,7 @@ fun MainScreen(
      * symboles de repere - le reglage de couleur reprend la main des que le capteur repond.
      */
     val gpsMarkerColor = if (location.positionStale) GpsStaleColor else gpsMarkerColorReglee
-    val gpsMarkerSizeDp = (settings?.gpsMarkerSizeDp ?: DefaultGpsMarkerSizeDp).toFloat()
+    val gpsMarkerSizeDp = (settings.gpsMarkerSizeDp).toFloat()
 
     // Orientation du telephone, quand le symbole choisi en porte une (cf. HeadingEffect).
     HeadingEffect(location.gpsActive && gpsMarker.oriented, location.lastUserLocation) { controller.setUserHeading(it) }
@@ -209,9 +216,9 @@ fun MainScreen(
      * l'allumer avant d'ouvrir son choix de traces, et le suivi s'arrête de lui-même dès qu'il s'éteint -
      * une trace suivie sans position ne dirait plus rien, et se réveillerait au hasard d'un rallumage.
      */
-    val alert = remember { OffTrackAlertState() }
-    val alertEnabled = settings?.offTrackAlertVisible == true
-    val alertDistanceM = settings?.offTrackAlertDistanceM ?: DefaultOffTrackAlertM
+    val alert = screen.alert
+    val alertEnabled = settings.offTrackAlertVisible
+    val alertDistanceM = settings.offTrackAlertDistanceM
     /*
      * L'ecart et le son ne sont plus calcules ici mais dans le service (cf. LocationService.watchTrack) :
      * l'ecran eteint, la composition s'arrete, et une alerte qui ne se declenche que sous les yeux de
@@ -224,18 +231,18 @@ fun MainScreen(
     val alertBanner = alerting && !silenced
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
-    val geo = remember { GeocodeSearchState() }
+    val geo = screen.geo
     // Les deux boites que l'ecran ouvre pour son compte : service injoignable, editeur de proprietes.
-    val dialogs = remember { MainDialogState() }
+    val dialogs = screen.dialogs
 
     GeocodeSearchEffects(geo = geo, settings = settings, resultLimit = GeocodeResultLimit)
 
     // ---------- mesure sur trace ----------
-    val measure = remember { TrackMeasureState() }
+    val measure = screen.measure
     // La mesure désactivée dans les réglages alors qu'elle est en cours efface tout : sans cela les
     // marqueurs noirs et leur infobulle survivraient au réglage qui les a fait naître (cf. géocodage).
-    LaunchedEffect(settings?.trackMeasureEnabled) {
-        if (settings?.trackMeasureEnabled == false) measure.clear()
+    LaunchedEffect(settings.trackMeasureEnabled) {
+        if (!settings.trackMeasureEnabled) measure.clear()
     }
     // Trace masquée ou supprimée alors qu'elle portait la mesure : celle-ci n'a plus de support. La laisser
     // afficherait deux marqueurs noirs et une distance au milieu d'une carte vide, sans rien à quoi les
@@ -246,22 +253,22 @@ fun MainScreen(
     }
 
     // ---------- services et réglages partagés (point de la carte, planificateur) ----------
-    val imperialUnits = settings?.units == "imperial"
-    val routeEngine = RouteEngine.of(settings?.routeEngine)
-    val routingUrl = Router.baseOf(routeEngine, settings?.routeUrl(routeEngine))
-    val geocodingBase = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+    val imperialUnits = settings.units == "imperial"
+    val routeEngine = RouteEngine.of(settings.routeEngine)
+    val routingUrl = Router.baseOf(routeEngine, settings.routeUrl(routeEngine))
+    val geocodingBase = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
     // Lissage de l'altitude, réglage commun au profil des traces : un itinéraire calculé n'a pas de raison
     // d'être coloré selon d'autres classes de pente que celles d'une trace, au même endroit.
-    val profileSmoothingM = (settings?.profileSmoothingM ?: 5).toDouble()
+    val profileSmoothingM = (settings.profileSmoothingM).toDouble()
 
     // ---------- point quelconque de la carte (appui long) ----------
-    val mapPoint = remember { MapPointState() }
+    val mapPoint = screen.mapPoint
     // Discipline des mesures : celle réglée dans les réglages, et non celle du planificateur, qui la choisit
     // pour le trajet qu'on y compose. Une distance demandée sur la carte n'a pas de composition derrière elle.
-    val routingProfile = RoutingProfile.of(settings?.routingProfile)
+    val routingProfile = RoutingProfile.of(settings.routingProfile)
     // Préférences de tracé de cette discipline (voies, relief, revêtement). Prises aux réglages, comme la
     // discipline elle-même ; sans réglages chargés, celles que la discipline porte par défaut.
-    val measurePrefs = settings?.routePrefs(routingProfile) ?: RoutingPrefs.defaultFor(routingProfile)
+    val measurePrefs = settings.routePrefs(routingProfile)
 
     MapPointEffects(
         state = mapPoint,
@@ -276,16 +283,16 @@ fun MainScreen(
     )
 
     // ---------- planificateur d'itinéraire ----------
-    val planner = remember { RoutePlannerState() }
+    val planner = screen.planner
     // ---------- retouche des traces ----------
-    val edit = remember { TrackEditState() }
+    val edit = screen.edit
     val canUndo by vm.canUndo.collectAsState()
     val cutGeometry by vm.cutGeometry.collectAsState()
     // Le marqueur retire : la geometrie gardee pour lui n'a plus d'objet, et elle pese quelques megaoctets.
     LaunchedEffect(edit.cut == null) { if (edit.cut == null) vm.loadCutGeometry(null) }
     // Le reglage coupe : la barre se referme et rend les taps a la carte, comme le geocodage et la mesure.
-    LaunchedEffect(settings?.trackEditEnabled) {
-        if (settings?.trackEditEnabled == false) edit.close()
+    LaunchedEffect(settings.trackEditEnabled) {
+        if (!settings.trackEditEnabled) edit.close()
     }
     // Ornements poses sur la carte, les deux couleurs et le fond des boutons, qui se lisent ensemble
     // (cf. MapChrome). Tous les boutons recoivent ce fond, y compris le GPS allume : son etat se lit a la
@@ -315,11 +322,11 @@ fun MainScreen(
         routingUrl = routingUrl,
         // Les préférences suivent la discipline choisie dans la BANDE, non celle des réglages : le
         // planificateur change de discipline sans quitter la carte.
-        prefs = settings?.routePrefs(planner.profile) ?: RoutingPrefs.defaultFor(planner.profile),
+        prefs = settings.routePrefs(planner.profile),
         smoothingM = profileSmoothingM,
-        slopeTint = settings?.profileSlope != false,
+        slopeTint = settings.profileSlope,
         styleTick = styleTick,
-        enabled = settings?.routePlannerEnabled,
+        enabled = settings.routePlannerEnabled,
         topPaddingPx = statusBarTopPx,
         bandHeightPx = insets.plannerBandPx,
         routeTracks = mapPoint.routeTracks,
@@ -364,11 +371,16 @@ fun MainScreen(
     val gpxSaver = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/gpx+xml")
     ) { uri ->
+        // Renoncer au selecteur (uri null) n'est pas un echec : on n'a rien demande de plus. Tout le
+        // reste en est un, et se DIT - un tap qui ne rend ni fichier ni message laisse croire au fichier
+        // ecrit, et c'est la pire des deux issues.
+        if (uri == null) return@rememberLauncherForActivityResult
         val name = defaultRouteName(planner.targets, currentPositionLabel)
         val bytes = routeGpx(name)
-        if (uri != null && bytes != null) {
-            runCatching { ctx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
-        }
+        val ecrit = bytes != null && runCatching {
+            ctx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } != null
+        }.getOrDefault(false)
+        if (!ecrit) dialogs.failed(R.string.error_file_not_written)
     }
 
     /*
@@ -390,7 +402,7 @@ fun MainScreen(
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
      *  champ dont aucune frappe ne rendra jamais rien laisserait croire à un service muet. */
     fun onGeocodeButtonTap() {
-        val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
+        val base = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         when {
             geo.searchOpen -> geo.closeSearch()
             ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> dialogs.noConnection = true
@@ -421,7 +433,7 @@ fun MainScreen(
 
     // import : dossier -> fichier (une couche peut contenir points et/ou traces, pas de choix de type en amont)
     val importFlow = rememberImportFlow(
-        importDir = settings?.importDir,
+        importDir = settings.importDir,
         onImportLayer = { bytes, name, folderId -> vm.importLayer(bytes, name, folderId) },
         // Un import venu d'ailleurs ouvre le menu : sa couche arrive dans un dossier que rien a l'ecran ne
         // montre, et sans cela l'application ne repondrait que par le silence. Sa fermeture cadre ensuite la
@@ -441,7 +453,7 @@ fun MainScreen(
     }
 
     val density = LocalDensity.current
-    val markerPx = with(density) { (settings?.markerSize ?: 36).dp.toPx() }
+    val markerPx = with(density) { (settings.markerSize).dp.toPx() }
     // Geometrie commune aux quatre infobulles : ce qu'elles degagent, ou elles se posent, et le glissement
     // de carte qu'elles demandent pour tenir a l'ecran (cf. BubbleFrame).
     val bubbleFrame = rememberBubbleFrame(settings, markerPx, controller)
@@ -499,15 +511,15 @@ fun MainScreen(
      * reste dans ce qui a deja ete charge - c'est ce qui tient les appels loin du quota du service, bien
      * plus que le delai lui-meme (cf. PoiLoading).
      */
-    val poi = remember { PoiState() }
+    val poi = screen.poi
     PoiEffects(
         state = poi,
         controller = controller,
         repo = vm.poiRepository,
-        enabled = settings?.poiEnabled,
-        osmComplement = settings?.poiOsmComplement != false,
-        filters = remember(settings?.poiHiddenCategories, settings?.poiBikeGroups) {
-            PoiFilters.of(settings?.poiHiddenCategories, settings?.poiBikeGroups)
+        enabled = settings.poiEnabled,
+        osmComplement = settings.poiOsmComplement,
+        filters = remember(settings.poiHiddenCategories, settings.poiBikeGroups) {
+            PoiFilters.of(settings.poiHiddenCategories, settings.poiBikeGroups)
         },
         idleTick = idleTick,
         markerPx = markerPx,
@@ -527,10 +539,15 @@ fun MainScreen(
     }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {
-        if (planner.open) return
+        // Deja DEPLOYE : il n'y a rien a ouvrir, et rien a ecraser. Reduit, en revanche, il se redeploie -
+        // le lieu qu'on vient de poser depuis une infobulle doit se voir arriver dans le trajet, sans quoi
+        // le bouton "Etape" remplit une bande que personne ne regarde.
+        if (planner.expanded) return
         vm.closeProfile()
-        planner.openPlanner()
-        planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
+        if (planner.open) planner.collapse(false) else {
+            planner.openPlanner()
+            planner.chooseProfile(RoutingProfile.of(settings.routingProfile))
+        }
     }
     MapFollowEffect(
         settings = settings,
@@ -619,6 +636,7 @@ fun MainScreen(
                         offline.bboxPoints = emptyList()
                         offline.extentChoice = true
                     },
+                    onFailure = { message -> dialogs.failed(message) },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
                         when (kind) {
@@ -638,7 +656,7 @@ fun MainScreen(
                     onReady = { styleTick++ },
                 )
                 // bande de barre de statut : couleur du thème, ou transparente (carte dessous)
-                val transparent = settings?.statusBarTransparent ?: false
+                val transparent = settings.statusBarTransparent
                 Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
@@ -678,8 +696,7 @@ fun MainScreen(
                 //
                 // Posée AVANT les infobulles, donc dessous : une infobulle dit ce qu'on vient de demander,
                 // l'échelle est là en permanence. C'est à elle de passer derrière.
-                val plannerExpanded = planner.open && !planner.collapsed
-                if (activeLayerId == null && !plannerExpanded && settings?.showScale != false) {
+                if (activeLayerId == null && !planner.expanded && settings.showScale) {
                     // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
                     // navigationBarsPadding quand il n'y en a aucune.
                     val bottomBarPx = insets.promptBarPx
@@ -723,6 +740,7 @@ fun MainScreen(
                     onOpenPlanner = { ouvrePlanificateur() },
                     onDistanceFromPosition = { onDistanceFromPositionTap() },
                     onDistanceFromPoint = { onDistanceFromPointTap() },
+                    onFailure = { message -> dialogs.failed(message) },
                 )
                 MapBottomRightControls(
                     settings = settings,
@@ -790,7 +808,7 @@ fun MainScreen(
                         sensorEnabled = location.sensorEnabled,
                         geocoding = GeocodingParams(geocodingBase,
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
-                        history = PlannerHistory.of(settings?.plannerHistory),
+                        history = PlannerHistory.of(settings.plannerHistory),
                         // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
                         onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },
                         onPlaceForgotten = { lieu -> vm.forgetPlannerPlace(lieu.label) },
@@ -853,8 +871,8 @@ fun MainScreen(
                     bottomCoverPx = if (activeLayerId != null) insets.profilePanelPx
                         else WindowInsets.navigationBars.getBottom(density),
                     imperial = imperialUnits,
-                    fontSp = settings?.bubbleFont ?: 14,
-                    backgroundAlpha = (settings?.bubbleOpacityPct ?: 100) / 100f,
+                    fontSp = settings.bubbleFont,
+                    backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                 )
                 // tracé de la bounding box hors-ligne (SPEC section 2)
                 if (offline.drawingActive) {
@@ -942,13 +960,13 @@ fun MainScreen(
                 Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight()) {
                     BasemapControlPanel(
                         folders = basemapFolders, providers = providers, composites = composites,
-                        currentBasemapId = settings?.defaultBasemapId ?: "",
-                        widthFraction = (settings?.basemapControlWidthPct ?: 50) / 100f,
-                        backgroundAlpha = (settings?.basemapControlOpacityPct ?: 80) / 100f,
+                        currentBasemapId = settings.defaultBasemapId,
+                        widthFraction = (settings.basemapControlWidthPct) / 100f,
+                        backgroundAlpha = (settings.basemapControlOpacityPct) / 100f,
                         onSelect = { id -> vm.selectBasemap(id); chromeState.basemapControlOpen = false },
                         onCreateFolder = { name, parentId -> vm.createBasemapFolder(name, parentId) },
                         onReorderDrop = { k, id, tk, tid, pos -> vm.reorderBasemapDrop(k, id, tk, tid, pos) },
-                        reliefOn = settings?.hillshadeOn == true,
+                        reliefOn = settings.hillshadeOn,
                         onToggleRelief = { vm.toggleHillshade() },
                         onClose = { chromeState.basemapControlOpen = false },
                     )
@@ -960,12 +978,12 @@ fun MainScreen(
                 chrome = chrome,
                 vm = vm,
                 layers = layers,
-                currentProvider = providers.firstOrNull { it.id == settings?.defaultBasemapId },
+                currentProvider = providers.firstOrNull { it.id == settings.defaultBasemapId },
                 styleJson = style?.styleJson,
                 styleUrl = style?.styleUrl,
                 // La case n'apparait que si la couche des points d'interet est allumee : proposer
                 // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
-                poiAvailable = settings?.poiEnabled == true,
+                poiAvailable = settings.poiEnabled,
             )
         }
     }

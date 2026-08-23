@@ -141,7 +141,7 @@ private val AddIconSize = 20.dp
 fun RoutePlannerBand(
     state: RoutePlannerState,
     imperial: Boolean,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     lastLabelInsetPx: Float,
     maxHeight: Dp,
     onPickCurrentPosition: (PlannerStep) -> Unit,
@@ -563,7 +563,7 @@ private fun SuggestionRow(
 private fun ResultsZone(
     state: RoutePlannerState,
     imperial: Boolean,
-    settings: SettingsEntity?,
+    settings: SettingsEntity,
     lastLabelInsetPx: Float,
 ) {
     when (val r = state.route) {
@@ -594,8 +594,8 @@ private fun ResultsZone(
             // c'est la meme lecture, sur un parcours qu'on vient de calculer plutot que sur un fichier.
             TrackInfoColumns(
                 routeInfos(stats, if (state.zoomed) partSeconds else r.seconds, state.zoomed, imperial),
-                fontSp = settings?.profBarFont ?: 11,
-                bold = settings?.profBarBold == true,
+                fontSp = settings.profBarFont,
+                bold = settings.profBarBold,
                 modifier = Modifier.fillMaxWidth(),
             )
             // Le profil est replie derriere son libelle : il occupe a lui seul la moitie de la hauteur
@@ -633,26 +633,26 @@ private fun ResultsZone(
                 )
             }
             if (state.profileShown) {
-                if (settings?.profileSlope != false && settings?.profileSlopeLegend != false) {
-                    SlopeLegend(stats.maxAbsSlope, settings?.profLegendFont ?: 9,
+                if (settings.profileSlope && settings.profileSlopeLegend) {
+                    SlopeLegend(stats.maxAbsSlope, settings.profLegendFont,
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        bold = settings?.profLegendBold == true)
+                        bold = settings.profLegendBold)
                 }
                 Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
                     ElevationProfile(
                         samples = samples, stats = stats,
-                        grid = settings?.profileGrid ?: true,
-                        slope = settings?.profileSlope ?: true,
+                        grid = settings.profileGrid,
+                        slope = settings.profileSlope,
                         lineColor = MaterialTheme.colorScheme.primary,
-                        axisFontSp = settings?.profAxisFont ?: 9,
-                        axisBold = settings?.profAxisBold == true,
+                        axisFontSp = settings.profAxisFont,
+                        axisBold = settings.profAxisBold,
                         cursorX = state.cursor,
                         onScrub = { state.tapProfile(it) },
                         onZoom = { scale, fraction -> state.zoomBy(scale, fraction, r.track.samples.size) },
                         // Double-tap : un grossissement franc au point vise, la ou le pincement dose.
                         onDoubleTap = { fraction -> state.zoomBy(2f, fraction, r.track.samples.size) },
                         lastLabelInsetPx = lastLabelInsetPx,
-                        verticalScaleMPerCm = settings?.profileVerticalScaleMPerCm ?: 0,
+                        verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
                         modifier = Modifier.fillMaxWidth().height(110.dp),
                     )
                 }
@@ -680,4 +680,4 @@ fun defaultRouteName(steps: List<StepTarget>, currentPositionLabel: String): Str
 data class GeocodingParams(val base: String, val lang: String, val limit: Int)
 
 /** Discipline retenue au demarrage du planificateur, tiree des reglages. */
-fun initialProfile(settings: SettingsEntity?): RoutingProfile = RoutingProfile.of(settings?.routingProfile)
+fun initialProfile(settings: SettingsEntity): RoutingProfile = RoutingProfile.of(settings.routingProfile)

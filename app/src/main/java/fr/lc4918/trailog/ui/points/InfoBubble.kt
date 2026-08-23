@@ -355,6 +355,10 @@ private fun ExpandButton(onClick: () -> Unit, modifier: Modifier = Modifier, sha
 private fun LinkChip(label: String, url: String, fontSp: Int) {
     val ctx = LocalContext.current
     Surface(
+        // Avale, et c'est le seul de son espece : la pastille est enfouie a quatre composables prives de
+        // la bulle, et lui donner une voix demanderait de faire descendre un rappel jusqu'ici a travers
+        // tout l'editeur de proprietes. Le seul echec possible est l'absence de navigateur, que la meme
+        // action dit deja depuis l'infobulle d'un point d'interet (cf. MapBubbles).
         onClick = { runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) } },
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,

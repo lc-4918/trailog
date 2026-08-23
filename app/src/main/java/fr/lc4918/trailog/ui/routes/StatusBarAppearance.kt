@@ -19,9 +19,9 @@ import fr.lc4918.trailog.data.db.SettingsEntity
  *   du theme, donc ses icones ordinaires.
  */
 @Composable
-internal fun StatusBarAppearanceEffect(settings: SettingsEntity?, overlayOpen: Boolean) {
-    val dark = when (settings?.theme) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
-    val transparentBar = settings?.statusBarTransparent ?: false
+internal fun StatusBarAppearanceEffect(settings: SettingsEntity, overlayOpen: Boolean) {
+    val dark = when (settings.theme) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
+    val transparentBar = settings.statusBarTransparent
     val view = LocalView.current
     LaunchedEffect(dark, transparentBar, overlayOpen) {
         val light = when {

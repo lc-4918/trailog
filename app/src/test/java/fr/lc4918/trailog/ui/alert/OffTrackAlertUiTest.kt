@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.alert
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -99,6 +100,49 @@ class OffTrackAlertUiTest {
         }
         compose.onNodeWithText("GR 9").performClick()
         assertEquals(c, choisie)
+    }
+
+    /**
+     * La trace qu'on suit DEJA se distingue des autres.
+     *
+     * La question posee en ouvrant cette liste est "laquelle est-ce que je suis en ce moment ?", et une
+     * simple graisse de caractere n'y repondait pas : sur huit lignes qui portent le meme genre de nom,
+     * celle en gras se cherche. Le mot est la marque qui compte ici - c'est la seule que lit une synthese
+     * vocale, et la seule qu'un test peut voir : ni l'aplat ni la cloche ne portent de texte.
+     */
+    @Test fun `la trace suivie se distingue dans la liste`() {
+        val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
+        compose.setContent {
+            TrackChooserDialog(
+                candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
+                followed = suivie, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+            )
+        }
+        compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertIsDisplayed()
+    }
+
+    /** Une seule ligne la porte : la marque ne vaut rien si toutes l'ont. */
+    @Test fun `la marque ne va qu'a la trace suivie`() {
+        val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
+        compose.setContent {
+            TrackChooserDialog(
+                candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
+                followed = suivie, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+            )
+        }
+        assertEquals(1, compose.onAllNodesWithText(ctx.getString(R.string.alert_track_following))
+            .fetchSemanticsNodes().size)
+    }
+
+    /** Rien de suivi : personne ne porte la marque. */
+    @Test fun `sans suivi, aucune trace n'est marquee`() {
+        compose.setContent {
+            TrackChooserDialog(
+                candidates = listOf(candidate(1, "GR 9", 30.0)),
+                followed = null, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+            )
+        }
+        compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertDoesNotExist()
     }
 
     /** Le bouton d'arret n'existe que si l'on suit deja quelque chose : sinon il n'aurait rien a arreter. */

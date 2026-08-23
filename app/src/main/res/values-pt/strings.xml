@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">A localização GPS não está ativa. Pretende ativá-la?</string>
     <string name="dialog_no_connection_title">Sem ligação</string>
     <string name="dialog_no_connection_text">A procura de locais consulta um serviço online, e o telefone não tem acesso à Internet.</string>
+    <string name="error_file_not_written">Não foi possível escrever o ficheiro.</string>
+    <string name="error_no_app_share">Nenhuma aplicação pode receber este ficheiro.</string>
+    <string name="error_no_app_link">Nenhuma aplicação pode abrir esta ligação.</string>
     <string name="dialog_move_to_title">Mover para...</string>
     <string name="dialog_color_title">Cor de visualização</string>
     <string name="dialog_edit_bubble_title">Editar o balão informativo</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Itinerário em curso</string>
+    <string name="alert_track_following">A seguir</string>
     <string name="alert_stop_following">Deixar de seguir</string>
     <string name="alert_off_track_banner">Está a %1$s do trilho \"%2$s\"</string>
     <string name="alert_needs_gps_text">O alerta de afastamento precisa da sua posição. Ativar a localização GPS?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Localização desativada no telemóvel: já não há marcador. O seguimento retomará assim que voltar.</string>
     <string name="location_stopped_system">O seguimento de posição parou sozinho. Já não tem marcador no mapa.</string>
     <string name="location_stopped_resume">Retomar</string>
-    <string name="location_stale_banner">Posição parada há %1$s: o marcador pode estar errado.</string>
     <string name="settings_section_route_prefs">Preferências de traçado</string>
     <string name="settings_label_route_ways">Vias</string>
     <string name="settings_label_route_hills">Relevo</string>

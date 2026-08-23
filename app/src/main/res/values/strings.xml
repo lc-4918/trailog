@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">La localisation GPS n\'est pas active. Voulez-vous l\'activer ?</string>
     <string name="dialog_no_connection_title">Aucune connexion</string>
     <string name="dialog_no_connection_text">La recherche d\'un lieu interroge un service en ligne, et le téléphone n\'a pas d\'accès à Internet.</string>
+    <string name="error_file_not_written">Le fichier n\'a pas pu être écrit.</string>
+    <string name="error_no_app_share">Aucune application ne peut recevoir ce fichier.</string>
+    <string name="error_no_app_link">Aucune application ne peut ouvrir ce lien.</string>
     <string name="dialog_move_to_title">Déplacer vers...</string>
     <string name="dialog_color_title">Couleur d\'affichage</string>
     <string name="dialog_edit_bubble_title">Éditer l\'infobulle</string>
@@ -489,6 +492,7 @@
     <string name="alert_track_away">à %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Itinéraire en cours</string>
+    <string name="alert_track_following">Suivie</string>
     <string name="alert_stop_following">Ne plus suivre</string>
     <string name="alert_off_track_banner">Vous êtes à %1$s de la trace \"%2$s\"</string>
     <string name="alert_needs_gps_text">L\'alerte d\'éloignement a besoin de la position. Voulez-vous activer la localisation GPS ?</string>
@@ -508,7 +512,6 @@
     <string name="location_stopped_sensor">Localisation coupée dans le téléphone : plus de repère. Le suivi reprendra dès son retour.</string>
     <string name="location_stopped_system">Le suivi de position s\'est arrêté tout seul. Vous n\'avez plus de repère sur la carte.</string>
     <string name="location_stopped_resume">Reprendre</string>
-    <string name="location_stale_banner">Position figée depuis %1$s : le repère peut être faux.</string>
     <string name="settings_section_route_prefs">Préférences de tracé</string>
     <string name="settings_label_route_ways">Voies</string>
     <string name="settings_label_route_hills">Relief</string>

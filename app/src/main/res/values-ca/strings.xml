@@ -211,6 +211,9 @@
     <string name="dialog_location_off_text">La localització GPS no està activa. Vols activar-la?</string>
     <string name="dialog_no_connection_title">Sense connexió</string>
     <string name="dialog_no_connection_text">La cerca de llocs consulta un servei en línia, i el telèfon no té accés a Internet.</string>
+    <string name="error_file_not_written">No s\'ha pogut escriure el fitxer.</string>
+    <string name="error_no_app_share">Cap aplicació no pot rebre aquest fitxer.</string>
+    <string name="error_no_app_link">Cap aplicació no pot obrir aquest enllaç.</string>
     <string name="dialog_move_to_title">Mou a...</string>
     <string name="dialog_color_title">Color de visualització</string>
     <string name="dialog_edit_bubble_title">Edita la bombolla informativa</string>
@@ -487,6 +490,7 @@
     <string name="alert_track_away">a %1$s</string>
     <string name="alert_track_segment">%1$s (%2$d/%3$d)</string>
     <string name="alert_track_planned">Itinerari en curs</string>
+    <string name="alert_track_following">En seguiment</string>
     <string name="alert_stop_following">Deixar de seguir</string>
     <string name="alert_off_track_banner">Ets a %1$s de la traça \"%2$s\"</string>
     <string name="alert_needs_gps_text">L\'alerta d\'allunyament necessita la teva posició. Vols activar la localització GPS?</string>
@@ -506,7 +510,6 @@
     <string name="location_stopped_sensor">Ubicació desactivada al telèfon: ja no hi ha marcador. El seguiment es reprendrà tan aviat com torni.</string>
     <string name="location_stopped_system">El seguiment de posició s\'ha aturat tot sol. Ja no teniu marcador al mapa.</string>
     <string name="location_stopped_resume">Reprèn</string>
-    <string name="location_stale_banner">Posició aturada des de fa %1$s: el marcador pot ser fals.</string>
     <string name="settings_section_route_prefs">Preferències de traçat</string>
     <string name="settings_label_route_ways">Vies</string>
     <string name="settings_label_route_hills">Relleu</string>

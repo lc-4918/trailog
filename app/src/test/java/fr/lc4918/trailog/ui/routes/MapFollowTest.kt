@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -17,10 +18,10 @@ class MapFollowTest {
     private fun suit(
         enabled: Boolean = true,
         gpsActive: Boolean = true,
-        plannerOpen: Boolean = false,
+        plannerExpanded: Boolean = false,
         layerOpen: Boolean = false,
         bubbleOpen: Boolean = false,
-    ) = MapFollow.follows(enabled, gpsActive, plannerOpen, layerOpen, bubbleOpen)
+    ) = MapFollow.follows(enabled, gpsActive, plannerExpanded, layerOpen, bubbleOpen)
 
     @Test fun `le suivi demande le reglage et le capteur`() {
         assertTrue(suit())
@@ -30,8 +31,33 @@ class MapFollowTest {
 
     /** Les ecrans qui se servent de la carte ailleurs qu'a l'endroit ou l'on se tient. */
     @Test fun `le planificateur et le profil d'une trace suspendent le suivi`() {
-        assertFalse("planificateur ouvert", suit(plannerOpen = true))
+        assertFalse("bande du planificateur deployee", suit(plannerExpanded = true))
         assertFalse("profil d'une trace ouvert", suit(layerOpen = true))
+    }
+
+    /**
+     * **La bande REDUITE ne suspend plus rien**, et ce test vient du terrain.
+     *
+     * Le suivi lisait `planner.open`, qui reste vrai une fois la bande repliee - c'est meme tout l'objet
+     * du repli, garder le trajet en rendant la carte. Or c'est exactement l'etat dans lequel on roule en
+     * suivant un parcours calcule : suivi automatique allume, et la carte qui ne se recentrait jamais.
+     *
+     * Les deux notions passent donc par [RoutePlannerState.expanded], et le test les eprouve ENSEMBLE :
+     * la regle seule ne peut pas attraper une faute qui est dans ce qu'on lui donne a lire.
+     */
+    @Test fun `un planificateur reduit laisse la carte suivre la position`() {
+        val reduit = RoutePlannerState().apply { openPlanner(); collapse(true) }
+        assertTrue("un trajet existe toujours", reduit.open)
+        assertFalse("mais la bande n'occupe plus l'ecran", reduit.expanded)
+        assertTrue(suit(plannerExpanded = reduit.expanded))
+    }
+
+    /** Deployee, elle le suspend toujours : composer un trajet avec une carte qui revient sur soi toutes
+     *  les cinq secondes est impossible. */
+    @Test fun `un planificateur deploye suspend toujours le suivi`() {
+        val deploye = RoutePlannerState().apply { openPlanner() }
+        assertTrue(deploye.expanded)
+        assertFalse(suit(plannerExpanded = deploye.expanded))
     }
 
     /**

@@ -2,6 +2,7 @@ package fr.lc4918.trailog.location
 
 import fr.lc4918.trailog.domain.geo.OffTrack
 import fr.lc4918.trailog.domain.model.Sample
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +21,14 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 object TrackWatch {
 
-    /** La trace qu'on suit des yeux : son identite, et le parcours sur lequel la position se rabat. */
+    /**
+     * La trace qu'on suit des yeux : son identite, et le parcours sur lequel la position se rabat.
+     *
+     * Serialisable parce qu'elle doit SURVIVRE AU PROCESSUS (cf. [FollowedStore]) : les echantillons
+     * voyagent avec elle, et c'est ce qui permet de reprendre la veille sans rien relire ni savoir d'ou
+     * la trace venait - une couche de la bibliotheque, ou un parcours qui n'y est jamais entre.
+     */
+    @Serializable
     data class Followed(
         val layerId: Long,
         val layerName: String,
@@ -60,6 +68,22 @@ object TrackWatch {
         _followed.value = f
         _awayM.value = awayM
         _alerting.value = awayM >= thresholdM
+        _silenced.value = false
+    }
+
+    /**
+     * Reprise apres une mort du processus : la trace retrouvee sur le disque redevient la trace suivie.
+     *
+     * **Ne s'impose jamais a un suivi en cours** : le service peut etre relance alors que l'ecran vient
+     * d'en choisir une autre, et la trace d'hier ne doit pas reprendre la place de celle qu'on vient de
+     * designer. L'ecart et l'alerte, eux, repartent a zero : ils se mesurent a la prochaine position, et
+     * celui d'avant l'arret ne dit rien d'ou l'on est maintenant.
+     */
+    fun restore(f: Followed?) {
+        if (f == null || _followed.value != null) return
+        _followed.value = f
+        _awayM.value = null
+        _alerting.value = false
         _silenced.value = false
     }
 

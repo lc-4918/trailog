@@ -22,21 +22,27 @@ import org.robolectric.annotation.Config
 /**
  * La carte pendant que les reglages n'ont pas encore repondu.
  *
- * **Ce test vient du terrain.** `MainViewModel.settings` est un `StateFlow<SettingsEntity?>` dont la
- * valeur initiale est null : c'est le premier etat de tout ViewModel, et il dure le temps d'ouvrir la
- * base. Apres une mort du processus - Android reprend sa memoire pendant une longue sortie, ecran eteint -
- * l'activite et le ViewModel sont recrees, et cette fenetre se rouvre en pleine route.
+ * **Ce test vient du terrain.** `MainViewModel.settings` etait un `StateFlow<SettingsEntity?>` dont la
+ * valeur initiale etait null : le premier etat de tout ViewModel, et il dure le temps d'ouvrir la base.
+ * Apres une mort du processus - Android reprend sa memoire pendant une longue sortie, ecran eteint -
+ * l'activite et le ViewModel sont recrees, et cette fenetre se rouvrait en pleine route.
  *
  * Trois lectures y traitaient l'inconnu comme un "non" alors que le defaut du reglage est "oui". La carte
  * ne portait plus alors QUE le burger : ni bouton GPS, ni itineraire, ni gestionnaire de fonds. Les deux
  * premiers sont exactement ceux qu'un testeur a decrits comme disparus, apres vingt kilometres dans le
  * mauvais sens.
  *
+ * **Le null a depuis disparu du chemin de LECTURE** : le flux rend les defauts de `SettingsEntity` tant
+ * que la ligne n'est pas lue, et le type ne peut plus dire "je ne sais pas". Ce test garde ce que ce
+ * changement PROMET, et qui ne se lit nulle part ailleurs : que ces defauts-la soient bien ceux que la
+ * carte montre. Il vaut donc aujourd'hui pour la raison inverse d'hier - non plus attraper trois oublis,
+ * mais verrouiller le mecanisme qui les rend impossibles.
+ *
  * **Une classe a part, et la base videe.** Le singleton de base est partage par les methodes d'une meme
  * classe (cf. TESTS.md) - et, l'experience le montre, par les classes successives d'une meme execution :
  * sans ce menage, cette classe heritait des reglages ecrits par `MainScreenUiTest`, dont un menu lateral
- * regle sur le glissement, et la fenetre qu'on veut tenir ouverte se refermait. Ici, aucune ligne de
- * reglages n'existe : le flux rend null, durablement, comme au premier lancement.
+ * regle sur le glissement, et l'etat qu'on veut tenir se defaisait. Ici, aucune ligne de reglages
+ * n'existe : la base repond "rien", durablement, comme au premier lancement.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "fr", application = TestTrailogApp::class)
