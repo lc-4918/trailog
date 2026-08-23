@@ -1686,13 +1686,20 @@ fun MainScreen(
                         onAction = { location.dismissStopNotice(); location.onGpsButtonTap() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                     )
-                } else if (location.positionStale) {
+                } else if (location.staleNoticeVisible) {
+                    /*
+                     * La croix referme la banniere, elle ne repare pas la position : le repere garde sa
+                     * couleur de peremption sur la carte. Refermer dit "j'ai lu", pas "c'est faux".
+                     *
+                     * Sans cela la banniere etait inutilisable : elle couvrait le bas de la carte pour
+                     * toute la duree du trou de reception, et la croix ne repondait pas.
+                     */
                     LocationNoticeBar(
                         text = stringResource(
                             R.string.location_stale_banner,
                             Format.duration((location.positionAgeMs ?: 0L) / 1000.0),
                         ),
-                        onDismiss = { },
+                        onDismiss = { location.dismissStaleNotice() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                     )
                 }

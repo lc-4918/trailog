@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**831 tests, 78 fichiers**, tous verts.
+**835 tests, 79 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -517,6 +517,7 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 |---|---|---|
 | `TrackWatchTest` | 9 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme |
 | `LocationHubTest` | 9 | la différence entre un suivi qu'on arrête et un suivi qui s'arrête |
+| `StaleNoticeTest` | 4 | la bannière « position figée » se referme, et ne se tait que pour cette péremption |
 
 `LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
 repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application ne savait plus où il était.
@@ -527,6 +528,16 @@ arrêt **demandé** est le silence, ce qui suit un arrêt **subi** est une annon
 Deux mutations vérifient que ces tests attrapent bien le défaut d'origine. Faire taire l'arrêt subi - le
 comportement exact d'avant - fait tomber **5 tests** ; effacer l'intention à l'arrêt, ce qui supprimerait
 la reprise automatique, en fait tomber **3**.
+
+`StaleNoticeTest` (dans `ui/location`) vient d'un appui sans effet : la croix de la bannière « position
+figée depuis x » était branchée sur une lambda vide. La bannière occupait le bas de la carte pour toute la
+durée du trou de réception - sous un couvert, dans une gorge - et rien ne pouvait l'en déloger. Une alerte
+qu'on ne peut pas refermer finit par se lire comme un décor, ce qui est exactement ce qu'une alerte ne doit
+pas devenir.
+
+Deux règles s'y décident. Refermer dit **« j'ai lu »**, pas « c'est faux » : le repère garde sa couleur de
+péremption sur la carte, le fait restant vrai. Et le silence ne vaut que pour **cette** péremption : la
+prochaine mesure le lève, faute de quoi se taire une fois reviendrait à se taire pour le reste de la sortie.
 
 Cet état vit **hors de l'écran** depuis que le suivi tourne dans un service de premier plan : c'est lui, et
 non la composition, qui décide qu'il faut sonner. Une faute ici ne se voit pas à l'écran - elle se constate
