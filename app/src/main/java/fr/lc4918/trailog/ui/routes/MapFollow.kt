@@ -1,5 +1,18 @@
 package fr.lc4918.trailog.ui.routes
 
+import android.os.SystemClock
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.ui.components.MapController
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
+import fr.lc4918.trailog.ui.location.LocationControls
+import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
+import fr.lc4918.trailog.ui.poi.PoiState
+import kotlinx.coroutines.delay
+
 /**
  * Quand la carte suit la position du porteur, et quand elle le laisse tranquille.
  *
@@ -62,5 +75,74 @@ object MapFollow {
         // hors de la fenêtre, on recentre.
         if (since < 0L) return 0L
         return (delayMs - since).coerceAtLeast(0L)
+    }
+}
+
+/**
+ * Le suivi de la position par la CAMERA : la carte se recentre a chaque mesure, et se tait cinq secondes
+ * apres chaque geste.
+ *
+ * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher dans
+ * les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
+ * recentrage en cours de preparation pour repartir sur cinq secondes pleines. Le retour a donc lieu meme
+ * immobile, l'attente du geste arrivant a son terme sans qu'aucune position nouvelle ne l'y aide.
+ *
+ * @param layerOpen le profil d'une trace occupe le bas de l'ecran.
+ */
+@Composable
+internal fun MapFollowEffect(
+    settings: SettingsEntity?,
+    location: LocationControls,
+    planner: RoutePlannerState,
+    controller: MapController,
+    poi: PoiState,
+    geo: GeocodeSearchState,
+    mapPoint: MapPointState,
+    selectedMarkerId: String?,
+    layerOpen: Boolean,
+) {
+    /*
+     * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
+     * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
+     *
+     * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher
+     * dans les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
+     * recentrage en cours de préparation pour repartir sur cinq secondes pleines. Le retour a donc lieu
+     * même immobile, l'attente du geste arrivant à son terme sans qu'aucune position nouvelle ne l'y aide.
+     *
+     * Placé ici, et non auprès des rappels de caméra : le suivi doit connaître les infobulles, dont celle
+     * des points d'intérêt, qui n'existent qu'à partir de cette ligne.
+     */
+    // Une infobulle est accrochée à un endroit précis de la carte : un recentrage l'emporterait hors de
+    // l'écran, avec son épingle, au milieu de la lecture. Les quatre comptent - waypoint (son éditeur de
+    // propriétés compris, qui garde le marqueur sélectionné), point d'intérêt, lieu trouvé, point d'un
+    // appui long. Ce dernier compte tant qu'il est POSÉ, même pendant le choix d'un point de référence,
+    // qui masque l'infobulle sans clore ce qui se joue.
+    val bubbleOpen = selectedMarkerId != null || poi.selected != null || geo.place != null ||
+        mapPoint.point != null
+    // La fermeture vaut geste : les cinq secondes de silence repartent de là, sans quoi la carte sauterait
+    // sur la position à l'instant même où l'on referme l'infobulle.
+    //
+    // Relevée dans un onDispose plutôt que dans un effet voisin : Compose délivre les oublis AVANT les
+    // lancements d'une même passe, si bien que l'heure est à jour quand l'effet du suivi, relancé par cette
+    // même fermeture, va la lire. Deux effets côte à côte n'auraient tenu que par l'ordre de déclaration.
+    if (bubbleOpen) {
+        DisposableEffect(Unit) {
+            onDispose { location.noteUserGesture() }
+        }
+    }
+    val followsPosition = MapFollow.follows(
+        enabled = settings?.mapFollowPosition != false,
+        gpsActive = location.gpsActive,
+        plannerOpen = planner.open,
+        layerOpen = layerOpen,
+        bubbleOpen = bubbleOpen,
+    )
+    LaunchedEffect(followsPosition, location.lastUserLocation, location.lastUserGestureAt) {
+        if (!followsPosition) return@LaunchedEffect
+        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
+        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), location.lastUserGestureAt)
+        if (wait > 0L) delay(wait)
+        controller.centerOn(la, lo)
     }
 }

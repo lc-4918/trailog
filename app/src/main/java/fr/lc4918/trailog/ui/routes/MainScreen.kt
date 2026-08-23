@@ -1,15 +1,12 @@
 package fr.lc4918.trailog.ui.routes
 
 import android.annotation.SuppressLint
-import android.os.SystemClock
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,7 +29,6 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,7 +44,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -73,7 +68,6 @@ import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
-import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.net.ServiceUrl
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
@@ -83,10 +77,8 @@ import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreSurface
 import fr.lc4918.trailog.ui.components.MapPromptBar
 import fr.lc4918.trailog.ui.components.MapSurface
-import fr.lc4918.trailog.ui.edit.CutTarget
-import fr.lc4918.trailog.ui.edit.EditTool
-import fr.lc4918.trailog.ui.edit.SegmentRef
 import fr.lc4918.trailog.ui.edit.TrackEditState
+import fr.lc4918.trailog.ui.geocode.GeocodeSearchEffects
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
 import fr.lc4918.trailog.ui.location.rememberLocationControls
@@ -110,7 +102,6 @@ import fr.lc4918.trailog.ui.poi.PoiLoading
 import fr.lc4918.trailog.ui.poi.PoiState
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
@@ -224,14 +215,6 @@ fun MainScreen(
     val alert = remember { OffTrackAlertState() }
     val alertEnabled = settings?.offTrackAlertVisible == true
     val alertDistanceM = settings?.offTrackAlertDistanceM ?: DefaultOffTrackAlertM
-    LaunchedEffect(location.gpsActive, alert.chooserPending) { alert.openPendingChooser(location.gpsActive) }
-    // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
-    // couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
-    LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
-        if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
-        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
-        vm.nearestTracks(la, lo) { alert.candidates = it }
-    }
     /*
      * L'ecart et le son ne sont plus calcules ici mais dans le service (cf. LocationService.watchTrack) :
      * l'ecran eteint, la composition s'arrete, et une alerte qui ne se declenche que sous les yeux de
@@ -242,43 +225,21 @@ fun MainScreen(
     val silenced by TrackWatch.silenced.collectAsState()
     val awayM by TrackWatch.awayM.collectAsState()
     val alertBanner = alerting && !silenced
-    // Le réglage éteint, ou le capteur coupé : plus rien à suivre. La liste ouverte se referme avec.
-    LaunchedEffect(alertEnabled, location.gpsActive) {
-        if (!alertEnabled || !location.gpsActive) {
-            TrackWatch.stop()
-            alert.reset()
-        }
-    }
-    // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
-    LaunchedEffect(layers, followed) {
-        val suivie = followed ?: return@LaunchedEffect
-        if (layers.none { it.id == suivie.layerId && it.visible }) TrackWatch.stop()
-    }
+    OffTrackAlertEffects(
+        alert = alert,
+        location = location,
+        vm = vm,
+        layers = layers,
+        followed = followed,
+        alertEnabled = alertEnabled,
+    )
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
     val geo = remember { GeocodeSearchState() }
     // Les deux boites que l'ecran ouvre pour son compte : service injoignable, editeur de proprietes.
     val dialogs = remember { MainDialogState() }
 
-    // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
-    // le service public le refuserait, et les réponses arriveraient dans le désordre.
-    LaunchedEffect(geo.query, settings?.geocodingUrl) {
-        val q = geo.query.trim()
-        if (q.length < 3) { geo.results = emptyList(); geo.searching = false; return@LaunchedEffect }
-        geo.searching = true
-        delay(350)
-        // Une seconde tentative avant d'abandonner, comme dans le planificateur : le premier appel paie
-        // l'ouverture de la liaison et echoue parfois au delai. Un echec reste ici une liste vide - la
-        // barre de recherche de la carte n'a pas de place pour un message.
-        val base = settings?.geocodingUrl?.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
-        val lang = ctx.resources.configuration.locales[0].language
-        geo.results = (Photon.search(base, q, lang, GeocodeResultLimit)
-            ?: Photon.search(base, q, lang, GeocodeResultLimit)).orEmpty()
-        geo.searching = false
-    }
-    // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
-    // le marqueur noir et son infobulle survivraient au réglage qui les a fait naître.
-    LaunchedEffect(settings?.geocodingEnabled) { if (settings?.geocodingEnabled == false) geo.clear() }
+    GeocodeSearchEffects(geo = geo, settings = settings, resultLimit = GeocodeResultLimit)
 
     // ---------- mesure sur trace ----------
     val measure = remember { TrackMeasureState() }
@@ -336,45 +297,6 @@ fun MainScreen(
     // Le reglage coupe : la barre se referme et rend les taps a la carte, comme le geocodage et la mesure.
     LaunchedEffect(settings?.trackEditEnabled) {
         if (settings?.trackEditEnabled == false) edit.close()
-    }
-    val sameSegmentMessage = stringResource(R.string.edit_same_segment)
-    val cannotSplitMessage = stringResource(R.string.split_impossible)
-    val routedFellBack = stringResource(R.string.join_fell_back_straight)
-
-    /**
-     * Tap sur une trace en mode retouche : selon l'outil, il inverse, pose le marqueur de coupe, ou
-     * designe un segment a joindre.
-     *
-     * Le point retenu n'est jamais celui du doigt mais son PROJETE sur la geometrie complete (cf.
-     * TrackEdit.locate) : c'est ce qui permet de couper entre deux sommets, la ou le curseur du profil ne
-     * savait designer que des points deja presents.
-     */
-    fun onEditTap(key: String, lon: Double, lat: Double) {
-        val id = key.removePrefix("ly").toLongOrNull() ?: return
-        val layer = layers.firstOrNull { it.id == id }?.takeIf { it.hasLine } ?: return
-        when (edit.tool) {
-            EditTool.REVERSE -> {
-                if (layer.hasTime) edit.reverseConfirm = layer else vm.reverseLayer(layer)
-                edit.choose(EditTool.NONE)
-            }
-            EditTool.CUT -> {
-                edit.busy = true
-                // La geometrie sert a la bulle du marqueur, qui doit savoir ce qu'elle recouvrirait.
-                vm.loadCutGeometry(layer)
-                vm.locateOnLayer(layer, lon, lat) { hit ->
-                    edit.busy = false
-                    if (hit != null) edit.placeCut(CutTarget(layer.id, layer.name, hit))
-                }
-            }
-            EditTool.JOIN -> {
-                edit.busy = true
-                vm.locateOnLayer(layer, lon, lat) { hit ->
-                    edit.busy = false
-                    if (hit != null) edit.pick(SegmentRef(layer.id, layer.name, hit.segment), sameSegmentMessage)
-                }
-            }
-            EditTool.NONE -> Unit
-        }
     }
     // Ornements poses sur la carte - les deux couleurs et le fond des boutons, qui se lisent ensemble
     // (cf. MapChrome). Tous les boutons recoivent ce fond, y compris le GPS allume : son etat se lit a la
@@ -465,80 +387,20 @@ fun MainScreen(
         }
     }
 
-    // barre de statut : icônes noires en mode transparent, sinon inverse du thème
-    val dark = when (settings?.theme) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
-    val transparentBar = settings?.statusBarTransparent ?: false
-    val view = LocalView.current
-    LaunchedEffect(dark, transparentBar, drawerState.isOpen, settingsOpen) {
-        val light = when {
-            settingsOpen || drawerState.isOpen -> !dark
-            transparentBar -> true                 // toujours noir au-dessus de la carte transparente
-            else -> !dark
-        }
-        androidx.core.view.WindowCompat.getInsetsController(
-            (view.context as android.app.Activity).window, view).isAppearanceLightStatusBars = light
-    }
+    StatusBarAppearanceEffect(
+        settings = settings,
+        overlayOpen = settingsOpen || drawerState.isOpen,
+    )
 
-    // Compteur de mouvement de camera : incremente a CHAQUE image d'un deplacement, la ou idleTick
-    // n'attend que l'immobilisation. Ce qui doit rester colle a son point de carte le suit (l'orientation
-    // de la boussole, les infobulles du geocodage) ; le reste s'en passe et se recalcule a l'arret.
-    var moveTick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(controller) {
-        controller.onCameraMove = { moveTick++ }
-        controller.onUserMoveBegin = {
-            // Un geste rend la carte à son propriétaire : le suivi de position se tait le temps du silence
-            // (cf. MapFollow). Ce rappel ne se déclenche que sur un geste humain - centerOn et fitTo ne le
-            // font pas -, sans quoi le suivi s'interdirait lui-même à son premier recentrage.
-            location.noteUserGesture()
-        }
-        // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
-        // les modes de saisie exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point.
-        controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
-    }
-
-    // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure, choix du
-    // point de référence d'une distance) : tout tap leur revient, y compris sur une trace ou un marqueur,
-    // qui n'ouvrent alors ni profil ni infobulle. Hors de ces modes, la sélection habituelle reprend.
-    //
-    // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
-    // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
-    // reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offline.drawingActive, measure.picking, mapPoint.pickingPoint, edit.awaitingTap) {
-        when {
-            offline.drawingActive -> controller.onRawTap = { lon, lat ->
-                if (offline.bboxPoints.size < 2) offline.bboxPoints = offline.bboxPoints + (lon to lat)
-            }
-            // Le point retenu n'est pas celui du doigt mais son projeté sur la trace : le calcul passe par
-            // le ViewModel, seul à savoir lire les profils des couches (cf. pickMeasureStart).
-            measure.picking -> controller.onRawTap = { lon, lat ->
-                val started = measure.start
-                if (started == null) {
-                    // Couches candidates demandées d'abord à l'index de rendu de la carte : lui seul sait
-                    // dire, sans rien lire, quelles traces passent vraiment sous le doigt.
-                    val keys = controller.lineKeysNear(lon, lat)
-                    vm.pickMeasureStart(lon, lat, keys) { p -> if (p != null && measure.picking) measure.chooseStart(p) }
-                } else {
-                    vm.pickMeasureEnd(started, lon, lat) { p, path -> if (measure.picking) measure.chooseEnd(p, path) }
-                }
-            }
-            mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
-            // Retouche : les taps sur une trace lui reviennent, et n'ouvrent donc pas de profil. Le vide
-            // ne referme rien - sortir du mode se fait par la barre, pas par un tap a cote.
-            edit.awaitingTap -> {
-                controller.onRawTap = null
-                controller.onPickPoint = null
-                controller.onPickLine = { key, lon, lat -> onEditTap(key, lon, lat) }
-                controller.onTapEmpty = null
-            }
-            else -> {
-                controller.onRawTap = null
-                controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
-                controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
-                controller.onTapEmpty = { vm.closeOnEmpty() }
-            }
-        }
-    }
-    val bearing = remember(moveTick) { controller.bearing() }
+    MapTapRouting(
+        controller = controller,
+        offline = offline,
+        measure = measure,
+        mapPoint = mapPoint,
+        edit = edit,
+        layers = layers,
+        vm = vm,
+    )
     // cadrage sur les couches récemment importées à la fermeture du menu
     LaunchedEffect(drawerState.currentValue) {
         if (drawerState.currentValue == DrawerValue.Closed) {
@@ -603,14 +465,20 @@ fun MainScreen(
         providers = providers,
     )
 
-    // infobulle
-    var idleTick by remember { mutableIntStateOf(0) }
-    LaunchedEffect(controller) {
-        controller.onCameraIdle = {
-            idleTick++
-            if (positioned) controller.cameraState()?.let { (la, lo, z) -> vm.saveCameraState(la, lo, z) }
-        }
-    }
+    // Les deux compteurs que la camera fait avancer, et les rappels qui vont avec (cf. MapCameraCallbacks).
+    val ticks = rememberMapCameraCallbacks(
+        controller = controller,
+        location = location,
+        mapPoint = mapPoint,
+        vm = vm,
+        // Une lambda et non un booleen : le rappel est pose une seule fois et vit bien plus longtemps que
+        // la composition qui l'a pose. Un booleen y serait fige a sa valeur d'alors, et l'ecran
+        // enregistrerait un cadrage qui n'est pas encore celui de l'utilisateur.
+        isPositioned = { positioned },
+    )
+    val moveTick = ticks.move
+    val idleTick = ticks.idle
+    val bearing = remember(moveTick) { controller.bearing() }
 
     /*
      * ---------- Points d'interet (DATAtourisme) ----------
@@ -653,50 +521,17 @@ fun MainScreen(
         planner.openPlanner()
         planner.chooseProfile(RoutingProfile.of(settings?.routingProfile))
     }
-    /*
-     * La carte suit le porteur : elle se recentre à chaque position reçue, et se tait cinq secondes après
-     * chaque geste (cf. MapFollow, qui porte les règles et leurs raisons).
-     *
-     * L'effet se relance sur la position ET sur l'heure du dernier geste, et c'est ce qui le fait marcher
-     * dans les deux sens : une position pendant le silence attend ce qu'il en reste, et un geste annule le
-     * recentrage en cours de préparation pour repartir sur cinq secondes pleines. Le retour a donc lieu
-     * même immobile, l'attente du geste arrivant à son terme sans qu'aucune position nouvelle ne l'y aide.
-     *
-     * Placé ici, et non auprès des rappels de caméra : le suivi doit connaître les infobulles, dont celle
-     * des points d'intérêt, qui n'existent qu'à partir de cette ligne.
-     */
-    // Une infobulle est accrochée à un endroit précis de la carte : un recentrage l'emporterait hors de
-    // l'écran, avec son épingle, au milieu de la lecture. Les quatre comptent - waypoint (son éditeur de
-    // propriétés compris, qui garde le marqueur sélectionné), point d'intérêt, lieu trouvé, point d'un
-    // appui long. Ce dernier compte tant qu'il est POSÉ, même pendant le choix d'un point de référence,
-    // qui masque l'infobulle sans clore ce qui se joue.
-    val bubbleOpen = selectedMarkerId != null || poi.selected != null || geo.place != null ||
-        mapPoint.point != null
-    // La fermeture vaut geste : les cinq secondes de silence repartent de là, sans quoi la carte sauterait
-    // sur la position à l'instant même où l'on referme l'infobulle.
-    //
-    // Relevée dans un onDispose plutôt que dans un effet voisin : Compose délivre les oublis AVANT les
-    // lancements d'une même passe, si bien que l'heure est à jour quand l'effet du suivi, relancé par cette
-    // même fermeture, va la lire. Deux effets côte à côte n'auraient tenu que par l'ordre de déclaration.
-    if (bubbleOpen) {
-        DisposableEffect(Unit) {
-            onDispose { location.noteUserGesture() }
-        }
-    }
-    val followsPosition = MapFollow.follows(
-        enabled = settings?.mapFollowPosition != false,
-        gpsActive = location.gpsActive,
-        plannerOpen = planner.open,
+    MapFollowEffect(
+        settings = settings,
+        location = location,
+        planner = planner,
+        controller = controller,
+        poi = poi,
+        geo = geo,
+        mapPoint = mapPoint,
+        selectedMarkerId = selectedMarkerId,
         layerOpen = activeLayerId != null,
-        bubbleOpen = bubbleOpen,
     )
-    LaunchedEffect(followsPosition, location.lastUserLocation, location.lastUserGestureAt) {
-        if (!followsPosition) return@LaunchedEffect
-        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
-        val wait = MapFollow.waitMs(SystemClock.elapsedRealtime(), location.lastUserGestureAt)
-        if (wait > 0L) delay(wait)
-        controller.centerOn(la, lo)
-    }
 
     // Position écran du marqueur sélectionné. Basée sur selectedMarkerPos (connue dès le tap) et non sur la
     // feature chargée : l'infobulle peut ainsi se placer avant l'arrivée de ses propriétés.
@@ -741,36 +576,18 @@ fun MainScreen(
             profileLineColor = runCatching { Color(ly.color.toColorInt()) }.getOrDefault(profilePrimary)
         }
     }
-    // 1er retour Android : ferme le profil s'il est affiché, au lieu du comportement par défaut.
-    BackHandler(enabled = computed != null) { vm.closeProfile() }
-    // Priorité plus haute (déclaré après = intercepté en premier) : si le menu latéral est ouvert,
-    // le retour le referme d'abord, avant tout autre comportement (y compris le retour système par défaut).
-    BackHandler(enabled = drawerState.isOpen) { scope.launch { drawerState.close() } }
-    // Retour = annule le tracé bbox / ferme la config, plutôt que de quitter l'app (priorité la plus haute :
-    // ces deux états ne sont jamais actifs simultanément, mais l'ordre reflète "config au-dessus du tracé").
-    BackHandler(enabled = offline.drawingActive) { offline.cancelDrawing() }
-    BackHandler(enabled = offline.configBbox != null) { offline.closeFlow() }
-    // Géocodage, du plus général au plus prioritaire (déclaré après = intercepté en premier) : le retour
-    // ferme d'abord le lieu affiché, puis la barre de recherche, puis sort du choix d'un point.
-    // Le retour système replie d'abord la bande, puis la ferme : deux appuis pour perdre un trajet saisi,
-    // et non un seul. Placé avant les gestes du géocodage, plus anodins.
-    BackHandler(enabled = planner.open && !planner.collapsed) { planner.collapse(true) }
-    BackHandler(enabled = planner.open && planner.collapsed) { planner.close() }
-    BackHandler(enabled = geo.place != null) { geo.clear() }
-    BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
-    // Mesure sur trace, du plus général au plus prioritaire : le retour ferme d'abord le résultat affiché,
-    // et sort en priorité du choix des points, qui est le mode de saisie en cours.
-    BackHandler(enabled = measure.mid != null) { measure.clear() }
-    BackHandler(enabled = measure.picking) { measure.closeBand() }
-    // Point désigné par un appui long, même gradation : le retour ferme d'abord son infobulle, et sort en
-    // priorité du choix d'un point de référence, qui est le mode de saisie en cours.
-    BackHandler(enabled = mapPoint.point != null) { mapPoint.clear() }
-    BackHandler(enabled = mapPoint.pickingPoint) { mapPoint.cancelPickingPoint() }
-    // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
-    BackHandler(enabled = offlineDownload?.minimized == false) {
-        val dl = offlineDownload
-        if (dl?.phase == OfflinePhase.RUNNING) vm.setOfflineDownloadMinimized(true) else vm.dismissOfflineDownload()
-    }
+    MapBackHandlers(
+        drawerState = drawerState,
+        scope = scope,
+        offline = offline,
+        planner = planner,
+        geo = geo,
+        measure = measure,
+        mapPoint = mapPoint,
+        offlineDownload = offlineDownload,
+        vm = vm,
+        profileOpen = computed != null,
+    )
 
     ModalNavigationDrawer(
         drawerState = drawerState,
