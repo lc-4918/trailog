@@ -61,10 +61,39 @@ fun PlannerEffects(
     var routeFramed by remember { mutableStateOf(false) }
     var framePending by remember { mutableStateOf(false) }
 
+    /*
+     * L'itineraire temporaire d'AVANT la mort du processus, repris du disque - une seule fois, et avant
+     * tout calcul (cf. PlannerStore).
+     *
+     * Le planificateur vit dans un ViewModel, ce qui lui fait traverser une rotation mais pas la reprise
+     * de memoire que le systeme s'accorde des que l'application passe assez longtemps derriere, ecran
+     * eteint au premier chef. Le trajet qu'on suivait disparaissait alors sans un mot, pendant que la
+     * veille, elle, revenait du disque : une cloche qui surveillait un parcours que plus rien ne montrait.
+     *
+     * [reprise] retient le calcul jusque-la : sans ce verrou, l'effet ci-dessous verrait des etapes vides,
+     * publierait Idle, et l'effet d'ecriture effacerait le fichier avant meme qu'on l'ait lu.
+     */
+    var reprise by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        state.restore(PlannerStore.load(ctx))
+        reprise = true
+    }
+    // Le parcours calcule survit a la mort du processus, et disparait avec le trajet qu'on abandonne :
+    // la meme ecriture dit les deux (cf. RoutePlannerState.snapshot).
+    LaunchedEffect(reprise, state.route, state.open, state.collapsed) {
+        if (reprise) PlannerStore.save(ctx, state.snapshot())
+    }
+
     // Les préférences suivent la discipline CHOISIE DANS LA BANDE, non celle des réglages : le planificateur
     // change de discipline sans quitter la carte, et passer au VTT doit amener avec lui ce qu'on demande à
-    // un VTT. Changer un réglage pendant qu'un parcours est affiché le recalcule (la clé de l'effet).
-    LaunchedEffect(state.revision, routingUrl, state.profile, prefs, smoothingM) {
+    // un VTT. Changer un réglage pendant qu'un parcours est affiché le recalcule (il entre dans l'empreinte).
+    val inputs = RouteInputs(state.revision, routingUrl, state.profile, prefs, smoothingM)
+    LaunchedEffect(inputs, reprise) {
+        if (!reprise) return@LaunchedEffect
+        // Le parcours a l'ecran repond deja a ce qu'on demande : rien a faire. C'est ce qui empeche une
+        // rotation - ou une reprise du disque - de renvoyer au moteur un itineraire intact, et de le
+        // perdre si le service ne repond pas (cf. RouteInputs).
+        if (state.adopt(inputs)) return@LaunchedEffect
         val targets = state.targets
         if (targets.size < 2) {
             state.publish(RouteState.Idle); routeFramed = false; framePending = false
@@ -88,7 +117,7 @@ fun PlannerEffects(
         val track = withContext(Dispatchers.Default) {
             TrackMath.compute(r.points, smoothingM = smoothingM, maxPoints = 0, ignoreStops = false)
         }
-        state.publish(RouteState.Done(r.meters, r.seconds, track))
+        state.publish(RouteState.Done(r.meters, r.seconds, track), inputs)
         if (!routeFramed) framePending = true
     }
     /*

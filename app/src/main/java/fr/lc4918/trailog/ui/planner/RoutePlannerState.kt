@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.ui.profile.ProfileZoom
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 
@@ -23,6 +24,25 @@ sealed interface StepTarget {
      */
     data object CurrentPosition : StepTarget
 }
+
+/**
+ * Ce dont le parcours affiche est le RESULTAT : les etapes - par leur numero d'ordre - et les reglages de
+ * trace du moment.
+ *
+ * **Une empreinte, parce qu'un parcours calcule ne doit pas se recalculer tout seul.** L'effet de calcul se
+ * relance a chaque fois que la composition repart de zero, et pas seulement quand ses cles changent : une
+ * rotation renvoyait donc l'itineraire au moteur, par le reseau, alors que le `ViewModel` l'avait garde
+ * intact - et un service muet ou un reseau absent le publiait alors en echec, c'est-a-dire l'effacait. Le
+ * comparer a son empreinte repond a la seule question qui vaille : ce qui est a l'ecran repond-il deja a ce
+ * qu'on demande ?
+ */
+data class RouteInputs(
+    val revision: Int,
+    val routingUrl: String,
+    val profile: RoutingProfile,
+    val prefs: RoutingPrefs,
+    val smoothingM: Double,
+)
 
 /** Ou en est le calcul du parcours. */
 sealed interface RouteState {
@@ -275,6 +295,7 @@ class RoutePlannerState {
         steps.add(PlannerStep(nextId++))
         route = RouteState.Idle
         recomputing = false
+        computedFrom = null
         cursor = null
         resetZoom()
         revision++
@@ -445,10 +466,80 @@ class RoutePlannerState {
 
     fun beginRecompute() { recomputing = true }
 
-    fun publish(r: RouteState) {
+    /**
+     * L'empreinte des entrees dont [route] est le resultat, ou null quand il n'y en a pas - aucun parcours,
+     * ou un parcours REPRIS DU DISQUE, qui n'a pas ete calcule dans cette session.
+     */
+    var computedFrom by mutableStateOf<RouteInputs?>(null)
+        private set
+
+    /**
+     * Le parcours affiche repond-il deja a [inputs] ? Si oui, il n'y a rien a recalculer.
+     *
+     * **Il ADOPTE au passage un parcours repris du disque**, qui arrive sans empreinte : c'est le seul
+     * moment ou l'on sait pour quelles entrees il vaut desormais. Le recalculer serait demander le reseau
+     * au pire moment - une application qui vient de renaitre - pour retrouver, au mieux, ce qu'on a deja ;
+     * et au pire le perdre sur un service muet, c'est-a-dire refaire la faute qu'on corrige.
+     */
+    fun adopt(inputs: RouteInputs): Boolean {
+        if (route !is RouteState.Done) return false
+        if (computedFrom == null) { computedFrom = inputs; return true }
+        return computedFrom == inputs
+    }
+
+    /** @param from l'empreinte des entrees du calcul, pour un parcours abouti (cf. [adopt]). */
+    fun publish(r: RouteState, from: RouteInputs? = null) {
         route = r
         recomputing = false
+        computedFrom = if (r is RouteState.Done) from else null
         if (r !is RouteState.Done) cursor = null
+    }
+
+    /**
+     * Ce qu'il faut garder du planificateur pour le retrouver apres la mort du processus, ou null quand il
+     * n'y a rien qui vaille d'etre repris.
+     *
+     * Rien a garder tant qu'aucun parcours n'est CALCULE : des etapes a moitie saisies ne se ressuscitent
+     * pas, ce qu'on regrette de perdre est le trajet qu'on suivait.
+     */
+    fun snapshot(): PlannerSnapshot? {
+        val fait = done ?: return null
+        if (!open) return null
+        return PlannerSnapshot(
+            steps = steps.mapNotNull { it.target }.map { StepSnapshot.of(it) },
+            profile = profile.key,
+            collapsed = collapsed,
+            meters = fait.meters,
+            seconds = fait.seconds,
+            track = fait.track,
+        )
+    }
+
+    /**
+     * Repose l'itineraire retrouve sur le disque : ses etapes, sa discipline, son parcours.
+     *
+     * Ne fait rien si le planificateur porte deja quelque chose : la reprise n'a lieu qu'au demarrage, et
+     * ecraser un trajet qu'on vient de composer serait pire que la perte qu'on repare.
+     *
+     * [revision] n'est PAS incremente : le parcours repose est celui de ces etapes-la, il n'y a rien a
+     * recalculer. Il arrive sans empreinte, et c'est [adopt] qui la lui donnera.
+     */
+    fun restore(snapshot: PlannerSnapshot?) {
+        if (snapshot == null || open || route is RouteState.Done) return
+        if (snapshot.steps.size < 2 || snapshot.track.samples.size < 2) return
+        steps.clear()
+        snapshot.steps.forEach { s ->
+            val etape = PlannerStep(nextId++)
+            etape.target = s.target()
+            etape.untouched = false
+            steps.add(etape)
+        }
+        profile = RoutingProfile.of(snapshot.profile)
+        open = true
+        collapsed = snapshot.collapsed
+        route = RouteState.Done(snapshot.meters, snapshot.seconds, snapshot.track)
+        computedFrom = null
+        recomputing = false
     }
 
     /** Tap sur le graphique : [alongM] est une abscisse absolue sur le parcours. */
