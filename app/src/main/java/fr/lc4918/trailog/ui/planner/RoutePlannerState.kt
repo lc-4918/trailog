@@ -229,15 +229,25 @@ class RoutePlannerState {
     /**
      * Le depart part d'ou l'on est - si le depart est encore vierge, et si la position ne sert pas deja
      * ailleurs dans le trajet.
+     */
+    fun startFromCurrentPosition() {
+        steps.firstOrNull()?.let { useCurrentPosition(it) }
+    }
+
+    /**
+     * [step] designe la position du porteur, si elle est encore vierge et si la position ne sert pas
+     * deja ailleurs dans le trajet.
      *
      * La seconde garde importe : partir d'ou l'on est pour y revenir donne un troncon de longueur nulle,
      * que le moteur refuse. C'est la meme regle que celle de la suggestion, et pour la meme raison.
+     *
+     * La premiere garde ne REMPLACE jamais : une etape deja posee, ou seulement touchee, est le fait de
+     * l'utilisateur, et un automatisme n'a pas a l'effacer sous ses doigts.
      */
-    fun startFromCurrentPosition() {
+    private fun useCurrentPosition(step: PlannerStep) {
         if (usesCurrentPosition) return
-        val depart = steps.firstOrNull() ?: return
-        if (depart.target != null || !depart.untouched) return
-        choose(depart, StepTarget.CurrentPosition)
+        if (step.target != null || !step.untouched) return
+        choose(step, StepTarget.CurrentPosition)
     }
 
     /**
@@ -335,10 +345,21 @@ class RoutePlannerState {
      * Ils vivent ici et non dans l'ecran qui les propose : il y en aura plusieurs a les offrir, et trois
      * copies de la meme regle finiraient par diverger. Ils ne font que REMPLIR le planificateur ; c'est
      * a l'appelant de l'ouvrir, parce que lui seul sait ce qu'il doit fermer pour laisser la place.
+     *
+     * @param completeFromCurrentPosition l'AUTRE bout du trajet prend la position du porteur, s'il est
+     *   encore vierge. Passe vrai quand le capteur peut la rendre : designer un camping comme arrivee,
+     *   c'est demander a s'y rendre, et cela part d'ou l'on se tient - laisser le depart vide obligeait a
+     *   deplier la bande et a le remplir a la main pour obtenir le trajet qu'on venait de demander.
      */
-    fun setStart(place: GeocodePlace) = choose(steps.first(), StepTarget.Place(place))
+    fun setStart(place: GeocodePlace, completeFromCurrentPosition: Boolean = false) {
+        choose(steps.first(), StepTarget.Place(place))
+        if (completeFromCurrentPosition) useCurrentPosition(steps.last())
+    }
 
-    fun setEnd(place: GeocodePlace) = choose(steps.last(), StepTarget.Place(place))
+    fun setEnd(place: GeocodePlace, completeFromCurrentPosition: Boolean = false) {
+        choose(steps.last(), StepTarget.Place(place))
+        if (completeFromCurrentPosition) useCurrentPosition(steps.first())
+    }
 
     /**
      * "Enregistrer comme trace" : la boite qui demande son nom et son dossier est ouverte.

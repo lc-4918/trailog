@@ -105,6 +105,66 @@ class PlannerStepsTest {
         assertNull(etat.steps.first().target)
     }
 
+    // ---------- L'autre bout du trajet se complete tout seul ----------
+
+    /**
+     * Une arrivee posee depuis une infobulle, le capteur allume : le depart part d'ou l'on est.
+     *
+     * Le testeur l'a rencontre sur un camping : designer un camping comme arrivee, c'est demander a s'y
+     * rendre - et cela part d'ou l'on se tient. Le depart restait vide, et il fallait deplier la bande
+     * pour le remplir a la main.
+     */
+    @Test fun `une arrivee posee complete le depart par la position`() {
+        val etat = RoutePlannerState()
+        etat.setEnd(lieu("Camping"), completeFromCurrentPosition = true)
+        assertEquals(StepTarget.Place(lieu("Camping")), etat.steps.last().target)
+        assertEquals(StepTarget.CurrentPosition, etat.steps.first().target)
+    }
+
+    /** Symetrique : un depart pose depuis une infobulle fait de la position l'arrivee. */
+    @Test fun `un depart pose complete l'arrivee par la position`() {
+        val etat = RoutePlannerState()
+        etat.setStart(lieu("Camping"), completeFromCurrentPosition = true)
+        assertEquals(StepTarget.Place(lieu("Camping")), etat.steps.first().target)
+        assertEquals(StepTarget.CurrentPosition, etat.steps.last().target)
+    }
+
+    /** Le capteur eteint, rien ne se complete : une etape "d'ou je suis" que rien ne resout ferait
+     *  echouer le calcul au lieu de laisser un champ a remplir. */
+    @Test fun `sans capteur, l'autre bout reste vierge`() {
+        val etat = RoutePlannerState()
+        etat.setEnd(lieu("Camping"))
+        assertNull(etat.steps.first().target)
+    }
+
+    /** L'autre bout deja pose n'est pas ecrase : c'est le geste de l'utilisateur, pas une place libre. */
+    @Test fun `un autre bout deja pose n'est pas ecrase`() {
+        val etat = RoutePlannerState()
+        etat.setStart(lieu("Mirepoix"))
+        etat.setEnd(lieu("Camping"), completeFromCurrentPosition = true)
+        assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+    }
+
+    /** Ni celui qu'on a commence a taper (cf. `untouched`). */
+    @Test fun `un autre bout en cours de saisie n'est pas ecrase`() {
+        val etat = RoutePlannerState()
+        etat.type(etat.steps.first(), "Mire")
+        etat.setEnd(lieu("Camping"), completeFromCurrentPosition = true)
+        assertNull(etat.steps.first().target)
+    }
+
+    /**
+     * La position deja posee en etape intermediaire ne se repose pas au depart : partir d'ou l'on est
+     * pour y repasser donne un troncon de longueur nulle, que le moteur refuse.
+     */
+    @Test fun `la position deja posee ailleurs ne se repose pas`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps[1], StepTarget.CurrentPosition)
+        etat.setEnd(lieu("Camping"), completeFromCurrentPosition = true)
+        assertNull(etat.steps.first().target)
+    }
+
     // ---------- Un lieu deja pose ne se repropose pas ----------
 
     /**

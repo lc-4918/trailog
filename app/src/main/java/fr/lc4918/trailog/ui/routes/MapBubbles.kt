@@ -148,7 +148,9 @@ internal fun BoxScope.MarkerBubbleLayer(
  * Les trois infobulles d'un LIEU : point d'interet, lieu trouve par le geocodeur, point d'appui long.
  *
  * Reunies parce qu'elles portent les trois memes boutons - depart, arrivee, etape - et que ces boutons
- * font exactement la meme chose : ouvrir le planificateur, puis y poser le lieu. Ce que chacune sait de
+ * font exactement la meme chose : ouvrir le planificateur, puis y poser le lieu. "Depart" et "Arrivee"
+ * completent en outre l'autre bout du trajet par la position du porteur quand le capteur peut la rendre :
+ * designer une arrivee, c'est demander a s'y rendre, et cela part d'ou l'on se tient. Ce que chacune sait de
  * son lieu differe (un point d'interet a une categorie, un point d'appui long n'a parfois qu'une paire de
  * coordonnees), et c'est tout ce qui les separe : [placeOfPoi] et [placeOfPoint] reduisent l'un et l'autre
  * a l'etape que le planificateur attend.
@@ -206,8 +208,16 @@ internal fun BoxScope.PlaceBubblesLayer(
                     // Les trois actions remplissent le planificateur et l'ouvrent : c'est
                     // l'ecran qui l'ouvre, parce que lui seul sait ce qu'il doit fermer
                     // pour lui laisser la place (cf. RoutePlannerState).
-                    onSetStart = { onOpenPlanner(); planner.setStart(placeOfPoi(selPoi, ctx)); poi.select(null) },
-                    onSetEnd = { onOpenPlanner(); planner.setEnd(placeOfPoi(selPoi, ctx)); poi.select(null) },
+                    onSetStart = {
+                        onOpenPlanner()
+                        planner.setStart(placeOfPoi(selPoi, ctx), location.sensorEnabled)
+                        poi.select(null)
+                    },
+                    onSetEnd = {
+                        onOpenPlanner()
+                        planner.setEnd(placeOfPoi(selPoi, ctx), location.sensorEnabled)
+                        poi.select(null)
+                    },
                     onAddStep = {
                         onOpenPlanner()
                         if (planner.addWaypoint(placeOfPoi(selPoi, ctx))) poi.select(null)
@@ -250,8 +260,8 @@ internal fun BoxScope.PlaceBubblesLayer(
                     lines = gPlace.lines,
                     // Le lieu part tel quel dans le planificateur : il porte deja son
                     // adresse et ses coordonnees, c'est exactement ce qu'attend une etape.
-                    onSetStart = { onOpenPlanner(); planner.setStart(gPlace); geo.clear() },
-                    onSetEnd = { onOpenPlanner(); planner.setEnd(gPlace); geo.clear() },
+                    onSetStart = { onOpenPlanner(); planner.setStart(gPlace, location.sensorEnabled); geo.clear() },
+                    onSetEnd = { onOpenPlanner(); planner.setEnd(gPlace, location.sensorEnabled); geo.clear() },
                     onAddStep = {
                         onOpenPlanner()
                         if (planner.addWaypoint(gPlace)) geo.clear()
@@ -301,8 +311,16 @@ internal fun BoxScope.PlaceBubblesLayer(
                     imperial = imperial,
                     onDistanceFromPosition = { onDistanceFromPosition() },
                     onDistanceFromPoint = { onDistanceFromPoint() },
-                    onSetStart = { onOpenPlanner(); planner.setStart(placeOfPoint(mapPoint)); mapPoint.clear() },
-                    onSetEnd = { onOpenPlanner(); planner.setEnd(placeOfPoint(mapPoint)); mapPoint.clear() },
+                    onSetStart = {
+                        onOpenPlanner()
+                        planner.setStart(placeOfPoint(mapPoint), location.sensorEnabled)
+                        mapPoint.clear()
+                    },
+                    onSetEnd = {
+                        onOpenPlanner()
+                        planner.setEnd(placeOfPoint(mapPoint), location.sensorEnabled)
+                        mapPoint.clear()
+                    },
                     onAddStep = {
                         onOpenPlanner()
                         if (planner.addWaypoint(placeOfPoint(mapPoint))) mapPoint.clear()

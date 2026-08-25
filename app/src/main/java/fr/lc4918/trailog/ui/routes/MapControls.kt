@@ -432,10 +432,11 @@ internal fun BoxScope.MapBottomRightControls(
                     ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> onNoConnection()
                     else -> {
                         vm.closeProfile()          // les deux occupent le bas de l'écran
-                        // Le suivi allumé : on part d'où l'on est. Le bouton de la carte
-                        // seulement - les infobulles, elles, ouvrent le planificateur POUR y
-                        // poser le lieu qu'on vient de toucher, et pré-remplir le départ
-                        // décalerait ce que leur "Étape" va remplir.
+                        // Le suivi allumé : on part d'où l'on est. Le départ seulement, et
+                        // sur ce bouton seulement : les infobulles, elles, posent le lieu
+                        // qu'on vient de toucher à l'un des deux bouts et complètent l'AUTRE
+                        // (cf. RoutePlannerState.setStart) ; leur "Étape", qui remplit la
+                        // première ligne vierge, ne pré-remplit rien.
                         planner.openPlanner(fromCurrentPosition = location.gpsActive)
                         planner.chooseProfile(RoutingProfile.of(settings.routingProfile))
                     }
