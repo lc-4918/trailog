@@ -8,6 +8,8 @@ import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.remember
@@ -16,6 +18,8 @@ import androidx.compose.ui.platform.LocalDensity
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.net.ServiceUrl
+import fr.lc4918.trailog.domain.model.PoiFilters
+import fr.lc4918.trailog.ui.poi.PoiFilterBubbleAnchored
 import fr.lc4918.trailog.ui.poi.PoiState
 import kotlin.math.hypot
 import androidx.compose.foundation.layout.Arrangement
@@ -303,6 +307,9 @@ internal fun BoxScope.MapBottomRightControls(
     alertEnabled: Boolean,
     alerting: Boolean,
     followedTrack: Boolean,
+    /** Les categories de points d'interet retenues, et de quoi les changer : la bulle du bouton POI. */
+    poiFilters: PoiFilters,
+    onPoiFilters: (PoiFilters) -> Unit,
     moveTick: Int,
     idleTick: Int,
     maxWidthPx: Int,
@@ -452,16 +459,51 @@ internal fun BoxScope.MapBottomRightControls(
                 )
             }
         }
-        // Points d'interet : la pastille s'allume quand la couche est affichee, comme le
-        // suivi de position et l'alerte d'eloignement le font pour la leur.
-        //
-        // Un marque-page, et non l'epingle : celle-ci est deja le dessin des marqueurs que ce
-        // bouton POSE sur la carte, et celui du bouton GPS juste a cote - trois epingles pour
-        // trois choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits
-        // qu'on retient le long du parcours.
+        /*
+         * Points d'interet : le bouton OUVRE LA BULLE ou l'on choisit ce qu'on veut voir.
+         *
+         * Il allumait la couche, et les vingt-sept categories se cochaient dans Reglages >
+         * Trajets - c'est-a-dire a quatre gestes de la carte, dans un ecran qui recouvre
+         * justement ce qu'on essaie de regarder. Or choisir ses points d'interet est un geste
+         * de terrain : on cherche un camping en fin d'apres-midi, un point d'eau a la montee.
+         *
+         * Il n'allume donc plus rien : la couche suit le filtre, et tout masquer l'eteint (cf.
+         * PoiFilters). La pastille reste bleue tant que la couche est affichee, comme le suivi
+         * de position et l'alerte d'eloignement le font pour la leur - et la bulle ouverte le
+         * dit aussi, le bouton restant visible dessous.
+         *
+         * Un marque-page, et non l'epingle : celle-ci est deja le dessin des marqueurs que ce
+         * bouton COMMANDE, et celui du bouton GPS juste a cote - trois epingles pour trois
+         * choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits qu'on
+         * retient le long du parcours.
+         */
         if (settings.poiEnabled) {
-            IconButton(onClick = { poi.toggle() }, modifier = chrome.buttonBackground) {
-                val teinte = if (poi.visible) MapChromeActive else chrome.fg
+            Box {
+                /*
+                 * La bulle est posee DANS le bouton, et non reperee a l'ecran par ses
+                 * coordonnees : `unbounded` la laisse deborder de la place que le bouton
+                 * occupe, sans peser sur la colonne ni sur ses voisins. Alignee par le bas, elle
+                 * grandit vers le HAUT - le bouton est en bas de l'ecran, et une bulle centree
+                 * sur lui sortirait par le bas.
+                 *
+                 * Declaree AVANT le bouton pour passer dessous : la pointe deborde de quelques
+                 * points vers lui, et c'est le bouton qui doit rester touchable.
+                 */
+                Box(
+                    Modifier.align(Alignment.BottomEnd)
+                        .absoluteOffset(x = -PoiBubbleAnchorWidth)
+                        .wrapContentSize(Alignment.BottomEnd, unbounded = true),
+                ) {
+                    PoiFilterBubbleAnchored(
+                        open = poi.bubbleOpen,
+                        filters = poiFilters,
+                        onFilters = onPoiFilters,
+                        // Le centre du bouton, mesure depuis son bas : la pointe le vise.
+                        tailFromBottom = PoiBubbleAnchorWidth / 2,
+                    )
+                }
+                IconButton(onClick = { poi.toggleBubble() }, modifier = chrome.buttonBackground) {
+                val teinte = if (poi.visible || poi.bubbleOpen) MapChromeActive else chrome.fg
                 /*
                  * L'attente prend la place du pictogramme, DANS le bouton.
                  *
@@ -483,6 +525,7 @@ internal fun BoxScope.MapBottomRightControls(
                         Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
                         tint = teinte,
                     )
+                }
                 }
             }
         }

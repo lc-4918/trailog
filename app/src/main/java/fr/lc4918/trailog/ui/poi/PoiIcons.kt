@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.poi
 
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.model.PoiCategory
+import fr.lc4918.trailog.domain.model.PoiGroup
 
 /**
  * Le pictogramme d'une catégorie de point d'intérêt : une tente pour un camping, un panier pour un marché.
@@ -87,3 +88,19 @@ fun poiCategoryLabelRes(category: PoiCategory): Int =
         PoiCategory.TOILETS -> R.string.poi_cat_toilets
         PoiCategory.CANOE -> R.string.poi_cat_canoe
     }
+
+/**
+ * Nom traduit d'un groupe de points d'interet.
+ *
+ * Aupres des libelles de categories et non dans un onglet de reglages : la bulle de la carte les affiche
+ * en onglets, et l'ecran des reglages n'est plus le seul a en avoir besoin.
+ */
+@androidx.compose.runtime.Composable
+fun poiGroupLabel(g: PoiGroup): String = androidx.compose.ui.res.stringResource(
+    when (g) {
+        PoiGroup.LODGING -> R.string.poi_group_lodging
+        PoiGroup.FOOD -> R.string.poi_group_food
+        PoiGroup.LEISURE -> R.string.poi_group_leisure
+        PoiGroup.PRACTICAL -> R.string.poi_group_practical
+    }
+)

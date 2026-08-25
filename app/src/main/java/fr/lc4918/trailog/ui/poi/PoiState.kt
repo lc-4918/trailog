@@ -17,10 +17,33 @@ import fr.lc4918.trailog.poi.Poi
  * mal éparpillées dans une fonction de mille lignes.
  */
 class PoiState {
-    /** La couche est allumée. Éteinte, elle vide aussi la liste : garder des marqueurs invisibles en
-     *  mémoire n'apporte rien, et les rallumer coûte une requête que le geste vient de justifier. */
+    /**
+     * La couche est allumée. Éteinte, elle vide aussi la liste : garder des marqueurs invisibles en
+     * mémoire n'apporte rien, et les rallumer coûte une requête que le geste vient de justifier.
+     *
+     * **Ce n'est plus un interrupteur mais une CONSÉQUENCE** : la couche est allumée quand le filtre
+     * retient au moins une catégorie, et éteinte quand il n'en retient aucune (cf. [showLayer], et
+     * `PoiFilters`). Le bouton de la carte n'allume donc plus rien - il ouvre la bulle où l'on choisit.
+     *
+     * Deux commandes pour un seul comportement finissaient par se contredire : on pouvait avoir la couche
+     * allumée et toutes les catégories décochées, c'est-à-dire une carte vide qu'aucun réglage
+     * n'expliquait.
+     */
     var visible by mutableStateOf(false)
         private set
+
+    /**
+     * La bulle des catégories est ouverte (cf. `PoiFilterBubble`).
+     *
+     * Dans l'état de l'écran, qui vit dans un `ViewModel` : une rotation ne doit pas la refermer, et le
+     * choix d'onglet qu'on venait de faire s'en irait avec elle.
+     */
+    var bubbleOpen by mutableStateOf(false)
+        private set
+
+    fun toggleBubble() { bubbleOpen = !bubbleOpen }
+
+    fun closeBubble() { bubbleOpen = false }
 
     var pois by mutableStateOf<List<Poi>>(emptyList())
         private set
@@ -57,9 +80,17 @@ class PoiState {
      */
     fun nearEnough() { tooFar = false }
 
-    fun toggle() {
-        visible = !visible
-        if (!visible) {
+    /**
+     * La couche suit le filtre : allumée dès qu'une catégorie est retenue, éteinte quand il n'en reste
+     * aucune. Appelée par l'écran à chaque changement de filtre, et à l'ouverture.
+     *
+     * L'extinction vide tout, comme avant : des marqueurs qu'on ne montre plus n'ont pas à occuper la
+     * mémoire, et les remontrer coûte une requête que le geste vient de justifier.
+     */
+    fun showLayer(on: Boolean) {
+        if (on == visible) return
+        visible = on
+        if (!on) {
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null
             tooFar = false; needsNetwork = false; partial = false
             failedBox = null

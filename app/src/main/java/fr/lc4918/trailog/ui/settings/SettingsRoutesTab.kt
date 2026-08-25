@@ -154,115 +154,21 @@ import kotlinx.coroutines.launch
         }
     }
 
-    /*
-     * Vider l'historique des lieux du planificateur.
-     *
-     * Il se remplit TOUT SEUL de ce qu'on consulte - un lieu cherche, un point d'interet ouvert, l'adresse
-     * d'un appui long - et pas seulement de ce qu'on tape. Ce qui s'inscrit sans qu'on le demande doit
-     * pouvoir s'effacer sans reinitialiser tous les reglages : c'est la moindre des choses pour une
-     * application dont l'argument est que tout reste sur l'appareil.
-     *
-     * Le compte en sous-titre, et la ligne eteinte quand il est a zero : un bouton qui n'a rien a effacer
-     * ne doit pas repondre comme s'il avait fait quelque chose. Sans confirmation - huit lieux se
-     * reconstituent en une promenade, la demander pour cela serait du ceremonial.
-     */
-    val lieux = PlannerHistory.of(cur.plannerHistory).places
-    SectionTitle(stringResource(R.string.settings_section_planner_history))
-    SettingsCard {
-        SetRow(
-            stringResource(R.string.settings_clear_planner_history),
-            sub = if (lieux.isEmpty()) stringResource(R.string.settings_planner_history_empty)
-            else stringResource(R.string.settings_planner_history_count, lieux.size),
-            onClick = if (lieux.isEmpty()) null else ({ vm.save(cur.copy(plannerHistory = "")) }),
-            role = Role.Button,
-        ) {
-            Icon(
-                Icons.Filled.DeleteOutline, null,
-                tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
-            )
-        }
-        Hint(stringResource(R.string.settings_planner_history_hint))
-    }
 
     /*
-     * Points d'interet : un groupe par section depliable, ses categories en cases a cocher.
+     * Les CATEGORIES de points d'interet ne sont plus ici : elles se choisissent dans une bulle ouverte
+     * depuis la carte (cf. PoiFilterBubble).
      *
-     * Dans l'onglet Trajets et non dans "Carte" : l'interrupteur qui pose le BOUTON sur la carte est une
-     * commande d'ecran et reste la-bas, mais ce qu'on affiche dessous decrit un trajet - ou dormir, ou
-     * manger, ou reparer un velo - au meme titre que les preferences de trace juste au-dessus.
-     */
-    SectionTitle(stringResource(R.string.settings_section_poi))
-    val filtres = PoiFilters.of(cur.poiHiddenCategories, cur.poiBikeGroups)
-    fun sauve(f: PoiFilters) =
-        vm.save(cur.copy(poiHiddenCategories = f.hiddenCsv(), poiBikeGroups = f.bikeCsv()))
-    SettingsCard {
-        Hint(stringResource(R.string.settings_poi_hint))
-    }
-    PoiGroup.entries.forEach { groupe ->
-        var deplie by rememberSaveable(groupe) { mutableStateOf(false) }
-        SettingsCard {
-            SetRow(
-                poiGroupLabel(groupe),
-                sub = stringResource(R.string.settings_poi_group_count,
-                    PoiCategory.of(groupe).count { filtres.isShown(it) }, PoiCategory.of(groupe).size),
-                onClick = { deplie = !deplie },
-            ) {
-                Icon(
-                    if (deplie) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    null, tint = settingsPalette.subtle,
-                )
-            }
-            if (deplie) {
-                RowDivider()
-                // "Tout selectionner" en tete, avec son etat a trois valeurs : coche, vide, ou entre les
-                // deux quand une partie seulement du groupe est retenue.
-                CheckLine(
-                    stringResource(R.string.settings_poi_select_all), filtres.groupState(groupe),
-                ) { sauve(filtres.toggleGroup(groupe)) }
-                PoiCategory.of(groupe).forEach { cat ->
-                    CheckLine(
-                        poiCategoryLabel(cat),
-                        if (filtres.isShown(cat)) GroupCheck.ALL else GroupCheck.NONE,
-                    ) { sauve(filtres.toggle(cat)) }
-                }
-                RowDivider()
-                // Le filtre velo est par GROUPE : on veut des hebergements qui accueillent les cyclistes
-                // sans exiger la meme chose des points d'eau.
-                SwitchLine(
-                    stringResource(R.string.settings_poi_bike_only), filtres.isBikeOnly(groupe),
-                    sub = stringResource(R.string.settings_poi_bike_only_sub),
-                ) { sauve(filtres.toggleBike(groupe)) }
-            }
-        }
-    }
-    /*
-     * Vider le cache, sous les categories et non au-dessus : c'est un geste d'entretien, qu'on ne fait pas
-     * en decouvrant l'ecran.
+     * Quatre sections depliables de cases a cocher vivaient a cet endroit, c'est-a-dire a quatre gestes de
+     * la carte, dans un ecran qui recouvre justement ce qu'on essaie de regarder. Or choisir ses points
+     * d'interet est un geste de TERRAIN : on cherche un camping en fin d'apres-midi, un point d'eau a la
+     * montee. L'attribution de la source reste, elle : elle est due des lors qu'on affiche ces lieux, et
+     * n'a pas sa place sur une bulle qu'on ouvre et referme en roulant.
      *
-     * Le meme gabarit que l'historique du planificateur - un compte, une corbeille, grisee quand il n'y a
-     * rien - et pour la meme raison : ce qui s'inscrit sans qu'on le demande doit pouvoir se retirer. Un
-     * cache de points d'interet garde aussi ce que le service a rendu de FAUX, et rien d'autre ne permet
-     * alors de le forcer a redemander.
+     * Vider le cache et effacer l'historique des lieux ont suivi vers l'onglet Systeme, rubrique CACHE :
+     * ce sont des gestes d'entretien, et le seul lien qu'ils avaient avec cet onglet-ci etait la rubrique
+     * qui vient d'en partir.
      */
-    val poiEnCache by vm.poiCached.collectAsState()
-    val poiEmportes by vm.poiPinned.collectAsState()
-    SettingsCard {
-        SetRow(
-            stringResource(R.string.settings_clear_poi_cache),
-            sub = if (poiEnCache == 0) stringResource(R.string.settings_poi_cache_empty)
-            else stringResource(R.string.settings_poi_cache_count, poiEnCache),
-            onClick = if (poiEnCache == 0) null else ({ vm.clearPoiCache() }),
-            role = Role.Button,
-        ) {
-            Icon(
-                Icons.Filled.DeleteOutline, null,
-                tint = if (poiEnCache == 0) settingsPalette.subtle else settingsPalette.accent,
-            )
-        }
-        // Ce que le bouton ne touche pas, dit seulement quand il y a quelque chose a ne pas toucher.
-        if (poiEmportes > 0) Hint(stringResource(R.string.settings_poi_cache_pinned, poiEmportes))
-        Hint(stringResource(R.string.settings_poi_cache_hint))
-    }
     SettingsCard {
         Hint(stringResource(R.string.settings_poi_attribution))
     }

@@ -36,6 +36,7 @@
     <string name="search_no_result">Keine Ebene mit diesem Namen.</string>
     <string name="action_clear_search">Suche löschen</string>
     <string name="settings_section_backup">Sicherung</string>
+    <string name="settings_section_cache">Cache</string>
     <string name="settings_backup_create">Sicherung erstellen</string>
     <string name="settings_backup_restore">Sicherung wiederherstellen</string>
     <string name="settings_backup_hint">Das Archiv enthält Spuren, Punkte, Wegpunktfotos und alle Einstellungen. Offline-Karten sind nicht dabei: sie lassen sich erneut laden und wiegen weit mehr als alles andere.</string>
@@ -185,7 +186,6 @@
     <string name="planner_layer_name">Name der Ebene</string>
     <string name="planner_clear_step">Löschen</string>
     <string name="planner_forget_place">Diesen Ort vergessen</string>
-    <string name="settings_section_planner_history">Ortsverlauf</string>
     <string name="settings_clear_planner_history">Verlauf löschen</string>
     <string name="settings_planner_history_empty">Kein Ort gespeichert</string>
     <string name="settings_planner_history_count">%1$d Ort(e) gespeichert</string>
@@ -465,6 +465,7 @@
     <string name="settings_sw_poi_osm">Mit OpenStreetMap ergänzen</string>
     <string name="settings_sw_poi_osm_sub">Ergänzt in Frankreich Restaurants, Bars und Services, die die Tourismusdatenbank nicht kennt. Langsamere Abfrage. Ohne Wirkung im Ausland, wo OpenStreetMap die einzige Quelle ist.</string>
     <string name="poi_layer_title">Sehenswürdigkeiten</string>
+    <string name="poi_filter_hide_all">Alle ausblenden</string>
     <string name="settings_section_gps_marker">Positionsmarke</string>
     <string name="settings_label_gps_marker_style">Symbol</string>
     <string name="settings_label_gps_marker_color">Farbe</string>
@@ -561,16 +562,11 @@
     <string name="poi_add_step">Als Zwischenziel hinzufügen</string>
     <string name="poi_zoom_in">Heranzoomen, um Sehenswürdigkeiten zu sehen</string>
     <string name="poi_planner_full">Planer voll: maximal 25 Etappen</string>
-    <string name="settings_section_poi">Sehenswürdigkeiten</string>
     <string name="poi_group_lodging">Unterkunft</string>
     <string name="poi_group_food">Gastronomie</string>
     <string name="poi_group_leisure">Freizeit</string>
     <string name="poi_group_practical">Praktisches</string>
-    <string name="settings_poi_hint">Was auf der Karte erscheint, wenn die Ebene aktiv ist. Die Schaltfläche selbst wird im Tab Karte eingeschaltet.</string>
-    <string name="settings_poi_group_count">%1$d von %2$d</string>
     <string name="settings_poi_select_all">Alle auswählen</string>
-    <string name="settings_poi_bike_only">Nur Fahrradthema</string>
-    <string name="settings_poi_bike_only_sub">Zeigt nur Orte, die sich als fahrradfreundlich ausweisen</string>
     <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
     <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>
     <string name="settings_poi_cache_empty">Keine gespeicherten Orte</string>

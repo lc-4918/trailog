@@ -1,27 +1,31 @@
 package fr.lc4918.trailog.domain.model
 
 /**
- * Ce que l'utilisateur veut voir des points d'intérêt : quelles catégories, et quels groupes limités aux
- * lieux qui portent le thème vélo.
+ * Ce que l'utilisateur veut voir des points d'intérêt : quelles catégories.
  *
- * **Ce sont les catégories MASQUÉES qui sont retenues**, et non les affichées. Un réglage vide veut alors
- * dire "tout montrer", ce qui est le comportement attendu d'une couche qu'on vient d'allumer ; et une
- * catégorie ajoutée par une version ultérieure apparaît d'elle-même, là où une liste d'affichées l'aurait
- * laissée invisible jusqu'à ce que l'utilisateur aille la chercher.
+ * **Ce sont les catégories MASQUÉES qui sont retenues**, et non les affichées. Une catégorie ajoutée par
+ * une version ultérieure apparaît alors d'elle-même, là où une liste d'affichées l'aurait laissée
+ * invisible jusqu'à ce que l'utilisateur aille la chercher.
  *
- * Le filtre vélo est **par groupe** : on veut des hébergements qui accueillent les cyclistes sans exiger
- * la même chose des points d'eau. Il porte le thème `Bike` de DATAtourisme, seul signal vélo que les
- * lieux eux-mêmes portent - le label Accueil Vélo n'y existe pas, et le rattachement à une véloroute n'est
- * porté que par les tronçons d'itinéraire (cf. `poi/Datatourisme`).
+ * **Le filtre EST l'interrupteur de la couche.** Il n'y a plus de "montrer les points d'intérêt" à côté :
+ * la carte montre exactement ce qui est retenu ici, et [nothingShown] - tout masqué - éteint la couche.
+ * Deux commandes pour un seul comportement finissent toujours par se contredire, et celle-ci se lit sur la
+ * bulle elle-même : une catégorie en surbrillance est une catégorie qu'on voit sur la carte.
+ *
+ * Le filtre "uniquement les lieux vélo", par groupe, a été retiré : il demandait de comprendre ce que
+ * DATAtourisme appelle le thème vélo pour deviner pourquoi la moitié des campings disparaissait, et se
+ * réglait dans un écran que personne n'ouvrait en roulant.
  */
 data class PoiFilters(
     val hidden: Set<PoiCategory> = emptySet(),
-    val bikeGroups: Set<PoiGroup> = emptySet(),
 ) {
     /** Les catégories réellement demandées au service. */
     val shown: Set<PoiCategory> get() = PoiCategory.entries.toSet() - hidden
 
     fun isShown(c: PoiCategory) = c !in hidden
+
+    /** Plus rien n'est retenu : la couche n'a rien à montrer, et s'éteint d'elle-même. */
+    val nothingShown: Boolean get() = hidden.size == PoiCategory.entries.size
 
     /** Une case à cocher de groupe a trois états : tout coché, rien, ou entre les deux. */
     fun groupState(g: PoiGroup): GroupCheck {
@@ -43,37 +47,22 @@ data class PoiFilters(
         return copy(hidden = if (groupState(g) == GroupCheck.ALL) hidden + cats else hidden - cats)
     }
 
-    fun toggleBike(g: PoiGroup) =
-        copy(bikeGroups = if (g in bikeGroups) bikeGroups - g else bikeGroups + g)
-
-    fun isBikeOnly(g: PoiGroup) = g in bikeGroups
-
-    /**
-     * Les catégories à demander sans le filtre vélo, et celles à demander avec.
-     *
-     * Deux requêtes au plus, et non une par groupe : le service accepte une liste de classes, et le filtre
-     * vélo est la seule chose qui sépare vraiment deux demandes. Un groupe dont aucune catégorie n'est
-     * cochée ne pèse dans aucune des deux.
-     */
-    fun queries(): Pair<Set<PoiCategory>, Set<PoiCategory>> {
-        val visibles = shown
-        return visibles.filter { it.group !in bikeGroups }.toSet() to
-            visibles.filter { it.group in bikeGroups }.toSet()
-    }
+    /** Tout masquer, tous groupes confondus : éteindre la couche en un geste plutôt qu'en vingt-sept. */
+    fun hideAll(): PoiFilters = copy(hidden = PoiCategory.entries.toSet())
 
     fun hiddenCsv() = hidden.joinToString(",") { it.key }
-    fun bikeCsv() = bikeGroups.joinToString(",") { it.key }
 
     companion object {
         /**
-         * Relit les deux réglages enregistrés. Une clé inconnue est ignorée plutôt que fatale : un réglage
-         * écrit par une version plus récente, rouvert par une plus ancienne, ne doit pas vider les autres.
+         * Relit le réglage enregistré. Une clé inconnue est ignorée plutôt que fatale : un réglage écrit
+         * par une version plus récente, rouvert par une plus ancienne, ne doit pas vider les autres.
          */
-        fun of(hiddenCsv: String?, bikeCsv: String?): PoiFilters = PoiFilters(
+        fun of(hiddenCsv: String?): PoiFilters = PoiFilters(
             hidden = hiddenCsv.orEmpty().split(',').mapNotNull { PoiCategory.byKey(it.trim()) }.toSet(),
-            bikeGroups = bikeCsv.orEmpty().split(',')
-                .mapNotNull { k -> PoiGroup.entries.firstOrNull { it.key == k.trim() } }.toSet(),
         )
+
+        /** Tout masqué, la forme enregistrée : ce que porte une installation neuve (cf. `SettingsEntity`). */
+        fun allHiddenCsv(): String = PoiCategory.entries.joinToString(",") { it.key }
     }
 }
 

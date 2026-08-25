@@ -47,13 +47,13 @@ class PoiRepository(private val dao: PoiDao) {
      * les derniers points connus" plutôt que de laisser croire à une réponse fraîche.
      */
     fun load(
-        base: String, box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>,
+        base: String, box: Bbox, categories: Set<PoiCategory>,
         osmBase: String = Overpass.DEFAULT_URL, osmComplement: Boolean = true,
     ): Flow<PoiLoad> = poiStream(
-        datatourisme = { datatourisme(base, box, libres, velo) },
-        osm = osmSources(osmBase, box, libres, osmComplement),
+        datatourisme = { datatourisme(base, box, categories) },
+        osm = osmSources(osmBase, box, categories, osmComplement),
         garder = { frais -> garder(frais) },
-        cache = { duCache(box, libres, velo) },
+        cache = { duCache(box, categories) },
     )
 
     /** Écrit au cache ce qu'une source vient de rendre, et fait le ménage des lignes périmées. */
@@ -71,13 +71,10 @@ class PoiRepository(private val dao: PoiDao) {
      * Lu seulement quand **aucune** source n'a rien rendu : soit la zone est vide, soit le réseau manque, et
      * s'il porte quelque chose ici c'est qu'on y est déjà venu - le montrer vaut mieux qu'une carte nue.
      */
-    private suspend fun duCache(box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>): List<Poi> {
+    private suspend fun duCache(box: Bbox, categories: Set<PoiCategory>): List<Poi> {
         val gardes = runCatching { dao.inBounds(box.north, box.west, box.south, box.east) }
             .getOrDefault(emptyList())
-        val retenues = libres + velo
-        val groupesVelo = velo.map { it.group }
-        return gardes.mapNotNull { it.toPoi() }
-            .filter { it.category in retenues && (it.category.group !in groupesVelo || it.bikeTheme) }
+        return gardes.mapNotNull { it.toPoi() }.filter { it.category in categories }
     }
 
     /**
@@ -95,15 +92,15 @@ class PoiRepository(private val dao: PoiDao) {
      * du cache est réécrit marqué : le demander exprès vaut mieux que l'avoir croisé.
      */
     suspend fun pinArea(
-        base: String, box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>,
+        base: String, box: Bbox, categories: Set<PoiCategory>,
         osmBase: String = Overpass.DEFAULT_URL,
     ): Int? {
-        if (libres.isEmpty() && velo.isEmpty()) return 0
+        if (categories.isEmpty()) return 0
         // En parallele, comme le chargement de la carte : on emporte une zone entiere, et les deux services
         // n'ont aucune raison de s'attendre.
         val frais = coroutineScope {
-            val d = async { datatourisme(base, box, libres, velo) }
-            val o = osmSources(osmBase, box, libres).map { source -> async { source() } }
+            val d = async { datatourisme(base, box, categories) }
+            val o = osmSources(osmBase, box, categories).map { source -> async { source() } }
             PoiSources.merge(d.await().pois, o.flatMap { it.await().pois })
         }
         // Aucun lieu ET rien en base sur cette zone : le service n'a probablement pas repondu. On ne peut
@@ -118,29 +115,17 @@ class PoiRepository(private val dao: PoiDao) {
     }
 
     /**
-     * DATAtourisme, en deux requetes au plus : celles qui se contentent du catalogue, et celles limitees au
-     * theme velo. Rien du tout hors de la zone qu'il couvre - une requete qui rendrait zero lieu a coup sur
-     * n'a pas a etre envoyee (cf. [PoiSources]).
+     * DATAtourisme, en une requete. Rien du tout hors de la zone qu'il couvre - une requete qui rendrait
+     * zero lieu a coup sur n'a pas a etre envoyee (cf. [PoiSources]).
+     *
+     * Une seule requete depuis que le filtre "uniquement les lieux velo" a ete retire : il en imposait une
+     * seconde, limitee au theme velo des groupes ainsi restreints.
      */
-    private suspend fun datatourisme(
-        base: String, box: Bbox, libres: Set<PoiCategory>, velo: Set<PoiCategory>,
-    ): PoiBatch {
+    private suspend fun datatourisme(base: String, box: Bbox, categories: Set<PoiCategory>): PoiBatch {
         if (!PoiSources.datatourismeCovers(box)) return PoiBatch(emptyList(), tronque = false)
-        var tronque = false
-        val lieux = buildList {
-            if (libres.isNotEmpty()) {
-                val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, libres)
-                tronque = tronque || r.size >= Datatourisme.PAGE_SIZE
-                addAll(r)
-            }
-            if (velo.isNotEmpty()) {
-                val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, velo,
-                    bikeOnly = true)
-                tronque = tronque || r.size >= Datatourisme.PAGE_SIZE
-                addAll(r)
-            }
-        }
-        return PoiBatch(lieux, tronque)
+        if (categories.isEmpty()) return PoiBatch(emptyList(), tronque = false)
+        val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, categories)
+        return PoiBatch(r, tronque = r.size >= Datatourisme.PAGE_SIZE)
     }
 
     /**
@@ -152,10 +137,10 @@ class PoiRepository(private val dao: PoiDao) {
      * que d'attendre leur tour. Le jeton fait donc ici la file d'attente que le serveur ne fait pas.
      */
     private fun osmSources(
-        base: String, box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true,
+        base: String, box: Bbox, categories: Set<PoiCategory>, complement: Boolean = true,
     ): List<suspend () -> PoiBatch> {
         val creneaux = Semaphore(OSM_CRENEAUX)
-        return PoiSources.osmGroups(box, libres, complement).map { groupe ->
+        return PoiSources.osmGroups(box, categories, complement).map { groupe ->
             {
                 val lieux = creneaux.withPermit { Overpass.around(base, box, groupe) }
                 PoiBatch(

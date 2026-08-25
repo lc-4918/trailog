@@ -67,14 +67,13 @@ fun PoiEffects(
             if (!state.needsLoad(vue, filters, maintenant)) return@LaunchedEffect
             val box = PoiLoading.grow(vue)
             state.beginLoad()
-            // Deux requetes au plus : celles qui se contentent du catalogue, et celles limitees au theme
-            // velo. Un groupe sans categorie cochee ne pese dans aucune des deux. Le depot se charge du
-            // cache - service d'abord, dernier connu si le reseau manque (cf. PoiRepository).
-            val (libres, velo) = filters.queries()
+            // Les categories retenues, telles quelles : le depot se charge du cache - service d'abord,
+            // dernier connu si le reseau manque (cf. PoiRepository).
+            //
             // Un flux et non une liste : les deux sources repondent en parallele, et chacune s'affiche des
             // son arrivee. DATAtourisme repond en une seconde la ou OpenStreetMap en met trente sur une
             // ville dense - les faire attendre l'une l'autre, c'etait trente secondes de carte nue.
-            repo.load(Datatourisme.DEFAULT_URL, box, libres, velo, osmComplement = osmComplement)
+            repo.load(Datatourisme.DEFAULT_URL, box, filters.shown, osmComplement = osmComplement)
                 .collect { charge ->
                 // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a
                 // pas repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.

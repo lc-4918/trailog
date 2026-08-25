@@ -36,6 +36,7 @@
     <string name="search_no_result">Ez dago izen horretako geruzarik.</string>
     <string name="action_clear_search">Garbitu bilaketa</string>
     <string name="settings_section_backup">Babeskopia</string>
+    <string name="settings_section_cache">Cachea</string>
     <string name="settings_backup_create">Sortu babeskopia</string>
     <string name="settings_backup_restore">Berreskuratu babeskopia</string>
     <string name="settings_backup_hint">Artxiboak ibilbideak, puntuak, waypoint-argazkiak eta ezarpen guztiak ditu. Lineaz kanpoko mapak ez daude barruan: berriro deskarga daitezke, eta gainerako guztia baino askoz gehiago pisatzen dute.</string>
@@ -185,7 +186,6 @@
     <string name="planner_layer_name">Geruzaren izena</string>
     <string name="planner_clear_step">Garbitu</string>
     <string name="planner_forget_place">Ahaztu toki hau</string>
-    <string name="settings_section_planner_history">Tokien historia</string>
     <string name="settings_clear_planner_history">Garbitu historia</string>
     <string name="settings_planner_history_empty">Ez da tokirik gorde</string>
     <string name="settings_planner_history_count">%1$d toki gordeta</string>
@@ -465,6 +465,7 @@
     <string name="settings_sw_poi_osm">OpenStreetMap-ekin osatu</string>
     <string name="settings_sw_poi_osm_sub">Frantzian, turismo datu-baseak ezagutzen ez dituen jatetxeak, tabernak eta zerbitzuak gehitzen ditu. Kontsulta motelagoa. Eraginik gabe atzerrian, non OpenStreetMap iturri bakarra den.</string>
     <string name="poi_layer_title">Interesguneak</string>
+    <string name="poi_filter_hide_all">Ezkutatu dena</string>
     <string name="settings_section_gps_marker">Kokapen markatzailea</string>
     <string name="settings_label_gps_marker_style">Ikurra</string>
     <string name="settings_label_gps_marker_color">Kolorea</string>
@@ -561,16 +562,11 @@
     <string name="poi_add_step">Gehitu etapa gisa</string>
     <string name="poi_zoom_in">Handitu interesguneak ikusteko</string>
     <string name="poi_planner_full">Planifikatzailea beteta: gehienez 25 etapa</string>
-    <string name="settings_section_poi">Interesguneak</string>
     <string name="poi_group_lodging">Ostatua</string>
     <string name="poi_group_food">Jatetxeak</string>
     <string name="poi_group_leisure">Aisia</string>
     <string name="poi_group_practical">Praktikoa</string>
-    <string name="settings_poi_hint">Geruza piztuta dagoenean mapan agertzen dena. Botoia Mapa fitxatik jartzen da.</string>
-    <string name="settings_poi_group_count">%1$d / %2$d</string>
     <string name="settings_poi_select_all">Hautatu dena</string>
-    <string name="settings_poi_bike_only">Bizikleta-gaia soilik</string>
-    <string name="settings_poi_bike_only_sub">Txirrindularientzat egokitzat jotzen diren lekuak soilik erakusten ditu</string>
     <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
     <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
     <string name="settings_poi_cache_empty">Cachean lekurik ez</string>

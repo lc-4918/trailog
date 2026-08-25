@@ -18,10 +18,12 @@ import org.junit.Test
 class PoiStateTest {
 
     private val vue = Bbox(west = 5.6, south = 45.1, east = 5.8, north = 45.3)
-    private val filtres = PoiFilters.of(null, null)
+    private val filtres = PoiFilters.of(null)
     private val lieu = Poi("1", "Fontaine", 45.2, 5.7, PoiCategory.WATER)
 
-    private fun couche() = PoiState().apply { toggle() }   // allumee
+    /** La couche allumee. Elle ne s'allume plus par un interrupteur mais parce que le filtre retient
+     *  quelque chose (cf. PoiFilters) : l'ecran le lui dit, et c'est ce que reproduit cet appel. */
+    private fun couche() = PoiState().apply { showLayer(true) }
 
     /**
      * Le message de zoom se leve DES QUE le zoom est bon, sans attendre les points.
@@ -101,13 +103,14 @@ class PoiStateTest {
         assertTrue(poi.needsLoad(dehors, filtres, now = 0L))
     }
 
-    /** Eteindre la couche oublie tout, message et attente compris : la rallumer repart d'une page vierge. */
+    /** Eteindre la couche oublie tout, message et attente compris : la rallumer repart d'une page vierge.
+     *  Elle s'eteint quand le filtre ne retient plus rien - tout masquer depuis la bulle de la carte. */
     @Test fun `eteindre la couche efface son etat`() {
         val poi = couche()
         poi.beginLoad()
         poi.publish(vue, filtres, listOf(lieu), complete = true)
         poi.tooFar()
-        poi.toggle()
+        poi.showLayer(false)
         assertFalse(poi.visible)
         assertFalse(poi.tooFar)
         assertFalse(poi.loading)

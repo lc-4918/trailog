@@ -48,7 +48,6 @@ import fr.lc4918.trailog.data.db.OffTrackAlertStepM
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
-import fr.lc4918.trailog.domain.model.PoiGroup
 import fr.lc4918.trailog.location.alertSoundTitle
 import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import kotlinx.coroutines.launch
@@ -194,16 +193,6 @@ import kotlinx.coroutines.launch
     GroupTitle(stringResource(R.string.settings_group_elevation_profile))
     ProfileSettings(cur, vm)
 }
-
-/** Nom traduit d'un groupe de points d'interet. */
-@Composable internal fun poiGroupLabel(g: PoiGroup): String = stringResource(
-    when (g) {
-        PoiGroup.LODGING -> R.string.poi_group_lodging
-        PoiGroup.FOOD -> R.string.poi_group_food
-        PoiGroup.LEISURE -> R.string.poi_group_leisure
-        PoiGroup.PRACTICAL -> R.string.poi_group_practical
-    }
-)
 
 /**
  * Alerte d'eloignement : la cloche sur la carte, l'ecart qui la declenche, et le son qui l'accompagne.

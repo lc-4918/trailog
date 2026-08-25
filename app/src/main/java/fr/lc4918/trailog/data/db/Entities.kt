@@ -3,6 +3,7 @@ package fr.lc4918.trailog.data.db
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
@@ -112,6 +113,14 @@ data class CompositeEntity(
 )
 
 /** Réglages (une seule ligne, id = 0). */
+/**
+ * Toutes les categories de points d'interet masquees, sous la forme enregistree.
+ *
+ * Le defaut d'une installation neuve (cf. [SettingsEntity.poiHiddenCategories]) : la couche n'affiche que
+ * ce qu'on retient dans sa bulle, et l'on retient a partir de rien.
+ */
+val AllPoiHidden: String = PoiFilters.allHiddenCsv()
+
 @Entity(tableName = "settings")
 data class SettingsEntity(
     @PrimaryKey val id: Int = 0,
@@ -234,9 +243,16 @@ data class SettingsEntity(
     // Bouton des points d'interet sur la carte (cf. poi/Datatourisme). Eteint par defaut : c'est une
     // commande qui s'ajoute volontairement, et qui interroge un service tiers a chaque deplacement.
     val poiEnabled: Boolean = false,
-    // Filtres des points d'interet : categories DECOCHEES et groupes limites au theme velo, en CSV de
-    // cles (cf. PoiFilters). Les decochees, pour qu'un reglage vide veuille dire "tout afficher".
-    val poiHiddenCategories: String = "",
+    // Categories de points d'interet MASQUEES, en CSV de cles (cf. PoiFilters). Les masquees et non les
+    // affichees, pour qu'une categorie ajoutee par une version ulterieure apparaisse d'elle-meme.
+    //
+    // TOUTES masquees au depart, et non aucune : ce reglage EST desormais l'interrupteur de la couche
+    // (cf. PoiFilters, et la bulle qui le commande depuis la carte). Une installation neuve doit donc
+    // ouvrir sur une carte nue, ou l'on choisit ce qu'on veut voir - et non interroger un service tiers a
+    // chaque deplacement pour vingt-sept categories que personne n'a demandees.
+    val poiHiddenCategories: String = AllPoiHidden,
+    // Plus lu : le filtre "uniquement les lieux velo" a ete retire. La colonne reste, son retrait
+    // demandant une migration de la table des reglages pour ne rien gagner.
     val poiBikeGroups: String = "",
     // Completer DATAtourisme par OpenStreetMap la ou les deux repondent, c'est-a-dire en France : la
     // restauration, que la base touristique ne connait qu'a travers les hotels qui servent a manger, et les

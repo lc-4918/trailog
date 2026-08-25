@@ -51,6 +51,10 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.map.flagAssetModel
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.domain.model.PlannerHistory
+import androidx.compose.ui.semantics.Role
+import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.Icon
 
 /**
  * L'onglet Systeme : langue, theme, sauvegarde et restauration, a propos.
@@ -102,6 +106,58 @@ import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
             InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileDownload, onRestore)
         }
         Hint(stringResource(R.string.settings_backup_hint))
+    }
+
+    /*
+     * CACHE : ce que l'application a retenu toute seule, et de quoi le retirer.
+     *
+     * Les deux lignes viennent de l'onglet Trajets, ou elles suivaient la rubrique des categories de
+     * points d'interet - laquelle a quitte les reglages pour une bulle ouverte depuis la carte (cf.
+     * PoiFilterBubble). Elles n'avaient plus rien a y faire : ce ne sont pas des reglages de trajet mais
+     * des gestes d'entretien, et leur place est aupres du stockage et de la sauvegarde.
+     *
+     * Meme gabarit pour les deux - un compte en sous-titre, une corbeille, eteinte quand il n'y a rien -
+     * et la meme raison : ce qui s'inscrit sans qu'on le demande doit pouvoir se retirer sans
+     * reinitialiser tous les reglages. C'est la moindre des choses pour une application dont l'argument
+     * est que tout reste sur l'appareil.
+     *
+     * Sans confirmation ni l'une ni l'autre : huit lieux se reconstituent en une promenade, et un cache
+     * se remplit tout seul des qu'on rouvre la carte. La demander serait du ceremonial.
+     */
+    SectionTitle(stringResource(R.string.settings_section_cache))
+    val poiEnCache by vm.poiCached.collectAsState()
+    val poiEmportes by vm.poiPinned.collectAsState()
+    val lieux = PlannerHistory.of(cur.plannerHistory).places
+    SettingsCard {
+        SetRow(
+            stringResource(R.string.settings_clear_poi_cache),
+            sub = if (poiEnCache == 0) stringResource(R.string.settings_poi_cache_empty)
+            else stringResource(R.string.settings_poi_cache_count, poiEnCache),
+            onClick = if (poiEnCache == 0) null else ({ vm.clearPoiCache() }),
+            role = Role.Button,
+        ) {
+            Icon(
+                Icons.Filled.DeleteOutline, null,
+                tint = if (poiEnCache == 0) settingsPalette.subtle else settingsPalette.accent,
+            )
+        }
+        // Ce que le bouton ne touche pas, dit seulement quand il y a quelque chose a ne pas toucher.
+        if (poiEmportes > 0) Hint(stringResource(R.string.settings_poi_cache_pinned, poiEmportes))
+        Hint(stringResource(R.string.settings_poi_cache_hint))
+        RowDivider()
+        SetRow(
+            stringResource(R.string.settings_clear_planner_history),
+            sub = if (lieux.isEmpty()) stringResource(R.string.settings_planner_history_empty)
+            else stringResource(R.string.settings_planner_history_count, lieux.size),
+            onClick = if (lieux.isEmpty()) null else ({ vm.save(cur.copy(plannerHistory = "")) }),
+            role = Role.Button,
+        ) {
+            Icon(
+                Icons.Filled.DeleteOutline, null,
+                tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
+            )
+        }
+        Hint(stringResource(R.string.settings_planner_history_hint))
     }
 
     GroupTitle(stringResource(R.string.settings_group_interaction))

@@ -241,6 +241,15 @@ internal val SlopeLegendGutter = SlopeLegendButtonSize + 4.dp
  */
 internal val PoiButtonIconSize = 24.dp
 
+/**
+ * Largeur du bouton des points d'interet, telle que la bulle s'y accroche.
+ *
+ * La cible tactile de Material (48 dp) et non la taille reglee du fond : c'est la place que le bouton
+ * OCCUPE dans la colonne, et c'est d'elle que la bulle doit se decaler pour venir se poser a sa gauche.
+ * Sa moitie donne la hauteur de la pointe, qui vise alors le centre du bouton quel que soit le reglage.
+ */
+internal val PoiBubbleAnchorWidth = 48.dp
+
 
 /*
  * Dessin du bouton GPS : son epingle, et le mot "GPS" dessous.

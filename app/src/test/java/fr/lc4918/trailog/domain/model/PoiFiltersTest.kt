@@ -10,6 +10,10 @@ import org.junit.Test
  *
  * La faute qu'ils attrapent est muette : un filtre mal traduit ne leve pas, il fait disparaitre des lieux
  * de la carte - ou en fait apparaitre qu'on avait decoches - sans que rien ne le dise.
+ *
+ * **Le filtre EST desormais l'interrupteur de la couche** (cf. [PoiFilters]) : la carte montre exactement
+ * ce qu'il retient, et tout masquer l'eteint. C'est ce qui donne son poids a [PoiFilters.nothingShown],
+ * eprouve plus bas.
  */
 class PoiFiltersTest {
 
@@ -29,7 +33,7 @@ class PoiFiltersTest {
      * que l'utilisateur aille la chercher dans les reglages.
      */
     @Test fun `une categorie inconnue du reglage enregistre reste affichee`() {
-        val f = PoiFilters.of("hotels", "")
+        val f = PoiFilters.of("hotels")
         assertFalse(f.isShown(PoiCategory.HOTELS))
         assertTrue("les autres restent visibles", f.isShown(PoiCategory.CAMPINGS))
         assertEquals(PoiCategory.entries.size - 1, f.shown.size)
@@ -69,64 +73,58 @@ class PoiFiltersTest {
         assertEquals(GroupCheck.ALL, f.groupState(PoiGroup.LODGING))
     }
 
-    // ---------- Le filtre velo, par groupe ----------
-
-    /** Par groupe et non global : on veut des hebergements qui accueillent les cyclistes sans exiger la
-     *  meme chose des points d'eau. */
-    @Test fun `le filtre velo se pose groupe par groupe`() {
-        val f = PoiFilters().toggleBike(PoiGroup.LODGING)
-        assertTrue(f.isBikeOnly(PoiGroup.LODGING))
-        assertFalse(f.isBikeOnly(PoiGroup.PRACTICAL))
-    }
+    // ---------- Tout masquer : l'extinction de la couche ----------
 
     /**
-     * Deux requetes au plus, et pas une par groupe : le service accepte une liste de classes, et le filtre
-     * velo est la seule chose qui separe vraiment deux demandes.
+     * Tout masquer d'un geste ETEINT la couche : c'est la seule facon de le faire depuis que le filtre a
+     * remplace l'interrupteur, et il ne doit donc rien laisser passer.
      */
-    @Test fun `les categories se repartissent en deux demandes`() {
-        val f = PoiFilters().toggleBike(PoiGroup.LODGING)
-        val (libres, velo) = f.queries()
-        assertTrue("les hebergements passent par le filtre velo",
-            velo.containsAll(PoiCategory.of(PoiGroup.LODGING)))
-        assertTrue("les autres non", libres.none { it.group == PoiGroup.LODGING })
-        assertEquals(PoiCategory.entries.size, libres.size + velo.size)
+    @Test fun `tout masquer ne laisse rien`() {
+        val f = PoiFilters().hideAll()
+        assertTrue(f.nothingShown)
+        assertTrue(f.shown.isEmpty())
+        PoiCategory.entries.forEach { assertFalse(it.key, f.isShown(it)) }
     }
 
-    /** Une categorie decochee ne pese dans aucune des deux demandes. */
-    @Test fun `une categorie decochee n'est demandee nulle part`() {
-        val f = PoiFilters().toggle(PoiCategory.TOILETS).toggleBike(PoiGroup.PRACTICAL)
-        val (libres, velo) = f.queries()
-        assertFalse(PoiCategory.TOILETS in libres)
-        assertFalse(PoiCategory.TOILETS in velo)
+    /** Une seule categorie retenue suffit a rallumer la couche : l'extinction est un TOUT, pas un seuil. */
+    @Test fun `une seule categorie retenue rallume la couche`() {
+        val f = PoiFilters().hideAll().toggle(PoiCategory.WATER)
+        assertFalse(f.nothingShown)
+        assertEquals(setOf(PoiCategory.WATER), f.shown)
     }
 
-    /** Rien de coche : aucune demande, et le client s'abstient d'appeler (cf. Datatourisme.catalogUrl). */
-    @Test fun `tout decoche ne demande rien`() {
+    /** Decocher les quatre groupes un a un revient au meme que tout masquer : deux chemins, un seul etat. */
+    @Test fun `decocher les quatre groupes equivaut a tout masquer`() {
         var f = PoiFilters()
         PoiGroup.entries.forEach { f = f.toggleGroup(it) }
-        val (libres, velo) = f.queries()
-        assertTrue(libres.isEmpty() && velo.isEmpty())
+        assertEquals(PoiFilters().hideAll(), f)
+        assertTrue(f.nothingShown)
+    }
+
+    /** Le neuf part de rien : la forme enregistree d'une installation neuve n'affiche aucune categorie,
+     *  faute de quoi la couche s'allumerait toute seule au premier lancement (cf. `SettingsEntity`). */
+    @Test fun `la forme enregistree d'une installation neuve ne montre rien`() {
+        assertTrue(PoiFilters.of(PoiFilters.allHiddenCsv()).nothingShown)
     }
 
     // ---------- Forme enregistree ----------
 
     @Test fun `la forme enregistree se relit a l'identique`() {
         val f = PoiFilters().toggle(PoiCategory.BARS).toggle(PoiCategory.TOILETS)
-            .toggleBike(PoiGroup.LODGING)
-        val relu = PoiFilters.of(f.hiddenCsv(), f.bikeCsv())
-        assertEquals(f, relu)
+        assertEquals(f, PoiFilters.of(f.hiddenCsv()))
+        val tout = PoiFilters().hideAll()
+        assertEquals(tout, PoiFilters.of(tout.hiddenCsv()))
     }
 
     /** Une cle inconnue - reglage ecrit par une version plus recente, rouvert par une plus ancienne - est
      *  ignoree et n'emporte pas les autres. */
     @Test fun `une cle inconnue ne fait pas tomber les autres`() {
-        val f = PoiFilters.of("bars,categorie-de-demain,toilet", "hebergements,groupe-de-demain")
+        val f = PoiFilters.of("bars,categorie-de-demain,toilet")
         assertEquals(setOf(PoiCategory.BARS, PoiCategory.TOILETS), f.hidden)
-        assertEquals(setOf(PoiGroup.LODGING), f.bikeGroups)
     }
 
     @Test fun `un reglage vide ne masque rien`() {
-        assertEquals(PoiFilters(), PoiFilters.of("", ""))
-        assertEquals(PoiFilters(), PoiFilters.of(null, null))
+        assertEquals(PoiFilters(), PoiFilters.of(""))
+        assertEquals(PoiFilters(), PoiFilters.of(null))
     }
 }

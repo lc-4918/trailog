@@ -518,15 +518,29 @@ fun MainScreen(
      * plus que le delai lui-meme (cf. PoiLoading).
      */
     val poi = screen.poi
+    /*
+     * Les categories retenues, et la couche qui les SUIT.
+     *
+     * Il n'y a plus d'interrupteur separe : la carte montre exactement ce que le filtre retient, et tout
+     * masquer l'eteint (cf. PoiFilters). Les deux se contredisaient - couche allumee, toutes les
+     * categories decochees, c'est-a-dire une carte vide qu'aucun reglage n'expliquait.
+     */
+    val poiFilters = remember(settings.poiHiddenCategories) {
+        PoiFilters.of(settings.poiHiddenCategories)
+    }
+    LaunchedEffect(poiFilters, settings.poiEnabled) {
+        poi.showLayer(settings.poiEnabled && !poiFilters.nothingShown)
+    }
+    // Le reglage qui pose le bouton sur la carte s'eteint : la bulle qu'il ouvrait n'a plus de bouton pour
+    // la refermer.
+    LaunchedEffect(settings.poiEnabled) { if (!settings.poiEnabled) poi.closeBubble() }
     PoiEffects(
         state = poi,
         controller = controller,
         repo = vm.poiRepository,
         enabled = settings.poiEnabled,
         osmComplement = settings.poiOsmComplement,
-        filters = remember(settings.poiHiddenCategories, settings.poiBikeGroups) {
-            PoiFilters.of(settings.poiHiddenCategories, settings.poiBikeGroups)
-        },
+        filters = poiFilters,
         idleTick = idleTick,
         markerPx = markerPx,
         styleTick = styleTick,
@@ -760,6 +774,8 @@ fun MainScreen(
                     alertEnabled = alertEnabled,
                     alerting = alerting,
                     followedTrack = followed != null,
+                    poiFilters = poiFilters,
+                    onPoiFilters = { vm.savePoiFilters(it) },
                     moveTick = moveTick,
                     idleTick = idleTick,
                     maxWidthPx = constraints.maxWidth,

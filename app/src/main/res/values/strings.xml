@@ -36,6 +36,7 @@
     <string name="search_no_result">Aucune couche à ce nom.</string>
     <string name="action_clear_search">Effacer la recherche</string>
     <string name="settings_section_backup">Sauvegarde</string>
+    <string name="settings_section_cache">Cache</string>
     <string name="settings_backup_create">Créer une sauvegarde</string>
     <string name="settings_backup_restore">Restaurer une sauvegarde</string>
     <string name="settings_backup_hint">L\'archive contient les traces, les points, les photos de waypoints et tous les réglages. Les fonds hors-ligne n\'y sont pas : ils se retéléchargent, et pèsent bien plus que tout le reste.</string>
@@ -185,7 +186,6 @@
     <string name="planner_layer_name">Nom de la couche</string>
     <string name="planner_clear_step">Effacer</string>
     <string name="planner_forget_place">Oublier ce lieu</string>
-    <string name="settings_section_planner_history">Historique des lieux</string>
     <string name="settings_clear_planner_history">Effacer l\'historique</string>
     <string name="settings_planner_history_empty">Aucun lieu retenu</string>
     <string name="settings_planner_history_count">%1$d lieu(x) retenu(s)</string>
@@ -467,6 +467,7 @@
     <string name="settings_sw_poi_osm">Compléter avec OpenStreetMap</string>
     <string name="settings_sw_poi_osm_sub">En France, ajoute les restaurants, bars et services que la base touristique ignore. Requête plus lente. Sans effet à l\'étranger, où OpenStreetMap est la seule source.</string>
     <string name="poi_layer_title">Points d\'intérêt</string>
+    <string name="poi_filter_hide_all">Tout masquer</string>
     <string name="settings_section_gps_marker">Repère de position</string>
     <string name="settings_label_gps_marker_style">Symbole</string>
     <string name="settings_label_gps_marker_color">Couleur</string>
@@ -563,16 +564,11 @@
     <string name="poi_add_step">Ajouter l\'étape</string>
     <string name="poi_zoom_in">Zoomez pour voir les points d\'intérêt</string>
     <string name="poi_planner_full">Planificateur plein : 25 étapes au maximum</string>
-    <string name="settings_section_poi">Points d\'intérêt</string>
     <string name="poi_group_lodging">Hébergement</string>
     <string name="poi_group_food">Restauration</string>
     <string name="poi_group_leisure">Loisirs</string>
     <string name="poi_group_practical">Pratique</string>
-    <string name="settings_poi_hint">Ce qui s\'affiche sur la carte quand la couche est allumée. Le bouton, lui, se pose depuis l\'onglet Carte.</string>
-    <string name="settings_poi_group_count">%1$d sur %2$d</string>
     <string name="settings_poi_select_all">Tout sélectionner</string>
-    <string name="settings_poi_bike_only">Thème vélo uniquement</string>
-    <string name="settings_poi_bike_only_sub">N\'affiche que les lieux qui se déclarent adaptés aux cyclistes</string>
     <string name="settings_poi_attribution">Données : DATAtourisme, Licence Ouverte Etalab 2.0, et OpenStreetMap, licence ODbL.</string>
     <string name="settings_clear_poi_cache">Vider le cache des points d\'intérêt</string>
     <string name="settings_poi_cache_empty">Aucun lieu en cache</string>

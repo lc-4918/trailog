@@ -36,6 +36,7 @@
     <string name="search_no_result">No layer by that name.</string>
     <string name="action_clear_search">Clear search</string>
     <string name="settings_section_backup">Backup</string>
+    <string name="settings_section_cache">Cache</string>
     <string name="settings_backup_create">Create a backup</string>
     <string name="settings_backup_restore">Restore a backup</string>
     <string name="settings_backup_hint">The archive holds tracks, points, waypoint photos and every setting. Offline basemaps are not in it: they can be downloaded again, and weigh far more than all the rest.</string>
@@ -185,7 +186,6 @@
     <string name="planner_layer_name">Layer name</string>
     <string name="planner_clear_step">Clear</string>
     <string name="planner_forget_place">Forget this place</string>
-    <string name="settings_section_planner_history">Place history</string>
     <string name="settings_clear_planner_history">Clear history</string>
     <string name="settings_planner_history_empty">No place kept</string>
     <string name="settings_planner_history_count">%1$d place(s) kept</string>
@@ -465,6 +465,7 @@
     <string name="settings_sw_poi_osm">Complete with OpenStreetMap</string>
     <string name="settings_sw_poi_osm_sub">In France, adds the restaurants, bars and services the tourism database ignores. Slower request. No effect abroad, where OpenStreetMap is the only source.</string>
     <string name="poi_layer_title">Points of interest</string>
+    <string name="poi_filter_hide_all">Hide all</string>
     <string name="settings_section_gps_marker">Position marker</string>
     <string name="settings_label_gps_marker_style">Symbol</string>
     <string name="settings_label_gps_marker_color">Colour</string>
@@ -561,16 +562,11 @@
     <string name="poi_add_step">Add as waypoint</string>
     <string name="poi_zoom_in">Zoom in to see points of interest</string>
     <string name="poi_planner_full">Planner full: 25 stops maximum</string>
-    <string name="settings_section_poi">Points of interest</string>
     <string name="poi_group_lodging">Lodging</string>
     <string name="poi_group_food">Food and drink</string>
     <string name="poi_group_leisure">Leisure</string>
     <string name="poi_group_practical">Practical</string>
-    <string name="settings_poi_hint">What appears on the map when the layer is on. The button itself is added from the Map tab.</string>
-    <string name="settings_poi_group_count">%1$d of %2$d</string>
     <string name="settings_poi_select_all">Select all</string>
-    <string name="settings_poi_bike_only">Cycling theme only</string>
-    <string name="settings_poi_bike_only_sub">Only shows places that declare themselves cyclist-friendly</string>
     <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0, and OpenStreetMap, ODbL licence.</string>
     <string name="settings_clear_poi_cache">Clear the points of interest cache</string>
     <string name="settings_poi_cache_empty">No cached venue</string>

@@ -639,6 +639,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.settings.upsert(s.copy(mapFollowPosition = on))
     }
 
+    /**
+     * Les categories de points d'interet retenues, changees depuis la bulle de la carte.
+     *
+     * Le meme reglage que celui que l'ecran des reglages portait, et qui n'y est plus : le filtre EST
+     * l'interrupteur de la couche, et il se regle la ou l'on regarde la carte (cf. PoiFilterBubble).
+     */
+    fun savePoiFilters(filters: PoiFilters) = viewModelScope.launch {
+        val s = settings.value
+        val csv = filters.hiddenCsv()
+        if (s.poiHiddenCategories == csv) return@launch
+        repo.settings.upsert(s.copy(poiHiddenCategories = csv))
+    }
+
     // ---------- import (avec dossier de destination) ----------
     private var pendingFit: DoubleArray? = null
 
@@ -916,10 +929,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                  * L'ecran de fin le dit en une ligne, sans se transformer en erreur.
                  */
                 val lieux = if (req.withPois && result is OfflineDownloadResult.Success) {
-                    val filtres = PoiFilters.of(s.poiHiddenCategories, s.poiBikeGroups)
-                    val (libres, velo) = filtres.queries()
+                    val filtres = PoiFilters.of(s.poiHiddenCategories)
                     runCatching {
-                        poiRepository.pinArea(Datatourisme.DEFAULT_URL, req.bbox, libres, velo)
+                        poiRepository.pinArea(Datatourisme.DEFAULT_URL, req.bbox, filtres.shown)
                     }.getOrNull()
                 } else null
                 _offlineDownload.update { st ->
