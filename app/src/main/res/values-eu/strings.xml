@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zooma geruzan</string>
     <string name="action_color_layers">Geruza guztien kolorea</string>
     <string name="action_center_on_location">Zentratu nire kokapenean</string>
+    <string name="action_follow_position_on">Nire kokapena jarraitu</string>
+    <string name="action_follow_position_off">Utzi nire kokapena jarraitzeari</string>
     <string name="action_reset_avatar">Berrezarri avatarra</string>
     <string name="action_pin_image">Ainguratu azal-irudi gisa</string>
     <string name="action_unpin_image">Kendu ainguratzea</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Asfaltoan segi</string>
     <string name="route_surface_rough">Lur-bideak onartu</string>
     <string name="settings_sw_follow_position">Nire kokapena jarraitu</string>
-    <string name="settings_sw_follow_position_sub">Mapa 5 s-ra zentratzen da azken keinuaren ondoren</string>
+    <string name="settings_sw_follow_position_sub">Mapa 5 s-ra zentratzen da azken keinuaren ondoren. Mapatik ere kontrola daiteke.</string>
     <string name="settings_sw_keep_screen_on">Pantaila piztuta mantendu</string>
     <string name="settings_sw_keep_screen_on_sub">Kokapenaren jarraipenean soilik; jarraipenak aurrera darrai pantaila itzalita ere</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

@@ -18,15 +18,33 @@ class MapFollowTest {
     private fun suit(
         enabled: Boolean = true,
         gpsActive: Boolean = true,
+        resumed: Boolean = true,
         plannerExpanded: Boolean = false,
         layerOpen: Boolean = false,
         bubbleOpen: Boolean = false,
-    ) = MapFollow.follows(enabled, gpsActive, plannerExpanded, layerOpen, bubbleOpen)
+    ) = MapFollow.follows(enabled, gpsActive, resumed, plannerExpanded, layerOpen, bubbleOpen)
 
     @Test fun `le suivi demande le reglage et le capteur`() {
         assertTrue(suit())
         assertFalse("reglage eteint", suit(enabled = false))
         assertFalse("capteur arrete", suit(gpsActive = false))
+    }
+
+    /**
+     * **La carte doit etre DEVANT l'utilisateur**, et ce cas vient du terrain lui aussi.
+     *
+     * Le suivi vit dans la composition, et celle-ci ne s'arrete ni quand l'ecran s'eteint, ni quand
+     * l'application passe derriere une autre, ni au retour au bureau d'accueil. La `MapView`, elle,
+     * recoit `onPause()` : le suivi continuait donc a lui demander une animation de camera par position
+     * recue - une par seconde, indefiniment - sur une carte qui ne dessine plus.
+     */
+    @Test fun `l'ecran endormi ou l'application derriere suspendent le suivi`() {
+        assertFalse(suit(resumed = false))
+    }
+
+    /** ... et le retour au premier plan le rend, sans que rien d'autre n'ait a etre refait. */
+    @Test fun `le retour au premier plan rend le suivi`() {
+        assertTrue(suit(resumed = true))
     }
 
     /** Les ecrans qui se servent de la carte ailleurs qu'a l'endroit ou l'on se tient. */
@@ -106,5 +124,36 @@ class MapFollowTest {
     /** Horloge qui recule : le suivi ne doit pas rester suspendu pour l'eternite. */
     @Test fun `un geste dans le futur ne bloque pas le suivi`() {
         assertEquals(0L, MapFollow.waitMs(now = 5_000L, lastGestureAt = 10_000L, delayMs = 5_000L))
+    }
+
+    // ---------- Le bouton de suivi, sur la carte ----------
+
+    /**
+     * Le bouton fait toujours ce qui MANQUE : il suit, il ramene, ou il rend la carte.
+     *
+     * Le testeur devait ouvrir le menu, les reglages et l'onglet Carte pour couper un centrage qui le
+     * genait - pour un geste qu'on fait chaque fois qu'on veut lire la carte ailleurs qu'a l'endroit ou
+     * l'on se tient.
+     */
+    @Test fun `le suivi eteint, l'appui l'allume`() {
+        assertEquals(MapFollow.FollowTap.ARM, MapFollow.tapAction(following = false, positionCentered = false))
+        assertEquals(MapFollow.FollowTap.ARM, MapFollow.tapAction(following = false, positionCentered = true))
+    }
+
+    /**
+     * Suivi allume, position pas encore revenue : l'appui ABREGE le silence d'apres-geste, et ne touche
+     * pas au reglage.
+     *
+     * C'est le geste que l'ancien bouton de recentrage savait faire, et le seul qu'une simple bascule
+     * aurait emporte : sans lui, revenir tout de suite demandait d'eteindre puis de rallumer - deux
+     * appuis qui traversent l'etat "eteint" pour ne rien changer au bout du compte.
+     */
+    @Test fun `le suivi allume et la position hors centre, l'appui recentre`() {
+        assertEquals(MapFollow.FollowTap.RECENTER, MapFollow.tapAction(following = true, positionCentered = false))
+    }
+
+    /** Suivi allume et position deja centree : il n'y a plus rien a demander, l'appui rend la carte. */
+    @Test fun `le suivi allume et la position centree, l'appui eteint`() {
+        assertEquals(MapFollow.FollowTap.DISARM, MapFollow.tapAction(following = true, positionCentered = true))
     }
 }

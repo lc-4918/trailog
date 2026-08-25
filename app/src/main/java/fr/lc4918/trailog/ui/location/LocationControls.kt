@@ -129,6 +129,18 @@ class LocationControls internal constructor(
     /** Un geste sur la carte vient d'avoir lieu : le suivi de position s'y refere (cf. MapFollow). */
     fun noteUserGesture() { lastUserGestureAt = SystemClock.elapsedRealtime() }
 
+    /**
+     * Le silence d'apres-geste est leve : la carte peut recentrer sans attendre.
+     *
+     * Deux appelants, et la meme raison dans les deux cas - le geste auquel ce silence protegeait la
+     * reponse n'a plus lieu d'etre respecte :
+     * - le bouton de suivi qu'on vient de rallumer EST le geste, et faire attendre cinq secondes celui
+     *   qui vient de demander a etre suivi laisserait croire que le bouton n'a rien fait ;
+     * - le retour au premier plan, ou le dernier geste date d'avant qu'on quitte l'ecran : celui qui
+     *   revient veut voir ou il est, pas purger une attente heritee.
+     */
+    fun clearUserGesture() { lastUserGestureAt = 0L }
+
     fun hasLocationPermission() =
         ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED

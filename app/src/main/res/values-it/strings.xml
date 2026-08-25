@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zoom sul livello</string>
     <string name="action_color_layers">Colore dei livelli</string>
     <string name="action_center_on_location">Centra sulla mia posizione</string>
+    <string name="action_follow_position_on">Segui la mia posizione</string>
+    <string name="action_follow_position_off">Non seguire più la mia posizione</string>
     <string name="action_reset_avatar">Ripristina avatar</string>
     <string name="action_pin_image">Fissa come immagine di copertina</string>
     <string name="action_unpin_image">Rimuovi fissaggio</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Restare sull\'asfalto</string>
     <string name="route_surface_rough">Accettare gli sterrati</string>
     <string name="settings_sw_follow_position">Segui la mia posizione</string>
-    <string name="settings_sw_follow_position_sub">La mappa si ricentra 5 s dopo l\'ultimo gesto</string>
+    <string name="settings_sw_follow_position_sub">La mappa si ricentra 5 s dopo l\'ultimo gesto. Si comanda anche dalla mappa.</string>
     <string name="settings_sw_keep_screen_on">Mantenere lo schermo acceso</string>
     <string name="settings_sw_keep_screen_on_sub">Solo durante il tracciamento della posizione; questo prosegue comunque a schermo spento</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

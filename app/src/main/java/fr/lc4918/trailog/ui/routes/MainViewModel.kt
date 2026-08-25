@@ -625,6 +625,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Enregistre la position caméra (pour rouvrir sur le dernier affichage), débouncée (cf. _cameraToSave). */
     fun saveCameraState(lat: Double, lon: Double, zoom: Double) { _cameraToSave.value = Triple(lat, lon, zoom) }
 
+    /**
+     * Le suivi de la carte, bascule depuis la carte elle-meme (cf. MapBottomRightControls).
+     *
+     * Ecrit le MEME reglage que l'ecran des reglages, et non un drapeau d'ecran a cote : deux commandes
+     * pour un seul comportement doivent lire et ecrire la meme chose, sans quoi l'une des deux finit par
+     * mentir. Le reglage persiste, ce qui est bien ce qu'on veut - le suivi qu'on a coupe pour lire sa
+     * carte doit rester coupe le temps qu'on la lise, rotation et mise en veille comprises.
+     */
+    fun setMapFollowPosition(on: Boolean) = viewModelScope.launch {
+        val s = settings.value
+        if (s.mapFollowPosition == on) return@launch
+        repo.settings.upsert(s.copy(mapFollowPosition = on))
+    }
+
     // ---------- import (avec dossier de destination) ----------
     private var pendingFit: DoubleArray? = null
 

@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zoom sur la couche</string>
     <string name="action_color_layers">Couleur des couches</string>
     <string name="action_center_on_location">Centrer sur ma position</string>
+    <string name="action_follow_position_on">Suivre ma position</string>
+    <string name="action_follow_position_off">Ne plus suivre ma position</string>
     <string name="action_reset_avatar">Réinitialiser l\'avatar</string>
     <string name="action_pin_image">Épingler comme image de garde</string>
     <string name="action_unpin_image">Désépingler</string>
@@ -524,7 +526,7 @@
     <string name="route_surface_paved">Rester sur le revêtu</string>
     <string name="route_surface_rough">Accepter les chemins</string>
     <string name="settings_sw_follow_position">Suivre ma position</string>
-    <string name="settings_sw_follow_position_sub">La carte se recentre 5 s après le dernier geste</string>
+    <string name="settings_sw_follow_position_sub">La carte se recentre 5 s après le dernier geste. Se commande aussi depuis la carte.</string>
     <string name="settings_sw_keep_screen_on">Garder l\'écran allumé</string>
     <string name="settings_sw_keep_screen_on_sub">Pendant le suivi de position seulement ; celui-ci continue de toute façon écran éteint</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Auf Ebene zoomen</string>
     <string name="action_color_layers">Farbe aller Ebenen</string>
     <string name="action_center_on_location">Auf meinen Standort zentrieren</string>
+    <string name="action_follow_position_on">Meiner Position folgen</string>
+    <string name="action_follow_position_off">Meiner Position nicht mehr folgen</string>
     <string name="action_reset_avatar">Avatar zurücksetzen</string>
     <string name="action_pin_image">Als Titelbild anheften</string>
     <string name="action_unpin_image">Lösen</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Auf Asphalt bleiben</string>
     <string name="route_surface_rough">Unbefestigtes annehmen</string>
     <string name="settings_sw_follow_position">Meiner Position folgen</string>
-    <string name="settings_sw_follow_position_sub">Die Karte zentriert 5 s nach der letzten Geste</string>
+    <string name="settings_sw_follow_position_sub">Die Karte zentriert 5 s nach der letzten Geste. Auch von der Karte aus bedienbar.</string>
     <string name="settings_sw_keep_screen_on">Bildschirm eingeschaltet lassen</string>
     <string name="settings_sw_keep_screen_on_sub">Nur während der Positionsverfolgung; diese läuft ohnehin bei ausgeschaltetem Bildschirm weiter</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zoom a la capa</string>
     <string name="action_color_layers">Color de les capes</string>
     <string name="action_center_on_location">Centra en la meva posició</string>
+    <string name="action_follow_position_on">Segueix la meva posició</string>
+    <string name="action_follow_position_off">Deixa de seguir la meva posició</string>
     <string name="action_reset_avatar">Restableix l\'avatar</string>
     <string name="action_pin_image">Fixa com a imatge de portada</string>
     <string name="action_unpin_image">Desfixa</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Mantenir l\'asfalt</string>
     <string name="route_surface_rough">Acceptar els camins</string>
     <string name="settings_sw_follow_position">Segueix la meva posició</string>
-    <string name="settings_sw_follow_position_sub">El mapa es recentra 5 s després de l\'últim gest</string>
+    <string name="settings_sw_follow_position_sub">El mapa es recentra 5 s després de l\'últim gest. També es controla des del mapa.</string>
     <string name="settings_sw_keep_screen_on">Mantenir la pantalla encesa</string>
     <string name="settings_sw_keep_screen_on_sub">Només durant el seguiment de posició; aquest continua igualment amb la pantalla apagada</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

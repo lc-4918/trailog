@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zoom a la capa</string>
     <string name="action_color_layers">Color de las capas</string>
     <string name="action_center_on_location">Centrar en mi posición</string>
+    <string name="action_follow_position_on">Seguir mi posición</string>
+    <string name="action_follow_position_off">Dejar de seguir mi posición</string>
     <string name="action_reset_avatar">Restablecer avatar</string>
     <string name="action_pin_image">Fijar como imagen de portada</string>
     <string name="action_unpin_image">Quitar fijación</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Mantener el asfalto</string>
     <string name="route_surface_rough">Aceptar los caminos</string>
     <string name="settings_sw_follow_position">Seguir mi posición</string>
-    <string name="settings_sw_follow_position_sub">El mapa se recentra 5 s tras el último gesto</string>
+    <string name="settings_sw_follow_position_sub">El mapa se recentra 5 s tras el último gesto. También se controla desde el mapa.</string>
     <string name="settings_sw_keep_screen_on">Mantener la pantalla encendida</string>
     <string name="settings_sw_keep_screen_on_sub">Solo durante el seguimiento de posición; este continúa igualmente con la pantalla apagada</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

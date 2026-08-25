@@ -109,6 +109,8 @@
     <string name="action_zoom_to_layer">Zoom to layer</string>
     <string name="action_color_layers">Color all layers</string>
     <string name="action_center_on_location">Center on my location</string>
+    <string name="action_follow_position_on">Follow my position</string>
+    <string name="action_follow_position_off">Stop following my position</string>
     <string name="action_reset_avatar">Reset avatar</string>
     <string name="action_pin_image">Pin as cover image</string>
     <string name="action_unpin_image">Unpin</string>
@@ -522,7 +524,7 @@
     <string name="route_surface_paved">Stay on paved</string>
     <string name="route_surface_rough">Accept unpaved</string>
     <string name="settings_sw_follow_position">Follow my position</string>
-    <string name="settings_sw_follow_position_sub">The map recentres 5 s after the last gesture</string>
+    <string name="settings_sw_follow_position_sub">The map recentres 5 s after the last gesture. Also available from the map.</string>
     <string name="settings_sw_keep_screen_on">Keep the screen on</string>
     <string name="settings_sw_keep_screen_on_sub">While location is being tracked only; tracking carries on with the screen off anyway</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

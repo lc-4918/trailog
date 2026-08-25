@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.routes
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Directions
@@ -311,8 +312,9 @@ internal fun BoxScope.MapBottomRightControls(
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
-    // Position hors du centre de la carte : c'est ce qui fait apparaître le bouton de
-    // recentrage, et rien d'autre.
+    // Position hors du centre de la carte : c'est ce qui distingue les deux etats ALLUMES du bouton
+    // de suivi - la position est-elle deja revenue sous la croix, ou le silence d'apres-geste
+    // court-il encore (cf. MapFollow.tapAction).
     //
     // Mesuré à l'écran plutôt que sur les coordonnées : la question est "la position est-elle
     // au milieu de ce que je vois", et sa réponse doit valoir à tout zoom. Suivie à chaque
@@ -320,12 +322,12 @@ internal fun BoxScope.MapBottomRightControls(
     val centerTolPx = with(density) { 16.dp.toPx() }
     val viewCenterX = maxWidthPx / 2f
     val viewCenterY = maxHeightPx / 2f
-    val positionOffCenter = remember(location.lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
+    val positionCentered = remember(location.lastUserLocation, moveTick, idleTick, viewCenterX, viewCenterY) {
         location.lastUserLocation?.let { (la, lo) -> controller.screenOf(lo, la) }?.let { p ->
-            hypot(p.x - viewCenterX, p.y - viewCenterY) > centerTolPx
+            hypot(p.x - viewCenterX, p.y - viewCenterY) <= centerTolPx
         } ?: false
     }
-    // Commandes du coin bas-droit, à portée du pouce : le recentrage sur la position, puis le
+    // Commandes du coin bas-droit, à portée du pouce : le suivi de la position, puis le
     // planificateur au plus près du coin - c'est celui qui reste, l'autre n'apparaissant que le
     // capteur allumé, et un bouton qui change de place au gré du GPS se chercherait à chaque fois.
     //
@@ -347,19 +349,86 @@ internal fun BoxScope.MapBottomRightControls(
         verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Affiche seulement quand il a quelque chose a faire : la position centree, le bouton
-        // disparait plutot que de proposer un geste sans effet. Il s'efface donc de lui-meme au
-        // bout du recentrage qu'on vient de lui demander.
-        //
-        // Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et
-        // c'est ce bouton-ci qui s'ajoute ou se retire par le haut.
-        if (location.gpsActive && positionOffCenter) {
-            IconButton(onClick = { location.recenterOnGps() }, modifier = chrome.buttonBackground) {
+        /*
+         * Le suivi de la carte, allume et eteint DEPUIS LA CARTE.
+         *
+         * **Un interrupteur, la ou il n'y avait qu'un recentrage.** Le bouton ne paraissait que la
+         * position sortie du centre, et ne savait faire qu'une chose : y revenir. Couper le suivi, lui,
+         * demandait d'ouvrir le menu, les reglages, l'onglet Carte - pour un geste qu'on fait chaque fois
+         * qu'on veut lire la carte ailleurs qu'a l'endroit ou l'on se tient, c'est-a-dire tout le temps.
+         * Un testeur l'a dit sans detour : "c'est pas bien pratique".
+         *
+         * **Present des que le capteur tourne**, et non plus seulement hors centre : un interrupteur qui
+         * disparait quand il est "au repos" ne s'eteint jamais, puisqu'il n'y a rien a toucher au moment
+         * precis ou la carte est centree sur soi.
+         *
+         * **Il DIT l'etat**, au trait bleu du suivi comme les autres commandes de la carte. C'est la
+         * seconde moitie du meme retour de terrain : le suivi se suspendait tout seul - bande du
+         * planificateur, profil d'une trace, infobulle ouverte, silence d'apres-geste - sans que rien a
+         * l'ecran ne le dise, et un suivi qu'on croit allume alors qu'il est en pause se raconte
+         * exactement comme une panne.
+         *
+         * **Trois etats, un seul bouton** (cf. MapFollow.tapAction, qui porte la regle et sa raison) : il
+         * allume et recentre, il ramene la position sans toucher au reglage tant qu'elle n'est pas
+         * revenue, il eteint une fois qu'elle est centree. Le recentrage seul - ce que ce bouton savait
+         * faire avant - garde ainsi sa place, la ou il sert : pendant le silence d'apres-geste.
+         *
+         * Rallumer et ramener levent tous deux ce silence, le geste en question etant ce bouton-ci (cf.
+         * LocationControls.clearUserGesture). Eteindre ne deplace rien - la carte reste ou elle est,
+         * c'est bien pour la lire la qu'on vient de couper.
+         *
+         * Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et c'est ce
+         * bouton-ci qui s'ajoute ou se retire par le haut.
+         */
+        if (location.gpsActive) {
+            val suit = settings.mapFollowPosition
+            val geste = MapFollow.tapAction(following = suit, positionCentered = positionCentered)
+            IconButton(
+                onClick = {
+                    when (geste) {
+                        MapFollow.FollowTap.ARM -> {
+                            vm.setMapFollowPosition(true)
+                            // Le silence d'apres-geste est leve : le geste, c'est ce bouton-ci, et
+                            // faire attendre cinq secondes celui qui vient de demander a etre suivi
+                            // laisserait croire que l'appui n'a rien fait.
+                            location.clearUserGesture()
+                            location.recenterOnGps()
+                        }
+                        MapFollow.FollowTap.RECENTER -> {
+                            location.clearUserGesture()
+                            location.recenterOnGps()
+                        }
+                        // Eteindre ne deplace rien : la carte reste ou elle est, c'est bien pour la
+                        // lire la qu'on vient de couper.
+                        MapFollow.FollowTap.DISARM -> vm.setMapFollowPosition(false)
+                    }
+                },
+                modifier = chrome.buttonBackground,
+            ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Filled.MyLocation, stringResource(R.string.action_center_on_location), tint = chrome.fg)
-                    // Disque central au bleu du point de position : le bouton n'existant que
-                    // hors centre, c'est sa seule teinte.
-                    Canvas(Modifier.size(MyLocationDotSize)) { drawCircle(color = RecenterDotColor) }
+                    Icon(
+                        // DEUX axes, chacun deja significatif dans cette colonne : la TEINTE dit si le
+                        // suivi est arme - bleu comme la cloche, les points d'interet et le
+                        // planificateur -, et le DESSIN dit si la position est sous la croix. La croix
+                        // pleine est celle du repere qu'elle tient au centre ; vide, elle dit que la
+                        // position est ailleurs et que l'appui va l'y ramener.
+                        if (suit && positionCentered) Icons.Filled.MyLocation
+                        else Icons.Filled.LocationSearching,
+                        stringResource(
+                            when (geste) {
+                                MapFollow.FollowTap.ARM -> R.string.action_follow_position_on
+                                MapFollow.FollowTap.RECENTER -> R.string.action_center_on_location
+                                MapFollow.FollowTap.DISARM -> R.string.action_follow_position_off
+                            },
+                        ),
+                        tint = if (suit) MapChromeActive else chrome.fg,
+                    )
+                    // Disque central au bleu du point de position : la carte tient le repere au centre
+                    // de l'ecran, et le bouton le porte. Le seul des trois etats ou il y a un point
+                    // sous la croix - les deux autres portent la croix vide.
+                    if (suit && positionCentered) {
+                        Canvas(Modifier.size(MyLocationDotSize)) { drawCircle(color = RecenterDotColor) }
+                    }
                 }
             }
         }
