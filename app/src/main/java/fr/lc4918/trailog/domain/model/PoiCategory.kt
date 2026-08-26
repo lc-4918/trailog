@@ -120,6 +120,29 @@ enum class PoiCategory(
     BIKE_SHOPS("loueurs-reparateurs-velos", PoiGroup.PRACTICAL,
         setOf("BikeStationOrDepot", "EquipmentRentalShop", "EquipmentRepairShop", "GarageOrAirPump"),
         setOf("shop=bicycle", "amenity=bicycle_repair_station", "amenity=bicycle_rental")),
+    /**
+     * Epicerie et supermarche : le ravitaillement.
+     *
+     * **OpenStreetMap SEUL**, et c'est mesure : DATAtourisme ne connait ni `Supermarket`, ni
+     * `ConvenienceStore`, ni `GroceryStore`, ni `FoodStore` - zero objet pour chacune sur la Dordogne et
+     * le Lot. Sa seule classe de commerce est `Store`, qui en rend 1882 sur la meme emprise et melange
+     * banques, loueurs de voitures, peintres, menuisiers et ceramistes : la retenir mettrait tout
+     * l'artisanat sous le mot "epicerie". Un supermarche n'est pas un objet touristique, exactement comme
+     * le restaurant de quartier (cf. `PoiSources`).
+     *
+     * OSM, lui, les porte : sur la meme emprise, 292 `shop=convenience` (251 nommes) et 233
+     * `shop=supermarket` (228 nommes). Les trois autres etiquettes sont marginales - 30, 9 et 3 - mais ne
+     * coutent rien : `shop` est deja interroge pour les reparateurs de velo, et elles ne font qu'ajouter
+     * une alternative a la meme condition. Mesure sur le centre de Toulouse, requete du groupe pratique :
+     * 6,8 s avant, 8,1 s apres.
+     *
+     * Dans le groupe PRATIQUE et non dans "Restauration", qui est celui des restaurants et des bars : ce
+     * qu'on cherche ici est un service du bord de route, comme l'eau et les toilettes.
+     */
+    GROCERY("epicerie-supermarche", PoiGroup.PRACTICAL,
+        emptySet(),
+        setOf("shop=supermarket", "shop=convenience", "shop=grocery", "shop=greengrocer",
+            "shop=general")),
     STATIONS("gares", PoiGroup.PRACTICAL,
         setOf("TrainStation", "BusStation"),
         setOf("railway=station", "amenity=bus_station")),
@@ -141,9 +164,21 @@ enum class PoiCategory(
     TOILETS("toilet", PoiGroup.PRACTICAL,
         setOf("PublicLavatories"),
         setOf("amenity=toilets")),
+    /**
+     * Location de canoes.
+     *
+     * `leisure=slipway` seul ne rendait que des RAMPES DE MISE A L'EAU, pas des loueurs : signale au sud
+     * de Souillac, ou deux bases de canoes bien connues n'apparaissaient pas. Releve sur la Dordogne et le
+     * Lot (44,4-45,4 N / 0,6-2,2 E) : 92 `leisure=slipway` dont 12 seulement portent un nom, contre 29
+     * `amenity=boat_rental` dont 26 nommes et 22 `sport=canoe` dont 15 nommes. Les deux bases manquantes
+     * sont dans le second lot.
+     *
+     * `canoe=yes` reste ECARTE, et c'est deliberé : la Dordogne elle-meme le porte, et la categorie
+     * poserait alors un marqueur sur une riviere entiere.
+     */
     CANOE("location-canoe", PoiGroup.PRACTICAL,
         setOf("NauticalCentre", "LaunchingRamp"),
-        setOf("leisure=slipway"));
+        setOf("leisure=slipway", "amenity=boat_rental", "sport=canoe"));
 
     companion object {
         /** Les catégories d'un groupe, dans l'ordre de déclaration - celui des réglages. */

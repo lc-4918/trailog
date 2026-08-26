@@ -36,6 +36,7 @@ fun poiIcon(category: PoiCategory): Int = when (category) {
     PoiCategory.TASTING -> R.drawable.ic_poi_wine_bar
     PoiCategory.WELLNESS -> R.drawable.ic_poi_spa
     PoiCategory.BIKE_SHOPS -> R.drawable.ic_poi_pedal_bike
+    PoiCategory.GROCERY -> R.drawable.ic_poi_local_grocery_store
     PoiCategory.STATIONS -> R.drawable.ic_poi_train
     PoiCategory.TOURIST_OFFICES -> R.drawable.ic_poi_info
     PoiCategory.PICNIC -> R.drawable.ic_poi_table_restaurant
@@ -79,6 +80,7 @@ fun poiCategoryLabelRes(category: PoiCategory): Int =
         PoiCategory.TASTING -> R.string.poi_cat_tasting
         PoiCategory.WELLNESS -> R.string.poi_cat_wellness
         PoiCategory.BIKE_SHOPS -> R.string.poi_cat_bike_shops
+        PoiCategory.GROCERY -> R.string.poi_cat_grocery
         PoiCategory.STATIONS -> R.string.poi_cat_stations
         PoiCategory.TOURIST_OFFICES -> R.string.poi_cat_tourist_offices
         PoiCategory.PICNIC -> R.string.poi_cat_picnic
@@ -103,4 +105,4 @@ fun poiGroupLabel(g: PoiGroup): String = androidx.compose.ui.res.stringResource(
         PoiGroup.LEISURE -> R.string.poi_group_leisure
         PoiGroup.PRACTICAL -> R.string.poi_group_practical
     }
-)
+).take(10)

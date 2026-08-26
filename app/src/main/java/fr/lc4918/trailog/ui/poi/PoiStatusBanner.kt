@@ -2,8 +2,15 @@ package fr.lc4918.trailog.ui.poi
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,18 +42,25 @@ internal fun BoxScope.PoiStatusBanner(
 ) {
     val density = LocalDensity.current
     /*
-     * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle
-     * ne peut rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la
-     * carte reste simplement vide, et l'on croit la couche cassee.
+     * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle ne peut
+     * rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la carte reste
+     * simplement vide, et l'on croit la couche cassee.
+     *
+     * La bulle des categories ferme le bandeau : elle s'ouvre depuis le bord droit et descend sur la
+     * carte, et l'avertissement de zoom naitrait derriere elle - au moment meme ou l'on coche la premiere
+     * categorie. Il attend donc qu'on referme, c'est-a-dire qu'on regarde a nouveau la carte.
      */
+    if (poi.bubbleOpen) return
     if (poi.visible && (poi.tooFar || poi.needsNetwork || poi.fromCache || poi.partial)) {
         /*
          * Le message du zoom se TAPE, et zoome. Les deux autres ne sont que des constats -
          * pas de reseau, points du cache - que rien ni personne ne leve d'un doigt, et les
          * rendre tapables promettrait une action qui n'existe pas.
          *
-         * Une consigne qu'on peut executer soi-meme est une consigne de trop : "Zoomez pour
-         * voir les points d'interet" dit exactement le geste que ce tap fait a notre place.
+         * Le message le DIT - "Appuyez ici pour zoomer" - au lieu de donner la consigne que le tap
+         * execute a notre place. Il disait "Zoomez pour voir les points d'interet", ce qu'on lisait
+         * comme un ordre a suivre soi-meme : on pinçait la carte, et l'on ne savait pas qu'il suffisait
+         * de toucher ces mots-la.
          */
         val zoomable = poi.tooFar
         Surface(
@@ -78,25 +92,42 @@ internal fun BoxScope.PoiStatusBanner(
                     }
                 ),
         ) {
-            Text(
-                stringResource(
-                    when {
-                        poi.tooFar -> R.string.poi_zoom_in
-                        poi.needsNetwork -> R.string.poi_needs_network
-                        poi.fromCache -> R.string.poi_from_cache
-                        // En dernier : les trois autres disent pourquoi la carte est vide ou
-                        // vieille, celui-ci pourquoi elle est incomplete - c'est le moins grave.
-                        else -> R.string.poi_partial
-                    }
-                ),
-                fontSize = 12.sp,
-                // La couleur des commandes quand le message en est une, celle du texte ordinaire
-                // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un
-                // doigt des deux constats qu'on ne peut que lire.
-                color = if (zoomable) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            )
+            Row(
+                Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // La main qui appuie, devant le seul des quatre messages qui SE TAPE. La couleur des
+                // commandes ne suffisait pas : elle distingue bien ce message des trois constats, mais
+                // seulement pour qui les a vus cote a cote - un utilisateur n'en voit jamais qu'un, et
+                // rien ne lui disait que celui-la repond au doigt. Le texte le dit desormais, et ce
+                // dessin le montre.
+                if (zoomable) {
+                    Icon(
+                        Icons.Filled.TouchApp, null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(
+                    stringResource(
+                        when {
+                            poi.tooFar -> R.string.poi_zoom_in
+                            poi.needsNetwork -> R.string.poi_needs_network
+                            poi.fromCache -> R.string.poi_from_cache
+                            // En dernier : les trois autres disent pourquoi la carte est vide ou
+                            // vieille, celui-ci pourquoi elle est incomplete - c'est le moins grave.
+                            else -> R.string.poi_partial
+                        }
+                    ),
+                    fontSize = 12.sp,
+                    // La couleur des commandes quand le message en est une, celle du texte ordinaire
+                    // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un
+                    // doigt des deux constats qu'on ne peut que lire.
+                    color = if (zoomable) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }

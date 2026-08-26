@@ -12,24 +12,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IndeterminateCheckBox
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,9 +62,17 @@ import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
 
-/** Largeur de la bulle : celle des infobulles moins la pointe, pour qu'elle tienne sur un petit ecran a
- *  cote de la colonne de boutons. */
-private val BubbleWidth = 264.dp
+/**
+ * Largeur MAXIMALE de la bulle.
+ *
+ * 264 dp d'abord, et c'etait trop juste : les onglets faisaient 60 dp, ou "Hebergement" et "Restauration"
+ * se coupaient en plein mot - Compose casse au milieu quand le mot ne tient pas, faute d'un autre endroit
+ * ou couper. A 320 dp ils font 74 dp, et les quatre libelles tiennent sur une ligne, l'allemand compris.
+ *
+ * Un MAXIMUM et non une largeur fixe : sur un ecran etroit, la bulle prend ce qui reste a gauche du
+ * bouton plutot que de deborder. C'est l'appelant qui lui donne cette place (cf. [PoiFilterBubbleAnchored]).
+ */
+private val BubbleMaxWidth = 320.dp
 
 /** Hauteur maximale de la liste des categories. Neuf lignes tiennent dessous ; au-dela elle defile. */
 private val PanelMaxHeight = 260.dp
@@ -92,6 +105,7 @@ private val TailSize = 14.dp
 fun PoiFilterBubble(
     filters: PoiFilters,
     onFilters: (PoiFilters) -> Unit,
+    onClose: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     /*
@@ -103,31 +117,34 @@ fun PoiFilterBubble(
      */
     var groupeKey by rememberSaveable { mutableStateOf(PoiGroup.LODGING.key) }
     val groupe = PoiGroup.entries.firstOrNull { it.key == groupeKey } ?: PoiGroup.LODGING
-    Card(
-        modifier = modifier.width(BubbleWidth),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-    ) {
-        EnTete(filters, onFilters)
-        Onglets(groupe, filters) { groupeKey = it.key }
-        // La cle du defilement suit l'onglet : chacun garde sa position, et passer de "Pratique" - neuf
-        // lignes - a "Restauration" - deux - ne doit pas ouvrir sur une liste defilee hors de sa fin.
-        val defilement = rememberScrollState()
-        Column(
-            Modifier.heightIn(max = PanelMaxHeight).verticalScroll(defilement).padding(vertical = 4.dp),
+    BoxWithConstraints(modifier = modifier.widthIn(max = BubbleMaxWidth)) {
+        val bubbleWidth = maxWidth.coerceAtMost(BubbleMaxWidth)
+        Card(
+            modifier = Modifier.width(bubbleWidth),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
         ) {
-            // "Tout le groupe" en tete, avec son etat a trois valeurs : coche, vide, ou entre les deux
-            // quand une partie seulement du groupe est retenue.
-            LigneGroupe(
-                filters.groupState(groupe),
-                Color(android.graphics.Color.parseColor(poiGroupColor(groupe))),
-            ) { onFilters(filters.toggleGroup(groupe)) }
-            PoiCategory.of(groupe).forEach { cat ->
-                LigneCategorie(cat, filters.isShown(cat)) { onFilters(filters.toggle(cat)) }
+            EnTete(filters, onFilters, onClose)
+            Onglets(groupe, filters) { groupeKey = it.key }
+            // La cle du defilement suit l'onglet : chacun garde sa position, et passer de "Pratique" - neuf
+            // lignes - a "Restauration" - deux - ne doit pas ouvrir sur une liste defilee hors de sa fin.
+            val defilement = rememberScrollState()
+            Column(
+                Modifier.height(PanelMaxHeight).verticalScroll(defilement).padding(vertical = 4.dp),
+            ) {
+                // "Tout le groupe" en tete, avec son etat a trois valeurs : coche, vide, ou entre les deux
+                // quand une partie seulement du groupe est retenue.
+                LigneGroupe(
+                    filters.groupState(groupe),
+                    Color(android.graphics.Color.parseColor(poiGroupColor(groupe))),
+                ) { onFilters(filters.toggleGroup(groupe)) }
+                PoiCategory.of(groupe).forEach { cat ->
+                    LigneCategorie(cat, filters.isShown(cat)) { onFilters(filters.toggle(cat)) }
+                }
             }
         }
     }
@@ -140,7 +157,7 @@ fun PoiFilterBubble(
  * de proposer un geste sans effet - c'est la meme regle que le bouton de recentrage de la carte.
  */
 @Composable
-private fun EnTete(filters: PoiFilters, onFilters: (PoiFilters) -> Unit) {
+private fun EnTete(filters: PoiFilters, onFilters: (PoiFilters) -> Unit, onClose: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -151,12 +168,27 @@ private fun EnTete(filters: PoiFilters, onFilters: (PoiFilters) -> Unit) {
             modifier = Modifier.weight(1f),
         )
         if (!filters.nothingShown) {
-            Text(
-                stringResource(R.string.poi_filter_hide_all),
-                fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                    .clickable { onFilters(filters.hideAll()) }
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            IconButton(
+                onClick = { onFilters(filters.hideAll()) },
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    Icons.Outlined.DeleteOutline,
+                    stringResource(R.string.poi_filter_hide_all),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier.size(28.dp),
+        ) {
+            Icon(
+                Icons.Filled.Close,
+                stringResource(R.string.action_close),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -300,6 +332,7 @@ fun PoiFilterBubbleAnchored(
     open: Boolean,
     filters: PoiFilters,
     onFilters: (PoiFilters) -> Unit,
+    onClose: () -> Unit,
     tailFromBottom: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -335,8 +368,8 @@ fun PoiFilterBubbleAnchored(
          *
          * Dessinee APRES la carte, donc par-dessus : posee avant, le fond de la carte l'aurait recouverte.
          */
-        Box(Modifier.width(BubbleWidth + TailSize / 2)) {
-            PoiFilterBubble(filters, onFilters, Modifier.padding(end = TailSize / 2))
+        Box(Modifier.widthIn(max = BubbleMaxWidth + TailSize / 2)) {
+            PoiFilterBubble(filters, onFilters, onClose, Modifier.widthIn(max = BubbleMaxWidth).padding(end = TailSize / 2))
             Box(
                 Modifier.align(Alignment.BottomEnd)
                     .padding(bottom = (tailFromBottom - TailSize / 2).coerceAtLeast(0.dp))

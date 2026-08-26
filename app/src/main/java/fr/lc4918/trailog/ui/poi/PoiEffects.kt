@@ -48,7 +48,9 @@ fun PoiEffects(
 
     LaunchedEffect(enabled) { if (enabled == false) state.hide() }
 
-    LaunchedEffect(state.visible, idleTick, filters) {
+    // osmComplement est une CLE, comme les filtres : c'est une source de plus a interroger, et l'allumer
+    // doit relancer le chargement sans attendre qu'on deplace la carte.
+    LaunchedEffect(state.visible, idleTick, filters, osmComplement) {
         if (!state.visible) return@LaunchedEffect
         // Le zoom se lit AVANT l'attente et la requete, et le message se leve avec lui : la camera est deja
         // posee quand cet effet part (il suit l'arret de la carte), et attendre pour le lever laissait
@@ -64,7 +66,7 @@ fun PoiEffects(
             // Temps depuis le demarrage de l'appareil, et non heure murale : un changement d'heure ne doit
             // pas prolonger indefiniment le silence apres un echec ni l'annuler d'un coup.
             val maintenant = SystemClock.elapsedRealtime()
-            if (!state.needsLoad(vue, filters, maintenant)) return@LaunchedEffect
+            if (!state.needsLoad(vue, filters, osmComplement, maintenant)) return@LaunchedEffect
             val box = PoiLoading.grow(vue)
             state.beginLoad()
             // Les categories retenues, telles quelles : le depot se charge du cache - service d'abord,
@@ -78,8 +80,8 @@ fun PoiEffects(
                 // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a
                 // pas repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.
                 val horsLigne = charge.pois.isEmpty() && !NetworkStatus.hasInternet(ctx)
-                state.publish(box, filters, charge.pois, charge.fromCache, horsLigne, charge.partial,
-                    complete = charge.complete)
+                state.publish(box, filters, charge.pois, osmComplement, charge.fromCache, horsLigne,
+                    charge.partial, complete = charge.complete)
                 // Une source muette met la zone au repos : on la redemandera, mais pas au prochain geste.
                 if (charge.failed) state.loadFailed(box, SystemClock.elapsedRealtime())
                 state.dropSelectionIfGone()

@@ -61,15 +61,42 @@ class PoiState {
     /** Filtres de ce chargement : les changer invalide tout, la réponse ne portait pas les mêmes lieux. */
     private var loadedFilters: PoiFilters? = null
 
+    /**
+     * Le réglage "Compléter avec OpenStreetMap" au moment de ce chargement.
+     *
+     * Il invalide autant que les filtres, et l'oubli se voyait : l'allumer ne changeait rien à l'écran
+     * tant qu'on ne déplaçait pas la carte, la vue étant déjà tenue pour chargée. On restait devant une
+     * carte inchangée en croyant le réglage sans effet.
+     */
+    private var loadedOsm: Boolean? = null
+
     /** Emprise du dernier chargement qui a **echoue**, et l'instant de cet echec : on ne la redemande pas
      *  tout de suite (cf. [PoiLoading.RETRY_AFTER_FAIL_MS]). */
     private var failedBox: Bbox? = null
     private var failedAt = 0L
 
-    /** La carte est trop dézoomée pour charger quoi que ce soit (cf. [PoiLoading.MIN_ZOOM]) : le dire,
-     *  plutôt que de laisser une carte vide sans explication. */
+    /**
+     * La carte est trop dézoomée pour charger quoi que ce soit (cf. [PoiLoading.MIN_ZOOM]), et il reste
+     * quelque chose à en dire : la couche vient d'être allumée sur une vue trop large, et rien n'apparaît.
+     *
+     * **Une seule fois, à l'allumage**, et non chaque fois que la vue redevient large. Le message répondait
+     * autrefois à la seule question du zoom, si bien qu'il resurgissait à chaque dézoom - au moment précis
+     * où l'on prend du recul pour se situer, c'est-à-dire quand on ne cherche justement pas de point
+     * d'intérêt. Il devenait un décor, et un décor ne se lit plus.
+     *
+     * Ce qu'il dit, il ne le dit donc qu'à celui qui vient de demander la couche et à qui la carte ne
+     * répond rien (cf. [armed]).
+     */
     var tooFar by mutableStateOf(false)
         private set
+
+    /**
+     * L'avertissement de zoom est-il encore DÛ.
+     *
+     * Armé quand la couche s'allume - la première catégorie retenue -, désarmé dès qu'on a zoomé assez :
+     * la question posée a trouvé sa réponse, et elle ne se repose pas au dézoom suivant.
+     */
+    private var armed = false
 
     /**
      * Le zoom est redevenu suffisant : le message se lève **tout de suite**, sans attendre les points.
@@ -77,8 +104,10 @@ class PoiState {
      * Il ne se levait qu'à la publication du chargement, soit une demi-seconde d'attente plus une requête
      * réseau plus tard. Pendant tout ce temps, l'écran continuait de réclamer un zoom qu'on venait de faire :
      * on zoomait encore, et encore, croyant n'être jamais assez près.
+     *
+     * Il désarme au passage : c'est ici que l'avertissement a rempli son office.
      */
-    fun nearEnough() { tooFar = false }
+    fun nearEnough() { tooFar = false; armed = false }
 
     /**
      * La couche suit le filtre : allumée dès qu'une catégorie est retenue, éteinte quand il n'en reste
@@ -90,8 +119,11 @@ class PoiState {
     fun showLayer(on: Boolean) {
         if (on == visible) return
         visible = on
+        // Allumer la couche ARME l'avertissement de zoom : c'est le seul moment ou il a lieu d'etre dit.
+        if (on) armed = true
         if (!on) {
-            pois = emptyList(); selected = null; loaded = null; loadedFilters = null
+            armed = false
+            pois = emptyList(); selected = null; loaded = null; loadedFilters = null; loadedOsm = null
             tooFar = false; needsNetwork = false; partial = false
             failedBox = null
         }
@@ -99,10 +131,12 @@ class PoiState {
 
     fun hide() {
         visible = false
+        armed = false
         pois = emptyList()
         selected = null
         loaded = null
         loadedFilters = null
+        loadedOsm = null
         tooFar = false
         needsNetwork = false
         partial = false
@@ -146,7 +180,7 @@ class PoiState {
         private set
 
     fun publish(
-        box: Bbox, filters: PoiFilters, list: List<Poi>,
+        box: Bbox, filters: PoiFilters, list: List<Poi>, osmComplement: Boolean = true,
         cache: Boolean = false, offline: Boolean = false, incomplete: Boolean = false,
         /** Sans valeur par defaut, et volontairement : c'est l'oubli de cette question qui a fait
          *  disparaitre les restaurants d'Albi. Chaque appelant doit dire s'il a tout recu. */
@@ -176,6 +210,7 @@ class PoiState {
          */
         loaded = if (complete) box else null
         loadedFilters = filters
+        loadedOsm = osmComplement
         tooFar = false
         fromCache = cache
         needsNetwork = offline
@@ -194,7 +229,19 @@ class PoiState {
      */
     fun loadFailed(box: Bbox, now: Long) { failedBox = box; failedAt = now }
 
-    fun tooFar() { tooFar = true; loading = false; needsNetwork = false; partial = false }
+    /**
+     * La vue est trop large pour charger quoi que ce soit.
+     *
+     * Le message ne se leve que si l'avertissement est encore [armed] - la couche vient d'etre allumee et
+     * l'on n'a pas encore zoome. Les trois autres constats retombent dans tous les cas : ils parlaient
+     * d'un chargement qui n'aura pas lieu.
+     */
+    fun tooFar() {
+        tooFar = armed
+        loading = false
+        needsNetwork = false
+        partial = false
+    }
 
 
     /**
@@ -216,8 +263,8 @@ class PoiState {
      * La comparaison se fait sur l'emprise **élargie** au moment du chargement (cf. `PoiLoading.grow`) :
      * charger un peu plus large que l'écran permet justement à un petit déplacement de ne rien coûter.
      */
-    fun needsLoad(box: Bbox, filters: PoiFilters, now: Long): Boolean {
-        if (loadedFilters != filters) return true
+    fun needsLoad(box: Bbox, filters: PoiFilters, osm: Boolean, now: Long): Boolean {
+        if (loadedFilters != filters || loadedOsm != osm) return true
         // Une zone qui vient d'echouer attend son tour : le service n'aura pas change d'avis en trois
         // secondes, et insister est ce qui le fait refuser plus durement (cf. RETRY_AFTER_FAIL_MS).
         val e = failedBox

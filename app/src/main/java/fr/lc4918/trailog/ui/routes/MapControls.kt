@@ -8,11 +8,12 @@ import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import fr.lc4918.trailog.domain.model.RoutingProfile
@@ -319,6 +320,13 @@ internal fun BoxScope.MapBottomRightControls(
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
+    /*
+     * Ou se trouve le bouton des points d'interet, en pixels de la racine : son bord gauche et son bord
+     * bas. La bulle s'y accroche sans etre son enfant - la mettre dedans elargissait la colonne (cf. le
+     * bouton, plus bas).
+     */
+    var poiButtonLeftPx by remember { mutableIntStateOf(0) }
+    var poiButtonBottomPx by remember { mutableIntStateOf(0) }
     // Position hors du centre de la carte : c'est ce qui distingue les deux etats ALLUMES du bouton
     // de suivi - la position est-elle deja revenue sous la croix, ou le silence d'apres-geste
     // court-il encore (cf. MapFollow.tapAction).
@@ -478,31 +486,27 @@ internal fun BoxScope.MapBottomRightControls(
          * retient le long du parcours.
          */
         if (settings.poiEnabled) {
-            Box {
-                /*
-                 * La bulle est posee DANS le bouton, et non reperee a l'ecran par ses
-                 * coordonnees : `unbounded` la laisse deborder de la place que le bouton
-                 * occupe, sans peser sur la colonne ni sur ses voisins. Alignee par le bas, elle
-                 * grandit vers le HAUT - le bouton est en bas de l'ecran, et une bulle centree
-                 * sur lui sortirait par le bas.
-                 *
-                 * Declaree AVANT le bouton pour passer dessous : la pointe deborde de quelques
-                 * points vers lui, et c'est le bouton qui doit rester touchable.
-                 */
-                Box(
-                    Modifier.align(Alignment.BottomEnd)
-                        .absoluteOffset(x = -PoiBubbleAnchorWidth)
-                        .wrapContentSize(Alignment.BottomEnd, unbounded = true),
-                ) {
-                    PoiFilterBubbleAnchored(
-                        open = poi.bubbleOpen,
-                        filters = poiFilters,
-                        onFilters = onPoiFilters,
-                        // Le centre du bouton, mesure depuis son bas : la pointe le vise.
-                        tailFromBottom = PoiBubbleAnchorWidth / 2,
-                    )
-                }
-                IconButton(onClick = { poi.toggleBubble() }, modifier = chrome.buttonBackground) {
+            /*
+             * Le bouton DIT OU IL EST, et la bulle se pose a cote depuis la racine de l'ecran
+             * (cf. plus bas).
+             *
+             * Elle etait posee DANS le bouton, avec `wrapContentSize(unbounded)` pour la laisser
+             * deborder - et cela decalait toute la colonne : `unbounded` laisse deborder le
+             * CONTENU, mais le noeud garde la largeur mesuree, si bien que la colonne prenait la
+             * largeur de la bulle et centrait ses boutons dedans. Signale depuis le telephone,
+             * capture a l'appui : les trois boutons du bas-droite au milieu de l'ecran.
+             *
+             * Deux coordonnees suffisent a la reposer : le bord GAUCHE du bouton, ou vient
+             * s'appuyer le bord droit de la bulle, et son bord BAS, que la bulle epouse.
+             */
+            IconButton(
+                onClick = { poi.toggleBubble() },
+                modifier = chrome.buttonBackground.onGloballyPositioned {
+                    val p = it.positionInRoot()
+                    poiButtonLeftPx = p.x.toInt()
+                    poiButtonBottomPx = p.y.toInt() + it.size.height
+                },
+            ) {
                 val teinte = if (poi.visible || poi.bubbleOpen) MapChromeActive else chrome.fg
                 /*
                  * L'attente prend la place du pictogramme, DANS le bouton.
@@ -525,7 +529,6 @@ internal fun BoxScope.MapBottomRightControls(
                         Icons.Outlined.BookmarkBorder, stringResource(R.string.poi_layer_title),
                         tint = teinte,
                     )
-                }
                 }
             }
         }
@@ -562,6 +565,35 @@ internal fun BoxScope.MapBottomRightControls(
                     tint = if (planner.open) MapChromeActive else chrome.fg,
                 )
             }
+        }
+    }
+
+    /*
+     * La bulle des points d'interet, SOEUR de la colonne et non son enfant.
+     *
+     * Elle se pose sur la racine de l'ecran, qui occupe toute la surface : elle peut donc s'etendre a
+     * gauche du bouton sans que rien ne s'elargisse, et le doigt l'atteint - un contenu dessine hors des
+     * limites de son parent, lui, ne recoit pas les touchers.
+     *
+     * Deux marges la posent, calculees sur le bouton : son bord droit contre le bord gauche du bouton,
+     * son bord bas contre celui du bouton. Elle n'a pas besoin de connaitre sa propre taille pour cela.
+     * Declaree APRES la colonne, donc par-dessus : sa pointe deborde de quelques points vers le bouton.
+     */
+    if (settings.poiEnabled && poiButtonBottomPx > 0) {
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(
+                end = with(density) { (maxWidthPx - poiButtonLeftPx).toDp() },
+                bottom = with(density) { (maxHeightPx - poiButtonBottomPx).toDp() },
+            ),
+        ) {
+            PoiFilterBubbleAnchored(
+                open = poi.bubbleOpen,
+                filters = poiFilters,
+                onFilters = onPoiFilters,
+                onClose = { poi.closeBubble() },
+                // Le centre du bouton, mesure depuis son bas : la pointe le vise.
+                tailFromBottom = PoiBubbleAnchorWidth / 2,
+            )
         }
     }
 }

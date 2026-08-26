@@ -107,9 +107,32 @@ import kotlinx.coroutines.launch
     // Dossier reel des .mbtiles (miroir de TrailogRepository.mbtilesDir) : affiche dans l'editeur MBTILES.
     val mbtilesDirPath = cur.mbtilesDir.ifBlank { File(ctx.filesDir, "mbtiles").absolutePath }
 
+    /*
+     * Le fond affiche par defaut, et l'aspect du panneau qui sert a en changer.
+     *
+     * Les deux curseurs viennent de l'onglet Carte, ou ils formaient une rubrique "Gestionnaire de fonds
+     * de plan" avec l'interrupteur qui POSE son bouton. Celui-ci est reste la-bas, parmi les boutons de
+     * la carte ; ce qui regle le panneau LUI-MEME a suivi les fonds de plan qu'il donne a choisir, et
+     * c'est ici qu'on les a sous les yeux.
+     */
     SectionTitle(stringResource(R.string.settings_section_default_basemap), tight = true)
     SettingsCard {
         BasemapPickRow(mapProviders, mapComposites, cur.defaultBasemapId) { vm.save(cur.copy(defaultBasemapId = it)) }
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_panel_width), "${cur.basemapControlWidthPct} %",
+            fractionOf(cur.basemapControlWidthPct, 20, 90),
+            { vm.save(cur.copy(basemapControlWidthPct = valueOf(it, 20, 90))) },
+        )
+        RowDivider()
+        SliderRow(
+            stringResource(R.string.settings_label_panel_opacity), "${cur.basemapControlOpacityPct} %",
+            fractionOf(cur.basemapControlOpacityPct, 30, 100),
+            { vm.save(cur.copy(basemapControlOpacityPct = valueOf(it, 30, 100))) },
+        )
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(basemapControlWidthPct = 70, basemapControlOpacityPct = 90))
+        }
     }
 
     // Les deux boutons d'ajout sortent de la liste des fonds : on ne confond plus "ce que je peux

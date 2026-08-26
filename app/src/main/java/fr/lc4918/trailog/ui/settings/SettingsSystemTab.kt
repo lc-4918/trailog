@@ -55,6 +55,8 @@ import fr.lc4918.trailog.domain.model.PlannerHistory
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Icon
+import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
+import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 
 /**
  * L'onglet Systeme : langue, theme, sauvegarde et restauration, a propos.
@@ -222,6 +224,30 @@ import androidx.compose.material3.Icon
         ) { vm.save(cur.copy(statusBarTransparent = it)) }
     }
 
+    /*
+     * L'aspect des boutons de la carte, venu de l'onglet Carte.
+     *
+     * Ils y voisinaient les interrupteurs qui decident lesquels s'affichent, et les deux questions n'ont
+     * rien a voir : l'une dit CE QU'ON POSE sur la carte - et se regle donc la-bas, avec les gestes -,
+     * celle-ci dit a quoi cela ressemble, comme le theme et la barre d'etat juste au-dessus.
+     */
+    SectionTitle(stringResource(R.string.settings_section_map_buttons))
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_sw_buttons_bg), cur.controlButtonsBackground) {
+            vm.save(cur.copy(controlButtonsBackground = it))
+        }
+        RowDivider()
+        // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
+        // zone tactile, il deborderait dessus.
+        SliderRow(
+            label = stringResource(R.string.settings_label_map_button_size),
+            value = "${cur.mapButtonSizeDp} dp",
+            fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
+            steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
+            onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
+        )
+    }
+
     SectionTitle(stringResource(R.string.settings_section_personalisation))
     var titleText by remember(cur.customTitle) { mutableStateOf(cur.customTitle) }
     SettingsCard {
@@ -244,6 +270,19 @@ import androidx.compose.material3.Icon
 
     GroupTitle(stringResource(R.string.settings_group_application))
     SettingsCard {
+        /*
+         * Garder l'ecran allume, venu de l'onglet Carte.
+         *
+         * Il y suivait le suivi de position, dont il partage le declencheur - le drapeau n'est pose que
+         * pendant le suivi (cf. KeepScreenOnEffect) - mais ce n'est pas un bouton ni un geste de carte :
+         * c'est ce que l'application fait au telephone sans qu'on le lui redemande, comme les deux lignes
+         * qui suivent.
+         */
+        SwitchLine(
+            stringResource(R.string.settings_sw_keep_screen_on), cur.keepScreenOn,
+            sub = stringResource(R.string.settings_sw_keep_screen_on_sub),
+        ) { vm.save(cur.copy(keepScreenOn = it)) }
+        RowDivider()
         SwitchLine(
             stringResource(R.string.settings_simplify_render), cur.simplifyRender,
             sub = stringResource(R.string.settings_sw_simplify_sub),

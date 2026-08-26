@@ -169,7 +169,39 @@ import kotlinx.coroutines.launch
      * ce sont des gestes d'entretien, et le seul lien qu'ils avaient avec cet onglet-ci etait la rubrique
      * qui vient d'en partir.
      */
+    SectionTitle(stringResource(R.string.settings_section_poi))
     SettingsCard {
+        /*
+         * Completer DATAtourisme par OpenStreetMap : venu de l'onglet Carte, ou il suivait l'interrupteur
+         * qui POSE le bouton des points d'interet.
+         *
+         * Ce n'est ni un bouton ni un geste : c'est le choix des SOURCES qu'on interroge, au meme titre
+         * que le geocodeur et le moteur d'itineraire regles en tete de cet onglet. Une requete Overpass de
+         * plus par chargement, et elle est longue - d'ou l'interrupteur.
+         *
+         * Seulement quand la couche est allumee : un reglage qui ne peut rien faire n'a rien a montrer.
+         */
+        if (cur.poiEnabled) {
+            SwitchLine(
+                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
+                sub = stringResource(R.string.settings_sw_poi_osm_sub),
+            ) {
+                vm.save(cur.copy(poiOsmComplement = it))
+                /*
+                 * Le cache est VIDE au passage, dans les deux sens.
+                 *
+                 * Il garde ce que les sources ont rendu, sans se souvenir desquelles : les lieux d'une
+                 * zone survolee sans le complement y restent, et la carte les reposerait tels quels si le
+                 * service ne repondait pas - c'est-a-dire sans les lieux qu'on vient justement de
+                 * demander. L'effacer force une recherche entiere au retour sur la carte.
+                 *
+                 * Les lieux EMPORTES pour le hors-ligne sont epargnes (cf. clearPoiCache) : une zone
+                 * telechargee pour partir ne doit pas se vider parce qu'on a touche a un reglage.
+                 */
+                vm.clearPoiCache()
+            }
+            RowDivider()
+        }
         Hint(stringResource(R.string.settings_poi_attribution))
     }
 

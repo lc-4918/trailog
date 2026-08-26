@@ -86,13 +86,20 @@ import kotlinx.coroutines.launch
             sub = stringResource(R.string.settings_sw_follow_position_sub),
         ) { vm.save(cur.copy(mapFollowPosition = it)) }
         RowDivider()
-        // Au meme endroit que le suivi, dont il ne dit lui aussi que le comportement. Pas de lien croise
-        // avec la localisation : le drapeau n'est pose que pendant le suivi (cf. MainScreen), et ne coute
-        // donc rien capteur eteint.
-        SwitchLine(
-            stringResource(R.string.settings_sw_keep_screen_on), cur.keepScreenOn,
-            sub = stringResource(R.string.settings_sw_keep_screen_on_sub),
-        ) { vm.save(cur.copy(keepScreenOn = it)) }
+        /*
+         * Suivi de trace : la cloche qui previent qu'on s'est ecarte de la trace suivie.
+         *
+         * Ici plutot que dans sa propre rubrique, ou elle s'appelait "Afficher le bouton" : c'est un
+         * bouton de la carte comme les sept autres de cette liste, et le nom qu'il portait ne disait
+         * rien de ce qu'il allume. Ses reglages - distance, son - restent ensemble plus bas.
+         *
+         * Il allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
+         * position, et la cloche sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper.
+         * Le lien inverse est tenu par la ligne du bouton GPS, en tete.
+         */
+        SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
+            vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
+        }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
@@ -104,63 +111,37 @@ import kotlinx.coroutines.launch
             stringResource(R.string.settings_sw_poi), cur.poiEnabled,
             sub = stringResource(R.string.settings_sw_poi_sub),
         ) { vm.save(cur.copy(poiEnabled = it)) }
-        // Sous la couche qu'il nuance, et seulement quand elle est allumee : un reglage qui ne peut rien
-        // faire n'a rien a montrer.
-        if (cur.poiEnabled) {
-            RowDivider()
-            SwitchLine(
-                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
-                sub = stringResource(R.string.settings_sw_poi_osm_sub),
-            ) { vm.save(cur.copy(poiOsmComplement = it)) }
-        }
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
             sub = stringResource(R.string.settings_sw_track_edit_sub),
         ) { vm.save(cur.copy(trackEditEnabled = it)) }
         RowDivider()
+        // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
+        // bouton" en tete de sa propre rubrique, ou le titre portait seul le sens de la ligne. Ce qui
+        // regle le PANNEAU qu'il ouvre - largeur, opacite - a rejoint les fonds de plan, onglet Tuiles.
+        SwitchLine(
+            stringResource(R.string.settings_section_basemap_control), cur.showBasemapControlButton,
+        ) { vm.save(cur.copy(showBasemapControlButton = it)) }
+        RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
-        RowDivider()
-        SwitchLine(stringResource(R.string.settings_sw_buttons_bg), cur.controlButtonsBackground) { vm.save(cur.copy(controlButtonsBackground = it)) }
-        RowDivider()
-        // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
-        // zone tactile, il deborderait dessus.
-        SliderRow(
-            label = stringResource(R.string.settings_label_map_button_size),
-            value = "${cur.mapButtonSizeDp} dp",
-            fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
-            steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
-            onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
-        )
     }
 
-    OffTrackAlertSettings(cur, vm)
+    /*
+     * GPS : le repere qu'on voit, puis la veille qui s'en nourrit.
+     *
+     * Les deux rubriques etaient voisines sans rien pour le dire, entre les boutons de la carte et les
+     * points d'interet. Elles parlent pourtant de la meme matiere - la position - et l'une ne sert pas
+     * sans l'autre : le repere d'abord, parce qu'il s'affiche des qu'on allume le capteur, l'alerte
+     * ensuite, parce qu'elle demande en plus une trace a suivre.
+     */
+    GroupTitle(stringResource(R.string.settings_group_gps))
 
     GpsMarkerSettings(cur, vm)
 
-    SectionTitle(stringResource(R.string.settings_section_basemap_control))
-    SettingsCard {
-        SwitchLine(stringResource(R.string.settings_label_show_button), cur.showBasemapControlButton) {
-            vm.save(cur.copy(showBasemapControlButton = it))
-        }
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_panel_width), "${cur.basemapControlWidthPct} %",
-            fractionOf(cur.basemapControlWidthPct, 20, 90),
-            { vm.save(cur.copy(basemapControlWidthPct = valueOf(it, 20, 90))) },
-        )
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_panel_opacity), "${cur.basemapControlOpacityPct} %",
-            fractionOf(cur.basemapControlOpacityPct, 30, 100),
-            { vm.save(cur.copy(basemapControlOpacityPct = valueOf(it, 30, 100))) },
-        )
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(basemapControlWidthPct = 70, basemapControlOpacityPct = 90))
-        }
-    }
+    OffTrackAlertSettings(cur, vm)
 
     GroupTitle(stringResource(R.string.settings_group_pois))
     SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
@@ -197,9 +178,9 @@ import kotlinx.coroutines.launch
 /**
  * Alerte d'eloignement : la cloche sur la carte, l'ecart qui la declenche, et le son qui l'accompagne.
  *
- * L'interrupteur allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
- * position, et la cloche sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper. Le lien
- * inverse est tenu la-haut, dans la ligne du bouton GPS - eteindre l'un eteint l'autre.
+ * L'interrupteur qui la POSE sur la carte n'est plus ici : il a rejoint "Boutons et gestes" sous le nom
+ * de ce qu'il allume, "Suivi de trace" - il s'appelait "Afficher le bouton", et seul le titre de cette
+ * rubrique disait de quel bouton il s'agissait. Ne restent ici que ses reglages a elle.
  *
  * Le son ne montre son choix que s'il est actif : une ligne de reglage qui ne sert a rien vaut mieux
  * absente que grisee.
@@ -218,10 +199,6 @@ import kotlinx.coroutines.launch
 
     SectionTitle(stringResource(R.string.settings_section_off_track))
     SettingsCard {
-        SwitchLine(stringResource(R.string.settings_label_show_button), cur.offTrackAlertEnabled) {
-            vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
-        }
-        RowDivider()
         // Le curseur va par pas de dix metres : au metre pres, on reglerait la precision du capteur, pas
         // la distance a laquelle on veut etre prevenu.
         SliderRow(
@@ -278,7 +255,7 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
     val marker = GpsMarkerStyle.of(cur.gpsMarkerStyle)
     val color = cur.gpsMarkerColor.takeIf { it.isNotBlank() } ?: marker.defaultColor
     var pickColor by remember { mutableStateOf(false) }
-    SectionTitle(stringResource(R.string.settings_section_gps_marker))
+    SectionTitle(stringResource(R.string.settings_section_gps_marker), tight = true)
     SettingsCard {
         // Changer de symbole rend sa couleur ET sa taille au nouveau : chacun a les siennes (bleu et 20 dp
         // pour la puce, rouge et 30 dp pour les fleches, qui doivent montrer une direction), et les heriter
