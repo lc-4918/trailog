@@ -320,7 +320,7 @@
     <string name="settings_basemap_control_width">Amplada del panell: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacitat del plafó: %1$d%%</string>
     <string name="settings_bubble_opacity">Opacitat: %1$d%%</string>
-    <string name="settings_section_default_basemap">Mapa base predeterminat</string>
+    <string name="settings_section_default_basemap">Mapes base</string>
     <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
     <string name="settings_app_folder_default">Carpeta de l\'app (per defecte)</string>
     <string name="settings_section_basemaps">Mapes base</string>
@@ -425,12 +425,15 @@
     <string name="profile_no_elevation">Recorregut sense altimetria</string>
 
     <string name="settings_section_map_controls">Botons i gestos</string>
+    <string name="settings_sw_track_follow">Seguiment de traça</string>
     <string name="settings_group_storage">Emmagatzematge</string>
     <string name="settings_group_interaction">Interacció</string>
     <string name="settings_group_appearance">Aparença</string>
+    <string name="settings_group_gps">GPS</string>
+    <string name="settings_section_map_buttons">Botons del mapa</string>
     <string name="settings_group_application">Aplicació</string>
-    <string name="settings_section_add_basemap">Afegir un fons</string>
-    <string name="settings_section_installed_basemaps">Fons instal·lats</string>
+    <string name="settings_section_add_basemap">Afegir un mapa base</string>
+    <string name="settings_section_installed_basemaps">Mapes base instal·lats</string>
     <string name="settings_section_services">Serveis</string>
     <string name="settings_section_profile_calc">Càlcul del perfil</string>
     <string name="settings_section_personalisation">Personalització</string>
@@ -440,7 +443,6 @@
     <string name="settings_label_panel_width">Amplada del plafó</string>
     <string name="settings_label_panel_opacity">Opacitat del plafó</string>
     <string name="settings_label_opacity">Opacitat</string>
-    <string name="settings_label_show_button">Mostra el botó</string>
     <string name="settings_label_smoothing">Suavitzat del perfil</string>
     <string name="settings_label_vertical_scale">Escala vertical</string>
     <string name="settings_label_title_line">Línia de títol</string>
@@ -463,6 +465,7 @@
     <string name="settings_sw_poi">Punts d\'interès</string>
     <string name="settings_sw_poi_sub">Allotjaments, restauració i serveis al llarg del recorregut</string>
     <string name="settings_sw_poi_osm">Completar amb OpenStreetMap</string>
+    <string name="settings_section_poi">Punts d\'interès</string>
     <string name="settings_sw_poi_osm_sub">A França, afegeix els restaurants, bars i serveis que la base turística ignora. Consulta més lenta. Sense efecte a l\'estranger, on OpenStreetMap és l\'única font.</string>
     <string name="poi_layer_title">Punts d\'interès</string>
     <string name="poi_filter_hide_all">Amaga-ho tot</string>
@@ -548,6 +551,7 @@
     <string name="poi_cat_tasting">Tast</string>
     <string name="poi_cat_wellness">Benestar</string>
     <string name="poi_cat_bike_shops">Lloguer i reparació de bicicletes</string>
+    <string name="poi_cat_grocery">Botiga d\'alimentació i supermercat</string>
     <string name="poi_cat_stations">Estacions de tren</string>
     <string name="poi_cat_tourist_offices">Oficines de turisme</string>
     <string name="poi_cat_picnic">Àrees de pícnic</string>
@@ -560,10 +564,10 @@
     <string name="poi_set_start">Defineix com a punt de partida</string>
     <string name="poi_set_end">Defineix com a punt d\'arribada</string>
     <string name="poi_add_step">Afegeix com a etapa</string>
-    <string name="poi_zoom_in">Amplia per veure els punts d\'interès</string>
+    <string name="poi_zoom_in">Toqueu aquí per apropar i veure els punts d\'interès</string>
     <string name="poi_planner_full">Planificador ple: 25 etapes com a màxim</string>
-    <string name="poi_group_lodging">Allotjament</string>
-    <string name="poi_group_food">Restauració</string>
+    <string name="poi_group_lodging">Allotj.</string>
+    <string name="poi_group_food">Menjar</string>
     <string name="poi_group_leisure">Lleure</string>
     <string name="poi_group_practical">Pràctic</string>
     <string name="settings_poi_select_all">Selecciona-ho tot</string>

@@ -320,7 +320,7 @@
     <string name="settings_basemap_control_width">Panel width: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Panel opacity: %1$d%%</string>
     <string name="settings_bubble_opacity">Opacity: %1$d%%</string>
-    <string name="settings_section_default_basemap">Default basemap</string>
+    <string name="settings_section_default_basemap">Basemaps</string>
     <string name="settings_section_mbtiles_folder">MBTiles folder</string>
     <string name="settings_app_folder_default">App folder (default)</string>
     <string name="settings_section_basemaps">Basemaps</string>
@@ -425,9 +425,12 @@
     <string name="profile_no_elevation">Route without elevation data</string>
 
     <string name="settings_section_map_controls">Buttons and gestures</string>
+    <string name="settings_sw_track_follow">Track following</string>
     <string name="settings_group_storage">Storage</string>
     <string name="settings_group_interaction">Interaction</string>
     <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_group_gps">GPS</string>
+    <string name="settings_section_map_buttons">Map buttons</string>
     <string name="settings_group_application">Application</string>
     <string name="settings_section_add_basemap">Add a basemap</string>
     <string name="settings_section_installed_basemaps">Installed basemaps</string>
@@ -440,7 +443,6 @@
     <string name="settings_label_panel_width">Panel width</string>
     <string name="settings_label_panel_opacity">Panel opacity</string>
     <string name="settings_label_opacity">Opacity</string>
-    <string name="settings_label_show_button">Show the button</string>
     <string name="settings_label_smoothing">Profile smoothing</string>
     <string name="settings_label_vertical_scale">Vertical scale</string>
     <string name="settings_label_title_line">Title line</string>
@@ -463,6 +465,7 @@
     <string name="settings_sw_poi">Points of interest</string>
     <string name="settings_sw_poi_sub">Lodging, food, services along the way</string>
     <string name="settings_sw_poi_osm">Complete with OpenStreetMap</string>
+    <string name="settings_section_poi">Points of interest</string>
     <string name="settings_sw_poi_osm_sub">In France, adds the restaurants, bars and services the tourism database ignores. Slower request. No effect abroad, where OpenStreetMap is the only source.</string>
     <string name="poi_layer_title">Points of interest</string>
     <string name="poi_filter_hide_all">Hide all</string>
@@ -548,6 +551,7 @@
     <string name="poi_cat_tasting">Tasting</string>
     <string name="poi_cat_wellness">Wellness</string>
     <string name="poi_cat_bike_shops">Bike rental and repair</string>
+    <string name="poi_cat_grocery">Grocery and supermarket</string>
     <string name="poi_cat_stations">Train stations</string>
     <string name="poi_cat_tourist_offices">Tourist offices</string>
     <string name="poi_cat_picnic">Picnic areas</string>
@@ -560,10 +564,10 @@
     <string name="poi_set_start">Set as start point</string>
     <string name="poi_set_end">Set as end point</string>
     <string name="poi_add_step">Add as waypoint</string>
-    <string name="poi_zoom_in">Zoom in to see points of interest</string>
+    <string name="poi_zoom_in">Tap here to zoom in and see points of interest</string>
     <string name="poi_planner_full">Planner full: 25 stops maximum</string>
-    <string name="poi_group_lodging">Lodging</string>
-    <string name="poi_group_food">Food and drink</string>
+    <string name="poi_group_lodging">Stay</string>
+    <string name="poi_group_food">Food</string>
     <string name="poi_group_leisure">Leisure</string>
     <string name="poi_group_practical">Practical</string>
     <string name="settings_poi_select_all">Select all</string>

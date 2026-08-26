@@ -320,7 +320,7 @@
     <string name="settings_basemap_control_width">Panelbreite: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Deckkraft des Bereichs: %1$d%%</string>
     <string name="settings_bubble_opacity">Deckkraft: %1$d%%</string>
-    <string name="settings_section_default_basemap">Standardkartengrundlage</string>
+    <string name="settings_section_default_basemap">Hintergrundkarten</string>
     <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
     <string name="settings_app_folder_default">App-Ordner (Standard)</string>
     <string name="settings_section_basemaps">Kartengrundlagen</string>
@@ -425,12 +425,15 @@
     <string name="profile_no_elevation">Strecke ohne Höhendaten</string>
 
     <string name="settings_section_map_controls">Schaltflächen und Gesten</string>
+    <string name="settings_sw_track_follow">Spurverfolgung</string>
     <string name="settings_group_storage">Speicher</string>
     <string name="settings_group_interaction">Interaktion</string>
     <string name="settings_group_appearance">Darstellung</string>
+    <string name="settings_group_gps">GPS</string>
+    <string name="settings_section_map_buttons">Kartenschaltflächen</string>
     <string name="settings_group_application">Anwendung</string>
     <string name="settings_section_add_basemap">Hintergrundkarte hinzufügen</string>
-    <string name="settings_section_installed_basemaps">Installierte Karten</string>
+    <string name="settings_section_installed_basemaps">Installierte Hintergrundkarten</string>
     <string name="settings_section_services">Dienste</string>
     <string name="settings_section_profile_calc">Profilberechnung</string>
     <string name="settings_section_personalisation">Personalisierung</string>
@@ -440,7 +443,6 @@
     <string name="settings_label_panel_width">Breite des Panels</string>
     <string name="settings_label_panel_opacity">Deckkraft des Panels</string>
     <string name="settings_label_opacity">Deckkraft</string>
-    <string name="settings_label_show_button">Schaltfläche anzeigen</string>
     <string name="settings_label_smoothing">Profilglättung</string>
     <string name="settings_label_vertical_scale">Vertikale Skala</string>
     <string name="settings_label_title_line">Titelzeile</string>
@@ -463,6 +465,7 @@
     <string name="settings_sw_poi">Sehenswürdigkeiten</string>
     <string name="settings_sw_poi_sub">Unterkunft, Gastronomie und Service entlang der Strecke</string>
     <string name="settings_sw_poi_osm">Mit OpenStreetMap ergänzen</string>
+    <string name="settings_section_poi">Sehenswürdigkeiten</string>
     <string name="settings_sw_poi_osm_sub">Ergänzt in Frankreich Restaurants, Bars und Services, die die Tourismusdatenbank nicht kennt. Langsamere Abfrage. Ohne Wirkung im Ausland, wo OpenStreetMap die einzige Quelle ist.</string>
     <string name="poi_layer_title">Sehenswürdigkeiten</string>
     <string name="poi_filter_hide_all">Alle ausblenden</string>
@@ -548,6 +551,7 @@
     <string name="poi_cat_tasting">Verkostung</string>
     <string name="poi_cat_wellness">Wellness</string>
     <string name="poi_cat_bike_shops">Fahrradverleih und -reparatur</string>
+    <string name="poi_cat_grocery">Lebensmittelgeschäft und Supermarkt</string>
     <string name="poi_cat_stations">Bahnhöfe</string>
     <string name="poi_cat_tourist_offices">Tourismusbüros</string>
     <string name="poi_cat_picnic">Picknickplätze</string>
@@ -560,12 +564,12 @@
     <string name="poi_set_start">Als Startpunkt festlegen</string>
     <string name="poi_set_end">Als Zielpunkt festlegen</string>
     <string name="poi_add_step">Als Zwischenziel hinzufügen</string>
-    <string name="poi_zoom_in">Heranzoomen, um Sehenswürdigkeiten zu sehen</string>
+    <string name="poi_zoom_in">Hier tippen, um heranzuzoomen und Sehenswürdigkeiten zu sehen</string>
     <string name="poi_planner_full">Planer voll: maximal 25 Etappen</string>
     <string name="poi_group_lodging">Unterkunft</string>
-    <string name="poi_group_food">Gastronomie</string>
+    <string name="poi_group_food">Gastro</string>
     <string name="poi_group_leisure">Freizeit</string>
-    <string name="poi_group_practical">Praktisches</string>
+    <string name="poi_group_practical">Praktisch</string>
     <string name="settings_poi_select_all">Alle auswählen</string>
     <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
     <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>

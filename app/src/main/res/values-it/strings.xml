@@ -320,7 +320,7 @@
     <string name="settings_basemap_control_width">Larghezza del pannello: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Opacità del pannello: %1$d%%</string>
     <string name="settings_bubble_opacity">Opacità: %1$d%%</string>
-    <string name="settings_section_default_basemap">Mappa di base predefinita</string>
+    <string name="settings_section_default_basemap">Mappe di base</string>
     <string name="settings_section_mbtiles_folder">Cartella MBTiles</string>
     <string name="settings_app_folder_default">Cartella dell\'app (predefinita)</string>
     <string name="settings_section_basemaps">Mappe di base</string>
@@ -425,12 +425,15 @@
     <string name="profile_no_elevation">Percorso senza altimetria</string>
 
     <string name="settings_section_map_controls">Pulsanti e gesti</string>
+    <string name="settings_sw_track_follow">Inseguimento traccia</string>
     <string name="settings_group_storage">Archiviazione</string>
     <string name="settings_group_interaction">Interazione</string>
     <string name="settings_group_appearance">Aspetto</string>
+    <string name="settings_group_gps">GPS</string>
+    <string name="settings_section_map_buttons">Pulsanti della mappa</string>
     <string name="settings_group_application">Applicazione</string>
-    <string name="settings_section_add_basemap">Aggiungere uno sfondo</string>
-    <string name="settings_section_installed_basemaps">Sfondi installati</string>
+    <string name="settings_section_add_basemap">Aggiungere una mappa di base</string>
+    <string name="settings_section_installed_basemaps">Mappe di base installate</string>
     <string name="settings_section_services">Servizi</string>
     <string name="settings_section_profile_calc">Calcolo del profilo</string>
     <string name="settings_section_personalisation">Personalizzazione</string>
@@ -440,7 +443,6 @@
     <string name="settings_label_panel_width">Larghezza del pannello</string>
     <string name="settings_label_panel_opacity">Opacità del pannello</string>
     <string name="settings_label_opacity">Opacità</string>
-    <string name="settings_label_show_button">Mostrare il pulsante</string>
     <string name="settings_label_smoothing">Livellamento del profilo</string>
     <string name="settings_label_vertical_scale">Scala verticale</string>
     <string name="settings_label_title_line">Riga del titolo</string>
@@ -463,6 +465,7 @@
     <string name="settings_sw_poi">Punti di interesse</string>
     <string name="settings_sw_poi_sub">Alloggi, ristoranti e servizi lungo il percorso</string>
     <string name="settings_sw_poi_osm">Completare con OpenStreetMap</string>
+    <string name="settings_section_poi">Punti di interesse</string>
     <string name="settings_sw_poi_osm_sub">In Francia, aggiunge ristoranti, bar e servizi che la banca dati turistica ignora. Richiesta più lenta. Nessun effetto all\'estero, dove OpenStreetMap è l\'unica fonte.</string>
     <string name="poi_layer_title">Punti di interesse</string>
     <string name="poi_filter_hide_all">Nascondi tutto</string>
@@ -548,6 +551,7 @@
     <string name="poi_cat_tasting">Degustazione</string>
     <string name="poi_cat_wellness">Benessere</string>
     <string name="poi_cat_bike_shops">Noleggio e riparazione bici</string>
+    <string name="poi_cat_grocery">Alimentari e supermercato</string>
     <string name="poi_cat_stations">Stazioni ferroviarie</string>
     <string name="poi_cat_tourist_offices">Uffici turistici</string>
     <string name="poi_cat_picnic">Aree picnic</string>
@@ -560,11 +564,11 @@
     <string name="poi_set_start">Imposta come punto di partenza</string>
     <string name="poi_set_end">Imposta come punto di arrivo</string>
     <string name="poi_add_step">Aggiungi come tappa</string>
-    <string name="poi_zoom_in">Ingrandisci per vedere i punti di interesse</string>
+    <string name="poi_zoom_in">Tocca qui per ingrandire e vedere i punti di interesse</string>
     <string name="poi_planner_full">Pianificatore pieno: massimo 25 tappe</string>
     <string name="poi_group_lodging">Alloggio</string>
-    <string name="poi_group_food">Ristorazione</string>
-    <string name="poi_group_leisure">Tempo libero</string>
+    <string name="poi_group_food">Risto</string>
+    <string name="poi_group_leisure">Tempo</string>
     <string name="poi_group_practical">Pratico</string>
     <string name="settings_poi_select_all">Seleziona tutto</string>
     <string name="settings_poi_attribution">Dati: DATAtourisme, Licenza Aperta Etalab 2.0, e OpenStreetMap, licenza ODbL.</string>

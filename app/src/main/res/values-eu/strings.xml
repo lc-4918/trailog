@@ -320,7 +320,7 @@
     <string name="settings_basemap_control_width">Panelaren zabalera: %1$d%%</string>
     <string name="settings_basemap_control_opacity">Panelaren opakutasuna: %1$d%%</string>
     <string name="settings_bubble_opacity">Opakutasuna: %1$d%%</string>
-    <string name="settings_section_default_basemap">Oinarrizko mapa lehenetsia</string>
+    <string name="settings_section_default_basemap">Oinarrizko mapak</string>
     <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
     <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>
     <string name="settings_section_basemaps">Oinarrizko mapak</string>
@@ -425,12 +425,15 @@
     <string name="profile_no_elevation">Ibilbidea altimetriarik gabe</string>
 
     <string name="settings_section_map_controls">Botoiak eta keinuak</string>
+    <string name="settings_sw_track_follow">Arrastoaren jarraipena</string>
     <string name="settings_group_storage">Biltegiratzea</string>
     <string name="settings_group_interaction">Interakzioa</string>
     <string name="settings_group_appearance">Itxura</string>
+    <string name="settings_group_gps">GPS</string>
+    <string name="settings_section_map_buttons">Maparen botoiak</string>
     <string name="settings_group_application">Aplikazioa</string>
-    <string name="settings_section_add_basemap">Gehitu oinarri-mapa</string>
-    <string name="settings_section_installed_basemaps">Instalatutako oinarriak</string>
+    <string name="settings_section_add_basemap">Gehitu oinarrizko mapa</string>
+    <string name="settings_section_installed_basemaps">Instalatutako oinarrizko mapak</string>
     <string name="settings_section_services">Zerbitzuak</string>
     <string name="settings_section_profile_calc">Profilaren kalkulua</string>
     <string name="settings_section_personalisation">Pertsonalizazioa</string>
@@ -440,7 +443,6 @@
     <string name="settings_label_panel_width">Panelaren zabalera</string>
     <string name="settings_label_panel_opacity">Panelaren opakutasuna</string>
     <string name="settings_label_opacity">Opakutasuna</string>
-    <string name="settings_label_show_button">Erakutsi botoia</string>
     <string name="settings_label_smoothing">Profilaren leuntzea</string>
     <string name="settings_label_vertical_scale">Eskala bertikala</string>
     <string name="settings_label_title_line">Izenburu-lerroa</string>
@@ -463,6 +465,7 @@
     <string name="settings_sw_poi">Interesguneak</string>
     <string name="settings_sw_poi_sub">Ostatuak, jatetxeak eta zerbitzuak ibilbidean zehar</string>
     <string name="settings_sw_poi_osm">OpenStreetMap-ekin osatu</string>
+    <string name="settings_section_poi">Intereseko puntuak</string>
     <string name="settings_sw_poi_osm_sub">Frantzian, turismo datu-baseak ezagutzen ez dituen jatetxeak, tabernak eta zerbitzuak gehitzen ditu. Kontsulta motelagoa. Eraginik gabe atzerrian, non OpenStreetMap iturri bakarra den.</string>
     <string name="poi_layer_title">Interesguneak</string>
     <string name="poi_filter_hide_all">Ezkutatu dena</string>
@@ -548,6 +551,7 @@
     <string name="poi_cat_tasting">Dastatzea</string>
     <string name="poi_cat_wellness">Ongizatea</string>
     <string name="poi_cat_bike_shops">Bizikleta-alokairua eta konponketa</string>
+    <string name="poi_cat_grocery">Janari-denda eta supermerkatua</string>
     <string name="poi_cat_stations">Tren-geltokiak</string>
     <string name="poi_cat_tourist_offices">Turismo-bulegoak</string>
     <string name="poi_cat_picnic">Piknik-guneak</string>
@@ -560,12 +564,12 @@
     <string name="poi_set_start">Ezarri hasiera-puntu gisa</string>
     <string name="poi_set_end">Ezarri helmuga-puntu gisa</string>
     <string name="poi_add_step">Gehitu etapa gisa</string>
-    <string name="poi_zoom_in">Handitu interesguneak ikusteko</string>
+    <string name="poi_zoom_in">Sakatu hemen hurbiltzeko eta intereseko puntuak ikusteko</string>
     <string name="poi_planner_full">Planifikatzailea beteta: gehienez 25 etapa</string>
     <string name="poi_group_lodging">Ostatua</string>
-    <string name="poi_group_food">Jatetxeak</string>
+    <string name="poi_group_food">Janari</string>
     <string name="poi_group_leisure">Aisia</string>
-    <string name="poi_group_practical">Praktikoa</string>
+    <string name="poi_group_practical">Praktiko</string>
     <string name="settings_poi_select_all">Hautatu dena</string>
     <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
     <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
