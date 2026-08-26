@@ -79,43 +79,14 @@ import kotlinx.coroutines.launch
 /**
  * Onglet "Itineraires" : comment le calcul se fait, non ce qui s'affiche.
  *
- * Les deux services y figurent separement bien que le geocodage ne soit pas du calcul d'itineraire :
- * chercher un lieu est le premier geste de la planification, et les deux URL se reglent ensemble. Les
- * interrupteurs qui montrent leurs boutons sur la carte, eux, restent dans l'onglet "Carte".
+ * Discipline et preferences de trace en tete, moteur et services en queue : les premieres se rouvrent a
+ * chaque sortie, les seconds se reglent une fois pour toutes et se laissent oublier. Le geocodage figure
+ * parmi les services bien qu'il ne soit pas du calcul d'itineraire : chercher un lieu est le premier geste
+ * de la planification, et les deux URL se reglent ensemble. Les interrupteurs qui montrent leurs boutons
+ * sur la carte, eux, restent dans l'onglet "Carte".
  */
 @Composable internal fun RoutesTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    SectionTitle(stringResource(R.string.settings_section_services), tight = true)
-    SettingsCard {
-        FieldRow(stringResource(R.string.settings_section_geocoding_service)) {
-            SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
-        }
-        RowDivider()
-        FieldRow(stringResource(R.string.settings_section_routing_service)) {
-            // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
-            // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie
-            // jamais la requete d'un moteur au serveur du voisin, faute qui echouerait en silence.
-            val moteur = RouteEngine.of(cur.routeEngine)
-            SettingsTextField(cur.routeUrl(moteur), Router.defaultUrlOf(moteur)) {
-                vm.save(cur.withRouteUrl(moteur, it.trim()))
-            }
-        }
-        Hint(stringResource(R.string.settings_services_hint))
-    }
-
-    /*
-     * Le moteur se regle sous l'URL qu'il commande, et en puces plutot qu'en menu : les deux valeurs
-     * restent lisibles d'un coup d'oeil, et basculer de l'une a l'autre est UN tap. C'est la raison
-     * d'etre du reglage - comparer deux moteurs sur le meme trajet, sans rien changer d'autre.
-     */
-    SectionTitle(stringResource(R.string.settings_section_route_engine))
-    SettingsCard {
-        SegChips(RouteEngine.entries.map { it.key to routeEngineLabel(it) }, cur.routeEngine) {
-            vm.save(cur.copy(routeEngine = it))
-        }
-        Hint(stringResource(R.string.settings_route_engine_hint))
-    }
-
-    SectionTitle(stringResource(R.string.settings_section_default_discipline))
+    SectionTitle(stringResource(R.string.settings_section_default_discipline), tight = true)
     SettingsCard {
         RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
     }
@@ -277,6 +248,38 @@ import kotlinx.coroutines.launch
             Hint(stringResource(R.string.settings_services_hint))
         }
     }
+
+    /*
+     * Moteur d'itineraire et services techniques, en fin de liste : ce sont des reglages qu'on pose une
+     * fois puis qu'on oublie, a la difference de la discipline et des preferences de trace, ajustees a
+     * chaque sortie. Le moteur juste avant les services, puisque c'est lui qui decide QUELLE des deux
+     * adresses en dessous est la sienne.
+     */
+    SectionTitle(stringResource(R.string.settings_section_route_engine))
+    SettingsCard {
+        SegChips(RouteEngine.entries.map { it.key to routeEngineLabel(it) }, cur.routeEngine) {
+            vm.save(cur.copy(routeEngine = it))
+        }
+        Hint(stringResource(R.string.settings_route_engine_hint))
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_services))
+    SettingsCard {
+        FieldRow(stringResource(R.string.settings_section_geocoding_service)) {
+            SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
+        }
+        RowDivider()
+        FieldRow(stringResource(R.string.settings_section_routing_service)) {
+            // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
+            // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie
+            // jamais la requete d'un moteur au serveur du voisin, faute qui echouerait en silence.
+            val moteur = RouteEngine.of(cur.routeEngine)
+            SettingsTextField(cur.routeUrl(moteur), Router.defaultUrlOf(moteur)) {
+                vm.save(cur.withRouteUrl(moteur, it.trim()))
+            }
+        }
+        Hint(stringResource(R.string.settings_services_hint))
+    }
 }
 
 /**
@@ -333,6 +336,15 @@ import kotlinx.coroutines.launch
         RowDivider()
         StepperLine(stringResource(R.string.font_cursor_point), cur.profCursorFont, 7, 28,
             bold = cur.profCursorBold, onBold = { vm.save(cur.copy(profCursorBold = it)) }) { vm.save(cur.copy(profCursorFont = it)) }
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(
+                profAxisFont = 9, profAxisBold = false,
+                profTitleFont = 16, profTitleBold = true,
+                profBarFont = 11, profBarBold = false,
+                profLegendFont = 9, profLegendBold = false,
+                profCursorFont = 11, profCursorBold = false,
+            ))
+        }
     }
 }
 

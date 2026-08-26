@@ -312,6 +312,7 @@
     <string name="settings_enable_geocoding">Orts- und Adresssuche aktivieren</string>
     <string name="settings_section_markers">Markierungen (Karte)</string>
     <string name="settings_marker_size">Markierungsgröße (dp)</string>
+    <string name="settings_section_folders">Ordner</string>
     <string name="settings_section_import_folder">Standard-Importordner</string>
     <string name="settings_default_system">Systemstandard</string>
     <string name="settings_section_basemap_control">Kartengrundlagen-Verwaltung</string>

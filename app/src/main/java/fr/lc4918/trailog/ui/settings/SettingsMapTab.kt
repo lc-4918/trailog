@@ -113,6 +113,11 @@ import kotlinx.coroutines.launch
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
+        RowDivider()
+        SwitchLine(
+            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
+            sub = stringResource(R.string.settings_sw_poi_sub),
+        ) { vm.save(cur.copy(poiEnabled = it)) }
     }
 
     SectionTitle(stringResource(R.string.settings_section_track_tools))
@@ -156,13 +161,6 @@ import kotlinx.coroutines.launch
     GroupTitle(stringResource(R.string.settings_group_pois))
     SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
     SettingsCard {
-        // Venu de "Boutons et gestes" : c'est le bouton qui pose la couche sur la carte, et sa rubrique
-        // pertinente est ici, aupres de ce qu'il affiche, plutot que perdu parmi des boutons sans rapport.
-        SwitchLine(
-            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
-            sub = stringResource(R.string.settings_sw_poi_sub),
-        ) { vm.save(cur.copy(poiEnabled = it)) }
-        RowDivider()
         StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
             vm.save(cur.copy(markerSize = it))
         }
@@ -186,6 +184,12 @@ import kotlinx.coroutines.launch
             fractionOf(cur.bubbleOpacityPct, 30, 100),
             { vm.save(cur.copy(bubbleOpacityPct = valueOf(it, 30, 100))) },
         )
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(
+                bubbleFont = 14, bubbleTitleFont = 16,
+                bubblePosition = BubblePosition.BOTTOM_LEFT.key, bubbleOpacityPct = 100,
+            ))
+        }
     }
 
     GroupTitle(stringResource(R.string.settings_group_elevation_profile))

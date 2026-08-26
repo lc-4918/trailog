@@ -312,6 +312,7 @@
     <string name="settings_enable_geocoding">Gaitu leku eta helbideen bilaketa</string>
     <string name="settings_section_markers">Markatzaileak (mapa)</string>
     <string name="settings_marker_size">Markatzaileen tamaina (dp)</string>
+    <string name="settings_section_folders">Karpetak</string>
     <string name="settings_section_import_folder">Inportazioen abiapuntu-karpeta</string>
     <string name="settings_default_system">Sistemaren lehenetsia</string>
     <string name="settings_section_basemap_control">Oinarrizko mapen kudeatzailea</string>

@@ -312,6 +312,7 @@
     <string name="settings_enable_geocoding">Ativar a procura de locais e endereços</string>
     <string name="settings_section_markers">Marcadores (mapa)</string>
     <string name="settings_marker_size">Tamanho dos marcadores (dp)</string>
+    <string name="settings_section_folders">Pastas</string>
     <string name="settings_section_import_folder">Pasta inicial das importações</string>
     <string name="settings_default_system">Predefinição do sistema</string>
     <string name="settings_section_basemap_control">Gestor de mapas base</string>

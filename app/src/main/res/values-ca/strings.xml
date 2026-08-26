@@ -312,6 +312,7 @@
     <string name="settings_enable_geocoding">Activa la cerca de llocs i adreces</string>
     <string name="settings_section_markers">Marcadors (mapa)</string>
     <string name="settings_marker_size">Mida dels marcadors (dp)</string>
+    <string name="settings_section_folders">Carpetes</string>
     <string name="settings_section_import_folder">Carpeta inicial d\'importacions</string>
     <string name="settings_default_system">Per defecte del sistema</string>
     <string name="settings_section_basemap_control">Gestor de mapes base</string>

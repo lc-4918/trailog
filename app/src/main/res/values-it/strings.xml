@@ -312,6 +312,7 @@
     <string name="settings_enable_geocoding">Attiva la ricerca di luoghi e indirizzi</string>
     <string name="settings_section_markers">Indicatori (mappa)</string>
     <string name="settings_marker_size">Dimensione degli indicatori (dp)</string>
+    <string name="settings_section_folders">Cartelle</string>
     <string name="settings_section_import_folder">Cartella di partenza per le importazioni</string>
     <string name="settings_default_system">Predefinito di sistema</string>
     <string name="settings_section_basemap_control">Gestione mappe di base</string>
