@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,6 +60,7 @@ import fr.lc4918.trailog.domain.model.GroupCheck
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
+import androidx.core.graphics.toColorInt
 
 /**
  * Largeur MAXIMALE de la bulle.
@@ -105,8 +105,8 @@ private val TailSize = 14.dp
 fun PoiFilterBubble(
     filters: PoiFilters,
     onFilters: (PoiFilters) -> Unit,
-    onClose: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onClose: () -> Unit = {},
 ) {
     /*
      * L'onglet ouvert survit a la fermeture de la bulle et a une rotation : on revient a ses hebergements
@@ -117,34 +117,31 @@ fun PoiFilterBubble(
      */
     var groupeKey by rememberSaveable { mutableStateOf(PoiGroup.LODGING.key) }
     val groupe = PoiGroup.entries.firstOrNull { it.key == groupeKey } ?: PoiGroup.LODGING
-    BoxWithConstraints(modifier = modifier.widthIn(max = BubbleMaxWidth)) {
-        val bubbleWidth = maxWidth.coerceAtMost(BubbleMaxWidth)
-        Card(
-            modifier = Modifier.width(bubbleWidth),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
+    Card(
+        modifier = modifier.widthIn(max = BubbleMaxWidth).fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        EnTete(filters, onFilters, onClose)
+        Onglets(groupe, filters) { groupeKey = it.key }
+        // La cle du defilement suit l'onglet : chacun garde sa position, et passer de "Pratique" - neuf
+        // lignes - a "Restauration" - deux - ne doit pas ouvrir sur une liste defilee hors de sa fin.
+        val defilement = rememberScrollState()
+        Column(
+            Modifier.height(PanelMaxHeight).verticalScroll(defilement).padding(vertical = 4.dp),
         ) {
-            EnTete(filters, onFilters, onClose)
-            Onglets(groupe, filters) { groupeKey = it.key }
-            // La cle du defilement suit l'onglet : chacun garde sa position, et passer de "Pratique" - neuf
-            // lignes - a "Restauration" - deux - ne doit pas ouvrir sur une liste defilee hors de sa fin.
-            val defilement = rememberScrollState()
-            Column(
-                Modifier.height(PanelMaxHeight).verticalScroll(defilement).padding(vertical = 4.dp),
-            ) {
-                // "Tout le groupe" en tete, avec son etat a trois valeurs : coche, vide, ou entre les deux
-                // quand une partie seulement du groupe est retenue.
-                LigneGroupe(
-                    filters.groupState(groupe),
-                    Color(android.graphics.Color.parseColor(poiGroupColor(groupe))),
-                ) { onFilters(filters.toggleGroup(groupe)) }
-                PoiCategory.of(groupe).forEach { cat ->
-                    LigneCategorie(cat, filters.isShown(cat)) { onFilters(filters.toggle(cat)) }
-                }
+            // "Tout le groupe" en tete, avec son etat a trois valeurs : coche, vide, ou entre les deux
+            // quand une partie seulement du groupe est retenue.
+            LigneGroupe(
+                filters.groupState(groupe),
+                Color(poiGroupColor(groupe).toColorInt()),
+            ) { onFilters(filters.toggleGroup(groupe)) }
+            PoiCategory.of(groupe).forEach { cat ->
+                LigneCategorie(cat, filters.isShown(cat)) { onFilters(filters.toggle(cat)) }
             }
         }
     }
@@ -208,7 +205,7 @@ private fun Onglets(courant: PoiGroup, filters: PoiFilters, onGroup: (PoiGroup) 
     ) {
         PoiGroup.entries.forEach { g ->
             val actif = g == courant
-            val teinte = Color(android.graphics.Color.parseColor(poiGroupColor(g)))
+            val teinte = Color(poiGroupColor(g).toColorInt())
             val cats = PoiCategory.of(g)
             Column(
                 // `clickable` AVANT `clip`, et c'est un test d'interface qui l'a impose : l'ordre
@@ -286,7 +283,7 @@ private fun LigneGroupe(etat: GroupCheck, teinte: Color, onToggle: () -> Unit) {
  */
 @Composable
 private fun LigneCategorie(cat: PoiCategory, retenue: Boolean, onToggle: () -> Unit) {
-    val teinte = Color(android.graphics.Color.parseColor(poiGroupColor(cat.group)))
+    val teinte = Color(poiGroupColor(cat.group).toColorInt())
     val eteint = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
         Modifier.fillMaxWidth()
@@ -332,9 +329,9 @@ fun PoiFilterBubbleAnchored(
     open: Boolean,
     filters: PoiFilters,
     onFilters: (PoiFilters) -> Unit,
-    onClose: () -> Unit,
     tailFromBottom: Dp,
     modifier: Modifier = Modifier,
+    onClose: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = open,
@@ -368,8 +365,13 @@ fun PoiFilterBubbleAnchored(
          *
          * Dessinee APRES la carte, donc par-dessus : posee avant, le fond de la carte l'aurait recouverte.
          */
-        Box(Modifier.widthIn(max = BubbleMaxWidth + TailSize / 2)) {
-            PoiFilterBubble(filters, onFilters, onClose, Modifier.widthIn(max = BubbleMaxWidth).padding(end = TailSize / 2))
+        Box(Modifier.widthIn(max = BubbleMaxWidth + TailSize / 2).padding(start = 8.dp)) {
+            PoiFilterBubble(
+                filters,
+                onFilters,
+                Modifier.widthIn(max = BubbleMaxWidth).padding(end = TailSize / 2),
+                onClose,
+            )
             Box(
                 Modifier.align(Alignment.BottomEnd)
                     .padding(bottom = (tailFromBottom - TailSize / 2).coerceAtLeast(0.dp))
