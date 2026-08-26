@@ -62,15 +62,28 @@ import kotlinx.coroutines.launch
 /**
  * Onglet "Carte" : ce qui s'affiche sur la carte et par-dessus elle.
  *
- * Trois parties, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, ce qu'on y pose, puis ce
- * qui decrit le relief parcouru. Les deux dernieres portent un titre de groupe ; la premiere n'en a pas,
- * elle commence en tete de l'onglet ou il n'y a encore rien dont la distinguer.
+ * Quatre groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, la position, les points
+ * d'interet, puis ce qui decrit le relief parcouru. Tous portent un titre de groupe, y compris le premier
+ * desormais - "Boutons et gestes" reunissait naguere neuf interrupteurs sous une seule rubrique plate ; ils
+ * se repartissent maintenant en quatre sous-rubriques qui disent chacune a quoi elles servent (Position,
+ * Recherche et itineraire, Outils de trace, Affichage).
  *
- * Les libelles des interrupteurs ont perdu leur "Afficher" : la rubrique s'appelle "Boutons et gestes",
- * et le repeter sept fois de suite ne disait rien de plus.
+ * Les libelles des interrupteurs ont perdu leur "Afficher" : le repeter a chaque ligne ne disait rien de
+ * plus que le titre de groupe.
  */
 @Composable internal fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    SectionTitle(stringResource(R.string.settings_section_map_controls), tight = true)
+    /*
+     * Boutons et gestes, en GROUPE et non plus en rubrique unique : onze interrupteurs a la suite ne se
+     * parcouraient qu'en lisant chaque libelle un par un, faute d'un regroupement pour guider l'oeil.
+     *
+     * Le suivi de la carte ("Suivre ma position") a quitte la liste sans retour : il se commande desormais
+     * DEPUIS LA CARTE, au bouton a trois etats du coin bas-droit (cf. MapBottomRightControls), qui allume,
+     * ramene et eteint d'un seul geste la ou ce reglage demandait de rouvrir les reglages. Le reglage
+     * `mapFollowPosition` qu'il portait reste - c'est ce bouton qui l'ecrit desormais - seule la ligne ici
+     * a disparu.
+     */
+    GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
+    SectionTitle(stringResource(R.string.settings_section_position), tight = true)
     SettingsCard {
         // Éteindre la localisation éteint l'alerte d'éloignement avec elle : celle-ci n'a que la position
         // pour matière, et sa cloche resterait sur la carte sans rien pour allumer ni couper le capteur.
@@ -79,44 +92,41 @@ import kotlinx.coroutines.launch
             vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
         }
         RowDivider()
-        // Juste sous la localisation, dont il ne dit que le comportement : il ne déclenche rien de son côté
-        // et ne coûte rien capteur éteint, d'où l'absence du lien croisé que l'alerte, elle, impose.
-        SwitchLine(
-            stringResource(R.string.settings_sw_follow_position), cur.mapFollowPosition,
-            sub = stringResource(R.string.settings_sw_follow_position_sub),
-        ) { vm.save(cur.copy(mapFollowPosition = it)) }
-        RowDivider()
         /*
          * Suivi de trace : la cloche qui previent qu'on s'est ecarte de la trace suivie.
          *
-         * Ici plutot que dans sa propre rubrique, ou elle s'appelait "Afficher le bouton" : c'est un
-         * bouton de la carte comme les sept autres de cette liste, et le nom qu'il portait ne disait
-         * rien de ce qu'il allume. Ses reglages - distance, son - restent ensemble plus bas.
+         * Juste sous la localisation, dont elle depend : c'est un bouton de position comme celui du
+         * dessus, et le nom qu'elle portait avant - "Afficher le bouton" - ne disait rien de ce qu'elle
+         * allume. Ses reglages - distance, son - restent ensemble plus bas, avec le reste du groupe GPS.
          *
-         * Il allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
+         * Elle allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
          * position, et la cloche sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper.
-         * Le lien inverse est tenu par la ligne du bouton GPS, en tete.
+         * Le lien inverse est tenu par la ligne du bouton GPS, juste au-dessus.
          */
         SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
             vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
         }
-        RowDivider()
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_search_route))
+    SettingsCard {
         SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
         RowDivider()
         SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
-        RowDivider()
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_track_tools))
+    SettingsCard {
         SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
-        RowDivider()
-        SwitchLine(
-            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
-            sub = stringResource(R.string.settings_sw_poi_sub),
-        ) { vm.save(cur.copy(poiEnabled = it)) }
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
             sub = stringResource(R.string.settings_sw_track_edit_sub),
         ) { vm.save(cur.copy(trackEditEnabled = it)) }
-        RowDivider()
+    }
+
+    SectionTitle(stringResource(R.string.settings_section_display))
+    SettingsCard {
         // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
         // bouton" en tete de sa propre rubrique, ou le titre portait seul le sens de la ligne. Ce qui
         // regle le PANNEAU qu'il ouvre - largeur, opacite - a rejoint les fonds de plan, onglet Tuiles.
@@ -146,6 +156,13 @@ import kotlinx.coroutines.launch
     GroupTitle(stringResource(R.string.settings_group_pois))
     SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
     SettingsCard {
+        // Venu de "Boutons et gestes" : c'est le bouton qui pose la couche sur la carte, et sa rubrique
+        // pertinente est ici, aupres de ce qu'il affiche, plutot que perdu parmi des boutons sans rapport.
+        SwitchLine(
+            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
+            sub = stringResource(R.string.settings_sw_poi_sub),
+        ) { vm.save(cur.copy(poiEnabled = it)) }
+        RowDivider()
         StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
             vm.save(cur.copy(markerSize = it))
         }

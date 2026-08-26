@@ -471,12 +471,17 @@ fun ColumnScopeMarker.ChipRow(scrollable: Boolean = false, content: @Composable 
     )
 }
 
-/** Bouton plein d'une carte : l'action principale d'une rubrique ("Importer un fichier"). */
+/** Bouton plein d'une carte : l'action principale d'une rubrique ("Importer un fichier"), ou l'une de
+ *  deux actions jumelles d'un en-tete ("Importer" / "Creer un composite", cf. le header de la rubrique
+ *  Fonds de plan personnalises) - d'ou le modifier ouvert, plein par defaut mais reductible a une moitie
+ *  de rangee via [Modifier.weight]. */
 @Composable
-fun ColumnScopeMarker.CardButton(label: String, icon: Painter? = null, onClick: () -> Unit) {
+fun ColumnScopeMarker.CardButton(
+    label: String, icon: Painter? = null, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit,
+) {
     val p = settingsPalette
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = RowPadH, vertical = 6.dp)
+        modifier.padding(horizontal = RowPadH, vertical = 6.dp)
             .height(42.dp).clip(RoundedCornerShape(12.dp)).background(p.accentContainer)
             .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),

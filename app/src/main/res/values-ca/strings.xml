@@ -96,7 +96,6 @@
     <string name="action_hide">Amaga</string>
     <string name="action_hide_folder">Amaga la carpeta</string>
     <string name="action_import">Importa</string>
-    <string name="action_import_mbtiles">Importa un fitxer .mbtiles</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menú</string>
     <string name="action_more">Accions</string>
@@ -115,7 +114,7 @@
     <string name="action_reset_avatar">Restableix l\'avatar</string>
     <string name="action_pin_image">Fixa com a imatge de portada</string>
     <string name="action_unpin_image">Desfixa</string>
-    <string name="action_create_composite">Crea un mapa base compost</string>
+    <string name="action_create_composite">Compost</string>
     <string name="action_reset_defaults">Restableix els valors per defecte</string>
     <string name="action_change_avatar">Canvia l\'avatar</string>
     <string name="action_load_image_from_phone">Carrega una imatge</string>
@@ -321,6 +320,7 @@
     <string name="settings_basemap_control_opacity">Opacitat del plafó: %1$d%%</string>
     <string name="settings_bubble_opacity">Opacitat: %1$d%%</string>
     <string name="settings_section_default_basemap">Mapes base</string>
+    <string name="settings_label_default_basemap">Mapa base predeterminat</string>
     <string name="settings_section_mbtiles_folder">Carpeta de MBTiles</string>
     <string name="settings_app_folder_default">Carpeta de l\'app (per defecte)</string>
     <string name="settings_section_basemaps">Mapes base</string>
@@ -425,6 +425,9 @@
     <string name="profile_no_elevation">Recorregut sense altimetria</string>
 
     <string name="settings_section_map_controls">Botons i gestos</string>
+    <string name="settings_section_position">Posició</string>
+    <string name="settings_section_search_route">Cerca i itinerari</string>
+    <string name="settings_section_track_tools">Eines de traça</string>
     <string name="settings_sw_track_follow">Seguiment de traça</string>
     <string name="settings_group_storage">Emmagatzematge</string>
     <string name="settings_group_interaction">Interacció</string>
@@ -432,8 +435,7 @@
     <string name="settings_group_gps">GPS</string>
     <string name="settings_section_map_buttons">Botons del mapa</string>
     <string name="settings_group_application">Aplicació</string>
-    <string name="settings_section_add_basemap">Afegir un mapa base</string>
-    <string name="settings_section_installed_basemaps">Mapes base instal·lats</string>
+    <string name="settings_section_custom_basemaps">Mapes base personalitzats</string>
     <string name="settings_section_services">Serveis</string>
     <string name="settings_section_profile_calc">Càlcul del perfil</string>
     <string name="settings_section_personalisation">Personalització</string>
@@ -527,8 +529,6 @@
     <string name="route_hills_seek">Acceptar el desnivell</string>
     <string name="route_surface_paved">Mantenir l\'asfalt</string>
     <string name="route_surface_rough">Acceptar els camins</string>
-    <string name="settings_sw_follow_position">Segueix la meva posició</string>
-    <string name="settings_sw_follow_position_sub">El mapa es recentra 5 s després de l\'últim gest. També es controla des del mapa.</string>
     <string name="settings_sw_keep_screen_on">Mantenir la pantalla encesa</string>
     <string name="settings_sw_keep_screen_on_sub">Només durant el seguiment de posició; aquest continua igualment amb la pantalla apagada</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

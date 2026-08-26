@@ -96,7 +96,6 @@
     <string name="action_hide">Ausblenden</string>
     <string name="action_hide_folder">Ordner ausblenden</string>
     <string name="action_import">Importieren</string>
-    <string name="action_import_mbtiles">.mbtiles-Datei importieren</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menü</string>
     <string name="action_more">Aktionen</string>
@@ -115,7 +114,7 @@
     <string name="action_reset_avatar">Avatar zurücksetzen</string>
     <string name="action_pin_image">Als Titelbild anheften</string>
     <string name="action_unpin_image">Lösen</string>
-    <string name="action_create_composite">Kombinierte Kartengrundlage erstellen</string>
+    <string name="action_create_composite">Kombi-Karte</string>
     <string name="action_reset_defaults">Auf Standardwerte zurücksetzen</string>
     <string name="action_change_avatar">Avatar ändern</string>
     <string name="action_load_image_from_phone">Bild laden</string>
@@ -321,6 +320,7 @@
     <string name="settings_basemap_control_opacity">Deckkraft des Bereichs: %1$d%%</string>
     <string name="settings_bubble_opacity">Deckkraft: %1$d%%</string>
     <string name="settings_section_default_basemap">Hintergrundkarten</string>
+    <string name="settings_label_default_basemap">Standard-Kartengrundlage</string>
     <string name="settings_section_mbtiles_folder">MBTiles-Ordner</string>
     <string name="settings_app_folder_default">App-Ordner (Standard)</string>
     <string name="settings_section_basemaps">Kartengrundlagen</string>
@@ -425,6 +425,9 @@
     <string name="profile_no_elevation">Strecke ohne Höhendaten</string>
 
     <string name="settings_section_map_controls">Schaltflächen und Gesten</string>
+    <string name="settings_section_position">Position</string>
+    <string name="settings_section_search_route">Suche und Route</string>
+    <string name="settings_section_track_tools">Werkzeuge für Tracks</string>
     <string name="settings_sw_track_follow">Spurverfolgung</string>
     <string name="settings_group_storage">Speicher</string>
     <string name="settings_group_interaction">Interaktion</string>
@@ -432,8 +435,7 @@
     <string name="settings_group_gps">GPS</string>
     <string name="settings_section_map_buttons">Kartenschaltflächen</string>
     <string name="settings_group_application">Anwendung</string>
-    <string name="settings_section_add_basemap">Hintergrundkarte hinzufügen</string>
-    <string name="settings_section_installed_basemaps">Installierte Hintergrundkarten</string>
+    <string name="settings_section_custom_basemaps">Eigene Kartengrundlagen</string>
     <string name="settings_section_services">Dienste</string>
     <string name="settings_section_profile_calc">Profilberechnung</string>
     <string name="settings_section_personalisation">Personalisierung</string>
@@ -527,8 +529,6 @@
     <string name="route_hills_seek">Steigungen annehmen</string>
     <string name="route_surface_paved">Auf Asphalt bleiben</string>
     <string name="route_surface_rough">Unbefestigtes annehmen</string>
-    <string name="settings_sw_follow_position">Meiner Position folgen</string>
-    <string name="settings_sw_follow_position_sub">Die Karte zentriert 5 s nach der letzten Geste. Auch von der Karte aus bedienbar.</string>
     <string name="settings_sw_keep_screen_on">Bildschirm eingeschaltet lassen</string>
     <string name="settings_sw_keep_screen_on_sub">Nur während der Positionsverfolgung; diese läuft ohnehin bei ausgeschaltetem Bildschirm weiter</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

@@ -96,7 +96,6 @@
     <string name="action_hide">Ezkutatu</string>
     <string name="action_hide_folder">Ezkutatu karpeta</string>
     <string name="action_import">Inportatu</string>
-    <string name="action_import_mbtiles">Inportatu .mbtiles fitxategi bat</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menua</string>
     <string name="action_more">Ekintzak</string>
@@ -115,7 +114,7 @@
     <string name="action_reset_avatar">Berrezarri avatarra</string>
     <string name="action_pin_image">Ainguratu azal-irudi gisa</string>
     <string name="action_unpin_image">Kendu ainguratzea</string>
-    <string name="action_create_composite">Sortu oinarrizko mapa konposatua</string>
+    <string name="action_create_composite">Konposatua</string>
     <string name="action_reset_defaults">Berrezarri balio lehenetsiak</string>
     <string name="action_change_avatar">Aldatu avatarra</string>
     <string name="action_load_image_from_phone">Kargatu irudi bat</string>
@@ -321,6 +320,7 @@
     <string name="settings_basemap_control_opacity">Panelaren opakutasuna: %1$d%%</string>
     <string name="settings_bubble_opacity">Opakutasuna: %1$d%%</string>
     <string name="settings_section_default_basemap">Oinarrizko mapak</string>
+    <string name="settings_label_default_basemap">Oinarrizko mapa lehenetsia</string>
     <string name="settings_section_mbtiles_folder">MBTiles karpeta</string>
     <string name="settings_app_folder_default">Appren karpeta (lehenetsia)</string>
     <string name="settings_section_basemaps">Oinarrizko mapak</string>
@@ -425,6 +425,9 @@
     <string name="profile_no_elevation">Ibilbidea altimetriarik gabe</string>
 
     <string name="settings_section_map_controls">Botoiak eta keinuak</string>
+    <string name="settings_section_position">Kokapena</string>
+    <string name="settings_section_search_route">Bilaketa eta ibilbidea</string>
+    <string name="settings_section_track_tools">Arrasto-tresnak</string>
     <string name="settings_sw_track_follow">Arrastoaren jarraipena</string>
     <string name="settings_group_storage">Biltegiratzea</string>
     <string name="settings_group_interaction">Interakzioa</string>
@@ -432,8 +435,7 @@
     <string name="settings_group_gps">GPS</string>
     <string name="settings_section_map_buttons">Maparen botoiak</string>
     <string name="settings_group_application">Aplikazioa</string>
-    <string name="settings_section_add_basemap">Gehitu oinarrizko mapa</string>
-    <string name="settings_section_installed_basemaps">Instalatutako oinarrizko mapak</string>
+    <string name="settings_section_custom_basemaps">Oinarrizko mapa pertsonalizatuak</string>
     <string name="settings_section_services">Zerbitzuak</string>
     <string name="settings_section_profile_calc">Profilaren kalkulua</string>
     <string name="settings_section_personalisation">Pertsonalizazioa</string>
@@ -527,8 +529,6 @@
     <string name="route_hills_seek">Aldapak onartu</string>
     <string name="route_surface_paved">Asfaltoan segi</string>
     <string name="route_surface_rough">Lur-bideak onartu</string>
-    <string name="settings_sw_follow_position">Nire kokapena jarraitu</string>
-    <string name="settings_sw_follow_position_sub">Mapa 5 s-ra zentratzen da azken keinuaren ondoren. Mapatik ere kontrola daiteke.</string>
     <string name="settings_sw_keep_screen_on">Pantaila piztuta mantendu</string>
     <string name="settings_sw_keep_screen_on_sub">Kokapenaren jarraipenean soilik; jarraipenak aurrera darrai pantaila itzalita ere</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

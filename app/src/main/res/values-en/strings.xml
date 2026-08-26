@@ -96,7 +96,6 @@
     <string name="action_hide">Hide</string>
     <string name="action_hide_folder">Hide folder</string>
     <string name="action_import">Import</string>
-    <string name="action_import_mbtiles">Import an .mbtiles file</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Actions</string>
@@ -115,7 +114,7 @@
     <string name="action_reset_avatar">Reset avatar</string>
     <string name="action_pin_image">Pin as cover image</string>
     <string name="action_unpin_image">Unpin</string>
-    <string name="action_create_composite">Create a composite basemap</string>
+    <string name="action_create_composite">Composite</string>
     <string name="action_reset_defaults">Reset to defaults</string>
     <string name="action_change_avatar">Change avatar</string>
     <string name="action_load_image_from_phone">Load an image</string>
@@ -321,6 +320,7 @@
     <string name="settings_basemap_control_opacity">Panel opacity: %1$d%%</string>
     <string name="settings_bubble_opacity">Opacity: %1$d%%</string>
     <string name="settings_section_default_basemap">Basemaps</string>
+    <string name="settings_label_default_basemap">Default basemap</string>
     <string name="settings_section_mbtiles_folder">MBTiles folder</string>
     <string name="settings_app_folder_default">App folder (default)</string>
     <string name="settings_section_basemaps">Basemaps</string>
@@ -425,6 +425,9 @@
     <string name="profile_no_elevation">Route without elevation data</string>
 
     <string name="settings_section_map_controls">Buttons and gestures</string>
+    <string name="settings_section_position">Position</string>
+    <string name="settings_section_search_route">Search and route</string>
+    <string name="settings_section_track_tools">Track tools</string>
     <string name="settings_sw_track_follow">Track following</string>
     <string name="settings_group_storage">Storage</string>
     <string name="settings_group_interaction">Interaction</string>
@@ -432,8 +435,7 @@
     <string name="settings_group_gps">GPS</string>
     <string name="settings_section_map_buttons">Map buttons</string>
     <string name="settings_group_application">Application</string>
-    <string name="settings_section_add_basemap">Add a basemap</string>
-    <string name="settings_section_installed_basemaps">Installed basemaps</string>
+    <string name="settings_section_custom_basemaps">Custom basemaps</string>
     <string name="settings_section_services">Services</string>
     <string name="settings_section_profile_calc">Profile computation</string>
     <string name="settings_section_personalisation">Personalisation</string>
@@ -527,8 +529,6 @@
     <string name="route_hills_seek">Accept climbs</string>
     <string name="route_surface_paved">Stay on paved</string>
     <string name="route_surface_rough">Accept unpaved</string>
-    <string name="settings_sw_follow_position">Follow my position</string>
-    <string name="settings_sw_follow_position_sub">The map recentres 5 s after the last gesture. Also available from the map.</string>
     <string name="settings_sw_keep_screen_on">Keep the screen on</string>
     <string name="settings_sw_keep_screen_on_sub">While location is being tracked only; tracking carries on with the screen off anyway</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->

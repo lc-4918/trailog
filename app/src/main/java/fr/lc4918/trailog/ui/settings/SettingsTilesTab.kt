@@ -135,17 +135,40 @@ import kotlinx.coroutines.launch
         }
     }
 
-    // Les deux boutons d'ajout sortent de la liste des fonds : on ne confond plus "ce que je peux
-    // ajouter" et "ce que j'ai deja".
-    SectionTitle(stringResource(R.string.settings_section_add_basemap))
+    // En deuxieme, juste apres le fond par defaut : c'est la rubrique qu'on rouvre le plus souvent apres
+    // la premiere visite (activer un fond, y coller une cle d'API), la ou "Fonds de plan personnalises"
+    // ci-dessous ne sert qu'aux quelques fonds qu'on a soi-meme apportes.
+    SectionTitle(stringResource(R.string.settings_section_providers))
     SettingsCard {
-        CardButton(stringResource(R.string.action_import_mbtiles), painterResource(R.drawable.ic_settings_download), onPickMbtiles)
-        CardButton(stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers)) { creatingComposite = true }
+        SetRow(
+            stringResource(R.string.action_manage_providers),
+            sub = stringResource(R.string.settings_providers_subtitle),
+            onClick = { providersDialogOpen = true },
+        ) {
+            RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_manage_providers))
+        }
     }
 
-    if (basemapEntries.isNotEmpty() || composites.isNotEmpty()) {
-        SectionTitle(stringResource(R.string.settings_section_installed_basemaps))
-        SettingsCard {
+    /*
+     * Fonds de plan personnalises : ce qu'on a soi-meme apporte a l'application - importe ou compose -,
+     * a la difference des fonds qu'elle fournit (rubrique Fournisseurs, juste au-dessus). "Ajouter" et
+     * "installes" etaient deux rubriques pour une seule matiere ; importer et composer rejoignent
+     * desormais ce qu'ils remplissent, en en-tete de la liste qu'ils alimentent.
+     */
+    SectionTitle(stringResource(R.string.settings_section_custom_basemaps))
+    SettingsCard {
+        Row(Modifier.fillMaxWidth()) {
+            CardButton(
+                stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_download),
+                modifier = Modifier.weight(1f), onClick = onPickMbtiles,
+            )
+            CardButton(
+                stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers),
+                modifier = Modifier.weight(1f),
+            ) { creatingComposite = true }
+        }
+        if (basemapEntries.isNotEmpty() || composites.isNotEmpty()) {
+            RowDivider()
             basemapEntries.forEachIndexed { i, p ->
                 if (i > 0) RowDivider()
                 val onDelete: (() -> Unit)? = if (!p.builtin) { { vm.deleteProvider(p) } } else null
@@ -156,17 +179,6 @@ import kotlinx.coroutines.launch
                 CompositeRow(c, onToggle = { vm.saveComposite(c.copy(enabled = it)) },
                     onEdit = { editingComposite = c }, onDelete = { vm.deleteComposite(c) })
             }
-        }
-    }
-
-    SectionTitle(stringResource(R.string.settings_section_providers))
-    SettingsCard {
-        SetRow(
-            stringResource(R.string.action_manage_providers),
-            sub = stringResource(R.string.settings_providers_subtitle),
-            onClick = { providersDialogOpen = true },
-        ) {
-            RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_manage_providers))
         }
     }
 
@@ -337,7 +349,7 @@ import kotlinx.coroutines.launch
     val currentLabel = providers.firstOrNull { it.id == current }?.name
         ?: composites.firstOrNull { compositeBasemapId(it.id) == current }?.name
         ?: current
-    SetRow(stringResource(R.string.settings_section_default_basemap), onClick = { open = true }) {
+    SetRow(stringResource(R.string.settings_label_default_basemap), onClick = { open = true }) {
         PickValue(currentLabel, open, { open = false }) {
             providers.forEach { p -> DropdownMenuItem(text = { ProviderOptionLabel(p) }, onClick = { onSelect(p.id); open = false }) }
             composites.forEach { c -> DropdownMenuItem(text = { Text(c.name) }, onClick = { onSelect(compositeBasemapId(c.id)); open = false }) }

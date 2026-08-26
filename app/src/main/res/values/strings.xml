@@ -96,7 +96,6 @@
     <string name="action_hide">Masquer</string>
     <string name="action_hide_folder">Masquer le dossier</string>
     <string name="action_import">Importer</string>
-    <string name="action_import_mbtiles">Importer un fichier .mbtiles</string>
     <string name="action_increase">+</string>
     <string name="action_menu">Menu</string>
     <string name="action_more">Actions</string>
@@ -115,7 +114,7 @@
     <string name="action_reset_avatar">Réinitialiser l\'avatar</string>
     <string name="action_pin_image">Épingler comme image de garde</string>
     <string name="action_unpin_image">Désépingler</string>
-    <string name="action_create_composite">Créer un fond de plan composite</string>
+    <string name="action_create_composite">Composite</string>
     <string name="action_reset_defaults">Réinitialiser les valeurs par défaut</string>
     <string name="action_change_avatar">Changer l\'avatar</string>
     <string name="action_load_image_from_phone">Charger une image</string>
@@ -323,6 +322,7 @@
     <string name="settings_basemap_control_opacity">Opacité du panneau : %1$d%%</string>
     <string name="settings_bubble_opacity">Opacité : %1$d%%</string>
     <string name="settings_section_default_basemap">Fonds de plans</string>
+    <string name="settings_label_default_basemap">Fond par défaut</string>
     <string name="settings_section_mbtiles_folder">Dossier des MBTiles</string>
     <string name="settings_app_folder_default">Dossier de l\'app (défaut)</string>
     <string name="settings_section_basemaps">Fonds de carte</string>
@@ -427,6 +427,9 @@
     <string name="profile_no_elevation">Parcours sans altimétrie</string>
 
     <string name="settings_section_map_controls">Boutons et gestes</string>
+    <string name="settings_section_position">Position</string>
+    <string name="settings_section_search_route">Recherche et itinéraire</string>
+    <string name="settings_section_track_tools">Outils de trace</string>
     <string name="settings_sw_track_follow">Suivi de trace</string>
     <string name="settings_group_storage">Stockage</string>
     <string name="settings_group_interaction">Interaction</string>
@@ -434,8 +437,7 @@
     <string name="settings_group_gps">GPS</string>
     <string name="settings_section_map_buttons">Boutons de la carte</string>
     <string name="settings_group_application">Application</string>
-    <string name="settings_section_add_basemap">Ajouter un fond de plan</string>
-    <string name="settings_section_installed_basemaps">Fonds de plan installés</string>
+    <string name="settings_section_custom_basemaps">Fonds de plan personnalisés</string>
     <string name="settings_section_services">Services</string>
     <string name="settings_section_profile_calc">Calcul du profil</string>
     <string name="settings_section_personalisation">Personnalisation</string>
@@ -529,8 +531,6 @@
     <string name="route_hills_seek">Accepter le dénivelé</string>
     <string name="route_surface_paved">Rester sur le revêtu</string>
     <string name="route_surface_rough">Accepter les chemins</string>
-    <string name="settings_sw_follow_position">Suivre ma position</string>
-    <string name="settings_sw_follow_position_sub">La carte se recentre 5 s après le dernier geste. Se commande aussi depuis la carte.</string>
     <string name="settings_sw_keep_screen_on">Garder l\'écran allumé</string>
     <string name="settings_sw_keep_screen_on_sub">Pendant le suivi de position seulement ; celui-ci continue de toute façon écran éteint</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
