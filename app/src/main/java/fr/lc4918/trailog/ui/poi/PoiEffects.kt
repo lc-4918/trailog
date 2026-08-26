@@ -43,6 +43,11 @@ fun PoiEffects(
     idleTick: Int,
     markerPx: Float,
     styleTick: Int,
+    /** La camera a-t-elle atteint sa place de depart (cf. rememberCameraPlacement). Tant que non, le seul
+     *  arret de camera a lire est celui du cadrage PROVISOIRE ou la MapView vient de naitre - loin, en
+     *  general, de la ou l'on a laisse la carte - et lui demander s'il est "trop loin" fait clignoter
+     *  l'avertissement de zoom au demarrage avant de se corriger de lui-meme. */
+    positioned: Boolean,
 ) {
     val ctx = LocalContext.current
 
@@ -50,8 +55,9 @@ fun PoiEffects(
 
     // osmComplement est une CLE, comme les filtres : c'est une source de plus a interroger, et l'allumer
     // doit relancer le chargement sans attendre qu'on deplace la carte.
-    LaunchedEffect(state.visible, idleTick, filters, osmComplement) {
+    LaunchedEffect(state.visible, idleTick, filters, osmComplement, positioned) {
         if (!state.visible) return@LaunchedEffect
+        if (!positioned) return@LaunchedEffect
         // Le zoom se lit AVANT l'attente et la requete, et le message se leve avec lui : la camera est deja
         // posee quand cet effet part (il suit l'arret de la carte), et attendre pour le lever laissait
         // l'ecran reclamer un zoom qu'on venait de faire.

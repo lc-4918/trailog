@@ -544,6 +544,7 @@ fun MainScreen(
         idleTick = idleTick,
         markerPx = markerPx,
         styleTick = styleTick,
+        positioned = positioned,
     )
     /*
      * Un point d'interet CONSULTE alimente l'historique du planificateur (cf. PlannerHistory), sans

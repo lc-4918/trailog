@@ -10,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import fr.lc4918.trailog.data.LocalePrefs
+import fr.lc4918.trailog.data.ThemePrefs
 import fr.lc4918.trailog.data.imp.ImportInbox
 import fr.lc4918.trailog.ui.nav.AppRoot
 import fr.lc4918.trailog.ui.theme.TrailogTheme
@@ -30,10 +31,14 @@ class MainActivity : ComponentActivity() {
         // la boite, l'ecran lui demandera son dossier des qu'il sera compose.
         ImportInbox.offer(ImportInbox.urisOf(intent))
         val repo = (application as TrailogApp).repository
+        // Lu de façon synchrone, avant la première composition : le Flow des réglages (Room) ne livre sa
+        // première valeur qu'un instant plus tard, et sans ce repli la première image affichait le thème
+        // système avant de basculer sur celui choisi (cf. ThemePrefs).
+        val cachedTheme = ThemePrefs.get(this)
         setContent {
             val settings by repo.settingsFlow.collectAsState(initial = null)
             // La couleur des icônes de la barre de statut est gérée dans MainScreen.
-            TrailogTheme(themePref = settings?.theme ?: "system") {
+            TrailogTheme(themePref = settings?.theme ?: cachedTheme) {
                 // Tant que les réglages chargent, pas de vérification : on ne connaît pas encore le mode.
                 AppRoot(autoCheckUpdates = settings?.updateCheckMode == "auto")
             }

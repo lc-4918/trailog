@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.TrailogApp
 import fr.lc4918.trailog.data.LocalePrefs
+import fr.lc4918.trailog.data.ThemePrefs
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
@@ -61,7 +62,13 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _pendingProvidersImport = MutableStateFlow<List<ProviderExportEntry>?>(null)
     val pendingProvidersImport = _pendingProvidersImport.asStateFlow()
 
-    fun save(s: SettingsEntity) = viewModelScope.launch { repo.settings.upsert(s) }
+    fun save(s: SettingsEntity) = viewModelScope.launch {
+        // Tenu a jour a chaque sauvegarde, meme quand ce n'est pas le theme qui a change : c'est ce cache,
+        // et non la base, que MainActivity relit au demarrage suivant avant que Room n'ait repondu (cf.
+        // ThemePrefs).
+        ThemePrefs.set(getApplication<Application>(), s.theme)
+        repo.settings.upsert(s)
+    }
 
     // ---------- cache des points d'interet ----------
 
@@ -148,6 +155,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         repo.settings.upsert(SettingsEntity())
         LocalePrefs.set(ctx, "fr")
+        ThemePrefs.set(ctx, SettingsEntity().theme)
         val seedEnabled = Providers.defaults().associate { it.id to it.enabled }
         val toReset = providers.value.mapNotNull { p ->
             val defaultEnabled = seedEnabled[p.id] ?: return@mapNotNull null
