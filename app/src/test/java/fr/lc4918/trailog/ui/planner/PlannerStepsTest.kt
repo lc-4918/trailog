@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.planner
 
+import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.domain.model.TrackStats
 import fr.lc4918.trailog.geocode.GeocodePlace
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -314,5 +317,92 @@ class PlannerStepsTest {
         etat.collapse(false)
         assertTrue(etat.open)
         assertFalse(etat.collapsed)
+    }
+
+    // ---------- Un planificateur vide se traite comme deja ferme ----------
+
+    private val parcoursVide = ComputedTrack(
+        samples = listOf(
+            Sample(0.0, 210.0, 0.0, null, 5.70, 45.20),
+            Sample(120.0, 224.0, 11.6, null, 5.71, 45.21),
+        ),
+        stats = TrackStats(120.0, 14.0, 0.0, 210.0, 224.0, 11.6, null, 2),
+        hasZ = true,
+        hasTime = false,
+    )
+
+    @Test fun `un planificateur tout juste ouvert est vide`() {
+        val etat = RoutePlannerState()
+        assertTrue(etat.isEmpty)
+    }
+
+    @Test fun `une etape choisie n'est plus vide`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        assertFalse(etat.isEmpty)
+    }
+
+    /** La position actuelle ne compte pas comme une saisie : elle se pose toute seule a l'ouverture (cf.
+     *  openPlanner(fromCurrentPosition = true)), et non par un geste de l'utilisateur. */
+    @Test fun `la position actuelle seule reste vide`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner(fromCurrentPosition = true)
+        assertEquals(StepTarget.CurrentPosition, etat.steps.first().target)
+        assertTrue(etat.isEmpty)
+    }
+
+    /** Une frappe en cours compte deja, avant meme qu'un lieu soit choisi. */
+    @Test fun `une frappe en cours n'est plus vide`() {
+        val etat = RoutePlannerState()
+        etat.type(etat.steps.first(), "Mir")
+        assertFalse(etat.isEmpty)
+    }
+
+    @Test fun `un parcours calcule n'est plus vide`() {
+        val etat = RoutePlannerState()
+        etat.publish(RouteState.Done(120.0, 600.0, parcoursVide))
+        assertFalse(etat.isEmpty)
+    }
+
+    /**
+     * Reduire un planificateur vide le ferme au lieu de le ranger : il n'y a rien a retrouver plus tard,
+     * et le laisser "ouvert-reduit" allumerait pour rien le bouton de la carte.
+     */
+    @Test fun `reduire un planificateur vide le ferme`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.collapseOrClose()
+        assertFalse("ferme, pas seulement reduit", etat.open)
+        assertFalse(etat.collapsed)
+    }
+
+    /** Un planificateur qui porte quelque chose se reduit normalement, sans se fermer. */
+    @Test fun `reduire un planificateur rempli le range`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.collapseOrClose()
+        assertTrue("range, pas ferme", etat.open)
+        assertTrue(etat.collapsed)
+    }
+
+    /** La croix de l'en-tete ferme sans rien demander quand il n'y a rien a perdre. */
+    @Test fun `la croix sur un planificateur vide ferme sans demander`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.requestClose()
+        assertFalse(etat.open)
+        assertFalse("aucune question posee", etat.cancelDialog)
+    }
+
+    /** Elle demande des qu'il y a une saisie en cours, un lieu pose, ou un parcours calcule a perdre -
+     *  la meme question que le retour Android sur une bande repliee. */
+    @Test fun `la croix sur un planificateur rempli demande`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.requestClose()
+        assertTrue("le planificateur reste ouvert", etat.open)
+        assertTrue("la question est posee", etat.cancelDialog)
     }
 }

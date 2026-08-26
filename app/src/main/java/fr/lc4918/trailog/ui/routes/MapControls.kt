@@ -189,7 +189,7 @@ internal fun BoxScope.MapTopLeftControls(
                 // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
                 // planificateur se replie dans son coin (son trajet, lui, est conservé).
                 vm.closeProfile()
-                if (planner.open) planner.collapse(true)
+                if (planner.open) planner.collapseOrClose()
                 measure.open()
             }, modifier = chrome.buttonBackground) {
                 Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title), tint = chrome.fg)
@@ -358,7 +358,14 @@ internal fun BoxScope.MapBottomRightControls(
     // bloc, sans que le bas de l'ecran serre plus que ses propres intervalles. La barre de
     // navigation l'emporte si elle est plus haute - un bouton ne se glisse pas dessous.
     val navBottomDp = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
-    Column(
+    /*
+     * Toute la colonne s'efface tant que la bande du planificateur est DEPLOYEE : elle occupe alors le bas
+     * de l'ecran, et ces boutons-la se poseraient dessous, invisibles et pourtant touchables sous un aplat
+     * opaque. Reduite ou fermee, la colonne reparait telle quelle - c'est la meme raison qui suspend deja
+     * le suivi continu de la position et le premier saut de camera a l'activation du GPS (cf.
+     * MapFollow.follows, LocationControls.startGps).
+     */
+    if (!planner.expanded) Column(
         Modifier.align(Alignment.BottomEnd)
             .padding(end = 8.dp, bottom = maxOf(MapControlSpacing, navBottomDp)),
         verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
@@ -394,6 +401,10 @@ internal fun BoxScope.MapBottomRightControls(
          *
          * Le planificateur, lui, ne bouge pas pour autant : la colonne est alignee en bas, et c'est ce
          * bouton-ci qui s'ajoute ou se retire par le haut.
+         *
+         * Il dit l'etat reel des le retour de la colonne (bande reduite ou fermee) - inactif si le suivi
+         * ne l'etait pas deja, actif mais decentre si le capteur a tourne sans que la camera n'ait pu
+         * suivre, la bande deployee lui en ayant empeche l'occasion (cf. LocationControls.startGps).
          */
         if (location.gpsActive) {
             val suit = settings.mapFollowPosition
@@ -532,12 +543,11 @@ internal fun BoxScope.MapBottomRightControls(
                 }
             }
         }
-        // Masqué tant que sa bande est DÉPLOYÉE, qu'il ne servirait qu'à rouvrir. Réduite, il
-        // reparaît et redéploie le trajet en cours : c'est le MÊME bouton qui ouvre et qui
-        // rouvre. La bande réduite posait auparavant son propre bouton au coin bas-gauche, si
-        // bien qu'un itinéraire en cours en affichait un à chaque bout de l'écran - deux cibles
-        // pour une seule fonction, et rien pour dire laquelle faisait quoi.
-        if (settings.routePlannerEnabled && !planner.expanded) {
+        // Réduite, il reparaît et redéploie le trajet en cours : c'est le MÊME bouton qui ouvre
+        // et qui rouvre. La bande réduite posait auparavant son propre bouton au coin bas-gauche,
+        // si bien qu'un itinéraire en cours en affichait un à chaque bout de l'écran - deux
+        // cibles pour une seule fonction, et rien pour dire laquelle faisait quoi.
+        if (settings.routePlannerEnabled) {
             IconButton(onClick = {
                 when {
                     // Trajet en cours, simplement rangé : on le redéploie tel quel. Aucune
@@ -547,12 +557,15 @@ internal fun BoxScope.MapBottomRightControls(
                     ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> onNoConnection()
                     else -> {
                         vm.closeProfile()          // les deux occupent le bas de l'écran
-                        // Le suivi allumé : on part d'où l'on est. Le départ seulement, et
-                        // sur ce bouton seulement : les infobulles, elles, posent le lieu
-                        // qu'on vient de toucher à l'un des deux bouts et complètent l'AUTRE
-                        // (cf. RoutePlannerState.setStart) ; leur "Étape", qui remplit la
-                        // première ligne vierge, ne pré-remplit rien.
-                        planner.openPlanner(fromCurrentPosition = location.gpsActive)
+                        // Le CAPTEUR allumé suffit : on part d'où l'on est. Pas le suivi
+                        // (gpsActive), qui ne dit que si le repère est posé sur la carte - ce
+                        // départ-ci se CALCULE à partir de la position, comme une mesure de
+                        // distance, et ne demande rien de plus (cf. LocationControls.sensorEnabled).
+                        // Le départ seulement, et sur ce bouton seulement : les infobulles, elles,
+                        // posent le lieu qu'on vient de toucher à l'un des deux bouts et
+                        // complètent l'AUTRE (cf. RoutePlannerState.setStart) ; leur "Étape", qui
+                        // remplit la première ligne vierge, ne pré-remplit rien.
+                        planner.openPlanner(fromCurrentPosition = location.sensorEnabled)
                         planner.chooseProfile(RoutingProfile.of(settings.routingProfile))
                     }
                 }

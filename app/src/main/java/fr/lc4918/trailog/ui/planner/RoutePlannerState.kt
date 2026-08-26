@@ -271,11 +271,29 @@ class RoutePlannerState {
     }
 
     /**
-     * Le retour Android demande a abandonner le trajet : la question est posee, rien n'est encore perdu.
+     * Le trajet n'a encore rien de reel : chaque etape est soit vierge - ni lieu choisi, ni frappe en
+     * cours -, soit posee sur LA POSITION ACTUELLE - le seul depart qu'on n'a pas choisi soi-meme, pose
+     * tout seul a l'ouverture (cf. [openPlanner]) - et aucun parcours n'est affiche.
      *
-     * Elle ne se pose qu'au retour, et sur une bande DEJA repliee - le premier appui replie, le second
-     * demande. La croix de l'en-tete, elle, ferme sans rien demander : c'est un geste vise, pose sur le
-     * bouton qui dit "fermer", quand le retour est le meme geste que celui qui quitte l'application.
+     * La position actuelle compte comme vierge parce qu'elle ne l'est jamais devenue par un geste : elle
+     * y arrive d'elle-meme quand le suivi est allume, et fermer sans demander ne perd donc rien que
+     * l'utilisateur ait pose.
+     *
+     * Sert a traiter un planificateur vide COMME S'IL ETAIT DEJA FERME (cf. [collapseOrClose],
+     * [requestClose]) : il n'y a rien a retrouver en le rangeant, et rien a perdre en le fermant, donc rien
+     * qui vaille de le demander ni de laisser le bouton de la carte s'allumer pour lui.
+     */
+    val isEmpty: Boolean get() =
+        steps.all { (it.target == null && it.query.isBlank()) || it.target == StepTarget.CurrentPosition } &&
+            route == RouteState.Idle
+
+    /**
+     * Le retour Android, ou la croix de l'en-tete, demandent a abandonner le trajet : la question est
+     * posee, rien n'est encore perdu.
+     *
+     * Elle ne se pose que s'il y a quelque chose a perdre (cf. [isEmpty]) : une saisie en cours, une etape
+     * deja posee, ou un parcours calcule. Un planificateur vide se ferme sans un mot, par la croix comme
+     * par le retour - il n'y a rien a demander confirmer pour une feuille qui n'a jamais ete ecrite.
      */
     var cancelDialog by mutableStateOf(false)
         private set
@@ -301,7 +319,24 @@ class RoutePlannerState {
         revision++
     }
 
+    /**
+     * La croix de l'en-tete : ferme tout de suite si le planificateur est vide, demande sinon (cf.
+     * [isEmpty], [cancelDialog]).
+     */
+    fun requestClose() {
+        if (isEmpty) close() else askCancel()
+    }
+
     fun collapse(v: Boolean) { collapsed = v }
+
+    /**
+     * Le bouton "reduire" : range la bande dans son coin - ou ferme, si elle ne porte rien a retrouver
+     * plus tard (cf. [isEmpty]). La reduire quand meme laisserait le bouton de la carte s'allumer pour un
+     * planificateur vide, comme s'il gardait un trajet en cours.
+     */
+    fun collapseOrClose() {
+        if (isEmpty) close() else collapse(true)
+    }
 
     /**
      * La bande OCCUPE l'ecran, par opposition a [open], qui dit seulement qu'un trajet existe.

@@ -50,7 +50,10 @@ import fr.lc4918.trailog.ui.settings.routingProfileLabel
  *
  * **Ce qui les distingue.** La bulle d'un waypoint montre des PROPRIETES, chargees apres le tap, et se
  * place a la position reglee dans les preferences. Les trois autres montrent un LIEU, connu d'emblee, et
- * les deux dernieres se posent dans celui des quatre coins qui deplace le moins la carte.
+ * les deux dernieres se posent dans celui des quatre coins qui deplace le moins la carte. Celle d'un point
+ * d'interet suit la position reglee comme le waypoint - SAUF la bande du planificateur deployee, ou elle
+ * bascule exceptionnellement sur le meme coin le moins genant, pour ne pas s'ouvrir dessous (cf.
+ * PlaceBubblesLayer, param bandHeightPx).
  */
 
 /**
@@ -172,6 +175,8 @@ internal fun BoxScope.PlaceBubblesLayer(
     imperial: Boolean,
     idleTick: Int,
     moveTick: Int,
+    /** Hauteur de la bande du planificateur DEPLOYEE, 0 sinon (cf. MapInsetsState.plannerBandPx). */
+    bandHeightPx: Int,
     onOpenPlanner: () -> Unit,
     onDistanceFromPosition: () -> Unit,
     onDistanceFromPoint: () -> Unit,
@@ -190,12 +195,24 @@ internal fun BoxScope.PlaceBubblesLayer(
             AnchoredBubble(
                 key = selPoi.uuid,
                 publish = true,
-                // La position reglee pour les infobulles (cf. BubblePosition), et non le coin
-                // qui deplace le moins la carte : un point d'interet est un marqueur comme un
-                // autre, son infobulle doit s'ouvrir la ou l'utilisateur l'attend.
-                panAllowed = frame.position != BubblePosition.AUTO,
+                /*
+                 * La position reglee pour les infobulles (cf. BubblePosition), et non le coin qui
+                 * deplace le moins la carte : un point d'interet est un marqueur comme un autre, son
+                 * infobulle doit s'ouvrir la ou l'utilisateur l'attend.
+                 *
+                 * SAUF la bande du planificateur DEPLOYEE : elle occupe alors le bas de l'ecran, et le
+                 * reglage pourrait y poser la bulle dessous, invisible sous un aplat opaque. Exception
+                 * assumee, au meme coin que le lieu trouve ou le point designe (cf. atNearestCorner) :
+                 * celui des quatre qui deplace le moins la carte, calcule sur ce qu'il reste de vue au-
+                 * dessus de la bande plutot que sur l'ecran entier.
+                 */
+                panAllowed = if (bandHeightPx > 0) true else frame.position != BubblePosition.AUTO,
                 onPan = frame.pan,
-                placement = { bw, bh, vw, vh -> frame.geom.at(frame.position, pOff.x, pOff.y, bw, bh, vw, vh) },
+                placement = { bw, bh, vw, vh ->
+                    if (bandHeightPx > 0)
+                        frame.geom.atNearestCorner(pOff.x, pOff.y, bw, bh, vw, (vh - bandHeightPx).coerceAtLeast(0))
+                    else frame.geom.at(frame.position, pOff.x, pOff.y, bw, bh, vw, vh)
+                },
             ) {
                 PoiBubble(
                     poi = selPoi,

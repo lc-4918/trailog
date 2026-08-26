@@ -449,6 +449,8 @@ internal fun MainDialogs(
     followed: TrackWatch.Followed?,
     imperial: Boolean,
     alertDistanceM: Int,
+    /** Le reglage "Emettre un son" de l'alerte d'eloignement (cf. TrackChooserDialog). */
+    alertSoundEnabled: Boolean,
     currentPositionLabel: String,
     onPickImage: (((String) -> Unit)) -> Unit,
     routeGpx: (String) -> ByteArray?,
@@ -545,6 +547,7 @@ internal fun MainDialogs(
             candidates = alert.candidates,
             followed = followed,
             imperial = imperial,
+            soundEnabled = alertSoundEnabled,
             onPick = { alert.follow(it, alertDistanceM.toDouble()) },
             onStop = { TrackWatch.stop(); alert.closeChooser() },
             onDismiss = { alert.closeChooser() },

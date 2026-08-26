@@ -174,8 +174,8 @@ fun RoutePlannerBand(
         ) {
             BandHeader(
                 recomputing = state.recomputing,
-                onCollapse = { state.collapse(true) },
-                onClose = { state.close() },
+                onCollapse = { state.collapseOrClose() },
+                onClose = { state.requestClose() },
             )
             RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
             StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,

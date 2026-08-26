@@ -115,6 +115,19 @@ class LocationControls internal constructor(
      *  consomme des que la prochaine position arrive. */
     private var pendingCenter by mutableStateOf(false)
 
+    /**
+     * La bande du planificateur est DEPLOYEE : elle cadre le trajet qu'on compose, et l'ecran maintient
+     * deja le suivi CONTINU en pause pour cette raison (cf. MapFollow.follows). Ce drapeau evite le meme
+     * accroc au premier saut - celui qu'[startGps] ferait sur la derniere position connue, ou celui
+     * qu'[onFix] ferait sur la premiere mesure recue - qui sauterait hors du trajet qu'on est en train de
+     * regarder.
+     *
+     * Tenu a jour depuis l'ecran (cf. rememberLocationControls), au meme titre que les proprietes du
+     * controleur de carte : ce n'est pas ce porteur qui connait le planificateur, seulement s'il occupe
+     * l'ecran.
+     */
+    var plannerExpanded: Boolean = false
+
     /** Geste mis en attente de l'autorisation : rejoue des qu'elle est accordee. L'autorisation se demande
      *  depuis plusieurs endroits (le bouton de position, mais aussi le planificateur et la mesure depuis la
      *  position), et chacun a sa propre suite a donner. */
@@ -191,6 +204,10 @@ class LocationControls internal constructor(
         askNotificationPermission()
         LocationHub.wantTracking()
         LocationService.start(ctx)
+        // Le planificateur DEPLOYE cadre deja le trajet qu'on compose : sauter sur la position a
+        // l'instant meme ou on allume le capteur l'emporterait hors de l'ecran. Le repere se pose quand
+        // meme - c'est le service qui le fait, plus bas - seule la camera ne bouge pas.
+        if (plannerExpanded) { pendingCenter = false; return }
         // Le cadrage reste ici, et lui seul : le service pose le repere, l'ecran decide de ce que la camera
         // en fait. La derniere position connue est relue plutot qu'attendue du flux - c'est elle qui
         // distingue les deux cadrages, un saut au zoom 15 sur un point qu'on tient deja, un simple
@@ -268,10 +285,11 @@ class LocationControls internal constructor(
         if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
     }
 
-    /** Une position de plus : le repere se deplace, et la camera le suit si un recentrage etait du. */
+    /** Une position de plus : le repere se deplace, et la camera le suit si un recentrage etait du - sauf
+     *  si le planificateur deploye l'interdit entre-temps (cf. [plannerExpanded]). */
     internal fun onFix(fix: LocationHub.Fix) {
         controller.setUserLocation(fix.lon, fix.lat, fix.accuracyM)
-        if (pendingCenter) { controller.centerOn(fix.lat, fix.lon); pendingCenter = false }
+        if (pendingCenter && !plannerExpanded) { controller.centerOn(fix.lat, fix.lon); pendingCenter = false }
     }
 
     /** Suivi arrete : plus de repere. */

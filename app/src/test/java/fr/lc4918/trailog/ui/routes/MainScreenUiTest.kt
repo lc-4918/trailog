@@ -13,13 +13,16 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.location.LocationHub
+import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapSurface
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -115,6 +118,11 @@ class MainScreenUiTest {
 
     private fun texte(res: Int) =
         compose.onAllNodesWithText(libelle(res)).fetchSemanticsNodes().isNotEmpty()
+
+    /** Meme chose sur un texte brut, non tire des ressources - une frappe en cours dans un champ, par
+     *  exemple, qui n'a pas de libelle traduit a chercher. */
+    private fun texteBrut(s: String) =
+        compose.onAllNodesWithText(s).fetchSemanticsNodes().isNotEmpty()
 
     /**
      * Reellement SOUS LES YEUX, et pas seulement present dans l'arbre.
@@ -322,9 +330,17 @@ class MainScreenUiTest {
         reglage.copy(routePlannerEnabled = true, routeEngine = "brouter",
             routingUrlBrouter = "http://127.0.0.1:1")
 
+    /**
+     * Ouvre le calcul, et attend l'ARRIVEE - jamais le depart.
+     *
+     * Le capteur est traite comme allume dans cet environnement de test (cf. LocationControls.
+     * sensorEnabled), si bien que le depart se pre-remplit de "Position actuelle" des l'ouverture (cf.
+     * RoutePlannerState.startFromCurrentPosition) : son placeholder "Depart" ne s'affiche donc jamais ici.
+     * L'arrivee, elle, ne se pre-remplit jamais - c'est le seul signal fiable que la bande est deployee.
+     */
     private fun ouvreLeCalcul() {
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
-        attend { texte(R.string.planner_start) }
+        attend { texte(R.string.planner_end) }
     }
 
     /**
@@ -341,20 +357,49 @@ class MainScreenUiTest {
         attend { affiche(R.string.planner_title) }
         ouvreLeCalcul()
         assertFalse("le bouton s'efface sous sa propre bande", affiche(R.string.planner_title))
+        // Un planificateur VIDE se fermerait au lieu de se reduire (cf. RoutePlannerState.isEmpty) : une
+        // frappe le rend non vide, et sert ici a verifier que reduire garde bien CE trajet-la, plutot que
+        // d'en rouvrir un autre qui se lirait pareil a l'ecran. Sur l'ARRIVEE et non le depart : celui-ci
+        // porte deja "Position actuelle" dans cet environnement de test (cf. ouvreLeCalcul).
+        compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
 
         // EN PLEIN MILIEU du bouton, et c'est le point du test : la bande de 24 dp du bord gauche qui
         // ouvre le menu au glissement recouvrait exactement ce centre-la, et prenait le tap.
         compose.onNodeWithContentDescription(libelle(R.string.planner_collapse)).performClick()
         attend { affiche(R.string.planner_title) }
-        assertFalse("la bande s'est retiree de l'ecran", texte(R.string.planner_start))
+        assertFalse("la bande s'est retiree de l'ecran", texteBrut("Mire"))
 
-        // Et il redeploie le trajet en cours, au lieu d'en commencer un autre.
+        // Et il redeploie le trajet en cours, au lieu d'en commencer un autre : le champ retrouve sa
+        // frappe.
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
-        attend { texte(R.string.planner_start) }
+        attend { texteBrut("Mire") }
     }
 
     /**
-     * Le retour Android replie d'abord, et DEMANDE ensuite.
+     * Un planificateur VIDE - rien saisi, rien calcule, la position actuelle mise a part - se ferme sur un
+     * seul appui, sans repli intermediaire : il n'y a rien a retrouver en le rangeant (cf.
+     * RoutePlannerState.isEmpty), et le bouton de la carte doit rouvrir une feuille vierge, pas un trajet
+     * qu'on croirait "en cours".
+     */
+    @Test fun `le retour sur un calcul vide ferme d'un seul appui`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+
+        retour()
+        attend { affiche(R.string.planner_title) }
+        assertFalse("la bande a disparu", texte(R.string.planner_end))
+        assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
+
+        // Le bouton rouvre une feuille vierge : rien ne distingue plus ce planificateur de celui
+        // qu'on ouvrirait pour la premiere fois.
+        compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
+        attend { texte(R.string.planner_end) }
+    }
+
+    /**
+     * Le retour Android replie d'abord, et DEMANDE ensuite - des qu'il y a quelque chose a perdre.
      *
      * Il quittait le calcul d'un seul appui, emportant un trajet compose etape par etape - et c'est le
      * meme geste que celui qui quitte l'application, donc celui qu'on fait sans y penser.
@@ -364,10 +409,13 @@ class MainScreenUiTest {
         ecran()
         attend { affiche(R.string.planner_title) }
         ouvreLeCalcul()
+        // Une frappe suffit a rendre le planificateur non vide, avant meme qu'un lieu soit choisi. Sur
+        // l'arrivee : le depart porte deja "Position actuelle" (cf. ouvreLeCalcul).
+        compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
 
         retour()
         attend { affiche(R.string.planner_title) }
-        assertFalse("la bande s'est repliee", texte(R.string.planner_start))
+        assertFalse("la bande s'est repliee", texteBrut("Mire"))
         assertFalse("et rien n'est demande au premier appui", texte(R.string.planner_cancel_title))
 
         retour()
@@ -379,21 +427,55 @@ class MainScreenUiTest {
         compose.onNodeWithText(libelle(R.string.action_no)).performClick()
         attend { !texte(R.string.planner_cancel_title) }
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
-        attend { texte(R.string.planner_start) }
+        attend { texteBrut("Mire") }
     }
 
-    /** La croix de l'en-tete, elle, ferme sans rien demander : c'est un geste vise, pose sur le bouton qui
-     *  dit "fermer". */
-    @Test fun `la croix du calcul ferme sans rien demander`() {
+    /** La croix de l'en-tete ferme sans rien demander un planificateur VIDE : c'est un geste vise, pose sur
+     *  le bouton qui dit "fermer", et il n'y a rien a perdre. */
+    @Test fun `la croix du calcul vide ferme sans rien demander`() {
         reglages { calculLocal(it) }
         ecran()
         attend { affiche(R.string.planner_title) }
         ouvreLeCalcul()
 
         compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
-        attend { !texte(R.string.planner_start) }
+        attend { !texte(R.string.planner_end) }
         assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
         assertTrue("le bouton est revenu", affiche(R.string.planner_title))
+    }
+
+    /** Des qu'il y a une saisie en cours, la croix pose la MEME question que le retour Android replie -
+     *  ce n'est plus un geste vise sur une feuille vierge, mais sur un trajet qu'on est en train d'ecrire. */
+    @Test fun `la croix du calcul rempli demande avant de le perdre`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+        compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
+
+        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
+        attend { texte(R.string.planner_cancel_title) }
+        assertTrue("le planificateur reste ouvert derriere la question", texte(R.string.planner_cancel_question))
+    }
+
+    /**
+     * Le depart se pre-remplit de la position actuelle des que le CAPTEUR est allume - pas besoin que le
+     * suivi de la carte (le bouton "Localisation GPS") tourne pour autant.
+     *
+     * `suiviEteint()` coupe le suivi avant chaque test (cf. `@Before`) : `gpsActive` vaut donc deja faux
+     * ici, sans qu'aucun geste de ce test ne l'allume. Seul `sensorEnabled` - la localisation allumee dans
+     * le telephone, que cet environnement de test traite comme telle par defaut - explique le
+     * pre-remplissage qui suit.
+     */
+    @Test fun `le depart part de la position sans que le suivi tourne`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+
+        val garde = ViewModelProvider(compose.activity)[MapScreenStates::class.java]
+        assertEquals("le depart part d'ou l'on est, sans que le suivi ait ete allume",
+            StepTarget.CurrentPosition, garde.planner.steps.first().target)
     }
 
     /**

@@ -71,7 +71,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = null, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText("GR 9").assertIsDisplayed()
@@ -85,7 +85,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "Traversee", 30.0, index = 1, count = 3)),
-                followed = null, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_track_segment, "Traversee", 2, 3))
@@ -96,7 +96,7 @@ class OffTrackAlertUiTest {
         var choisie: TrackCandidate? = null
         val c = candidate(1, "GR 9", 30.0)
         compose.setContent {
-            TrackChooserDialog(listOf(c), null, false, onPick = { choisie = it }, onStop = {}, onDismiss = {})
+            TrackChooserDialog(listOf(c), null, false, true, onPick = { choisie = it }, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText("GR 9").performClick()
         assertEquals(c, choisie)
@@ -115,7 +115,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = suivie, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+                followed = suivie, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertIsDisplayed()
@@ -127,7 +127,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = suivie, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+                followed = suivie, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         assertEquals(1, compose.onAllNodesWithText(ctx.getString(R.string.alert_track_following))
@@ -139,7 +139,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0)),
-                followed = null, imperial = false, onPick = {}, onStop = {}, onDismiss = {},
+                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertDoesNotExist()
@@ -148,7 +148,7 @@ class OffTrackAlertUiTest {
     /** Le bouton d'arret n'existe que si l'on suit deja quelque chose : sinon il n'aurait rien a arreter. */
     @Test fun `l'arret n'apparait que pendant un suivi`() {
         compose.setContent {
-            TrackChooserDialog(emptyList(), null, false, onPick = {}, onStop = {}, onDismiss = {})
+            TrackChooserDialog(emptyList(), null, false, true, onPick = {}, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_stop_following)).assertDoesNotExist()
     }
@@ -157,7 +157,7 @@ class OffTrackAlertUiTest {
         var arrete = false
         val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
         compose.setContent {
-            TrackChooserDialog(emptyList(), suivie, false, onPick = {}, onStop = { arrete = true }, onDismiss = {})
+            TrackChooserDialog(emptyList(), suivie, false, true, onPick = {}, onStop = { arrete = true }, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_stop_following)).performClick()
         assertTrue(arrete)
@@ -166,7 +166,7 @@ class OffTrackAlertUiTest {
     /** Aucune trace a proximite : on le dit, plutot que de laisser une boite vide. */
     @Test fun `une liste vide s'explique`() {
         compose.setContent {
-            TrackChooserDialog(emptyList(), null, false, onPick = {}, onStop = {}, onDismiss = {})
+            TrackChooserDialog(emptyList(), null, false, true, onPick = {}, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_pick_track_empty)).assertIsDisplayed()
     }
@@ -186,7 +186,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(enCours, candidate(1, "GR 9", 300.0)),
-                followed = null, imperial = false,
+                followed = null, imperial = false, soundEnabled = true,
                 onPick = { etat.follow(it, thresholdM = 100.0) }, onStop = {}, onDismiss = {},
             )
         }

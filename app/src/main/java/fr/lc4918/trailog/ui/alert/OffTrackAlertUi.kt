@@ -101,6 +101,9 @@ fun TrackChooserDialog(
     candidates: List<TrackCandidate>?,
     followed: TrackWatch.Followed?,
     imperial: Boolean,
+    /** Le reglage "Emettre un son" de l'alerte d'eloignement : commande la cloche de la ligne suivie
+     *  (cf. TrackChoice). */
+    soundEnabled: Boolean,
     onPick: (TrackCandidate) -> Unit,
     onStop: () -> Unit,
     onDismiss: () -> Unit,
@@ -122,6 +125,7 @@ fun TrackChooserDialog(
                             candidate = c,
                             current = followed?.layerId == c.layerId && followed.trackIndex == c.trackIndex,
                             imperial = imperial,
+                            soundEnabled = soundEnabled,
                             onPick = onPick,
                         )
                     }
@@ -144,9 +148,12 @@ fun TrackChooserDialog(
  *
  * **Trois marques et non une**, parce que la question posee est "laquelle est-ce que je suis en ce
  * moment ?" et qu'une graisse de caractere n'y repondait pas : sur une liste de huit lignes qui portent
- * toutes le meme genre de nom, la ligne en gras se cherche. Elle porte donc un FOND, une cloche, et le mot
- * "Suivie" - l'aplat se voit d'un coup d'oeil, la cloche dit de quoi il s'agit, et le mot reste la seule
- * marque que lit une synthese vocale.
+ * toutes le meme genre de nom, la ligne en gras se cherche. Elle porte donc un FOND et le mot "Suivie" -
+ * l'aplat se voit d'un coup d'oeil, le mot reste la seule marque que lit une synthese vocale.
+ *
+ * **La cloche, elle, ne dit pas "suivie" mais "sonnera"** : elle ne parait que [soundEnabled], le reglage
+ * "Emettre un son" de l'alerte d'eloignement. Sans lui, l'ecart se voit toujours - banniere, couleur du
+ * bouton de la carte - mais rien ne sonne, et une cloche presente aurait promis un bruit qui ne vient pas.
  *
  * Elle reste CLIQUABLE comme les autres : la retoucher n'a pas d'effet, mais une ligne qui refuse le tap
  * dans une liste ou tout se tape se lit comme une panne. Ce qui l'arrete est le bouton d'arret, a l'oppose.
@@ -156,6 +163,7 @@ private fun TrackChoice(
     candidate: TrackCandidate,
     current: Boolean,
     imperial: Boolean,
+    soundEnabled: Boolean,
     onPick: (TrackCandidate) -> Unit,
 ) {
     val fond = if (current) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
@@ -190,7 +198,7 @@ private fun TrackChoice(
                 )
             }
             if (current) {
-                Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(18.dp))
+                if (soundEnabled) Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(18.dp))
                 Text(
                     stringResource(R.string.alert_track_following),
                     style = MaterialTheme.typography.labelMedium,

@@ -284,6 +284,10 @@ fun MainScreen(
 
     // ---------- planificateur d'itinéraire ----------
     val planner = screen.planner
+    // Tenu a jour a chaque composition, comme les proprietes du controleur de carte plus haut : le
+    // planificateur deploye interdit le premier saut de camera a l'activation du GPS (cf.
+    // LocationControls.startGps), pour la meme raison que le suivi continu s'y suspend deja.
+    location.plannerExpanded = planner.expanded
     // ---------- retouche des traces ----------
     val edit = screen.edit
     val canUndo by vm.canUndo.collectAsState()
@@ -758,6 +762,7 @@ fun MainScreen(
                     imperial = imperialUnits,
                     idleTick = idleTick,
                     moveTick = moveTick,
+                    bandHeightPx = insets.plannerBandPx,
                     onOpenPlanner = { ouvrePlanificateur() },
                     onDistanceFromPosition = { onDistanceFromPositionTap() },
                     onDistanceFromPoint = { onDistanceFromPointTap() },
@@ -942,6 +947,7 @@ fun MainScreen(
                     alertDistanceM = alertDistanceM,
                     stopNotice = stopNotice,
                     imperial = imperialUnits,
+                    topControlsPx = insets.topControlsPx,
                 )
             }
             /*
@@ -1032,6 +1038,7 @@ fun MainScreen(
         followed = followed,
         imperial = imperialUnits,
         alertDistanceM = alertDistanceM,
+        alertSoundEnabled = settings.offTrackAlertSound,
         currentPositionLabel = currentPositionLabel,
         onPickImage = { onImported -> dialogs.awaitImage(onImported); imagePicker.launch("image/*") },
         routeGpx = { name -> routeGpx(name) },
