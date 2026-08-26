@@ -1,6 +1,6 @@
 # Trailog
 
-<img src="../app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français | [<img src="../app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English](README.md)
+<img src="../app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français | [<img src="../app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English](../README.md)
 
 **Cartographie et itinéraires hors-ligne pour Android.**
 

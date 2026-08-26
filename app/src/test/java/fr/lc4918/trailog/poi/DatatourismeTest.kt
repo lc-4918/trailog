@@ -187,22 +187,35 @@ class DatatourismeTest {
 
     // ---------- Categories ----------
 
-    /** Les 27 categories sont celles de France Velo Tourisme, reparties en quatre groupes. */
-    @Test fun `les vingt-sept categories couvrent les quatre groupes`() {
-        assertEquals(27, PoiCategory.entries.size)
+    /**
+     * Les categories de France Velo Tourisme, reparties en quatre groupes, plus celles que le terrain a
+     * imposees : "Epicerie et supermarche" est la premiere qui ne vienne pas de FVT, et elle ne vient pas
+     * non plus de DATAtourisme - c'est OpenStreetMap qui la porte (cf. PoiCategory.GROCERY).
+     */
+    @Test fun `les categories couvrent les quatre groupes`() {
+        assertEquals(28, PoiCategory.entries.size)
         PoiGroup.entries.forEach { g ->
             assertTrue("$g sans categorie", PoiCategory.of(g).isNotEmpty())
         }
         assertEquals(9, PoiCategory.of(PoiGroup.LODGING).size)
         assertEquals(2, PoiCategory.of(PoiGroup.FOOD).size)
         assertEquals(7, PoiCategory.of(PoiGroup.LEISURE).size)
-        assertEquals(9, PoiCategory.of(PoiGroup.PRACTICAL).size)
+        assertEquals(10, PoiCategory.of(PoiGroup.PRACTICAL).size)
     }
 
-    /** Chaque categorie designe au moins une classe : une categorie vide ne filtrerait rien et
-     *  n'afficherait rien - une case a cocher sans effet. */
-    @Test fun `aucune categorie n'est vide`() {
-        PoiCategory.entries.forEach { assertTrue("${it.key} sans classe", it.classes.isNotEmpty()) }
+    /**
+     * Chaque categorie designe au moins une source : une categorie que NI DATAtourisme NI OpenStreetMap ne
+     * remplit ne filtrerait rien et n'afficherait rien - une ligne de la bulle sans effet.
+     *
+     * L'invariant portait autrefois sur les seules classes DATAtourisme, et il etait trop etroit : une
+     * categorie peut n'exister que dans OSM - "Epicerie et supermarche", que la base touristique ignore -
+     * comme une autre peut n'exister que dans DATAtourisme, tels les "hebergements insolites" ou les
+     * "villages de caractere", qui sont des jugements touristiques qu'OSM ne porte nulle part.
+     */
+    @Test fun `aucune categorie n'est sans source`() {
+        PoiCategory.entries.forEach {
+            assertTrue("${it.key} sans classe ni etiquette", it.classes.isNotEmpty() || it.osm.isNotEmpty())
+        }
     }
 
     /** Les cles sont enregistrees en base : les changer casserait les reglages deja poses. */

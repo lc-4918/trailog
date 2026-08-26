@@ -43,7 +43,7 @@ class PoiLoadingTest {
 
     /** Rien de charge : il faut demander. */
     @Test fun `le premier affichage demande toujours`() {
-        assertTrue(PoiState().needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
+        assertTrue(PoiState().needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
     }
 
     /**
@@ -53,17 +53,17 @@ class PoiLoadingTest {
     @Test fun `une vue contenue dans le charge ne redemande rien`() {
         val etat = PoiState()
         etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
-        assertFalse(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
-        assertFalse("la meme vue exactement", etat.needsLoad(box(4.0, 44.0, 7.0, 47.0), tousFiltres, now = 0L))
+        assertFalse(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
+        assertFalse("la meme vue exactement", etat.needsLoad(box(4.0, 44.0, 7.0, 47.0), tousFiltres, osm = true, now = 0L))
     }
 
     /** Des que la vue deborde, ne serait-ce que d'un cote, il manque des points d'interet a l'ecran. */
     @Test fun `une vue qui deborde redemande`() {
         val etat = PoiState()
         etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
-        assertTrue("vers l'ouest", etat.needsLoad(box(3.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
-        assertTrue("vers le nord", etat.needsLoad(box(5.0, 45.0, 6.0, 48.0), tousFiltres, now = 0L))
-        assertTrue("dezoome", etat.needsLoad(box(0.0, 40.0, 10.0, 50.0), tousFiltres, now = 0L))
+        assertTrue("vers l'ouest", etat.needsLoad(box(3.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
+        assertTrue("vers le nord", etat.needsLoad(box(5.0, 45.0, 6.0, 48.0), tousFiltres, osm = true, now = 0L))
+        assertTrue("dezoome", etat.needsLoad(box(0.0, 40.0, 10.0, 50.0), tousFiltres, osm = true, now = 0L))
     }
 
     /** Eteindre la couche jette tout : garder des marqueurs invisibles n'apporte rien, et le geste qui la
@@ -75,7 +75,7 @@ class PoiLoadingTest {
         etat.hide()
         assertTrue(etat.pois.isEmpty())
         assertNull(etat.selected)
-        assertTrue("le charge doit etre oublie aussi", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
+        assertTrue("le charge doit etre oublie aussi", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
     }
 
     /** Un point d'interet disparu du dernier chargement ne doit pas laisser son infobulle ouverte : elle
@@ -117,13 +117,42 @@ class PoiLoadingTest {
         val etat = PoiState()
         etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
         val autres = tousFiltres.toggle(PoiCategory.BARS)
-        assertTrue(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), autres, now = 0L))
-        assertFalse("les memes filtres ne forcent rien", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, now = 0L))
+        assertTrue(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), autres, osm = true, now = 0L))
+        assertFalse("les memes filtres ne forcent rien", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
     }
 
-    /** Trop dezoome : on ne charge pas, et l'ecran le dit plutot que de laisser une carte vide. */
-    @Test fun `trop dezoome se signale et n'efface pas la marque de chargement`() {
+    /**
+     * **Basculer "Completer avec OpenStreetMap" force un rechargement**, et ce cas vient du terrain.
+     *
+     * Le reglage ajoute une source entiere a la requete, mais il n'entrait ni dans la cle de l'effet ni
+     * dans cette decision : la vue etait deja tenue pour chargee, et l'allumer ne changeait donc rien
+     * a l'ecran tant qu'on ne deplacait pas la carte. On restait devant une carte inchangee en croyant
+     * le reglage sans effet - c'est exactement ce qui a ete rapporte.
+     */
+    @Test fun `basculer le complement OSM force un rechargement`() {
         val etat = PoiState()
+        val vue = box(5.0, 45.0, 6.0, 46.0)
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), osmComplement = false,
+            complete = true)
+        assertFalse("meme reglage, rien a refaire", etat.needsLoad(vue, tousFiltres, osm = false, now = 0L))
+        assertTrue("l'allumer redemande tout", etat.needsLoad(vue, tousFiltres, osm = true, now = 0L))
+    }
+
+    /** Et dans l'autre sens : l'eteindre aussi, la reponse portait des lieux qu'on ne veut plus. */
+    @Test fun `eteindre le complement OSM force aussi un rechargement`() {
+        val etat = PoiState()
+        val vue = box(5.0, 45.0, 6.0, 46.0)
+        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), osmComplement = true,
+            complete = true)
+        assertTrue(etat.needsLoad(vue, tousFiltres, osm = false, now = 0L))
+    }
+
+    /** Trop dezoome : on ne charge pas, et l'ecran le dit plutot que de laisser une carte vide.
+     *
+     *  La couche allumee, et c'est indispensable : l'avertissement n'est du qu'a celui qui vient de la
+     *  demander (cf. PoiStateTest, "le message de zoom ne revient pas au dezoom suivant"). */
+    @Test fun `trop dezoome se signale et n'efface pas la marque de chargement`() {
+        val etat = PoiState().apply { showLayer(true) }
         etat.beginLoad()
         etat.tooFar()
         assertTrue(etat.tooFar)
@@ -161,7 +190,7 @@ class PoiLoadingTest {
     /** Les trois messages s'excluent : trop dezoome l'emporte, on ne saurait pas encore s'il y a du
      *  reseau puisqu'on n'a rien demande. */
     @Test fun `trop dezoome efface la reclamation de connexion`() {
-        val etat = PoiState()
+        val etat = PoiState().apply { showLayer(true) }
         etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true, complete = true)
         etat.tooFar()
         assertTrue(etat.tooFar)

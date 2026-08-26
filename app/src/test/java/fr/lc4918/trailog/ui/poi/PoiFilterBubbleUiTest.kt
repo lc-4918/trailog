@@ -4,7 +4,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -55,6 +57,14 @@ class PoiFilterBubbleUiTest {
     }
 
     private fun nom(c: PoiCategory) = ctx.getString(poiCategoryLabelRes(c))
+
+    @Test fun `les libelles de groupe restent courts`() {
+        compose.setContent {
+            PoiGroup.entries.forEach { g ->
+                assertTrue("${g.key} trop long : ${poiGroupLabel(g)}", poiGroupLabel(g).length <= 10)
+            }
+        }
+    }
 
     @Test fun `l'onglet ouvert montre les categories de son groupe`() {
         bulle()
@@ -109,7 +119,7 @@ class PoiFilterBubbleUiTest {
      */
     @Test fun `tout masquer eteint la couche`() {
         val etat = bulle()
-        compose.onNodeWithText(ctx.getString(R.string.poi_filter_hide_all)).performClick()
+       compose.onNodeWithContentDescription(ctx.getString(R.string.poi_filter_hide_all)).performClick()
         compose.waitForIdle()
         assertTrue(etat().nothingShown)
     }
@@ -120,6 +130,6 @@ class PoiFilterBubbleUiTest {
      */
     @Test fun `tout masquer ne s'affiche pas sur une carte deja vide`() {
         bulle(PoiFilters().hideAll())
-        compose.onAllNodesWithText(ctx.getString(R.string.poi_filter_hide_all)).assertCountEquals(0)
+       compose.onAllNodesWithContentDescription(ctx.getString(R.string.poi_filter_hide_all)).assertCountEquals(0)
     }
 }

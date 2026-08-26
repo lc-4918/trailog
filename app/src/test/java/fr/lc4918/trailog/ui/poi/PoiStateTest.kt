@@ -42,6 +42,42 @@ class PoiStateTest {
     }
 
     /**
+     * **Le message ne revient pas au dezoom suivant**, et ce cas vient du terrain.
+     *
+     * Il ne repondait qu'a la question du zoom, si bien qu'il resurgissait chaque fois que la vue
+     * redevenait large - au moment precis ou l'on prend du recul pour se situer, c'est-a-dire quand on ne
+     * cherche justement pas de point d'interet. Il devenait un decor, et un decor ne se lit plus.
+     *
+     * Il n'est du qu'a celui qui vient d'allumer la couche et a qui la carte ne repond rien. Zoomer assez
+     * repond a la question, et elle ne se repose pas.
+     */
+    @Test fun `le message de zoom ne revient pas au dezoom suivant`() {
+        val poi = couche()
+        poi.tooFar()
+        assertTrue("il se dit une fois", poi.tooFar)
+        poi.nearEnough()
+        poi.tooFar()
+        assertFalse("mais plus jamais ensuite", poi.tooFar)
+    }
+
+    /** Rallumer la couche le REARME : c'est une nouvelle demande, et la carte ne lui repond toujours rien. */
+    @Test fun `rallumer la couche rearme le message de zoom`() {
+        val poi = couche()
+        poi.nearEnough()
+        poi.showLayer(false)
+        poi.showLayer(true)
+        poi.tooFar()
+        assertTrue(poi.tooFar)
+    }
+
+    /** La couche eteinte, il n'y a rien a avertir : le message ne se leve pas, meme trop loin. */
+    @Test fun `couche eteinte, pas de message de zoom`() {
+        val poi = PoiState()
+        poi.tooFar()
+        assertFalse(poi.tooFar)
+    }
+
+    /**
      * Une zone qui vient d'echouer n'est pas redemandee au geste suivant.
      *
      * Le cas releve a Albi : Overpass refusait, l'emprise n'etait donc pas retenue, et chaque geste de
@@ -53,9 +89,9 @@ class PoiStateTest {
         poi.publish(vue, filtres, listOf(lieu), complete = false)
         poi.loadFailed(vue, now = 1_000L)
         assertFalse("juste apres l'echec, on ne redemande pas",
-            poi.needsLoad(vue, filtres, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS / 2))
+            poi.needsLoad(vue, filtres, osm = true, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS / 2))
         assertTrue("le delai passe, on retente",
-            poi.needsLoad(vue, filtres, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS + 1))
+            poi.needsLoad(vue, filtres, osm = true, now = 1_000L + PoiLoading.RETRY_AFTER_FAIL_MS + 1))
     }
 
     /** Le frein ne vaut que pour la zone en cause : ailleurs, la carte redemande normalement. */
@@ -63,7 +99,7 @@ class PoiStateTest {
         val poi = couche()
         poi.loadFailed(vue, now = 0L)
         val ailleurs = Bbox.of(vue.east + 1.0, vue.south, vue.east + 2.0, vue.north)
-        assertTrue(poi.needsLoad(ailleurs, filtres, now = 1_000L))
+        assertTrue(poi.needsLoad(ailleurs, filtres, osm = true, now = 1_000L))
     }
 
     /** Rallumer la couche est un geste : il merite une nouvelle tentative, sans attendre le delai. */
@@ -71,7 +107,7 @@ class PoiStateTest {
         val poi = couche()
         poi.loadFailed(vue, now = 0L)
         poi.hide()
-        assertTrue(poi.needsLoad(vue, filtres, now = 1_000L))
+        assertTrue(poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
     }
 
     /** L'attente survit a la premiere source : la seconde travaille encore. */
@@ -98,9 +134,9 @@ class PoiStateTest {
         val poi = couche()
         poi.publish(vue, filtres, listOf(lieu), complete = true)
         val dedans = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertFalse(poi.needsLoad(dedans, filtres, now = 0L))
+        assertFalse(poi.needsLoad(dedans, filtres, osm = true, now = 0L))
         val dehors = Bbox(west = 5.65, south = 45.15, east = 5.95, north = 45.25)
-        assertTrue(poi.needsLoad(dehors, filtres, now = 0L))
+        assertTrue(poi.needsLoad(dehors, filtres, osm = true, now = 0L))
     }
 
     /** Eteindre la couche oublie tout, message et attente compris : la rallumer repart d'une page vierge.
@@ -115,7 +151,7 @@ class PoiStateTest {
         assertFalse(poi.tooFar)
         assertFalse(poi.loading)
         assertTrue(poi.pois.isEmpty())
-        assertTrue("et la prochaine vue sera redemandee", poi.needsLoad(vue, filtres, now = 0L))
+        assertTrue("et la prochaine vue sera redemandee", poi.needsLoad(vue, filtres, osm = true, now = 0L))
     }
 
     /**
@@ -131,8 +167,8 @@ class PoiStateTest {
         poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false)
         assertTrue(poi.partial)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertTrue("le zoom doit redemander", poi.needsLoad(plusServre, filtres, now = 0L))
-        assertTrue("un deplacement aussi", poi.needsLoad(vue, filtres, now = 0L))
+        assertTrue("le zoom doit redemander", poi.needsLoad(plusServre, filtres, osm = true, now = 0L))
+        assertTrue("un deplacement aussi", poi.needsLoad(vue, filtres, osm = true, now = 0L))
     }
 
     /** Rendue en entier, la meme emprise ne se redemande pas : c'est ce qui tient les appels loin du quota. */
@@ -140,6 +176,6 @@ class PoiStateTest {
         val poi = couche()
         poi.publish(vue, filtres, listOf(lieu), incomplete = false, complete = true)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
-        assertFalse(poi.needsLoad(plusServre, filtres, now = 0L))
+        assertFalse(poi.needsLoad(plusServre, filtres, osm = true, now = 0L))
     }
 }

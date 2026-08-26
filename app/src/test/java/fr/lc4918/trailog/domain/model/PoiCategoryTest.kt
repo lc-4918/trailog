@@ -109,4 +109,56 @@ class PoiCategoryTest {
         assertEquals(PoiCategory.TOURIST_OFFICES,
             PoiCategory.ofOsm(mapOf("tourism" to "information", "information" to "office")))
     }
+
+    /**
+     * **Les loueurs de canoes se reconnaissent**, et pas seulement les rampes de mise a l'eau.
+     *
+     * Signale au sud de Souillac : deux bases de canoes bien connues n'apparaissaient pas. La categorie
+     * ne portait que `leisure=slipway`, qui designe une rampe et non un loueur. Releve sur la Dordogne et
+     * le Lot : 92 `leisure=slipway` dont 12 seulement sont nommes, contre 29 `amenity=boat_rental` (26
+     * nommes) et 22 `sport=canoe` (15 nommes). Les deux bases manquantes portent `sport=canoe`.
+     */
+    @Test fun `un loueur de canoes se reconnait a ses etiquettes reelles`() {
+        assertEquals(PoiCategory.CANOE, PoiCategory.ofOsm(mapOf("sport" to "canoe")))
+        assertEquals(PoiCategory.CANOE, PoiCategory.ofOsm(mapOf("amenity" to "boat_rental")))
+        assertEquals("la rampe reste reconnue",
+            PoiCategory.CANOE, PoiCategory.ofOsm(mapOf("leisure" to "slipway")))
+    }
+
+    /**
+     * `canoe=yes` reste ECARTE : la Dordogne elle-meme le porte, et la categorie poserait alors un
+     * marqueur sur une riviere entiere.
+     */
+    @Test fun `une riviere navigable en canoe n'est pas un loueur`() {
+        assertNull(PoiCategory.ofOsm(mapOf("canoe" to "yes", "boat" to "yes")))
+    }
+
+    /**
+     * **Epicerie et supermarche se reconnaissent**, et c'est une categorie OSM SEULE.
+     *
+     * DATAtourisme ne connait ni `Supermarket`, ni `ConvenienceStore`, ni `GroceryStore`, ni `FoodStore` -
+     * zero objet pour chacune sur la Dordogne et le Lot. Sa seule classe de commerce, `Store`, en rend
+     * 1882 sur la meme emprise et melange banques, loueurs de voitures, peintres et menuisiers.
+     */
+    @Test fun `une epicerie ou un supermarche se reconnait`() {
+        assertEquals(PoiCategory.GROCERY, PoiCategory.ofOsm(mapOf("shop" to "supermarket")))
+        assertEquals(PoiCategory.GROCERY, PoiCategory.ofOsm(mapOf("shop" to "convenience")))
+        assertEquals(PoiCategory.GROCERY, PoiCategory.ofOsm(mapOf("shop" to "greengrocer")))
+    }
+
+    /** Elle ne demande RIEN a DATAtourisme : aucune classe, donc aucun poids dans sa requete, et aucun
+     *  lieu de cette source ne peut se ranger dedans. */
+    @Test fun `l'epicerie ne demande rien a DATAtourisme`() {
+        assertEquals(emptySet<String>(), PoiCategory.GROCERY.classes)
+        assertEquals("Store reste ce qu'il est, un commerce quelconque",
+            null, PoiCategory.of(listOf("Store")))
+    }
+
+    /** Les commerces voisins gardent leur categorie : un magasin de velo n'est pas une epicerie, un
+     *  caviste reste une degustation. Les trois partagent la cle `shop`. */
+    @Test fun `les autres commerces gardent leur categorie`() {
+        assertEquals(PoiCategory.BIKE_SHOPS, PoiCategory.ofOsm(mapOf("shop" to "bicycle")))
+        assertEquals(PoiCategory.TASTING, PoiCategory.ofOsm(mapOf("shop" to "wine")))
+        assertEquals(PoiCategory.TASTING, PoiCategory.ofOsm(mapOf("shop" to "farm")))
+    }
 }
