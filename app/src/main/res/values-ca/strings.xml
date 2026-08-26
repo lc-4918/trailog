@@ -480,7 +480,7 @@
     <string name="gps_marker_crosshair">Creu</string>
     <string name="settings_sw_scale">Escala gràfica</string>
     <string name="settings_sw_rotation">Rotació del mapa</string>
-    <string name="settings_sw_buttons_bg">Fons darrere dels botons</string>
+    <string name="settings_label_buttons_bg_opacity">Opacitat del fons dels botons</string>
     <string name="settings_sw_status_bar_sub">El mapa passa per sota</string>
     <string name="settings_sw_simplify_sub">Visualització més ràpida</string>
     <string name="settings_section_elevation_fill">Altimetria absent</string>

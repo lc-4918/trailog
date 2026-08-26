@@ -944,6 +944,35 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 59 -> 60 : le fond des boutons quitte l'interrupteur pour un curseur ----------
+
+    /**
+     * L'interrupteur devient un curseur d'opacite, DANS LA MEME COLONNE (cf. le @ColumnInfo de
+     * SettingsEntity.controlButtonsOpacityPct) : allume, il dessinait un fond a taux fixe (l'ancien
+     * ControlButtonBgAlpha, 0,9f) - la migration doit donc porter les bases restees a "vrai" sur ce taux en
+     * pourcent, et laisser "faux" a 0, qui dit la meme absence de fond dans les deux systemes.
+     */
+    @Test fun `59 vers 60 convertit l'interrupteur du fond en pourcentage d'opacite`() {
+        val db = freshDb("m5960"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_CONTROL_BUTTONS_BACKGROUND)
+
+        db.execSQL("UPDATE settings SET controlButtonsBackground = 1")
+        db.execSQL(MigrationSql.CONTROL_BUTTONS_BG_TO_OPACITY)
+        assertEquals(DefaultControlButtonsOpacityPct,
+            scalar(db, "SELECT controlButtonsBackground FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
+    @Test fun `59 vers 60 laisse le fond desactive a zero`() {
+        val db = freshDb("m5960bis"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_CONTROL_BUTTONS_BACKGROUND)
+
+        db.execSQL("UPDATE settings SET controlButtonsBackground = 0")
+        db.execSQL(MigrationSql.CONTROL_BUTTONS_BG_TO_OPACITY)
+        assertEquals(0, scalar(db, "SELECT controlButtonsBackground FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     @Test fun `la base courante s'ouvre et porte toutes les colonnes attendues`() {
         val db = AppDatabase.get(ctx)
         val s = db.openHelper.writableDatabase

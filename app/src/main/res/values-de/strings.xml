@@ -480,7 +480,7 @@
     <string name="gps_marker_crosshair">Kreuz</string>
     <string name="settings_sw_scale">Maßstabsleiste</string>
     <string name="settings_sw_rotation">Kartendrehung</string>
-    <string name="settings_sw_buttons_bg">Hintergrund hinter Schaltflächen</string>
+    <string name="settings_label_buttons_bg_opacity">Deckkraft des Schaltflächenhintergrunds</string>
     <string name="settings_sw_status_bar_sub">Die Karte liegt darunter</string>
     <string name="settings_sw_simplify_sub">Schnellere Anzeige</string>
     <string name="settings_section_elevation_fill">Fehlende Höhen</string>

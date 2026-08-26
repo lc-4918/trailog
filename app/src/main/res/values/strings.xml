@@ -482,7 +482,7 @@
     <string name="gps_marker_crosshair">Croix</string>
     <string name="settings_sw_scale">Échelle graphique</string>
     <string name="settings_sw_rotation">Rotation de la carte</string>
-    <string name="settings_sw_buttons_bg">Fond derrière les boutons</string>
+    <string name="settings_label_buttons_bg_opacity">Opacité du fond des boutons</string>
     <string name="settings_sw_status_bar_sub">La carte passe dessous</string>
     <string name="settings_sw_simplify_sub">Affichage plus rapide</string>
     <string name="settings_section_elevation_fill">Altimétrie manquante</string>

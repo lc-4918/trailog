@@ -480,7 +480,7 @@
     <string name="gps_marker_crosshair">Gurutzea</string>
     <string name="settings_sw_scale">Eskala grafikoa</string>
     <string name="settings_sw_rotation">Maparen biraketa</string>
-    <string name="settings_sw_buttons_bg">Botoien atzeko hondoa</string>
+    <string name="settings_label_buttons_bg_opacity">Botoien atzeko hondoaren opakutasuna</string>
     <string name="settings_sw_status_bar_sub">Mapa azpitik doa</string>
     <string name="settings_sw_simplify_sub">Bistaratze azkarragoa</string>
     <string name="settings_section_elevation_fill">Altimetria falta da</string>

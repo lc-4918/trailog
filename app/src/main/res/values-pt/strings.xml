@@ -480,7 +480,7 @@
     <string name="gps_marker_crosshair">Cruz</string>
     <string name="settings_sw_scale">Escala gráfica</string>
     <string name="settings_sw_rotation">Rotação do mapa</string>
-    <string name="settings_sw_buttons_bg">Fundo atrás dos botões</string>
+    <string name="settings_label_buttons_bg_opacity">Opacidade do fundo dos botões</string>
     <string name="settings_sw_status_bar_sub">O mapa passa por baixo</string>
     <string name="settings_sw_simplify_sub">Exibição mais rápida</string>
     <string name="settings_section_elevation_fill">Altimetria em falta</string>

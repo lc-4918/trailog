@@ -480,7 +480,7 @@
     <string name="gps_marker_crosshair">Crosshair</string>
     <string name="settings_sw_scale">Scale bar</string>
     <string name="settings_sw_rotation">Map rotation</string>
-    <string name="settings_sw_buttons_bg">Background behind buttons</string>
+    <string name="settings_label_buttons_bg_opacity">Button background opacity</string>
     <string name="settings_sw_status_bar_sub">The map runs underneath</string>
     <string name="settings_sw_simplify_sub">Faster display</string>
     <string name="settings_section_elevation_fill">Missing elevation</string>

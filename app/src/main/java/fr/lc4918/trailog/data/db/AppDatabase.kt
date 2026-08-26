@@ -139,6 +139,14 @@ internal object MigrationSql {
     const val OPACIFY_BASEMAP_CONTROL =
         "UPDATE settings SET basemapControlOpacityPct = 90 WHERE basemapControlOpacityPct = 80"
 
+    // Le fond des boutons quitte l'interrupteur pour un curseur d'opacite (0 a 100), dans la meme colonne
+    // (cf. SettingsEntity.controlButtonsOpacityPct et son @ColumnInfo). Vrai devient l'opacite qu'il
+    // dessinait jusqu'ici a taux fixe (cf. l'ancien ControlButtonBgAlpha = 0,9f), faux reste 0 - les deux
+    // bornes du curseur disent exactement ce que disaient les deux etats de l'interrupteur.
+    const val CONTROL_BUTTONS_BG_TO_OPACITY =
+        "UPDATE settings SET controlButtonsBackground = " +
+            "CASE controlButtonsBackground WHEN 1 THEN $DefaultControlButtonsOpacityPct ELSE 0 END"
+
     /** Colonnes de settings en version 39, dans l'ordre de SettingsEntity : la recopie ci-dessous les nomme
      *  une a une, un `SELECT *` reprenant la colonne dont on veut se defaire. */
     private const val SETTINGS_COLUMNS_V39 =
@@ -488,7 +496,7 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 59
+internal const val DB_VERSION = 60
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
@@ -828,6 +836,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Le fond des boutons de carte quitte l'interrupteur pour un curseur d'opacite. Meme colonne,
+        // meme type SQL (INTEGER) des deux cotes : une conversion de valeur suffit, pas de recreation de
+        // table (cf. le commentaire de CONTROL_BUTTONS_BG_TO_OPACITY).
+        private val MIGRATION_59_60 = object : Migration(59, 60) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.CONTROL_BUTTONS_BG_TO_OPACITY)
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -838,7 +855,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

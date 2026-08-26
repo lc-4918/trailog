@@ -233,10 +233,6 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
      */
     SectionTitle(stringResource(R.string.settings_section_map_buttons))
     SettingsCard {
-        SwitchLine(stringResource(R.string.settings_sw_buttons_bg), cur.controlButtonsBackground) {
-            vm.save(cur.copy(controlButtonsBackground = it))
-        }
-        RowDivider()
         // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
         // zone tactile, il deborderait dessus.
         SliderRow(
@@ -245,6 +241,13 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
             steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
             onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
+        )
+        RowDivider()
+        SliderRow(
+            label = stringResource(R.string.settings_label_buttons_bg_opacity),
+            value = "${cur.controlButtonsOpacityPct} %",
+            fraction = fractionOf(cur.controlButtonsOpacityPct, 0, 100),
+            onFraction = { vm.save(cur.copy(controlButtonsOpacityPct = valueOf(it, 0, 100))) },
         )
     }
 

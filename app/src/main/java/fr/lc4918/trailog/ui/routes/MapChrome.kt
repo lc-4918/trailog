@@ -95,15 +95,15 @@ data class MapChrome(
 internal fun rememberMapChrome(settings: SettingsEntity): MapChrome {
     val dark = isDarkTheme(settings.theme)
     val size = settings.mapButtonSizeDp.dp
-    val withBg = settings.controlButtonsBackground
+    val opacityPct = settings.controlButtonsOpacityPct
     val bg = mapChromeBg(dark)
-    return remember(dark, size, withBg, bg) {
+    return remember(dark, size, opacityPct, bg) {
         MapChrome(
             dark = dark,
             bg = bg,
             fg = mapChromeFg(dark),
-            buttonBackground = if (!withBg) Modifier
-                else Modifier.mapButtonBackground(bg.copy(alpha = ControlButtonBgAlpha), size),
+            buttonBackground = if (opacityPct <= 0) Modifier
+                else Modifier.mapButtonBackground(bg.copy(alpha = opacityPct / 100f), size),
         )
     }
 }
@@ -123,9 +123,11 @@ internal fun MapBarAction(label: String, primary: Boolean = false, onClick: () -
     )
 }
 
-/** Opacite du fond des boutons de controle. Deux crans au-dessus de l'echelle graphique (0,7) : elle ne
- *  porte qu'un trait et deux chiffres, la ou un bouton doit rester franchement lisible sur une orthophoto
- *  ou un fond satellite. */
+/** Opacite du fond de la barre de retouche des traces (cf. TrackEditToolbar) - la seule commande de carte
+ *  qui ne suit pas le curseur des reglages, celui-ci s'appliquant a un aplat toujours visible pendant la
+ *  retouche, pas a un bouton qu'on choisit d'habiller. Deux crans au-dessus de l'echelle graphique (0,7) :
+ *  elle ne porte qu'un trait et deux chiffres, la ou cette barre doit rester lisible sur une orthophoto ou
+ *  un fond satellite. */
 internal const val ControlButtonBgAlpha = 0.9f
 
 /**

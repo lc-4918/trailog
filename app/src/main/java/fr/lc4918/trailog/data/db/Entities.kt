@@ -277,10 +277,14 @@ data class SettingsEntity(
     // l'une des raisons d'ouvrir l'application, et le bouton ne lance rien tout seul - ce sont les
     // etapes saisies qui font partir une requete, geste explicite s'il en est.
     val routePlannerEnabled: Boolean = true,
-    // Fond blanc translucide derriere les boutons poses sur la carte. Actif par defaut : sans lui les
-    // boutons flottent nus au-dessus de la carte, ce qui est plus leger mais devient illisible sur une
-    // orthophoto ou un relief clair - et l'on ne choisit pas son fond de carte pour ses boutons.
-    val controlButtonsBackground: Boolean = true,
+    // Opacite du fond derriere les boutons poses sur la carte, de 0 (aucun fond, les boutons flottent nus)
+    // a 100 (plein). 90 par defaut : sans fond les boutons deviennent illisibles sur une orthophoto ou un
+    // relief clair, et l'on ne choisit pas son fond de carte pour ses boutons.
+    //
+    // @ColumnInfo garde le nom de colonne d'avant, quand ce reglage n'etait qu'un interrupteur : le
+    // renommer demanderait une migration par recreation de table (cf. DROP_PLANNER_BAND_THEME), la ou une
+    // conversion de valeur suffit (cf. MIGRATION_59_60 : vrai -> 90, faux -> 0).
+    @ColumnInfo(name = "controlButtonsBackground") val controlButtonsOpacityPct: Int = DefaultControlButtonsOpacityPct,
     // Bouton de mesure sur trace. Desactive par defaut comme les deux boutons voisins, mais pour une autre
     // raison : il n'interroge aucun service, il ne sert simplement qu'a qui mesure ses parcours.
     val trackMeasureEnabled: Boolean = false,
@@ -328,6 +332,10 @@ const val MaxMapButtonSizeDp = 48
 
 /** Taille par defaut : entre les deux bornes, assez large pour se voir sans etaler un aplat de 48 dp. */
 const val DefaultMapButtonSizeDp = 42
+
+/** Opacite par defaut du fond des boutons de carte (%) : celle, fixe, que l'interrupteur dessinait avant
+ *  lui (cf. MIGRATION_59_60). */
+const val DefaultControlButtonsOpacityPct = 90
 
 /** Bornes du symbole de position (dp) : du point discret au repere qu'on retrouve d'un coup d'oeil. */
 const val MinGpsMarkerSizeDp = 12
