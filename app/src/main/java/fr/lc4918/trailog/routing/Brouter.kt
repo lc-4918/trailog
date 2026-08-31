@@ -28,7 +28,12 @@ import java.util.concurrent.ConcurrentHashMap
 object Brouter {
     const val DEFAULT_URL = "https://brouter.de/brouter"
 
-    private const val TIMEOUT_MS = 30_000
+    /**
+     * Delai du DEPOT du profil, qui ne depend pas de la longueur du trajet : c'est un envoi de vingt
+     * kilo-octets, que le service range sans rien calculer. Le calcul, lui, prend le sien de la longueur
+     * demandee (cf. [RouteTimeout]).
+     */
+    private const val DEPOSIT_TIMEOUT_MS = 30_000
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -105,7 +110,8 @@ object Brouter {
      */
     private fun profileId(base: String, text: String, force: Boolean): String? {
         if (!force) ids[text]?.let { return it }
-        val resp = TileHttp.post(profileUrl(base), text.toByteArray(), "text/plain", TIMEOUT_MS, TIMEOUT_MS)
+        val resp = TileHttp.post(
+            profileUrl(base), text.toByteArray(), "text/plain", DEPOSIT_TIMEOUT_MS, DEPOSIT_TIMEOUT_MS)
         val id = resp.body?.let {
             runCatching { json.decodeFromString<Deposit>(it.toString(Charsets.UTF_8)).profileId }.getOrNull()
         } ?: return null
@@ -119,9 +125,20 @@ object Brouter {
      * chez Valhalla - étapes non reliées, service muet, réseau absent - et pour une de plus, propre à ce
      * moteur : le service a refusé le profil.
      *
-     * Une seconde tentative, et une seule, quand la première échoue avec un profil déjà déposé : c'est
-     * très probablement un identifiant périmé, et le redéposer suffit. Au-delà, on rend null - réessayer
-     * en boucle sur un trajet impossible ferait attendre l'utilisateur pour rien.
+     * **Une seconde tentative, et une seule, quand la première N'A PAS ABOUTI** - délai dépassé, liaison
+     * coupée, pas de réseau (cf. [Attempt.transportFailed]). Elle redépose le profil au passage, ce qui
+     * couvre du même geste le second mode de panne : un identifiant que le service a oublié, pour lequel
+     * il répond une erreur nue.
+     *
+     * **Ce qui NE se réessaie pas : un service qui a répondu.** BRouter dit "pas d'itinéraire" par une
+     * réponse en bonne et due forme, et redemander la même chose rendrait la même réponse - deux fois
+     * l'attente pour le même non.
+     *
+     * La règle était l'inverse, et c'est le défaut que ceci corrige : la seconde tentative n'était offerte
+     * qu'à un profil DÉJÀ déposé, c'est-à-dire jamais au premier calcul. Un long trajet expirait donc sans
+     * recours, et rebasculer de discipline en discipline finissait par revenir sur un profil déjà en
+     * mémoire, qui lui avait droit au second essai. C'est très exactement ce que décrivait le signalement :
+     * "je bascule entre gravel et VTC et j'en trouve un".
      */
     suspend fun route(
         base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
@@ -129,17 +146,32 @@ object Brouter {
     ): RouteResult? = withContext(Dispatchers.IO) {
         if (points.size < 2) return@withContext null
         val texte = BrouterProfile.tune(profileText, profile, prefs)
+        // Le profil etait-il DEJA depose avant cet appel : un identifiant neuf ne peut pas etre perime.
         val depose = ids.containsKey(texte)
+        val delai = RouteTimeout.msFor(points)
         val id = profileId(base, texte, force = false) ?: return@withContext null
-        val r = fetch(base, points, id)
-        if (r != null || !depose) return@withContext r
+        val premier = fetch(base, points, id, delai)
+        premier.result?.let { return@withContext it }
+        // Le service a REPONDU, sous un identifiant qu'il vient de rendre : sa reponse est un vrai refus.
+        if (!premier.transportFailed && !depose) return@withContext null
         val neuf = profileId(base, texte, force = true) ?: return@withContext null
-        fetch(base, points, neuf)
+        fetch(base, points, neuf, delai).result
     }
 
-    private fun fetch(base: String, points: List<Pair<Double, Double>>, id: String): RouteResult? {
-        val resp = TileHttp.fetch(routeUrl(base, points, id), TIMEOUT_MS, TIMEOUT_MS)
-        return resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
+    /**
+     * Ce qu'une tentative rend, et **pourquoi elle a echoue** quand elle echoue.
+     *
+     * [transportFailed] : la requete n'a pas abouti du tout - delai depasse, liaison coupee, pas de reseau
+     * (cf. `TileHttp.Response.status`, nul dans ce cas). A distinguer d'un service qui repond qu'il n'y a
+     * pas d'itineraire : les deux donnent un [result] nul, et un seul des deux merite qu'on redemande.
+     */
+    private class Attempt(val result: RouteResult?, val transportFailed: Boolean)
+
+    private fun fetch(
+        base: String, points: List<Pair<Double, Double>>, id: String, timeoutMs: Int,
+    ): Attempt {
+        val resp = TileHttp.fetch(routeUrl(base, points, id), timeoutMs, timeoutMs)
+        return Attempt(resp.body?.let { parse(it.toString(Charsets.UTF_8)) }, resp.status == 0)
     }
 
     @Serializable internal data class Deposit(@SerialName("profileid") val profileId: String? = null)

@@ -534,6 +534,34 @@ class PlannerStepsTest {
         assertTrue(etat.mapPins.isEmpty())
     }
 
+    // ---------- Position introuvable ----------
+
+    /**
+     * Une position qu'on ne sait pas resoudre n'est PAS un trajet impossible.
+     *
+     * Les deux publiaient le meme etat, donc le meme message - "Aucun itineraire" - alors que le moteur
+     * n'avait meme pas ete interroge. On cherchait la faute du cote de la discipline ou des etapes, la ou
+     * il n'y avait qu'un capteur muet.
+     */
+    @Test fun `la position introuvable ne se dit pas aucun itineraire`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.publish(RouteState.NoPosition)
+        assertEquals(RouteState.NoPosition, etat.route)
+        assertNull("rien a afficher", etat.done)
+    }
+
+    /** Comme tout echec, elle laisse le planificateur ouvert et le curseur retombe : il designait un
+     *  parcours qui n'existe plus. */
+    @Test fun `la position introuvable retire le curseur`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.publish(RouteState.Done(120.0, 600.0, parcoursVide))
+        etat.tapProfile(50.0)
+        etat.publish(RouteState.NoPosition)
+        assertNull(etat.cursor)
+    }
+
     /** Fermer le trajet sort du mode : la consigne ne doit pas survivre au planificateur qui l'a ouverte. */
     @Test fun `fermer le trajet sort du choix`() {
         val etat = RoutePlannerState()

@@ -177,6 +177,7 @@
     <string name="planner_current_position">Ubicació actual</string>
     <string name="planner_pick_on_map">Triar un punt al mapa</string>
     <string name="planner_pick_on_map_prompt">Selecciona un punt al mapa</string>
+    <string name="planner_no_position">Ubicació no disponible: activeu la localització o trieu un punt de sortida</string>
     <string name="planner_add_step">Afegeix una etapa</string>
     <string name="planner_move_up">Puja</string>
     <string name="planner_move_down">Baixa</string>

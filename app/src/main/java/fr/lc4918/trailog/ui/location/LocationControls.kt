@@ -46,6 +46,25 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 private const val STALE_TICK_MS = 1_000L
 
 /**
+ * Age en deca duquel la derniere position connue du systeme vaut "ou je suis", et dispense d'interroger le
+ * capteur (cf. [LocationControls.currentPosition]).
+ *
+ * Deux minutes : a velo, cela fait moins d'un kilometre, et le moteur d'itineraire rattache de toute facon
+ * le depart a la route la plus proche. La gagner instantanement vaut mieux que la dizaine de secondes -
+ * quand elles suffisent - d'un point neuf.
+ */
+private const val FRESH_FIX_MS = 2 * 60 * 1000L
+
+/**
+ * Age maximal d'une derniere position connue acceptee EN DERNIER RECOURS, quand le capteur n'a rien rendu.
+ *
+ * Un quart d'heure : on n'a pas change de region entre-temps, et un depart approximatif vaut infiniment
+ * mieux qu'un "Aucun itineraire" pour un trajet qu'on n'a meme pas demande. Au-dela, on prefere ne rien
+ * rendre - une position d'hier ferait calculer, sans un mot, un trajet depuis une autre ville.
+ */
+private const val STALE_FIX_MS = 15 * 60 * 1000L
+
+/**
  * Tout ce que l'ecran de carte doit savoir faire avec la position : l'allumer, l'eteindre, en demander
  * une seule, et savoir si le telephone veut bien en donner.
  *
@@ -227,20 +246,32 @@ class LocationControls internal constructor(
     /**
      * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
      *
-     * Le repere affiche donne deja un flux de positions : on s'en sert telle quelle. Sinon on demande au
-     * systeme une position ponctuelle, qu'il rend tout de suite s'il en a une assez fraiche et qu'il va
-     * chercher au capteur autrement. C'est ce qui affranchit le planificateur et les mesures de
-     * l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
+     * Le repere affiche donne deja un flux de positions : on s'en sert telle quelle. Sinon on lit ce que le
+     * systeme sait deja, puis on demande au capteur. C'est ce qui affranchit le planificateur et les mesures
+     * de l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
      *
-     * Null si l'autorisation manque ou si la localisation est eteinte - et aussi si le capteur n'a rien
-     * rendu dans le delai que le systeme s'accorde, sous un toit ou dans un tunnel.
+     * **Trois sources, dans cet ordre, et c'est l'ordre qui repare le defaut signale.** Le repere allume ;
+     * la derniere position connue si elle est FRAICHE ; le capteur enfin. La derniere position connue
+     * n'etait pas lue du tout, et l'on demandait donc un point neuf au GPS a chaque fois : sous un toit,
+     * celui-ci ne rend rien avant le delai que le systeme s'accorde, et le planificateur annoncait "Aucun
+     * itineraire" pour un trajet qu'il n'avait meme pas demande. Le signalement le disait ainsi - "quand
+     * j'ai le capteur active mais que le bouton est inactif, j'ai systematiquement Aucun itineraire".
+     *
+     * **Et une quatrieme en dernier recours** : une derniere position connue plus agee, jusqu'a [STALE_FIX_MS].
+     * Un point d'il y a un quart d'heure est un depart de trajet parfaitement utilisable - on n'a pas
+     * traverse la France entre-temps - la ou l'absence de reponse ne l'est pas du tout. Au-dela, on rend
+     * null : une position d'hier ferait calculer, sans un mot, un trajet depuis une autre region.
+     *
+     * Null si l'autorisation manque, si la localisation est eteinte, ou si aucune des quatre sources ne
+     * repond.
      */
     @SuppressLint("MissingPermission")
     suspend fun currentPosition(): Pair<Double, Double>? {
         lastUserLocation?.let { return it }
         if (!hasLocationPermission()) return null
         val provider = enabledProvider() ?: return null
-        return suspendCancellableCoroutine { cont ->
+        lastKnown(FRESH_FIX_MS)?.let { return it }
+        val duCapteur = suspendCancellableCoroutine { cont ->
             val signal = CancellationSignal()
             cont.invokeOnCancellation { signal.cancel() }
             runCatching {
@@ -249,6 +280,28 @@ class LocationControls internal constructor(
                 ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
             }.onFailure { if (cont.isActive) cont.resume(null) }
         }
+        return duCapteur ?: lastKnown(STALE_FIX_MS)
+    }
+
+    /**
+     * La derniere position connue du systeme, si elle a moins de [maxAgeMs], en (lat, lon).
+     *
+     * Les DEUX fournisseurs sont interroges, et la plus recente l'emporte : le reseau rend souvent un point
+     * la ou le GPS n'a rien - sous un toit, precisement le cas ou l'on prepare un trajet.
+     *
+     * Elle ne coute rien : le systeme la tient deja, de nos requetes comme de celles des autres
+     * applications. C'est ce qui rend le premier appel instantane, la ou le capteur demandait sa dizaine de
+     * secondes.
+     */
+    @SuppressLint("MissingPermission")
+    private fun lastKnown(maxAgeMs: Long): Pair<Double, Double>? {
+        val maintenant = System.currentTimeMillis()
+        return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { runCatching { locationManager.getLastKnownLocation(it) }.getOrNull() }
+            .filter { maintenant - it.time in 0..maxAgeMs }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
     }
 
     /** Fait [action] avec le capteur, en demandant d'abord l'autorisation si elle manque. */

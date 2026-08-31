@@ -41,7 +41,6 @@ data class RouteResult(
 object Valhalla {
     const val DEFAULT_URL = "https://valhalla1.openstreetmap.de/route"
 
-    private const val TIMEOUT_MS = 15_000
 
     /**
      * Pas d'échantillonnage des altitudes, en mètres.
@@ -241,8 +240,22 @@ object Valhalla {
         prefs: RoutingPrefs = RoutingPrefs.Balanced,
     ): RouteResult? = withContext(Dispatchers.IO) {
         if (points.size < 2) return@withContext null
-        val resp = TileHttp.fetch(url(base, points, profile, prefs), TIMEOUT_MS, TIMEOUT_MS)
-        resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
+        /*
+         * Le delai suit la longueur demandee (cf. RouteTimeout) : 15 s fixes suffisaient a la sortie du
+         * dimanche et pas a un cinq cents kilometres, qui expirait sur un "Aucun itineraire" alors que le
+         * trajet etait calculable.
+         *
+         * Une seconde tentative quand la premiere N'A PAS ABOUTI - delai depasse, liaison coupee, pas de
+         * reseau : le statut est alors nul (cf. TileHttp.Response). Un service qui REPOND qu'il n'y a pas
+         * d'itineraire, lui, rendrait la meme reponse au second essai, et l'on aurait attendu deux fois
+         * pour le meme non.
+         */
+        val delai = RouteTimeout.msFor(points)
+        val cible = url(base, points, profile, prefs)
+        val resp = TileHttp.fetch(cible, delai, delai)
+        val r = resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
+        if (r != null || resp.status != 0) return@withContext r
+        TileHttp.fetch(cible, delai, delai).body?.let { parse(it.toString(Charsets.UTF_8)) }
     }
 
     @Serializable internal data class Response(val trip: Trip? = null)

@@ -177,6 +177,7 @@
     <string name="planner_current_position">Position actuelle</string>
     <string name="planner_pick_on_map">Choisir un point sur la carte</string>
     <string name="planner_pick_on_map_prompt">Sélectionner un point sur la carte</string>
+    <string name="planner_no_position">Position introuvable : activez la localisation ou choisissez un point de départ</string>
     <string name="planner_add_step">Ajouter une étape</string>
     <string name="planner_move_up">Monter</string>
     <string name="planner_move_down">Descendre</string>

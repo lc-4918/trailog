@@ -177,6 +177,7 @@
     <string name="planner_current_position">Uneko kokapena</string>
     <string name="planner_pick_on_map">Aukeratu puntu bat mapan</string>
     <string name="planner_pick_on_map_prompt">Hautatu puntu bat mapan</string>
+    <string name="planner_no_position">Kokapena ez dago erabilgarri: aktibatu kokapena edo aukeratu irteera-puntu bat</string>
     <string name="planner_add_step">Gehitu etapa bat</string>
     <string name="planner_move_up">Igo</string>
     <string name="planner_move_down">Jaitsi</string>

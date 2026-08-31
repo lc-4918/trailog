@@ -140,8 +140,10 @@ fun PlannerEffects(
                 is StepTarget.Place -> t.place.lat to t.place.lon
                 // Demandee au capteur, que le repere soit affiche ou non : composer un parcours depuis chez
                 // soi n'oblige pas a poser sa position sur la carte.
+                // Position introuvable : on le DIT comme tel, et non "aucun itineraire" - le moteur n'a
+                // meme pas ete interroge, et chercher la faute du cote du trajet ne menerait nulle part.
                 StepTarget.CurrentPosition -> currentPosition() ?: run {
-                    state.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
+                    state.publish(RouteState.NoPosition); routeFramed = false; return@LaunchedEffect
                 }
             }
         }

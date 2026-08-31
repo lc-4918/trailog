@@ -49,8 +49,19 @@ sealed interface RouteState {
     /** Moins de deux etapes renseignees : il n'y a rien a calculer, et rien a afficher. */
     data object Idle : RouteState
     data object Loading : RouteState
-    /** Etapes non reliees dans cette discipline, service muet, reseau absent, ou position inconnue. */
+    /** Etapes non reliees dans cette discipline, service muet, ou reseau absent. */
     data object Failed : RouteState
+
+    /**
+     * La position du porteur ne peut pas etre resolue : une etape "d'ou je suis" que rien ne remplit.
+     *
+     * **Distinct de [Failed], et c'est le signalement qui l'a impose.** Les deux disaient "Aucun
+     * itineraire", ce qui envoie chercher la faute du cote du trajet - on change de discipline, on deplace
+     * une etape - alors qu'il n'y a jamais eu de requete : le capteur n'a rien rendu, et le moteur n'a
+     * meme pas ete interroge. Deux causes qui appellent deux gestes opposes ne peuvent pas partager un
+     * message.
+     */
+    data object NoPosition : RouteState
     data class Done(val meters: Double, val seconds: Double, val track: ComputedTrack) : RouteState
 }
 

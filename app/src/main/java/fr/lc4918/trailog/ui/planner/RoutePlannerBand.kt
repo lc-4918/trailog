@@ -598,7 +598,13 @@ private fun ResultsZone(
         // Premier calcul : rien a montrer encore, et le spinner de l'en-tete le dit deja. Ne rien poser
         // ici evite d'ouvrir puis refermer une zone de 40 dp a chaque frappe.
         RouteState.Loading -> Unit
+        // Deux echecs, deux messages : le trajet qu'on ne sait pas relier, et la position qu'on ne sait pas
+        // trouver. Le second n'a jamais atteint le moteur, et le dire "Aucun itineraire" envoyait chercher
+        // la faute du cote de la discipline ou des etapes.
         RouteState.Failed -> Text(stringResource(R.string.geocode_no_route),
+            fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        RouteState.NoPosition -> Text(stringResource(R.string.planner_no_position),
             fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         is RouteState.Done -> {
