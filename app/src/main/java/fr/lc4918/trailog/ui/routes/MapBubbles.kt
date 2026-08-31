@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +29,7 @@ import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.location.LocationControls
 import fr.lc4918.trailog.ui.mappoint.MapPointBubble
 import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.poi.PoiBubble
 import fr.lc4918.trailog.ui.poi.PoiState
@@ -169,6 +171,9 @@ internal fun BoxScope.PlaceBubblesLayer(
     poi: PoiState,
     geo: GeocodeSearchState,
     mapPoint: MapPointState,
+    /** Les deux distances mesurees depuis le point d'interet ouvert. Distinctes de celles du point d'appui
+     *  long : les deux bulles peuvent etre a l'ecran ensemble (cf. PointMeasures). */
+    poiMeasures: PointMeasures,
     planner: RoutePlannerState,
     location: LocationControls,
     routingProfile: RoutingProfile,
@@ -178,14 +183,21 @@ internal fun BoxScope.PlaceBubblesLayer(
     /** Hauteur de la bande du planificateur DEPLOYEE, 0 sinon (cf. MapInsetsState.plannerBandPx). */
     bandHeightPx: Int,
     onOpenPlanner: () -> Unit,
-    onDistanceFromPosition: () -> Unit,
-    onDistanceFromPoint: () -> Unit,
+    /** Recoit la paire de mesures a remplir : celle de la bulle qui demande. */
+    onDistanceFromPosition: (PointMeasures) -> Unit,
+    onDistanceFromPoint: (PointMeasures) -> Unit,
     // Un geste de l'infobulle n'a rien produit : l'ecran le dit (cf. MainDialogState.failure).
     onFailure: (Int) -> Unit,
 ) {
     val ctx = LocalContext.current
     val selPoi = poi.selected
-    if (selPoi != null) {
+    // Les mesures suivent le lieu ouvert : en changer efface les chiffres du precedent, qui valaient pour
+    // un autre endroit. Sans lieu, elles n'ont plus de cible et retombent - la croix de la bulle emporte
+    // donc aussi son trace de la carte.
+    LaunchedEffect(selPoi?.uuid) { poiMeasures.retarget(selPoi?.let { it.lon to it.lat }) }
+    // L'infobulle s'efface le temps de choisir un point sur la carte, qu'elle recouvrirait - meme regle
+    // que celle d'un appui long (cf. MapPointState.bubbleVisible).
+    if (selPoi != null && !poiMeasures.busy) {
         // idleTick SEUL, sans moveTick : l'infobulle garde sa place pres de son point pendant
         // le geste, comme celle d'un waypoint, au lieu de courir apres la carte a chaque image.
         val pOff = remember(selPoi, idleTick) {
@@ -216,6 +228,16 @@ internal fun BoxScope.PlaceBubblesLayer(
             ) {
                 PoiBubble(
                     poi = selPoi,
+                    profileLabel = routingProfileLabel(routingProfile),
+                    // La localisation eteinte dans le telephone, la ligne disparait : une mesure depuis
+                    // une position inconnue ne partirait jamais. Une mesure deja demandee la retient - son
+                    // resultat vaut pour l'endroit d'ou elle est partie, et son trace est sur la carte.
+                    showPositionRow = location.sensorEnabled || poiMeasures.positionMeasure != null,
+                    positionMeasure = poiMeasures.positionMeasure,
+                    pointMeasure = poiMeasures.pointMeasure,
+                    imperial = imperial,
+                    onDistanceFromPosition = { onDistanceFromPosition(poiMeasures) },
+                    onDistanceFromPoint = { onDistanceFromPoint(poiMeasures) },
                     onOpenWeb = { url ->
                         // Aucun navigateur installe : sans ce message, le lien serait une pastille qui
                         // ne fait rien.
@@ -322,12 +344,12 @@ internal fun BoxScope.PlaceBubblesLayer(
                     // capteur suffit. Une mesure déjà demandée retient la ligne : son
                     // résultat vaut pour l'endroit d'où elle est partie, et son tracé est
                     // sur la carte - rien ne l'expliquerait plus.
-                    showPositionRow = location.sensorEnabled || mapPoint.positionMeasure != null,
-                    positionMeasure = mapPoint.positionMeasure,
-                    pointMeasure = mapPoint.pointMeasure,
+                    showPositionRow = location.sensorEnabled || mapPoint.measures.positionMeasure != null,
+                    positionMeasure = mapPoint.measures.positionMeasure,
+                    pointMeasure = mapPoint.measures.pointMeasure,
                     imperial = imperial,
-                    onDistanceFromPosition = { onDistanceFromPosition() },
-                    onDistanceFromPoint = { onDistanceFromPoint() },
+                    onDistanceFromPosition = { onDistanceFromPosition(mapPoint.measures) },
+                    onDistanceFromPoint = { onDistanceFromPoint(mapPoint.measures) },
                     onSetStart = {
                         onOpenPlanner()
                         planner.setStart(placeOfPoint(mapPoint), location.sensorEnabled)

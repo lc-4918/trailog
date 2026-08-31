@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.poi.Poi
+import fr.lc4918.trailog.ui.mappoint.MeasureState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -53,8 +54,21 @@ class PoiBubbleUiTest {
         onSetEnd: () -> Unit = {},
         onAddStep: () -> Unit = {},
         onClose: () -> Unit = {},
+        showPositionRow: Boolean = true,
+        positionMeasure: MeasureState? = null,
+        pointMeasure: MeasureState? = null,
+        onDistanceFromPosition: () -> Unit = {},
+        onDistanceFromPoint: () -> Unit = {},
     ) = compose.setContent {
-        PoiBubble(poi, onOpenWeb, onSetStart, onSetEnd, onAddStep, onClose)
+        PoiBubble(
+            poi, onOpenWeb, onSetStart, onSetEnd, onAddStep, onClose,
+            profileLabel = "Gravel",
+            showPositionRow = showPositionRow,
+            positionMeasure = positionMeasure,
+            pointMeasure = pointMeasure,
+            onDistanceFromPosition = onDistanceFromPosition,
+            onDistanceFromPoint = onDistanceFromPoint,
+        )
     }
 
     @Test fun `le nom du lieu et sa categorie s'affichent`() {
@@ -109,6 +123,50 @@ class PoiBubbleUiTest {
         ouvre(camping, onClose = { ferme = true })
         compose.onNodeWithContentDescriptionRes(R.string.action_close).performClick()
         assertTrue(ferme)
+    }
+
+    // ---------- Les deux mesures de distance ----------
+
+    /**
+     * **Elles manquaient ici**, et c'est le signalement qui les y amene : un point d'interet est un endroit
+     * sur la carte au meme titre qu'un point designe du doigt, et l'on se pose devant lui exactement la
+     * meme question - a quelle distance est-il, et par ou. Il fallait refermer la bulle et refaire un appui
+     * long a cote du marqueur pour l'obtenir.
+     */
+    @Test fun `les deux mesures de distance repondent`() {
+        val appels = mutableListOf<String>()
+        ouvre(camping,
+            onDistanceFromPosition = { appels += "position" },
+            onDistanceFromPoint = { appels += "point" })
+        compose.onNodeWithText(ctx.getString(R.string.geocode_distance_from_position)).performClick()
+        compose.onNodeWithText(ctx.getString(R.string.geocode_distance_from_point)).performClick()
+        assertEquals(listOf("position", "point"), appels)
+    }
+
+    /**
+     * La localisation eteinte dans le telephone, la ligne disparait : une mesure depuis une position
+     * inconnue ne partirait jamais, et proposer un geste qu'on ne peut pas honorer ne vaut rien.
+     *
+     * "Depuis un point", elle, reste : elle ne demande que la carte.
+     */
+    @Test fun `sans capteur, la mesure depuis la position ne s'affiche pas`() {
+        ouvre(camping, showPositionRow = false)
+        compose.onAllNodesWithText(ctx.getString(R.string.geocode_distance_from_position))
+            .assertCountEquals(0)
+        compose.onNodeWithText(ctx.getString(R.string.geocode_distance_from_point)).assertIsDisplayed()
+    }
+
+    /** Une mesure aboutie affiche sa distance et sa duree sous son libelle. */
+    @Test fun `une mesure aboutie affiche son resultat`() {
+        ouvre(camping, positionMeasure = MeasureState.Done(12_300.0, 3_600.0))
+        compose.onNodeWithText(ctx.getString(R.string.geocode_distance_from_position)).assertIsDisplayed()
+        compose.onAllNodesWithText("12,3 km", substring = true).assertCountEquals(1)
+    }
+
+    /** Aucun itineraire : le dire, plutot que de laisser la ligne muette apres un tap. */
+    @Test fun `une mesure sans itineraire le dit`() {
+        ouvre(camping, pointMeasure = MeasureState.Failed)
+        compose.onNodeWithText(ctx.getString(R.string.geocode_no_route)).assertIsDisplayed()
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onNodeWithContentDescriptionRes(res: Int) =

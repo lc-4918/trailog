@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,7 +44,9 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.poi.Poi
+import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.geocode.CloseCorner
+import fr.lc4918.trailog.ui.geocode.MeasureAction
 import fr.lc4918.trailog.ui.geocode.RouteActions
 import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import fr.lc4918.trailog.ui.points.OverlayIconButton
@@ -72,6 +77,16 @@ fun PoiBubble(
     modifier: Modifier = Modifier,
     fontSp: Int = 14,
     backgroundAlpha: Float = 1f,
+    /** La discipline des mesures, telle que l'infobulle du "i" l'annonce derriere le chiffre. */
+    profileLabel: String = "",
+    /** La localisation est allumee dans le telephone, ou une mesure depuis la position a deja ete
+     *  demandee : sans elle, la ligne disparait plutot que de promettre un calcul qui ne partirait pas. */
+    showPositionRow: Boolean = false,
+    positionMeasure: MeasureState? = null,
+    pointMeasure: MeasureState? = null,
+    imperial: Boolean = false,
+    onDistanceFromPosition: () -> Unit = {},
+    onDistanceFromPoint: () -> Unit = {},
 ) {
     Card(
         modifier = modifier.width(InfoBubbleWidth),
@@ -143,9 +158,33 @@ fun PoiBubble(
                         poi, fontSp,
                         Modifier.padding(top = if (poi.imageUrl != null) 8.dp else 6.dp, bottom = 2.dp),
                     )
-                    // Les memes trois actions que l'infobulle d'un lieu cherche et celle d'un appui long :
-                    // trois facons d'avoir trouve un endroit, un seul geste pour en faire une etape.
-                    RouteActions(onSetStart, onSetEnd, onAddStep, fontSp)
+                    /*
+                     * Les memes cinq actions que l'infobulle d'un appui long, et dans le meme ordre : les
+                     * deux mesures d'abord, les trois actions d'itineraire ensuite.
+                     *
+                     * **Les mesures manquaient ici**, et rien ne le justifiait : un point d'interet est un
+                     * endroit sur la carte au meme titre qu'un point designe du doigt, et l'on se pose
+                     * devant lui exactement la meme question - a quelle distance est-il, et par ou. Il
+                     * fallait refermer la bulle et refaire un appui long a cote du marqueur pour l'obtenir.
+                     *
+                     * On regarde ou est le lieu et a quelle distance il se trouve, on decide d'y aller
+                     * apres. Un seul trait pour les cinq : c'est une seule liste, et un second la couperait
+                     * en deux.
+                     */
+                    HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+                    if (showPositionRow) {
+                        MeasureAction(
+                            Icons.Filled.MyLocation,
+                            stringResource(R.string.geocode_distance_from_position), positionMeasure,
+                            profileLabel, imperial, fontSp, onDistanceFromPosition,
+                        )
+                    }
+                    MeasureAction(
+                        Icons.Filled.Straighten,
+                        stringResource(R.string.geocode_distance_from_point), pointMeasure,
+                        profileLabel, imperial, fontSp, onDistanceFromPoint,
+                    )
+                    RouteActions(onSetStart, onSetEnd, onAddStep, fontSp, divider = false)
                 }
             }
             /*

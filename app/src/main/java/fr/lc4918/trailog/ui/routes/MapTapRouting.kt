@@ -11,6 +11,7 @@ import fr.lc4918.trailog.ui.edit.EditTool
 import fr.lc4918.trailog.ui.edit.SegmentRef
 import fr.lc4918.trailog.ui.edit.TrackEditState
 import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
@@ -35,6 +36,10 @@ internal fun MapTapRouting(
     offline: OfflineFlowState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
+    /** Les deux paires de mesures qui peuvent attendre un point de reference : celle de l'appui long, et
+     *  celle du point d'interet ouvert. Une seule attend a la fois - le choix efface la bulle qui l'a
+     *  demande - mais l'ecran n'a pas a savoir laquelle. */
+    measures: List<PointMeasures>,
     planner: RoutePlannerState,
     edit: TrackEditState,
     layers: List<LayerEntity>,
@@ -54,7 +59,7 @@ internal fun MapTapRouting(
     // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
     // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
     // reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offline.drawingActive, measure.picking, mapPoint.pickingPoint,
+    LaunchedEffect(controller, offline.drawingActive, measure.picking, measures.map { it.pickingPoint },
         planner.pickingOnMap, edit.awaitingTap) {
         when {
             offline.drawingActive -> controller.onRawTap = { lon, lat ->
@@ -73,7 +78,9 @@ internal fun MapTapRouting(
                     vm.pickMeasureEnd(started, lon, lat) { p, path -> if (measure.picking) measure.chooseEnd(p, path) }
                 }
             }
-            mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
+            measures.any { it.pickingPoint } -> controller.onRawTap = { lon, lat ->
+                measures.firstOrNull { it.pickingPoint }?.chooseRefPoint(lon, lat)
+            }
             // Etape du planificateur montree du doigt : le tap lui revient ENTIER, y compris sur un
             // marqueur, un point d'interet ou une trace - on designe un ENDROIT, et ouvrir une infobulle
             // ou un profil par-dessus la consigne repondrait a une question qu'on n'a pas posee.

@@ -7,6 +7,7 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
@@ -36,6 +37,8 @@ internal fun MapBackHandlers(
     geo: GeocodeSearchState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
+    /** Les paires de mesures qui peuvent attendre un point de reference (cf. MapTapRouting). */
+    measures: List<PointMeasures>,
     offlineDownload: OfflineDownloadState?,
     vm: MainViewModel,
     profileOpen: Boolean,
@@ -68,7 +71,10 @@ internal fun MapBackHandlers(
     // Point désigné par un appui long, même gradation : le retour ferme d'abord son infobulle, et sort en
     // priorité du choix d'un point de référence, qui est le mode de saisie en cours.
     BackHandler(enabled = mapPoint.point != null) { mapPoint.clear() }
-    BackHandler(enabled = mapPoint.pickingPoint) { mapPoint.cancelPickingPoint() }
+    // Le choix d'un point de reference, quelle que soit la bulle qui l'attend - un appui long, ou un
+    // point d'interet. Une seule des deux attend a la fois : le choix efface celle qui l'a demande.
+    val enAttente = measures.firstOrNull { it.pickingPoint }
+    BackHandler(enabled = enAttente != null) { enAttente?.cancelPickingPoint() }
     // Etape d'itineraire montree du doigt : le retour rend la bande telle qu'on l'avait laissee, sans rien
     // poser sur la carte. Declare APRES les gestes du planificateur, plus haut : la bande est rangee
     // pendant ce choix, et son propre retour - "replier, puis demander" - repondrait a sa place.

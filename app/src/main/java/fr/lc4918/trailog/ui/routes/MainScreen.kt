@@ -83,6 +83,8 @@ import fr.lc4918.trailog.ui.location.KeepScreenOnEffect
 import fr.lc4918.trailog.ui.location.rememberLocationControls
 import fr.lc4918.trailog.ui.mappoint.MapPointEffects
 import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.PointMeasureEffects
+import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
@@ -263,6 +265,7 @@ fun MainScreen(
 
     // ---------- point quelconque de la carte (appui long) ----------
     val mapPoint = screen.mapPoint
+    val poiMeasures = screen.poiMeasures
     // Discipline des mesures : celle réglée dans les réglages, et non celle du planificateur, qui la choisit
     // pour le trajet qu'on y compose. Une distance demandée sur la carte n'a pas de composition derrière elle.
     val routingProfile = RoutingProfile.of(settings.routingProfile)
@@ -273,13 +276,32 @@ fun MainScreen(
     MapPointEffects(
         state = mapPoint,
         geocodingBase = geocodingBase,
+        onPlaceFound = { lieu -> vm.rememberPlannerPlace(lieu) },
+    )
+    /*
+     * Les deux mesures de distance, une paire par bulle qui les propose : le point d'appui long, et le
+     * point d'interet ouvert.
+     *
+     * Deux porteurs et deux effets, et non un seul partage : les deux bulles peuvent etre a l'ecran en
+     * meme temps, et les chiffres de l'une s'afficheraient sous l'autre.
+     */
+    PointMeasureEffects(
+        measures = mapPoint.measures,
         routeEngine = routeEngine,
         routingUrl = routingUrl,
         routingProfile = routingProfile,
         prefs = measurePrefs,
         smoothingM = profileSmoothingM,
         currentPosition = { location.currentPosition() },
-        onPlaceFound = { lieu -> vm.rememberPlannerPlace(lieu) },
+    )
+    PointMeasureEffects(
+        measures = poiMeasures,
+        routeEngine = routeEngine,
+        routingUrl = routingUrl,
+        routingProfile = routingProfile,
+        prefs = measurePrefs,
+        smoothingM = profileSmoothingM,
+        currentPosition = { location.currentPosition() },
     )
 
     // ---------- planificateur d'itinéraire ----------
@@ -333,8 +355,8 @@ fun MainScreen(
         enabled = settings.routePlannerEnabled,
         topPaddingPx = statusBarTopPx,
         bandHeightPx = insets.plannerBandPx,
-        routeTracks = mapPoint.routeTracks,
-        routeRevision = mapPoint.measureRevision,
+        routeTracks = mapPoint.measures.routeTracks + poiMeasures.routeTracks,
+        routeRevision = mapPoint.measures.revision + poiMeasures.revision,
         geocodingBase = geocodingBase,
         currentPosition = { location.currentPosition() },
     )
@@ -393,15 +415,15 @@ fun MainScreen(
      * sans réseau la mesure ne rendrait qu'un échec, que rien n'expliquerait. Le bouton "depuis la
      * position" n'est proposé que le capteur allumé (cf. MapPointBubble), il n'a donc pas à s'en soucier.
      */
-    fun onDistanceFromPositionTap() {
+    fun onDistanceFromPositionTap(measures: PointMeasures) {
         if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
-        else location.withLocationPermission { mapPoint.requestDistanceFromPosition() }
+        else location.withLocationPermission { measures.requestDistanceFromPosition() }
     }
 
     /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
-    fun onDistanceFromPointTap() {
+    fun onDistanceFromPointTap(measures: PointMeasures) {
         if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
-        else mapPoint.startPickingPoint()
+        else measures.startPickingPoint()
     }
 
     /** Ouvre (ou referme) la barre de recherche, après s'être assuré qu'elle pourra aboutir : ouvrir un
@@ -425,6 +447,7 @@ fun MainScreen(
         offline = offline,
         measure = measure,
         mapPoint = mapPoint,
+        measures = listOf(mapPoint.measures, poiMeasures),
         planner = planner,
         edit = edit,
         layers = layers,
@@ -645,6 +668,7 @@ fun MainScreen(
         geo = geo,
         measure = measure,
         mapPoint = mapPoint,
+        measures = listOf(mapPoint.measures, poiMeasures),
         offlineDownload = offlineDownload,
         vm = vm,
         profileOpen = computed != null,
@@ -764,6 +788,7 @@ fun MainScreen(
                     poi = poi,
                     geo = geo,
                     mapPoint = mapPoint,
+                    poiMeasures = poiMeasures,
                     planner = planner,
                     location = location,
                     routingProfile = routingProfile,
@@ -772,8 +797,8 @@ fun MainScreen(
                     moveTick = moveTick,
                     bandHeightPx = insets.plannerBandPx,
                     onOpenPlanner = { ouvrePlanificateur() },
-                    onDistanceFromPosition = { onDistanceFromPositionTap() },
-                    onDistanceFromPoint = { onDistanceFromPointTap() },
+                    onDistanceFromPosition = { m -> onDistanceFromPositionTap(m) },
+                    onDistanceFromPoint = { m -> onDistanceFromPointTap(m) },
                     onFailure = { message -> dialogs.failed(message) },
                 )
                 MapBottomRightControls(
@@ -899,12 +924,19 @@ fun MainScreen(
                             .padding(top = with(density) { insets.topControlsPx.toDp() } + 16.dp),
                     )
                 }
-                // Consigne du choix d'un point de référence : même barre que la mesure sur trace, l'une et
-                // l'autre ne demandant qu'un tap sur la carte.
-                if (mapPoint.pickingPoint) {
+                /*
+                 * Consigne du choix d'un point de référence : même barre que la mesure sur trace, l'une et
+                 * l'autre ne demandant qu'un tap sur la carte.
+                 *
+                 * Les deux paires de mesures - celle d'un appui long, celle d'un point d'intérêt - la
+                 * partagent : elles ne peuvent pas être en attente ensemble, le choix effaçant la bulle
+                 * qui l'a demandé, et deux barres identiques l'une sur l'autre ne diraient rien de plus.
+                 */
+                val enAttenteDePoint = listOf(mapPoint.measures, poiMeasures).firstOrNull { it.pickingPoint }
+                if (enAttenteDePoint != null) {
                     MapPromptBar(
                         text = stringResource(R.string.geocode_pick_point_prompt),
-                        onClose = { mapPoint.cancelPickingPoint() },
+                        onClose = { enAttenteDePoint.cancelPickingPoint() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { insets.pointBarPx = it.size.height },
                     )

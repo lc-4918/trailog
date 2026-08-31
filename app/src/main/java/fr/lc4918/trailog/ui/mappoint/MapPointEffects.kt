@@ -14,26 +14,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Ce qu'un point designe a l'appui long va CHERCHER : son adresse, et les deux distances qu'on peut lui
- * demander - depuis ou l'on est, et depuis un autre point de la carte.
+ * Ce qu'un point designe a l'appui long va CHERCHER : son adresse.
  *
- * Trois requetes reseau, et rien qui se dessine : les effets sont ici, la bulle qui en montre le resultat
- * est a cote (cf. [MapPointBubble]).
+ * Les deux distances qu'on peut lui demander ont demenage dans [PointMeasureEffects] : elles ne sont plus
+ * le privilege d'un appui long. Ce qui reste ici n'interesse que lui - un point d'interet porte deja son nom.
+ *
+ * Une requete reseau, et rien qui se dessine : l'effet est ici, la bulle qui en montre le resultat est a
+ * cote (cf. [MapPointBubble]).
  *
  * @param geocodingBase l'instance Photon a interroger, telle que les reglages la designent.
- * @param currentPosition une position ponctuelle demandee au capteur, sans rien poser sur la carte.
  * @param onPlaceFound l'adresse trouvee entre dans l'historique du planificateur.
  */
 @Composable
 fun MapPointEffects(
     state: MapPointState,
     geocodingBase: String,
-    routeEngine: RouteEngine,
-    routingUrl: String,
-    routingProfile: RoutingProfile,
-    prefs: RoutingPrefs,
-    smoothingM: Double,
-    currentPosition: suspend () -> Pair<Double, Double>?,
     onPlaceFound: (GeocodePlace) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -69,6 +64,31 @@ fun MapPointEffects(
         if (adresse != null) onPlaceFound(GeocodePlace(adresse.lines, lon, lat))
     }
 
+}
+
+/**
+ * Ce qu'une paire de mesures va CHERCHER : la distance depuis ou l'on est, et depuis un autre point de la
+ * carte.
+ *
+ * **Separe de [MapPointEffects], et pour la meme raison que [PointMeasures] l'est de [MapPointState]** :
+ * ces deux requetes ne dependent que d'un point et d'une discipline, et valent pour n'importe quel endroit
+ * qu'une bulle designe - un appui long comme un point d'interet. L'adresse, elle, reste la-bas : elle
+ * n'interesse que l'appui long, un point d'interet portant deja son nom.
+ *
+ * @param currentPosition une position ponctuelle demandee au capteur, sans rien poser sur la carte.
+ */
+@Composable
+fun PointMeasureEffects(
+    measures: PointMeasures,
+    routeEngine: RouteEngine,
+    routingUrl: String,
+    routingProfile: RoutingProfile,
+    prefs: RoutingPrefs,
+    smoothingM: Double,
+    currentPosition: suspend () -> Pair<Double, Double>?,
+) {
+    val ctx = LocalContext.current
+
     /*
      * Un itinéraire depuis (fromLat, fromLon) jusqu'au point désigné, traduit en état affichable.
      *
@@ -97,22 +117,24 @@ fun MapPointEffects(
     //
     // Sans position - autorisation refusée, localisation éteinte, ou capteur muet jusqu'au bout du délai
     // que le système s'accorde -, la mesure est abandonnée : son spinner tournerait indéfiniment.
-    LaunchedEffect(state.positionMeasure) {
-        if (state.positionMeasure != MeasureState.Loading || state.positionOrigin != null) return@LaunchedEffect
+    LaunchedEffect(measures.positionMeasure) {
+        if (measures.positionMeasure != MeasureState.Loading || measures.positionOrigin != null) {
+            return@LaunchedEffect
+        }
         val fix = currentPosition()
-        if (fix == null) state.publishPositionMeasure(MeasureState.Failed)
-        else state.fixPositionOrigin(fix.first, fix.second)
+        if (fix == null) measures.publishPositionMeasure(MeasureState.Failed)
+        else measures.fixPositionOrigin(fix.first, fix.second)
     }
-    LaunchedEffect(state.point, state.positionOrigin, routingUrl, routingProfile, prefs) {
-        val (lon, lat) = state.point ?: return@LaunchedEffect
-        val (la, lo) = state.positionOrigin ?: return@LaunchedEffect
-        state.publishPositionMeasure(MeasureState.Loading)
-        state.publishPositionMeasure(measureTo(la, lo, lat, lon))
+    LaunchedEffect(measures.target, measures.positionOrigin, routingUrl, routingProfile, prefs) {
+        val (lon, lat) = measures.target ?: return@LaunchedEffect
+        val (la, lo) = measures.positionOrigin ?: return@LaunchedEffect
+        measures.publishPositionMeasure(MeasureState.Loading)
+        measures.publishPositionMeasure(measureTo(la, lo, lat, lon))
     }
-    LaunchedEffect(state.point, state.refPoint, routingUrl, routingProfile, prefs) {
-        val (lon, lat) = state.point ?: return@LaunchedEffect
-        val (refLon, refLat) = state.refPoint ?: return@LaunchedEffect
-        state.publishPointMeasure(MeasureState.Loading)
-        state.publishPointMeasure(measureTo(refLat, refLon, lat, lon))
+    LaunchedEffect(measures.target, measures.refPoint, routingUrl, routingProfile, prefs) {
+        val (lon, lat) = measures.target ?: return@LaunchedEffect
+        val (refLon, refLat) = measures.refPoint ?: return@LaunchedEffect
+        measures.publishPointMeasure(MeasureState.Loading)
+        measures.publishPointMeasure(measureTo(refLat, refLon, lat, lon))
     }
 }

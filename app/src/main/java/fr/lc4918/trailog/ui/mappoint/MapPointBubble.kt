@@ -49,6 +49,7 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.ui.geocode.AddressText
 import fr.lc4918.trailog.ui.geocode.BubbleAction
 import fr.lc4918.trailog.ui.geocode.CloseCorner
+import fr.lc4918.trailog.ui.geocode.MeasureAction
 import fr.lc4918.trailog.ui.geocode.RouteActions
 import fr.lc4918.trailog.ui.points.InfoBubbleWidth
 import kotlinx.coroutines.launch
@@ -164,77 +165,5 @@ private fun AddressLine(address: AddressState, fontSp: Int, modifier: Modifier) 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier,
         )
-    }
-}
-
-/**
- * Une mesure de distance, dans le gabarit commun des actions de la bulle (cf. [BubbleAction]) : un
- * pictogramme, ce qu'elle mesure, et - une fois demandee - ce qu'elle a trouve juste dessous.
- *
- * Le resultat SOUS le libelle et non a sa droite : "Distance depuis la position" est deja long dans
- * plusieurs langues, et la valeur, sa duree et son appel de note ne tiennent pas a cote. En rangee, la
- * duree se coupait au milieu ("11,2 km - 54") et le "i" disparaissait - le nombre restait lisible, mais
- * faux de moitie, et rien ne disait plus qu'il suit la voirie.
- *
- * Toute la ligne declenche la mesure, et non un bouton pose dessus : c'est ce qui la rend semblable aux
- * trois actions d'itineraire qui la suivent, et une cible large se vise mieux au doigt qu'un bouton.
- */
-@Composable
-private fun MeasureAction(
-    icon: ImageVector,
-    label: String,
-    measure: MeasureState?,
-    profileLabel: String,
-    imperial: Boolean,
-    fontSp: Int,
-    onClick: () -> Unit,
-) {
-    BubbleAction(icon, label, fontSp, onClick) {
-        when (measure) {
-            null -> Unit
-            MeasureState.Loading -> CircularProgressIndicator(
-                Modifier.padding(top = 4.dp).size(14.dp), strokeWidth = 2.dp)
-            MeasureState.Failed -> Text(
-                stringResource(R.string.geocode_no_route),
-                fontSize = (fontSp - 2).sp, color = MaterialTheme.colorScheme.error, maxLines = 1,
-            )
-            is MeasureState.Done -> Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.geocode_route_summary,
-                        Format.shortDistance(measure.meters, imperial), Format.duration(measure.seconds)),
-                    fontSize = fontSp.sp, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary, maxLines = 1,
-                )
-                RouteInfoButton(profileLabel)
-            }
-        }
-    }
-}
-
-/**
- * Le "i" en exposant qui explique la nature du nombre affiche : itineraire recommande pour la discipline
- * reglee. L'infobulle se pose au-dessus du point d'appui, ce que fait le placeur M3 par defaut.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RouteInfoButton(profileLabel: String, modifier: Modifier = Modifier) {
-    val state = rememberTooltipState()
-    val scope = rememberCoroutineScope()
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-        tooltip = { PlainTooltip { Text(stringResource(R.string.geocode_route_info, profileLabel)) } },
-        state = state,
-        modifier = modifier,
-    ) {
-        // En exposant : remonte d'un tiers de sa hauteur, comme un appel de note derriere la valeur.
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            IconButton(
-                onClick = { scope.launch { state.show() } },
-                modifier = Modifier.size(16.dp).offset(y = (-5).dp),
-            ) {
-                Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_route_info),
-                    modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
-            }
-        }
     }
 }

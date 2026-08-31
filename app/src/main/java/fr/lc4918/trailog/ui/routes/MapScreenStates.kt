@@ -5,6 +5,7 @@ import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.edit.TrackEditState
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.mappoint.MapPointState
+import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
@@ -13,7 +14,7 @@ import fr.lc4918.trailog.ui.poi.PoiState
 /**
  * Le travail en cours de l'ecran de carte, garde le temps d'une rotation.
  *
- * **Ce qu'un quart de tour emportait.** Ces neuf porteurs naissaient en `remember` dans `MainScreen`, et
+ * **Ce qu'un quart de tour emportait.** Ces dix porteurs naissaient en `remember` dans `MainScreen`, et
  * `MainActivity` ne declare aucun `configChanges` : une rotation recree l'activite, la composition repart
  * de zero, et tout ce qui etait en cours partait avec elle - l'itineraire compose etape par etape, la
  * mesure dont le premier point venait d'etre pose, l'emprise hors-ligne a moitie tracee, le mode retouche.
@@ -44,6 +45,15 @@ class MapScreenStates : ViewModel() {
     val dialogs = MainDialogState()
     val measure = TrackMeasureState()
     val mapPoint = MapPointState()
+
+    /**
+     * Les deux distances mesurees depuis le point d'interet ouvert.
+     *
+     * Un porteur DISTINCT de celui du point d'appui long (cf. `MapPointState.measures`) : les deux bulles
+     * peuvent etre a l'ecran en meme temps, et un porteur partage afficherait sous l'une la distance
+     * mesuree pour l'autre. Sa cible suit le lieu selectionne, et changer de lieu efface tout.
+     */
+    val poiMeasures = PointMeasures()
     val planner = RoutePlannerState()
     val edit = TrackEditState()
     val poi = PoiState()
