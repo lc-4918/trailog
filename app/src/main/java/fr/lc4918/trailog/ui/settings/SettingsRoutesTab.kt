@@ -172,6 +172,30 @@ import kotlinx.coroutines.launch
                 vm.clearPoiCache()
             }
             RowDivider()
+            /*
+             * Le couloir des traces : au-dela de cette distance d'une trace AFFICHEE, un lieu n'est plus
+             * montre (cf. ui/poi/PoiCorridor).
+             *
+             * Ce qu'il repare : le zoom de chargement etait haut - une ville et ses abords - parce qu'a
+             * l'echelle d'une region la vue porte des milliers de lieux dont le service ne rend que les
+             * premiers. On zoomait donc beaucoup pour voir quoi que ce soit. Le couloir retire ce qui ne
+             * borde aucun trajet, et c'est lui qui rend le zoom plus bas supportable (cf.
+             * PoiLoading.MIN_ZOOM).
+             *
+             * Une poignee de distances plutot qu'un curseur : le choix se fait entre "le long du chemin" et
+             * "dans le coin", pas au decametre pres.
+             *
+             * Eteint par defaut, ici comme en base : c'est un filtre qui RETIRE de la carte, et une couche
+             * qui montre moins qu'on ne lui a demande sans l'avoir dit se lit comme une panne.
+             */
+            PickRow(
+                label = stringResource(R.string.settings_label_poi_corridor),
+                current = cur.poiTrackCorridorM,
+                options = PoiCorridorChoicesM,
+                optionLabel = { poiCorridorLabel(it) },
+            ) { vm.save(cur.copy(poiTrackCorridorM = it)) }
+            Hint(stringResource(R.string.settings_poi_corridor_hint))
+            RowDivider()
         }
         Hint(stringResource(R.string.settings_poi_attribution))
     }
@@ -484,4 +508,20 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     RoutingProfile.HYBRID_BIKE -> Icons.Filled.PedalBike
     RoutingProfile.MOUNTAIN_BIKE -> Icons.Filled.Terrain
     RoutingProfile.FOOT -> Icons.Filled.DirectionsWalk
+}
+
+/**
+ * Les distances offertes pour le couloir des traces, en metres. Zero = aucun couloir.
+ *
+ * Cinq valeurs et pas davantage : de "le long du chemin" a "dans le coin". Un pas plus fin ne repondrait a
+ * aucune question qu'on se pose vraiment.
+ */
+private val PoiCorridorChoicesM = listOf(0, 500, 1_000, 2_000, 5_000, 10_000)
+
+/** "Desactive", "500 m", "2 km" : le metre sous le kilometre, le kilometre au-dela. */
+@Composable
+private fun poiCorridorLabel(m: Int): String = when {
+    m <= 0 -> stringResource(R.string.settings_poi_corridor_off)
+    m < 1_000 -> "$m m"
+    else -> "${m / 1_000} km"
 }

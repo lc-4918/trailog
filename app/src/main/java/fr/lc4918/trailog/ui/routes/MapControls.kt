@@ -604,6 +604,8 @@ internal fun BoxScope.MapBottomRightControls(
                 filters = poiFilters,
                 onFilters = onPoiFilters,
                 onClose = { poi.closeBubble() },
+                masked = poi.masked,
+                onToggleMask = { poi.toggleMask() },
                 // Le centre du bouton, mesure depuis son bas : la pointe le vise.
                 tailFromBottom = PoiBubbleAnchorWidth / 2,
             )

@@ -474,6 +474,8 @@
     <string name="settings_sw_poi_osm_sub">In Francia, aggiunge ristoranti, bar e servizi che la banca dati turistica ignora. Richiesta più lenta. Nessun effetto all\'estero, dove OpenStreetMap è l\'unica fonte.</string>
     <string name="poi_layer_title">Punti di interesse</string>
     <string name="poi_filter_hide_all">Nascondi tutto</string>
+    <string name="poi_filter_hide_layer">Nascondi i punti di interesse</string>
+    <string name="poi_filter_show_layer">Mostra i punti di interesse</string>
     <string name="settings_section_gps_marker">Segnaposto di posizione</string>
     <string name="settings_label_gps_marker_style">Simbolo</string>
     <string name="settings_label_gps_marker_color">Colore</string>
@@ -535,7 +537,7 @@
     <string name="settings_sw_keep_screen_on">Mantenere lo schermo acceso</string>
     <string name="settings_sw_keep_screen_on_sub">Solo durante il tracciamento della posizione; questo prosegue comunque a schermo spento</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Campeggi e aree camper</string>
+    <string name="poi_cat_campings">Campeggi</string>
     <string name="poi_cat_guesthouses">Bed and breakfast</string>
     <string name="poi_cat_hotels">Hotel</string>
     <string name="poi_cat_rentals">Case e appartamenti vacanze</string>
@@ -574,6 +576,9 @@
     <string name="poi_group_leisure">Tempo</string>
     <string name="poi_group_practical">Pratico</string>
     <string name="settings_poi_select_all">Seleziona tutto</string>
+    <string name="settings_label_poi_corridor">Distanza massima da una traccia</string>
+    <string name="settings_poi_corridor_off">Disattivato</string>
+    <string name="settings_poi_corridor_hint">I punti di interesse lontani da tutte le tracce visualizzate non vengono mostrati. Senza tracce visualizzate, non viene filtrato nulla.</string>
     <string name="settings_poi_attribution">Dati: DATAtourisme, Licenza Aperta Etalab 2.0, e OpenStreetMap, licenza ODbL.</string>
     <string name="settings_clear_poi_cache">Svuota la cache dei punti di interesse</string>
     <string name="settings_poi_cache_empty">Nessun luogo in cache</string>

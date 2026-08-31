@@ -51,7 +51,9 @@ internal fun BoxScope.PoiStatusBanner(
      * categorie. Il attend donc qu'on referme, c'est-a-dire qu'on regarde a nouveau la carte.
      */
     if (poi.bubbleOpen) return
-    if (poi.visible && (poi.tooFar || poi.needsNetwork || poi.fromCache || poi.partial)) {
+    // Couche mise de cote : ces quatre messages disent pourquoi la carte ne montre rien, et la reponse est
+    // alors qu'on vient de la ranger soi-meme (cf. PoiState.masked).
+    if (poi.showingMarkers && (poi.tooFar || poi.needsNetwork || poi.fromCache || poi.partial)) {
         /*
          * Le message du zoom se TAPE, et zoome. Les deux autres ne sont que des constats -
          * pas de reseau, points du cache - que rien ni personne ne leve d'un doigt, et les

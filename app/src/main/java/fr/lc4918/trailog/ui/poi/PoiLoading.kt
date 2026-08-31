@@ -18,9 +18,17 @@ object PoiLoading {
      * cent premiers - un échantillon arbitraire, pris là où le service a commencé à lire. Mieux vaut ne
      * rien montrer que montrer au hasard, et la carte le dit (cf. le message de l'écran).
      *
-     * 11 correspond à une ville et ses abords, l'échelle à laquelle on prépare une étape.
+     * **Descendu de 11 à 9**, soit seize fois la surface. 11 correspondait à une ville et ses abords, et
+     * c'était trop près pour le geste qui compte : on prépare une étape en regardant le trajet entier, pas
+     * un quartier. Le testeur l'a dit ainsi - "ça permettrait de zoomer moins, là ce n'est pas très
+     * pratique".
+     *
+     * Ce qui rend la descente tenable est le **couloir des traces** (cf. [PoiCorridor]) : à 9, la vue porte
+     * une région, mais on n'en affiche que ce qui borde le trajet affiché. Sans trace ouverte, la réponse
+     * sera souvent tronquée à cette échelle - et la carte le dit déjà (cf. le bandeau "affichage
+     * incomplet"), ce qui vaut mieux que de refuser de montrer quoi que ce soit.
      */
-    const val MIN_ZOOM = 11.0
+    const val MIN_ZOOM = 9.0
 
     /**
      * Délai après le dernier geste, en millisecondes.

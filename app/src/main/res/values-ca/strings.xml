@@ -474,6 +474,8 @@
     <string name="settings_sw_poi_osm_sub">A França, afegeix els restaurants, bars i serveis que la base turística ignora. Consulta més lenta. Sense efecte a l\'estranger, on OpenStreetMap és l\'única font.</string>
     <string name="poi_layer_title">Punts d\'interès</string>
     <string name="poi_filter_hide_all">Amaga-ho tot</string>
+    <string name="poi_filter_hide_layer">Amaga els punts d\'interès</string>
+    <string name="poi_filter_show_layer">Mostra els punts d\'interès</string>
     <string name="settings_section_gps_marker">Marca de posició</string>
     <string name="settings_label_gps_marker_style">Símbol</string>
     <string name="settings_label_gps_marker_color">Color</string>
@@ -535,7 +537,7 @@
     <string name="settings_sw_keep_screen_on">Mantenir la pantalla encesa</string>
     <string name="settings_sw_keep_screen_on_sub">Només durant el seguiment de posició; aquest continua igualment amb la pantalla apagada</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Càmpings i àrees d\'autocaravanes</string>
+    <string name="poi_cat_campings">Càmpings</string>
     <string name="poi_cat_guesthouses">Cases d\'hostes</string>
     <string name="poi_cat_hotels">Hotels</string>
     <string name="poi_cat_rentals">Cases i apartaments turístics</string>
@@ -574,6 +576,9 @@
     <string name="poi_group_leisure">Lleure</string>
     <string name="poi_group_practical">Pràctic</string>
     <string name="settings_poi_select_all">Selecciona-ho tot</string>
+    <string name="settings_label_poi_corridor">Distància màxima a una traça</string>
+    <string name="settings_poi_corridor_off">Desactivat</string>
+    <string name="settings_poi_corridor_hint">Els punts d\'interès allunyats de totes les traces mostrades no es mostren. Sense cap traça mostrada, no es filtra res.</string>
     <string name="settings_poi_attribution">Dades: DATAtourisme, Llicència Oberta Etalab 2.0, i OpenStreetMap, llicència ODbL.</string>
     <string name="settings_clear_poi_cache">Buida la memòria cau de punts d\'interès</string>
     <string name="settings_poi_cache_empty">Cap lloc a la memòria cau</string>

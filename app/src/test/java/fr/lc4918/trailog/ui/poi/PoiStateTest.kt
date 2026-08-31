@@ -4,7 +4,9 @@ import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.poi.Poi
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -177,5 +179,95 @@ class PoiStateTest {
         poi.publish(vue, filtres, listOf(lieu), incomplete = false, complete = true)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
         assertFalse(poi.needsLoad(plusServre, filtres, osm = true, now = 0L))
+    }
+
+    // ---------- La couche mise de cote ----------
+
+    /**
+     * L'oeil range la couche SANS toucher au filtre, et c'est toute sa raison d'etre : la poubelle decoche
+     * tout, et revoir ce qu'on avait choisi demande alors de le recocher categorie par categorie.
+     *
+     * Les lieux deja recus restent en memoire : remettre la couche ne coute aucune requete.
+     */
+    @Test fun `mettre la couche de cote garde ses lieux`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
+        poi.toggleMask()
+        assertTrue("le filtre n'a pas bouge", poi.visible)
+        assertFalse("mais rien n'est pose sur la carte", poi.showingMarkers)
+        assertEquals("et les lieux sont gardes", listOf(lieu), poi.pois)
+        assertFalse("rien a redemander en la remettant",
+            poi.needsLoad(vue, filtres, osm = true, now = 0L))
+        poi.toggleMask()
+        assertTrue(poi.showingMarkers)
+    }
+
+    /** L'infobulle decrirait un marqueur qui n'est plus la : elle se ferme avec la couche. */
+    @Test fun `mettre la couche de cote ferme l'infobulle`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
+        poi.selectById(lieu.uuid)
+        poi.toggleMask()
+        assertNull(poi.selected)
+    }
+
+    /** Cocher une categorie est une demande de VOIR : elle leve la mise de cote, sans quoi le geste
+     *  resterait sans effet derriere un oeil ferme qu'on a oublie. */
+    @Test fun `rallumer la couche leve la mise de cote`() {
+        val poi = couche()
+        poi.toggleMask()
+        poi.showLayer(false)
+        poi.showLayer(true)
+        assertFalse(poi.masked)
+    }
+
+    /** Decocher une categorie emporte l'infobulle ouverte sur l'un de ses lieux, en meme temps que son
+     *  marqueur. */
+    @Test fun `decocher une categorie ferme l'infobulle de ses lieux`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
+        poi.selectById(lieu.uuid)
+        poi.dropSelectionIfHidden(filtres.toggle(PoiCategory.WATER))
+        assertNull(poi.selected)
+    }
+
+    // ---------- Le retour du reseau ----------
+
+    /**
+     * Repasser en ligne redemande ce qu'on n'avait pas pu obtenir.
+     *
+     * Sans cela, le bandeau "Derniers points connus (hors ligne)" tenait l'ecran indefiniment : l'emprise
+     * etait tenue pour chargee - sur le cache -, et rien ne la reexaminait avant un geste de carte que
+     * personne ne fait en repassant sous couverture.
+     */
+    @Test fun `le retour du reseau redemande ce qui venait du cache`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), cache = true, complete = true)
+        assertTrue(poi.fromCache)
+        assertFalse("l'emprise est tenue pour chargee", poi.needsLoad(vue, filtres, osm = true, now = 0L))
+        poi.retryAfterReconnect()
+        assertTrue("et redevient a charger", poi.needsLoad(vue, filtres, osm = true, now = 0L))
+    }
+
+    /** La minute de repos qui suit un echec tombe aussi : elle protegeait un service muet, pas un
+     *  telephone hors couverture. */
+    @Test fun `le retour du reseau leve le repos apres echec`() {
+        val poi = couche()
+        poi.publish(vue, filtres, emptyList(), offline = true, complete = false)
+        poi.loadFailed(vue, now = 0L)
+        assertFalse("l'echec met la zone au repos", poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
+        poi.retryAfterReconnect()
+        assertTrue(poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
+    }
+
+    /**
+     * **Un chargement REUSSI n'est pas redemande** : revenir en ligne apres une sortie ne doit pas lancer
+     * une requete pour retrouver ce qu'on a deja.
+     */
+    @Test fun `le retour du reseau ne redemande pas un chargement reussi`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = true)
+        poi.retryAfterReconnect()
+        assertFalse(poi.needsLoad(vue, filtres, osm = true, now = 0L))
     }
 }

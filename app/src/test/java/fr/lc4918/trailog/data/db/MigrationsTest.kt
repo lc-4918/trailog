@@ -898,6 +898,22 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 60 -> 61 : le couloir des traces pour les points d'interet ----------
+
+    /**
+     * Le couloir arrive ETEINT sur une base deja en place.
+     *
+     * C'est un filtre qui RETIRE de la carte : l'allumer d'office ferait disparaitre, sans un mot, des
+     * lieux qu'on voyait la veille - et la couche se lirait comme une panne.
+     */
+    @Test fun `60 vers 61 laisse le couloir eteint`() {
+        val db = freshDb("m6061"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_POI_TRACK_CORRIDOR)
+        assertEquals(0, scalar(db, "SELECT poiTrackCorridorM FROM settings") { it.getInt(0) })
+        assertEquals("defaut de l'entite", 0, SettingsEntity().poiTrackCorridorM)
+        db.close()
+    }
+
     // ---------- 58 -> 59 : la fleche pleine devient le repere par defaut ----------
 
     /**
@@ -988,7 +1004,7 @@ class MigrationsTest {
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
-            "keepScreenOn")
+            "keepScreenOn", "poiTrackCorridorM")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

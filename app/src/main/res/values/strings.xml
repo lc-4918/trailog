@@ -476,6 +476,8 @@
     <string name="settings_sw_poi_osm_sub">En France, ajoute les restaurants, bars et services que la base touristique ignore. Requête plus lente. Sans effet à l\'étranger, où OpenStreetMap est la seule source.</string>
     <string name="poi_layer_title">Points d\'intérêt</string>
     <string name="poi_filter_hide_all">Tout masquer</string>
+    <string name="poi_filter_hide_layer">Masquer les points d\'intérêt</string>
+    <string name="poi_filter_show_layer">Afficher les points d\'intérêt</string>
     <string name="settings_section_gps_marker">Repère de position</string>
     <string name="settings_label_gps_marker_style">Symbole</string>
     <string name="settings_label_gps_marker_color">Couleur</string>
@@ -537,7 +539,7 @@
     <string name="settings_sw_keep_screen_on">Garder l\'écran allumé</string>
     <string name="settings_sw_keep_screen_on_sub">Pendant le suivi de position seulement ; celui-ci continue de toute façon écran éteint</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Campings et aires de camping-car</string>
+    <string name="poi_cat_campings">Campings</string>
     <string name="poi_cat_guesthouses">Chambres d\'hôtes</string>
     <string name="poi_cat_hotels">Hôtels</string>
     <string name="poi_cat_rentals">Gîtes et meublés</string>
@@ -576,6 +578,9 @@
     <string name="poi_group_leisure">Loisirs</string>
     <string name="poi_group_practical">Pratique</string>
     <string name="settings_poi_select_all">Tout sélectionner</string>
+    <string name="settings_label_poi_corridor">Distance maximale à une trace</string>
+    <string name="settings_poi_corridor_off">Désactivé</string>
+    <string name="settings_poi_corridor_hint">Les points d\'intérêt éloignés de toutes les traces affichées ne sont pas montrés. Sans trace affichée, rien n\'est filtré.</string>
     <string name="settings_poi_attribution">Données : DATAtourisme, Licence Ouverte Etalab 2.0, et OpenStreetMap, licence ODbL.</string>
     <string name="settings_clear_poi_cache">Vider le cache des points d\'intérêt</string>
     <string name="settings_poi_cache_empty">Aucun lieu en cache</string>

@@ -45,6 +45,35 @@ class PoiState {
 
     fun closeBubble() { bubbleOpen = false }
 
+    /**
+     * La couche est MISE DE COTE : ses marqueurs quittent la carte, son filtre reste entier.
+     *
+     * **Ce n'est pas la meme chose que de tout decocher.** Eteindre par le filtre - la poubelle de la bulle
+     * - est un geste destructeur : il faut recocher ses categories une a une pour revoir ce qu'on avait
+     * choisi. Or ce qu'on veut le plus souvent est bien plus simple : degager la carte un instant, parce
+     * qu'on regarde le relief sous les epingles, puis les remettre. Le testeur l'a dit ainsi : "on ne peut
+     * plus masquer les points d'interet".
+     *
+     * Rien n'est charge tant que la couche est de cote, et rien n'est OUBLIE non plus : les lieux deja
+     * recus restent en memoire, et les redemander ne coute donc pas une requete (cf. [visible] et [hide],
+     * qui vident tout parce qu'ils repondent, eux, a un vrai changement de filtre).
+     *
+     * Volontairement NON enregistre : c'est un geste de l'instant, pas un reglage. Il traverse une rotation
+     * - l'etat vit dans un `ViewModel` - et ne survit pas au redemarrage, ou l'on retrouve la couche telle
+     * qu'on l'avait choisie.
+     */
+    var masked by mutableStateOf(false)
+        private set
+
+    /** Les marqueurs sont-ils reellement poses sur la carte. */
+    val showingMarkers: Boolean get() = visible && !masked
+
+    fun toggleMask() {
+        masked = !masked
+        // L'infobulle decrirait un marqueur qui n'est plus la : elle se ferme avec la couche.
+        if (masked) selected = null
+    }
+
     var pois by mutableStateOf<List<Poi>>(emptyList())
         private set
 
@@ -120,7 +149,9 @@ class PoiState {
         if (on == visible) return
         visible = on
         // Allumer la couche ARME l'avertissement de zoom : c'est le seul moment ou il a lieu d'etre dit.
-        if (on) armed = true
+        // Et leve la mise de cote : cocher une categorie est une demande de VOIR, et la laisser sans effet
+        // derriere un oeil ferme qu'on a oublie serait la meme carte vide qu'aucun reglage n'explique.
+        if (on) { armed = true; masked = false }
         if (!on) {
             armed = false
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null; loadedOsm = null
@@ -132,6 +163,7 @@ class PoiState {
     fun hide() {
         visible = false
         armed = false
+        masked = false
         pois = emptyList()
         selected = null
         loaded = null
@@ -230,6 +262,27 @@ class PoiState {
     fun loadFailed(box: Bbox, now: Long) { failedBox = box; failedAt = now }
 
     /**
+     * Le reseau est revenu : ce qu'on montre a ete pris sur le cache, ou n'a pas pu etre pris du tout.
+     *
+     * **Sans cela, rien ne relevait le bandeau "Derniers points connus (hors ligne)".** Il disait vrai a
+     * l'instant ou il s'est pose, et le restait indefiniment : une emprise chargee ne se redemande pas, une
+     * emprise en echec attend sa minute, et l'un comme l'autre n'est reexamine qu'a l'ARRET DE LA CAMERA -
+     * un geste que personne ne fait en repassant sous couverture. Le testeur l'a vu ainsi : "j'ai le message
+     * qui reste affiche au milieu, meme si je repasse en ligne".
+     *
+     * Oublie donc les deux memoires qui retiendraient la requete, et rien d'autre : les lieux affiches
+     * restent en place jusqu'a l'arrivee des nouveaux, comme apres n'importe quel changement de filtre.
+     *
+     * **Ne fait rien apres un chargement REUSSI** : revenir en ligne apres une sortie ne doit pas relancer
+     * une requete pour retrouver ce qu'on a deja.
+     */
+    fun retryAfterReconnect() {
+        if (!fromCache && !needsNetwork && failedBox == null) return
+        loaded = null
+        failedBox = null
+    }
+
+    /**
      * La vue est trop large pour charger quoi que ce soit.
      *
      * Le message ne se leve que si l'avertissement est encore [armed] - la couche vient d'etre allumee et
@@ -277,6 +330,13 @@ class PoiState {
     private fun contient(dehors: Bbox, dedans: Bbox): Boolean =
         dedans.west >= dehors.west && dedans.east <= dehors.east &&
             dedans.south >= dehors.south && dedans.north <= dehors.north
+
+    /** Une categorie qu'on vient de decocher emporte l'infobulle ouverte sur l'un de ses lieux : le
+     *  marqueur qu'elle decrit quitte la carte a l'instant meme (cf. le filtre local de `PoiEffects`). */
+    fun dropSelectionIfHidden(filters: PoiFilters) {
+        val s = selected ?: return
+        if (!filters.isShown(s.category)) selected = null
+    }
 
     /** Un point d'intérêt disparu du dernier chargement ne doit pas laisser son infobulle ouverte sur la
      *  carte : elle décrirait un marqueur qui n'y est plus. */

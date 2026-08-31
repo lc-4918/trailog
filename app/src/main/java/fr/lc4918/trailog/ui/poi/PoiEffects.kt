@@ -3,6 +3,9 @@ package fr.lc4918.trailog.ui.poi
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.geocode.NetworkStatus
@@ -10,7 +13,9 @@ import fr.lc4918.trailog.poi.Datatourisme
 import fr.lc4918.trailog.poi.PoiRepository
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.PoiMarker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /**
  * La couche des points d'interet : ce qu'elle charge, et ce qu'elle pose sur la carte.
@@ -40,6 +45,15 @@ fun PoiEffects(
     /** Le reglage "Completer avec OpenStreetMap" : sans effet hors de France (cf. PoiSources). */
     osmComplement: Boolean,
     filters: PoiFilters,
+    /**
+     * Les traces affichees, en (lon, lat), et la distance au-dela de laquelle un lieu ne les borde plus.
+     *
+     * Le couloir filtre l'AFFICHAGE et non la requete : les deux services s'interrogent sur un rectangle,
+     * et aucun ne sait suivre une polyligne (cf. [PoiCorridor]). Une distance nulle, ou aucune trace
+     * affichee, et rien n'est filtre.
+     */
+    corridorTracks: List<List<Pair<Double, Double>>>,
+    corridorM: Int,
     idleTick: Int,
     markerPx: Float,
     styleTick: Int,
@@ -55,9 +69,25 @@ fun PoiEffects(
 
     // osmComplement est une CLE, comme les filtres : c'est une source de plus a interroger, et l'allumer
     // doit relancer le chargement sans attendre qu'on deplace la carte.
-    LaunchedEffect(state.visible, idleTick, filters, osmComplement, positioned) {
+    /*
+     * L'acces a Internet, SUIVI et non constate a l'instant du chargement.
+     *
+     * C'est une cle de cet effet a part entiere : repasser sous couverture doit redemander ce qu'on n'avait
+     * pas pu obtenir, sans attendre un geste de carte. Un telephone pose sur une table n'en produit aucun,
+     * et le bandeau "Derniers points connus" tenait l'ecran indefiniment (cf. PoiState.retryAfterReconnect).
+     */
+    val enLigne by remember(ctx) { NetworkStatus.online(ctx) }.collectAsState(initial = true)
+
+    LaunchedEffect(state.visible, state.masked, idleTick, filters, osmComplement, positioned, enLigne) {
         if (!state.visible) return@LaunchedEffect
+        // Couche mise de cote : rien a charger tant qu'on ne la remet pas. Ce qui a deja ete recu reste en
+        // memoire, et la remettre ne coute donc aucune requete (cf. PoiState.masked).
+        if (state.masked) return@LaunchedEffect
         if (!positioned) return@LaunchedEffect
+        // Le reseau vient de revenir : on oublie ce qui retiendrait la requete - l'emprise tenue pour
+        // chargee sur le cache, et la minute de repos qui suit un echec. Sans effet apres un chargement
+        // reussi, ou il n'y a rien a retrouver.
+        if (enLigne) state.retryAfterReconnect()
         // Le zoom se lit AVANT l'attente et la requete, et le message se leve avec lui : la camera est deja
         // posee quand cet effet part (il suit l'arret de la carte), et attendre pour le lever laissait
         // l'ecran reclamer un zoom qu'on venait de faire.
@@ -101,14 +131,37 @@ fun PoiEffects(
     // fond de carte reconstruit le style, qui emporte avec lui les couches posees dessus. Sans styleTick,
     // les marqueurs disparaissaient avec l'ancien fond et rien ne les reposait - la couche restait allumee,
     // vide, et le prochain chargement la trouvait deja a jour (cf. needsLoad).
-    LaunchedEffect(state.pois, state.visible, markerPx, styleTick) {
+    /*
+     * Les marqueurs, filtres LOCALEMENT par les categories retenues.
+     *
+     * **Le filtre s'applique a la liste deja chargee, sans attendre le service.** Decocher une categorie
+     * relance bien un chargement - la requete suivante ne la demandera plus - mais Overpass met trois a
+     * trente secondes a repondre sur une ville dense, et pendant tout ce temps les marqueurs decoches
+     * restaient sur la carte. On refermait la bulle sur une carte inchangee, en croyant le geste sans
+     * effet : "il manque une actualisation quand on ferme la fenetre des choix".
+     *
+     * Ce filtre ne fait que RETIRER, et c'est pourquoi il suffit : cocher une categorie de plus demande
+     * des lieux qu'on n'a pas, et ceux-la ne peuvent venir que du service.
+     */
+    LaunchedEffect(state.pois, state.showingMarkers, filters, corridorTracks, corridorM, markerPx, styleTick) {
+        val montres = if (!state.showingMarkers) emptyList() else {
+            val retenus = state.pois.filter { filters.isShown(it.category) }
+            // Le couloir sur Default : quelques centaines de lieux contre quelques milliers de sommets, et
+            // ce fil-ci est celui de l'interface.
+            withContext(Dispatchers.Default) {
+                PoiCorridor.filter(retenus, corridorTracks, corridorM.toDouble())
+            }
+        }
         controller.setPoiMarkers(
-            if (state.visible) state.pois.map {
+            montres.map {
                 PoiMarker(it.uuid, it.lon, it.lat, poiGroupColor(it.category.group), poiIcon(it.category))
-            } else emptyList(),
+            },
             markerPx,
         )
     }
+    // Une categorie decochee emporte l'infobulle ouverte sur l'un de ses lieux, en meme temps que son
+    // marqueur : une bulle qui decrirait une epingle absente de la carte n'a plus rien a designer.
+    LaunchedEffect(filters) { state.dropSelectionIfHidden(filters) }
     LaunchedEffect(controller) {
         controller.onPickPoi = { uuid, _, _ -> state.selectById(uuid) }
     }

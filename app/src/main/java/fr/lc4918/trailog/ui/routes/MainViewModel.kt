@@ -119,6 +119,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _renderLayers = MutableStateFlow<List<RenderLayer>>(emptyList())
     val renderLayers = _renderLayers.asStateFlow()
 
+    /**
+     * Les traces AFFICHEES, reduites a leurs coordonnees : de quoi mesurer la distance d'un point d'interet
+     * au trajet qu'on prepare (cf. `PoiCorridor`).
+     *
+     * Les PROFILS et non la geometrie complete, et c'est ce qui rend le couloir gratuit : ils sont deja
+     * decimes a deux mille points, deja calcules, et gardes en memoire par le depot - une trace qu'on
+     * affiche a donc, presque toujours, deja paye sa lecture. La geometrie complete porte les memes
+     * kilometres en cent fois plus de sommets, pour une precision dont un seuil de quelques kilometres n'a
+     * que faire.
+     *
+     * Recalcule quand la liste des couches VISIBLES change, ou apres une retouche de geometrie
+     * ([renderTick]) : une trace coupee ou inversee ne borde plus tout a fait le meme couloir.
+     */
+    private val _trackCorridor = MutableStateFlow<List<List<Pair<Double, Double>>>>(emptyList())
+    val trackCorridor = _trackCorridor.asStateFlow()
+
     // --- trace active (profil) ---
     private val _activeLayerId = MutableStateFlow<Long?>(null)
     val activeLayerId = _activeLayerId.asStateFlow()
@@ -174,6 +190,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 _renderLayers.value = rl
+            }
+        }
+        /*
+         * Le couloir des traces affichees (cf. [trackCorridor]).
+         *
+         * Un collecteur a part et non une suite du precedent : celui-la lit des fichiers de rendu, celui-ci
+         * des profils, et une trace lourde ne doit pas retarder l'affichage de la carte pour un filtre de
+         * points d'interet. [collectLatest] abandonne le calcul en cours des que la liste rebouge - on
+         * allume et eteint volontiers trois couches de suite dans le menu lateral.
+         *
+         * Sur les seules couches VISIBLES qui portent une ligne : un fichier de marqueurs seuls n'a pas de
+         * trajet a border.
+         */
+        viewModelScope.launch {
+            combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
+                val tracks = list.filter { it.visible && it.hasLine }
+                _trackCorridor.value = tracks.flatMap { ly ->
+                    repo.loadProfiles(ly).map { ct -> ct.samples.map { it.lon to it.lat } }
+                }.filter { it.isNotEmpty() }
             }
         }
     }

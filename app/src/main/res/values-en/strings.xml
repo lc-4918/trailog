@@ -474,6 +474,8 @@
     <string name="settings_sw_poi_osm_sub">In France, adds the restaurants, bars and services the tourism database ignores. Slower request. No effect abroad, where OpenStreetMap is the only source.</string>
     <string name="poi_layer_title">Points of interest</string>
     <string name="poi_filter_hide_all">Hide all</string>
+    <string name="poi_filter_hide_layer">Hide points of interest</string>
+    <string name="poi_filter_show_layer">Show points of interest</string>
     <string name="settings_section_gps_marker">Position marker</string>
     <string name="settings_label_gps_marker_style">Symbol</string>
     <string name="settings_label_gps_marker_color">Colour</string>
@@ -535,7 +537,7 @@
     <string name="settings_sw_keep_screen_on">Keep the screen on</string>
     <string name="settings_sw_keep_screen_on_sub">While location is being tracked only; tracking carries on with the screen off anyway</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Campsites and motorhome areas</string>
+    <string name="poi_cat_campings">Campsites</string>
     <string name="poi_cat_guesthouses">Bed and breakfast</string>
     <string name="poi_cat_hotels">Hotels</string>
     <string name="poi_cat_rentals">Cottages and holiday lets</string>
@@ -574,6 +576,9 @@
     <string name="poi_group_leisure">Leisure</string>
     <string name="poi_group_practical">Practical</string>
     <string name="settings_poi_select_all">Select all</string>
+    <string name="settings_label_poi_corridor">Maximum distance from a track</string>
+    <string name="settings_poi_corridor_off">Off</string>
+    <string name="settings_poi_corridor_hint">Points of interest far from every displayed track are not shown. With no track displayed, nothing is filtered.</string>
     <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0, and OpenStreetMap, ODbL licence.</string>
     <string name="settings_clear_poi_cache">Clear the points of interest cache</string>
     <string name="settings_poi_cache_empty">No cached venue</string>

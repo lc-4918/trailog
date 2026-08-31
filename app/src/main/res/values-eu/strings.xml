@@ -474,6 +474,8 @@
     <string name="settings_sw_poi_osm_sub">Frantzian, turismo datu-baseak ezagutzen ez dituen jatetxeak, tabernak eta zerbitzuak gehitzen ditu. Kontsulta motelagoa. Eraginik gabe atzerrian, non OpenStreetMap iturri bakarra den.</string>
     <string name="poi_layer_title">Interesguneak</string>
     <string name="poi_filter_hide_all">Ezkutatu dena</string>
+    <string name="poi_filter_hide_layer">Ezkutatu intereseko puntuak</string>
+    <string name="poi_filter_show_layer">Erakutsi intereseko puntuak</string>
     <string name="settings_section_gps_marker">Kokapen markatzailea</string>
     <string name="settings_label_gps_marker_style">Ikurra</string>
     <string name="settings_label_gps_marker_color">Kolorea</string>
@@ -535,7 +537,7 @@
     <string name="settings_sw_keep_screen_on">Pantaila piztuta mantendu</string>
     <string name="settings_sw_keep_screen_on_sub">Kokapenaren jarraipenean soilik; jarraipenak aurrera darrai pantaila itzalita ere</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Kanpinak eta autokarabana-guneak</string>
+    <string name="poi_cat_campings">Kanpinak</string>
     <string name="poi_cat_guesthouses">Landa-etxeak</string>
     <string name="poi_cat_hotels">Hotelak</string>
     <string name="poi_cat_rentals">Etxebizitza eta apartamentu turistikoak</string>
@@ -574,6 +576,9 @@
     <string name="poi_group_leisure">Aisia</string>
     <string name="poi_group_practical">Praktiko</string>
     <string name="settings_poi_select_all">Hautatu dena</string>
+    <string name="settings_label_poi_corridor">Aztarna baterako gehieneko distantzia</string>
+    <string name="settings_poi_corridor_off">Desaktibatuta</string>
+    <string name="settings_poi_corridor_hint">Erakutsitako aztarna guztietatik urrun dauden intereseko puntuak ez dira erakusten. Aztarnarik erakutsi gabe, ez da ezer iragazten.</string>
     <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
     <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
     <string name="settings_poi_cache_empty">Cachean lekurik ez</string>

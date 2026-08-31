@@ -535,6 +535,9 @@ fun MainScreen(
     val poiFilters = remember(settings.poiHiddenCategories) {
         PoiFilters.of(settings.poiHiddenCategories)
     }
+    // Les traces affichees, pour le couloir des points d'interet (cf. PoiCorridor). Collectees ici et non
+    // dans les effets : c'est le ViewModel qui les tient, deja decimees et deja lues.
+    val trackCorridor by vm.trackCorridor.collectAsState()
     LaunchedEffect(poiFilters, settings.poiEnabled) {
         poi.showLayer(settings.poiEnabled && !poiFilters.nothingShown)
     }
@@ -548,6 +551,8 @@ fun MainScreen(
         enabled = settings.poiEnabled,
         osmComplement = settings.poiOsmComplement,
         filters = poiFilters,
+        corridorTracks = trackCorridor,
+        corridorM = settings.poiTrackCorridorM,
         idleTick = idleTick,
         markerPx = markerPx,
         styleTick = styleTick,

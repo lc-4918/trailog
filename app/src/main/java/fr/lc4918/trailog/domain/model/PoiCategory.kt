@@ -51,9 +51,18 @@ enum class PoiCategory(
 
     // ---------- Hébergements ----------
 
+    /**
+     * Campings declares, et eux seuls.
+     *
+     * **Les aires en sont sorties** - aires de camping-car (`CamperVanArea`, `tourism=caravan_site`) et
+     * aires naturelles (`NaturalCampingArea`). Elles remplissaient l'onglet Hebergement de terrains sans
+     * service, dont beaucoup ne sont qu'un parking autorise, la ou l'on cherche un endroit ou dormir. La
+     * cle reste `campings-et-aires-de-camping-car` : c'est celle qu'un reglage deja enregistre porte, et en
+     * changer masquerait la categorie chez qui l'avait cochee.
+     */
     CAMPINGS("campings-et-aires-de-camping-car", PoiGroup.LODGING,
-        setOf("CampingAndCaravanning", "Camping", "CamperVanArea", "FarmCamping", "NaturalCampingArea"),
-        setOf("tourism=camp_site", "tourism=caravan_site")),
+        setOf("CampingAndCaravanning", "Camping", "FarmCamping"),
+        setOf("tourism=camp_site")),
     GUESTHOUSES("chambres-d-hotes", PoiGroup.LODGING,
         setOf("Guesthouse", "TableHoteGuesthouse"),
         setOf("tourism=guest_house")),

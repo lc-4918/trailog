@@ -260,6 +260,17 @@ data class SettingsEntity(
     // d'ou l'interrupteur. HORS de France ce reglage ne change rien : OpenStreetMap y est la seule source,
     // et l'eteindre viderait la couche (cf. PoiSources).
     val poiOsmComplement: Boolean = true,
+    // Distance maximale a une trace AFFICHEE, en metres, au-dela de laquelle un point d'interet n'est pas
+    // montre (cf. ui/poi/PoiCorridor). 0 = aucun couloir, tout ce que le service rend s'affiche.
+    //
+    // C'est ce couloir qui rend supportable un zoom de chargement plus bas (cf. PoiLoading.MIN_ZOOM) : a
+    // l'echelle d'une region, la vue porte des milliers de lieux, dont seuls ceux qui bordent le trajet
+    // interessent qui le prepare. Sans trace affichee il ne filtre rien - la couche ne depend pas de la
+    // bibliotheque.
+    //
+    // Eteint par defaut : c'est un filtre qui RETIRE de la carte, et une couche qui montre moins que ce
+    // qu'on lui a demande sans l'avoir dit se lit comme une panne.
+    val poiTrackCorridorM: Int = 0,
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

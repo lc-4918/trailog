@@ -49,6 +49,19 @@ class PoiCategoryTest {
     }
 
     /**
+     * Les AIRES sont sorties de la categorie : aires de camping-car et aires naturelles.
+     *
+     * Elles remplissaient l'onglet Hebergement de terrains sans service, dont beaucoup ne sont qu'un
+     * parking autorise, la ou l'on cherche un endroit ou dormir. Un lieu qui n'est QUE cela ne se rattache
+     * donc plus a rien - il ne bascule pas dans une categorie voisine, il disparait.
+     */
+    @Test fun `une aire de camping-car n'est plus un camping`() {
+        assertNull(PoiCategory.of(listOf("CamperVanArea", "PointOfInterest")))
+        assertNull(PoiCategory.of(listOf("NaturalCampingArea")))
+        assertNull(PoiCategory.ofOsm(mapOf("tourism" to "caravan_site")))
+    }
+
+    /**
      * Ce qu'un lieu EST ne depend pas de ce qu'on a coche : decocher les toilettes ne les ramene pas en
      * campings, elle les fait disparaitre.
      *

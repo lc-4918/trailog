@@ -474,6 +474,8 @@
     <string name="settings_sw_poi_osm_sub">Ergänzt in Frankreich Restaurants, Bars und Services, die die Tourismusdatenbank nicht kennt. Langsamere Abfrage. Ohne Wirkung im Ausland, wo OpenStreetMap die einzige Quelle ist.</string>
     <string name="poi_layer_title">Sehenswürdigkeiten</string>
     <string name="poi_filter_hide_all">Alle ausblenden</string>
+    <string name="poi_filter_hide_layer">Points of Interest ausblenden</string>
+    <string name="poi_filter_show_layer">Points of Interest anzeigen</string>
     <string name="settings_section_gps_marker">Positionsmarke</string>
     <string name="settings_label_gps_marker_style">Symbol</string>
     <string name="settings_label_gps_marker_color">Farbe</string>
@@ -535,7 +537,7 @@
     <string name="settings_sw_keep_screen_on">Bildschirm eingeschaltet lassen</string>
     <string name="settings_sw_keep_screen_on_sub">Nur während der Positionsverfolgung; diese läuft ohnehin bei ausgeschaltetem Bildschirm weiter</string>
     <!-- Points d'interet : categories (cf. domain/model/PoiCategory.kt) -->
-    <string name="poi_cat_campings">Campingplätze und Stellplätze</string>
+    <string name="poi_cat_campings">Campingplätze</string>
     <string name="poi_cat_guesthouses">Gästezimmer</string>
     <string name="poi_cat_hotels">Hotels</string>
     <string name="poi_cat_rentals">Ferienhäuser und Ferienwohnungen</string>
@@ -574,6 +576,9 @@
     <string name="poi_group_leisure">Freizeit</string>
     <string name="poi_group_practical">Praktisch</string>
     <string name="settings_poi_select_all">Alle auswählen</string>
+    <string name="settings_label_poi_corridor">Maximaler Abstand zu einer Spur</string>
+    <string name="settings_poi_corridor_off">Aus</string>
+    <string name="settings_poi_corridor_hint">Points of Interest, die von allen angezeigten Spuren entfernt sind, werden nicht angezeigt. Ohne angezeigte Spur wird nichts gefiltert.</string>
     <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
     <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>
     <string name="settings_poi_cache_empty">Keine gespeicherten Orte</string>

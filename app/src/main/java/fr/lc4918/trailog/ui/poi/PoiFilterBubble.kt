@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IndeterminateCheckBox
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -107,6 +109,9 @@ fun PoiFilterBubble(
     onFilters: (PoiFilters) -> Unit,
     modifier: Modifier = Modifier,
     onClose: () -> Unit = {},
+    /** La couche est mise de cote : ses marqueurs ont quitte la carte, son filtre est intact. */
+    masked: Boolean = false,
+    onToggleMask: () -> Unit = {},
 ) {
     /*
      * L'onglet ouvert survit a la fermeture de la bulle et a une rotation : on revient a ses hebergements
@@ -126,7 +131,7 @@ fun PoiFilterBubble(
             contentColor = MaterialTheme.colorScheme.onSurface,
         ),
     ) {
-        EnTete(filters, onFilters, onClose)
+        EnTete(filters, onFilters, onClose, masked, onToggleMask)
         Onglets(groupe, filters) { groupeKey = it.key }
         // La cle du defilement suit l'onglet : chacun garde sa position, et passer de "Pratique" - neuf
         // lignes - a "Restauration" - deux - ne doit pas ouvrir sur une liste defilee hors de sa fin.
@@ -148,13 +153,28 @@ fun PoiFilterBubble(
 }
 
 /**
- * L'en-tete : ce que la bulle regle, et de quoi tout eteindre d'un geste.
+ * L'en-tete : ce que la bulle regle, de quoi ranger la couche un instant, et de quoi tout eteindre.
  *
- * "Tout masquer" n'a de sens que s'il reste quelque chose a masquer : la ligne s'efface sinon, plutot que
- * de proposer un geste sans effet - c'est la meme regle que le bouton de recentrage de la carte.
+ * **L'oeil et la poubelle ne font pas la meme chose, et c'est tout l'objet de l'oeil.** La poubelle
+ * DECOCHE tout : elle vide le filtre, et revoir ce qu'on avait choisi demande de le recocher categorie par
+ * categorie. L'oeil ne touche a rien - il retire les marqueurs de la carte et les remet, le filtre entier
+ * derriere lui. Le testeur n'avait que la poubelle, et l'a dit ainsi : "on ne peut plus masquer les points
+ * d'interet".
+ *
+ * L'oeil vient A GAUCHE de la poubelle : on range avant de jeter, et le geste le plus anodin des deux ne
+ * doit pas etre celui qu'on atteint en dernier.
+ *
+ * Ni l'un ni l'autre n'a de sens s'il ne reste rien a montrer : les deux s'effacent alors, plutot que de
+ * proposer un geste sans effet - c'est la meme regle que le bouton de recentrage de la carte.
  */
 @Composable
-private fun EnTete(filters: PoiFilters, onFilters: (PoiFilters) -> Unit, onClose: () -> Unit) {
+private fun EnTete(
+    filters: PoiFilters,
+    onFilters: (PoiFilters) -> Unit,
+    onClose: () -> Unit,
+    masked: Boolean,
+    onToggleMask: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -165,6 +185,23 @@ private fun EnTete(filters: PoiFilters, onFilters: (PoiFilters) -> Unit, onClose
             modifier = Modifier.weight(1f),
         )
         if (!filters.nothingShown) {
+            IconButton(
+                onClick = onToggleMask,
+                modifier = Modifier.size(28.dp),
+            ) {
+                // L'oeil BARRE quand la couche est de cote : le dessin montre l'etat courant, non le geste
+                // qu'il declenche. C'est la convention de tous les interrupteurs de l'application - le
+                // repere de position, les couches du menu lateral - et l'inverse se lit a contresens.
+                Icon(
+                    if (masked) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    stringResource(
+                        if (masked) R.string.poi_filter_show_layer else R.string.poi_filter_hide_layer,
+                    ),
+                    tint = if (masked) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
             IconButton(
                 onClick = { onFilters(filters.hideAll()) },
                 modifier = Modifier.size(28.dp),
@@ -332,6 +369,8 @@ fun PoiFilterBubbleAnchored(
     tailFromBottom: Dp,
     modifier: Modifier = Modifier,
     onClose: () -> Unit = {},
+    masked: Boolean = false,
+    onToggleMask: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = open,
@@ -371,6 +410,8 @@ fun PoiFilterBubbleAnchored(
                 onFilters,
                 Modifier.widthIn(max = BubbleMaxWidth).padding(end = TailSize / 2),
                 onClose,
+                masked,
+                onToggleMask,
             )
             Box(
                 Modifier.align(Alignment.BottomEnd)

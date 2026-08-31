@@ -56,6 +56,21 @@ class PoiFilterBubbleUiTest {
         return { etat.value }
     }
 
+    /** La meme bulle, avec l'oeil : rend l'etat de la mise de cote, que les taps font basculer. */
+    private fun bulleAvecOeil(depart: PoiFilters = PoiFilters()): () -> Boolean {
+        val filtre = mutableStateOf(depart)
+        val masque = mutableStateOf(false)
+        compose.setContent {
+            PoiFilterBubble(
+                filtre.value,
+                onFilters = { filtre.value = it },
+                masked = masque.value,
+                onToggleMask = { masque.value = !masque.value },
+            )
+        }
+        return { masque.value }
+    }
+
     private fun nom(c: PoiCategory) = ctx.getString(poiCategoryLabelRes(c))
 
     @Test fun `les libelles de groupe restent courts`() {
@@ -131,5 +146,45 @@ class PoiFilterBubbleUiTest {
     @Test fun `tout masquer ne s'affiche pas sur une carte deja vide`() {
         bulle(PoiFilters().hideAll())
        compose.onAllNodesWithContentDescription(ctx.getString(R.string.poi_filter_hide_all)).assertCountEquals(0)
+    }
+
+    /**
+     * L'oeil range la couche SANS toucher au filtre - c'est ce qui le distingue de la poubelle d'a cote, et
+     * la raison pour laquelle il existe : "on ne peut plus masquer les points d'interet", disait le
+     * testeur, qui n'avait que le geste destructeur.
+     */
+    @Test fun `l'oeil range la couche sans vider le filtre`() {
+        val filtre = mutableStateOf(PoiFilters())
+        val masque = mutableStateOf(false)
+        compose.setContent {
+            PoiFilterBubble(
+                filtre.value,
+                onFilters = { filtre.value = it },
+                masked = masque.value,
+                onToggleMask = { masque.value = !masque.value },
+            )
+        }
+        compose.onNodeWithContentDescription(ctx.getString(R.string.poi_filter_hide_layer)).performClick()
+        compose.waitForIdle()
+        assertTrue("la couche est rangee", masque.value)
+        assertFalse("et le filtre est intact", filtre.value.nothingShown)
+    }
+
+    /** Rangee, l'oeil propose l'inverse : c'est l'etat courant que le dessin montre, non le geste. */
+    @Test fun `l'oeil range propose de remontrer la couche`() {
+        val masque = bulleAvecOeil()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.poi_filter_hide_layer)).performClick()
+        compose.waitForIdle()
+        assertTrue(masque())
+        compose.onNodeWithContentDescription(ctx.getString(R.string.poi_filter_show_layer)).performClick()
+        compose.waitForIdle()
+        assertFalse(masque())
+    }
+
+    /** Rien a ranger sur une carte deja vide : l'oeil s'efface comme la poubelle. */
+    @Test fun `l'oeil ne s'affiche pas sur une carte deja vide`() {
+        bulle(PoiFilters().hideAll())
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.poi_filter_hide_layer))
+            .assertCountEquals(0)
     }
 }
