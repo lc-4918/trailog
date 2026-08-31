@@ -225,4 +225,25 @@ class DatatourismeTest {
         assertNotNull(PoiCategory.byKey("aire_de_servies"))
         assertNull(PoiCategory.byKey("categorie-inventee"))
     }
+
+    // ---------- la troncature, lue et non devinee ----------
+
+    /**
+     * `meta.total` dit exactement ce que le service connait, page rendue mise a part.
+     *
+     * La troncature se devinait sur le nombre de POI RETENUS apres filtrage, ce qui est une approximation
+     * par le bas : une reponse de 250 objets dont 40 sont ecartes faute de categorie connue en laisse 210,
+     * et passait donc pour complete. L'emprise etait alors retenue comme chargee, et les lieux manquants
+     * ne revenaient jamais.
+     */
+    @Test fun `le total connu du service se lit dans la reponse`() {
+        val corps = """{"objects":[],"meta":{"total":1781,"page":1,"page_size":250,"total_pages":8}}"""
+        assertEquals(1781, Datatourisme.total(corps))
+    }
+
+    /** Une reponse sans meta ne leve pas : on retombe sur l'ancienne approximation, qui vaut mieux que rien. */
+    @Test fun `une reponse sans meta ne donne aucun total`() {
+        assertNull(Datatourisme.total("""{"objects":[]}"""))
+        assertNull(Datatourisme.total("pas du json"))
+    }
 }

@@ -157,20 +157,59 @@ class PoiStateTest {
     }
 
     /**
-     * Une emprise tronquee doit se redemander des qu'on bouge, ZOOM COMPRIS.
+     * Une emprise tronquee se redemande quand on RESSERRE - et seulement alors.
      *
-     * C'est le pendant du message d'affichage partiel : la vue plus serree est contenue dans la precedente,
-     * et la regle ordinaire repondait donc "rien a redemander". On restait avec les 250 lieux tires au
-     * hasard de la vue large, dont une poignee seulement tombe dans le nouveau cadre - et le zoom, qui est
-     * justement le geste qui rend la reponse complete, ne servait a rien.
+     * Le zoom est le geste qui rend la reponse complete : moins de lieux tiennent dans une vue plus etroite.
+     * La regle ordinaire repondait "rien a redemander", la vue serree etant contenue dans la precedente, et
+     * l'on restait avec les lieux tires de la vue large.
      */
-    @Test fun `une zone tronquee se redemande des qu'on zoome`() {
+    @Test fun `une zone tronquee se redemande des qu'on resserre`() {
         val poi = couche()
-        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false)
+        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false, now = 0L)
         assertTrue(poi.partial)
         val plusServre = Bbox(west = 5.65, south = 45.15, east = 5.75, north = 45.25)
         assertTrue("le zoom doit redemander", poi.needsLoad(plusServre, filtres, osm = true, now = 0L))
-        assertTrue("un deplacement aussi", poi.needsLoad(vue, filtres, osm = true, now = 0L))
+    }
+
+    /**
+     * **Mais un simple DEPLACEMENT dans la zone deja chargee ne redemande plus rien**, et c'est la
+     * correction du defaut le plus couteux de la couche.
+     *
+     * L'emprise tronquee n'etait pas retenue du tout : dans une ville dense, ou la reponse l'est toujours,
+     * chaque immobilisation de la carte relancait le cycle entier - une vingtaine de secondes par geste,
+     * et de quoi se faire refuser par le service en quelques minutes. Or se deplacer dans ce qu'on a deja
+     * charge n'a aucune chance d'apporter du neuf : c'est resserrer qui en a une.
+     */
+    @Test fun `une zone tronquee ne se redemande pas sur un simple deplacement`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false, now = 0L)
+        val dedans = Bbox(west = 5.62, south = 45.12, east = 5.78, north = 45.28)
+        assertFalse("rien de neuf a en attendre", poi.needsLoad(dedans, filtres, osm = true, now = 1_000L))
+    }
+
+    /** Sortir de la zone chargee redemande, tronquee ou non : on regarde ailleurs. */
+    @Test fun `sortir de la zone tronquee redemande`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false, now = 0L)
+        val ailleurs = Bbox(west = 6.0, south = 45.1, east = 6.2, north = 45.3)
+        assertTrue(poi.needsLoad(ailleurs, filtres, osm = true, now = 1_000L))
+    }
+
+    /** Et le temps finit par la rendre caduque : au bout du delai, elle vaut la peine d'etre redemandee -
+     *  ne serait-ce que parce que le decoupage peut mieux tomber. */
+    @Test fun `une zone tronquee se redemande apres le delai`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), incomplete = true, complete = false, now = 0L)
+        assertFalse(poi.needsLoad(vue, filtres, osm = true, now = PoiLoading.PARTIAL_TTL_MS - 1))
+        assertTrue(poi.needsLoad(vue, filtres, osm = true, now = PoiLoading.PARTIAL_TTL_MS))
+    }
+
+    /** Une emprise INTERROMPUE, elle, n'est toujours pas retenue : une source qui n'a pas repondu ne dit
+     *  rien de ce qu'elle contient, et ce qui manque doit pouvoir revenir au geste suivant. */
+    @Test fun `une zone interrompue n'est pas retenue`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = false, now = 0L)
+        assertTrue(poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
     }
 
     /** Rendue en entier, la meme emprise ne se redemande pas : c'est ce qui tient les appels loin du quota. */

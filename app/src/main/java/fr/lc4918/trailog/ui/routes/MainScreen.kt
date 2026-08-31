@@ -573,6 +573,7 @@ fun MainScreen(
         repo = vm.poiRepository,
         enabled = settings.poiEnabled,
         osmComplement = settings.poiOsmComplement,
+        osmUrl = settings.poiOsmUrl,
         filters = poiFilters,
         corridorTracks = trackCorridor,
         corridorM = settings.poiTrackCorridorM,

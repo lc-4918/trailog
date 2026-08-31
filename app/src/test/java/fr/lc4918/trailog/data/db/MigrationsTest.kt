@@ -914,6 +914,18 @@ class MigrationsTest {
         db.close()
     }
 
+    // ---------- 61 -> 62 : l'instance Overpass devient reglable ----------
+
+    /** Vide sur une base deja en place : c'est l'instance qui etait en dur jusqu'ici, donc aucun
+     *  changement de comportement a la mise a jour. */
+    @Test fun `61 vers 62 laisse l'instance Overpass par defaut`() {
+        val db = freshDb("m6162"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_POI_OSM_URL)
+        assertEquals("", scalar(db, "SELECT poiOsmUrl FROM settings") { it.getString(0) })
+        assertEquals("defaut de l'entite", "", SettingsEntity().poiOsmUrl)
+        db.close()
+    }
+
     // ---------- 58 -> 59 : la fleche pleine devient le repere par defaut ----------
 
     /**
@@ -1004,7 +1016,7 @@ class MigrationsTest {
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
-            "keepScreenOn", "poiTrackCorridorM")
+            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

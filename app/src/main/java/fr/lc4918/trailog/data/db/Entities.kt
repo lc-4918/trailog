@@ -271,6 +271,13 @@ data class SettingsEntity(
     // Eteint par defaut : c'est un filtre qui RETIRE de la carte, et une couche qui montre moins que ce
     // qu'on lui a demande sans l'avoir dit se lit comme une panne.
     val poiTrackCorridorM: Int = 0,
+    // Instance Overpass interrogee pour les points d'interet d'OpenStreetMap. Vide = instance publique
+    // (Overpass.DEFAULT_URL) ; renseignable comme le geocodeur et le moteur d'itineraire le sont deja.
+    //
+    // Mesure a l'appui : l'instance publique alterne les reponses en une seconde et demie et les refus en
+    // 504, deux fois sur cinq sur un releve de cinq tentatives. Pouvoir en changer sans attendre une
+    // nouvelle version est la seule parade a la disposition de l'utilisateur.
+    val poiOsmUrl: String = "",
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

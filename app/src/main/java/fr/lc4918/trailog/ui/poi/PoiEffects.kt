@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.poi.Datatourisme
+import fr.lc4918.trailog.poi.Overpass
 import fr.lc4918.trailog.poi.PoiRepository
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.PoiMarker
@@ -44,6 +45,8 @@ fun PoiEffects(
     enabled: Boolean?,
     /** Le reglage "Completer avec OpenStreetMap" : sans effet hors de France (cf. PoiSources). */
     osmComplement: Boolean,
+    /** L'instance Overpass a interroger, telle que les reglages la designent. Vide = l'instance publique. */
+    osmUrl: String,
     filters: PoiFilters,
     /**
      * Les traces affichees, en (lon, lat), et la distance au-dela de laquelle un lieu ne les borde plus.
@@ -78,7 +81,8 @@ fun PoiEffects(
      */
     val enLigne by remember(ctx) { NetworkStatus.online(ctx) }.collectAsState(initial = true)
 
-    LaunchedEffect(state.visible, state.masked, idleTick, filters, osmComplement, positioned, enLigne) {
+    LaunchedEffect(state.visible, state.masked, idleTick, filters, osmComplement, osmUrl, positioned,
+        enLigne) {
         if (!state.visible) return@LaunchedEffect
         // Couche mise de cote : rien a charger tant qu'on ne la remet pas. Ce qui a deja ete recu reste en
         // memoire, et la remettre ne coute donc aucune requete (cf. PoiState.masked).
@@ -111,13 +115,19 @@ fun PoiEffects(
             // Un flux et non une liste : les deux sources repondent en parallele, et chacune s'affiche des
             // son arrivee. DATAtourisme repond en une seconde la ou OpenStreetMap en met trente sur une
             // ville dense - les faire attendre l'une l'autre, c'etait trente secondes de carte nue.
-            repo.load(Datatourisme.DEFAULT_URL, box, filters.shown, osmComplement = osmComplement)
+            // Ce qui est affiche part avec la demande : il sera repris tant que la requete qui le
+            // contredirait n'a pas repondu, au lieu d'etre efface des la premiere source arrivee
+            // (cf. poiStream). C'est ce qui faisait disparaitre les points d'OpenStreetMap a chaque geste.
+            repo.load(Datatourisme.DEFAULT_URL, box, filters.shown,
+                osmBase = osmUrl.ifBlank { Overpass.DEFAULT_URL }, osmComplement = osmComplement,
+                affiche = state.pois)
                 .collect { charge ->
                 // Rien a montrer ET pas de reseau : on ne sait pas si la zone est vide ou si le service n'a
                 // pas repondu. L'ecran le dit, plutot que de laisser croire a une region sans un seul cafe.
                 val horsLigne = charge.pois.isEmpty() && !NetworkStatus.hasInternet(ctx)
                 state.publish(box, filters, charge.pois, osmComplement, charge.fromCache, horsLigne,
-                    charge.partial, complete = charge.complete)
+                    charge.partial, complete = charge.complete,
+                    now = SystemClock.elapsedRealtime())
                 // Une source muette met la zone au repos : on la redemandera, mais pas au prochain geste.
                 if (charge.failed) state.loadFailed(box, SystemClock.elapsedRealtime())
                 state.dropSelectionIfGone()

@@ -145,6 +145,149 @@ class PoiStreamTest {
         assertEquals(listOf("dt1"), emissions.last().pois.map { it.uuid })
     }
 
+    // ---------- le report d'un chargement sur le suivant ----------
+
+    /** Un lieu d'OpenStreetMap, avec le prefixe qui le distingue de l'autre source. */
+    private val fontaineOsm = lieu("osm:node/1", PoiCategory.WATER, lat = 45.5)
+    private val restoOsm = lieu("osm:node/2", PoiCategory.RESTAURANTS, lat = 45.6)
+
+    /**
+     * **LE cas du signalement.** DATAtourisme repond en une demi-seconde, Overpass en met cinq a
+     * vingt-cinq. La premiere emission effacait de la carte tous les points d'OpenStreetMap, qui ne
+     * revenaient qu'au retour d'Overpass - et jamais du tout si l'on redeplacait la carte entre-temps.
+     * "Il y a des POI qui apparaissent brievement et disparaissent."
+     */
+    @Test fun `les lieux d'OSM restent affiches pendant qu'Overpass travaille`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(listOf(hotel), false, couvre = setOf(PoiCategory.HOTELS)) },
+            osm = listOf({
+                delay(20_000)
+                PoiBatch(listOf(fontaineOsm), false, couvre = setOf(PoiCategory.WATER))
+            }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(fontaineOsm),
+        ).toList()
+        assertEquals("la fontaine ne doit pas disparaitre a l'arrivee de DATAtourisme",
+            setOf("dt1", "osm:node/1"), emissions[0].pois.map { it.uuid }.toSet())
+    }
+
+    /**
+     * Une requete DATAtourisme ne contredit pas un lieu d'OpenStreetMap, **meme quand elle couvre sa
+     * categorie** : les deux sources couvrent les memes categories sans decrire les memes objets, et
+     * DATAtourisme est de fait interroge sur tout ce qui est coche.
+     */
+    @Test fun `DATAtourisme ne retire pas les lieux d'OSM de sa categorie`() = runTest {
+        val emissions = poiStream(
+            datatourisme = {
+                PoiBatch(listOf(hotel), false,
+                    couvre = setOf(PoiCategory.HOTELS, PoiCategory.RESTAURANTS))
+            },
+            osm = listOf({
+                delay(9_000)
+                PoiBatch(emptyList(), false, couvre = setOf(PoiCategory.RESTAURANTS))
+            }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(restoOsm),
+        ).toList()
+        assertEquals("tant qu'Overpass n'a pas repondu, le restaurant reste",
+            setOf("dt1", "osm:node/2"), emissions.first().pois.map { it.uuid }.toSet())
+        assertEquals("puis Overpass repond vide, et il s'en va",
+            listOf("dt1"), emissions.last().pois.map { it.uuid })
+    }
+
+    /** ... et la requete qui LE couvre le remplace par ce qu'elle rend. */
+    @Test fun `la requete qui couvre la categorie remplace ce qu'on reportait`() = runTest {
+        val autre = lieu("osm:node/3", PoiCategory.RESTAURANTS, lat = 45.7)
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({ PoiBatch(listOf(autre), false, couvre = setOf(PoiCategory.RESTAURANTS)) }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(restoOsm),
+        ).toList()
+        assertEquals(listOf("osm:node/3"), emissions.last().pois.map { it.uuid })
+    }
+
+    /**
+     * Une requete qui repond VIDE retire ce qu'on reportait de ses categories.
+     *
+     * C'est la seule facon de faire disparaitre un lieu qui a ferme : sans cela, un report qu'aucune
+     * reponse ne contredit resterait sur la carte indefiniment.
+     */
+    @Test fun `une reponse vide retire ce qu'on reportait`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({ PoiBatch(emptyList(), false, couvre = setOf(PoiCategory.RESTAURANTS)) }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(restoOsm),
+        ).toList()
+        assertTrue("le restaurant a disparu du service, il doit quitter la carte",
+            emissions.last().pois.isEmpty())
+    }
+
+    /** Une requete en ECHEC, elle, ne contredit rien : on ne sait pas, donc on garde ce qu'on montrait. */
+    @Test fun `une requete en echec ne retire pas ce qu'on reportait`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({
+                PoiBatch(emptyList(), tronque = false, echec = true, couvre = setOf(PoiCategory.RESTAURANTS))
+            }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(restoOsm),
+        ).toList()
+        assertEquals(listOf("osm:node/2"), emissions.last().pois.map { it.uuid })
+        assertFalse("et l'emprise ne peut pas etre retenue", emissions.last().complete)
+    }
+
+    /**
+     * **Un tour complet ne reporte rien** : chaque categorie affichee a ete redemandee, donc contredite.
+     * C'est ce qui empeche le report de s'accumuler d'un chargement au suivant.
+     */
+    @Test fun `un tour complet ne reporte rien`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(listOf(hotel), false, couvre = setOf(PoiCategory.HOTELS)) },
+            osm = listOf({ PoiBatch(emptyList(), false, couvre = setOf(PoiCategory.WATER)) }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(fontaineOsm),
+        ).toList()
+        assertEquals(listOf("dt1"), emissions.last().pois.map { it.uuid })
+        assertTrue(emissions.last().complete)
+    }
+
+    /** Un lieu reporte qui revient dans la reponse ne se pose pas deux fois. */
+    @Test fun `un lieu reporte ne fait pas doublon avec lui-meme`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({ PoiBatch(listOf(fontaineOsm), false, couvre = setOf(PoiCategory.WATER)) }),
+            garder = {}, cache = { emptyList() },
+            precedent = listOf(fontaineOsm),
+        ).toList()
+        assertEquals(listOf("osm:node/1"), emissions.last().pois.map { it.uuid })
+    }
+
+    /** Ce qu'on reporte n'est pas du cache : le bandeau "derniers points connus" ne doit pas s'allumer
+     *  parce qu'une source tarde. */
+    @Test fun `un report ne passe pas pour du cache`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({ PoiBatch(emptyList(), tronque = false, echec = true) }),
+            garder = {}, cache = { listOf(hotel) },
+            precedent = listOf(fontaineOsm),
+        ).toList()
+        assertFalse(emissions.last().fromCache)
+        assertEquals(listOf("osm:node/1"), emissions.last().pois.map { it.uuid })
+    }
+
+    /** Sans rien a reporter, le cache reprend son role : c'est lui qui peuple la couche sans reseau. */
+    @Test fun `sans report, le cache garde son role`() = runTest {
+        val emissions = poiStream(
+            datatourisme = { PoiBatch(emptyList(), false) },
+            osm = listOf({ PoiBatch(emptyList(), tronque = false, echec = true) }),
+            garder = {}, cache = { listOf(hotel) },
+        ).toList()
+        assertTrue(emissions.last().fromCache)
+        assertEquals(listOf("dt1"), emissions.last().pois.map { it.uuid })
+    }
+
     // ---------- le decoupage par groupe ----------
 
     /** Chaque groupe d'OpenStreetMap publie pour son compte : quatre requetes, quatre affichages. */

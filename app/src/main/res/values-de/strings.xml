@@ -308,6 +308,7 @@
     <string name="settings_enable_route_planner">Planer-Schaltfläche anzeigen</string>
     <string name="settings_enable_track_measure">Mess-Schaltfläche anzeigen</string>
     <string name="settings_section_geocoding_service">Geokodierungsdienst</string>
+    <string name="settings_section_poi_osm_service">OpenStreetMap-Points-of-Interest</string>
     <string name="settings_section_routing_service">Routing-Dienst</string>
     <string name="settings_section_route_engine">Routing-Engine</string>
     <string name="settings_route_engine_hint">Beide Engines beantworten dieselben Sportarten und dieselben Einstellungen. BRouter folgt Radwegen und Wanderpfaden besser; Valhalla ist die ursprüngliche.</string>

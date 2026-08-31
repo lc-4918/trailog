@@ -24,14 +24,31 @@ class PoiLoadingTest {
 
     private fun box(w: Double, s: Double, e: Double, n: Double) = Bbox.of(w, s, e, n)
 
-    /** L'emprise demandee deborde l'ecran : c'est ce qui rend gratuits les petits deplacements. */
+    /**
+     * L'emprise demandee deborde l'ecran : c'est ce qui rend gratuits les petits deplacements.
+     *
+     * Mais d'un CHEVEU : la marge a ete ramenee de 0,25 a 0,05. A 0,25, l'emprise faisait une fois et
+     * demie l'ecran dans chaque dimension, soit 2,25 fois sa surface - donc deux fois plus de lieux a
+     * faire tenir sous le plafond d'une requete, pour une marge dont on ne profitait qu'en se deplacant
+     * de peu.
+     */
     @Test fun `l'emprise demandee est plus large que l'ecran`() {
         val vue = box(5.0, 45.0, 6.0, 46.0)
         val large = PoiLoading.grow(vue)
         assertTrue(large.west < vue.west && large.east > vue.east)
         assertTrue(large.south < vue.south && large.north > vue.north)
-        assertEquals(4.75, large.west, 1e-9)
-        assertEquals(6.25, large.east, 1e-9)
+        assertEquals(4.95, large.west, 1e-9)
+        assertEquals(6.05, large.east, 1e-9)
+    }
+
+    /** La surface demandee ne doit pas depasser d'un tiers celle de l'ecran : au-dela, on fait travailler
+     *  le service pour des lieux qu'on ne montrera pas. */
+    @Test fun `l'emprise demandee reste proche de la surface de l'ecran`() {
+        val vue = box(5.0, 45.0, 6.0, 46.0)
+        val large = PoiLoading.grow(vue)
+        val rapport = ((large.east - large.west) * (large.north - large.south)) /
+            ((vue.east - vue.west) * (vue.north - vue.south))
+        assertTrue("surface demandee : ${rapport}x l'ecran", rapport < 1.33)
     }
 
     /** Un elargissement pres des poles ou de l'antimeridien ne doit pas sortir du monde. */

@@ -179,16 +179,54 @@ object Datatourisme {
         texte() ?: runCatching { jsonArray.firstOrNull()?.texte() }.getOrNull()
 
     /**
-     * Charge les points d'intérêt de la zone visible. Liste vide quand il n'y a rien à montrer, que le
-     * réseau manque ou que le service refuse - l'appelant n'a rien à en faire de différent, la carte
-     * affiche ce qu'elle a.
+     * Le nombre total de lieux que le service connaît pour cette requête, indépendamment de la page rendue.
+     *
+     * **Il est dans la réponse, et personne ne le lisait.** La troncature se devinait sur le nombre de POI
+     * RETENUS après filtrage (`taille >= PAGE_SIZE`), ce qui est une approximation par le bas : une réponse
+     * de 250 objets dont 40 sont écartés faute de catégorie connue en laisse 210, et passait donc pour
+     * complète. L'emprise était alors retenue comme chargée, et les lieux manquants ne revenaient jamais.
+     * `meta.total` tranche exactement.
+     */
+    internal fun total(body: String): Int? = runCatching {
+        json.parseToJsonElement(body).jsonObject["meta"]?.jsonObject?.get("total")?.nombre()?.toInt()
+    }.getOrNull()
+
+    /**
+     * Ce qu'un chargement a rendu, et ce qu'il en manque.
+     *
+     * [echec] distingue le service muet de la zone déserte. Les deux rendaient une liste vide, et un 504
+     * passait donc pour "il n'y a rien ici" : l'emprise était retenue comme chargée, et il fallait s'en
+     * aller et revenir pour que les lieux réapparaissent.
+     */
+    data class Catalog(
+        val pois: List<Poi>,
+        val tronque: Boolean = false,
+        val echec: Boolean = false,
+    )
+
+    /**
+     * Charge les points d'intérêt de la zone visible.
+     *
+     * Trois issues distinctes, là où il n'y en avait qu'une : ce qu'on a trouvé, ce qui manque au-delà du
+     * plafond (cf. [total]), et le service qui n'a pas répondu (cf. [Catalog.echec]).
      */
     suspend fun catalog(
         base: String, north: Double, west: Double, south: Double, east: Double,
         categories: Set<PoiCategory>, bikeOnly: Boolean = false,
-    ): List<Poi> = withContext(Dispatchers.IO) {
-        val url = catalogUrl(base, north, west, south, east, categories, bikeOnly) ?: return@withContext emptyList()
+    ): Catalog = withContext(Dispatchers.IO) {
+        val url = catalogUrl(base, north, west, south, east, categories, bikeOnly)
+            ?: return@withContext Catalog(emptyList())
         val resp = TileHttp.fetch(url, TIMEOUT_MS, TIMEOUT_MS, mapOf("X-API-Key" to DATATOURISME_API_KEY))
-        resp.body?.let { parse(it.toString(Charsets.UTF_8), categories) }.orEmpty()
+        val corps = resp.body?.toString(Charsets.UTF_8)
+            // Statut nul : la requete n'a pas abouti du tout (cf. TileHttp.Response). Un refus du service -
+            // 4xx, 5xx - rend un corps nul aussi, et compte pareil : on ne sait pas ce qu'il y a ici.
+            ?: return@withContext Catalog(emptyList(), echec = true)
+        val lieux = parse(corps, categories)
+        val connus = total(corps)
+        Catalog(
+            lieux,
+            // Le total exact quand le service le donne ; le repli d'avant sinon, qui vaut mieux que rien.
+            tronque = if (connus != null) connus > PAGE_SIZE else lieux.size >= PAGE_SIZE,
+        )
     }
 }

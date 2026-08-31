@@ -61,6 +61,7 @@ import fr.lc4918.trailog.domain.model.WayPref
 import fr.lc4918.trailog.elevation.IgnElevation
 import fr.lc4918.trailog.elevation.OpenTopo
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.poi.Overpass
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.poi.poiCategoryLabel
 import fr.lc4918.trailog.update.ReleaseInfo
@@ -293,6 +294,22 @@ import kotlinx.coroutines.launch
             SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
         }
         RowDivider()
+        /*
+         * L'instance Overpass, aupres du geocodeur et du moteur d'itineraire : c'est le troisieme service
+         * tiers que l'application interroge, et le seul qui n'etait pas reglable.
+         *
+         * Ce n'est pas un raffinement : releve sur cinq tentatives identiques, l'instance publique a rendu
+         * deux 504 et trois reponses, entre 1,6 et 9,3 s. Une instance de repli est la seule parade a la
+         * disposition de l'utilisateur quand celle-ci sature.
+         */
+        if (cur.poiEnabled) {
+            FieldRow(stringResource(R.string.settings_section_poi_osm_service)) {
+                SettingsTextField(cur.poiOsmUrl, Overpass.DEFAULT_URL) {
+                    vm.save(cur.copy(poiOsmUrl = it.trim()))
+                }
+            }
+            RowDivider()
+        }
         FieldRow(stringResource(R.string.settings_section_routing_service)) {
             // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
             // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie

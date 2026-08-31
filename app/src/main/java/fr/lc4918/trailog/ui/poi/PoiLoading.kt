@@ -55,13 +55,39 @@ object PoiLoading {
     const val RETRY_AFTER_FAIL_MS = 60_000L
 
     /**
+     * Ce qu'il faut resserrer la vue pour qu'une emprise TRONQUEE se redemande : la moitié de sa surface.
+     *
+     * Resserrer est le seul geste qui ait une chance de rendre la réponse complète - moins de lieux tiennent
+     * dans une vue plus étroite. Un simple déplacement dans la zone déjà chargée n'en a aucune, et c'est
+     * pour cela qu'il ne redemande plus rien.
+     *
+     * La moitié, et non un dixième : au pixel près, tout geste de zoom relancerait, et l'on retomberait sur
+     * ce qu'on corrige.
+     */
+    const val ZOOM_RETRY_RATIO = 0.5
+
+    /**
+     * Au bout de combien de temps une emprise tronquée vaut la peine d'être redemandée, sans qu'on ait
+     * resserré : cinq minutes.
+     *
+     * Assez long pour qu'une carte qu'on consulte ne relance rien, assez court pour qu'une pause déjeuner
+     * reparte sur des données fraîches - et pour que le découpage retombe peut-être mieux.
+     */
+    const val PARTIAL_TTL_MS = 5 * 60_000L
+
+    /**
      * L'emprise à demander pour un écran donné : la même, élargie de [MARGIN] de part et d'autre.
      *
-     * Charger plus large que l'écran est ce qui rend gratuits les petits déplacements : tant que la vue
-     * reste dans ce qu'on a chargé, il n'y a rien à redemander (cf. `PoiState.needsLoad`). Le prix est une
-     * poignée de lieux hors champ dans la réponse, sans commune mesure avec une requête de plus.
+     * Charger un peu plus large que l'écran rend gratuits les petits déplacements : tant que la vue reste
+     * dans ce qu'on a chargé, il n'y a rien à redemander (cf. `PoiState.needsLoad`).
+     *
+     * **Descendue de 0,25 à 0,05**, et c'est une correction. À 0,25, l'emprise demandée faisait une fois et
+     * demie l'écran dans chaque dimension, soit **2,25 fois sa surface** - donc deux fois plus de lieux à
+     * faire tenir sous le plafond d'une requête, et deux fois plus de travail demandé au service, pour une
+     * marge dont on ne profitait qu'en se déplaçant de peu. À 0,05 la marge reste utile aux petits
+     * déplacements et ne coûte plus que 10 % de surface.
      */
-    const val MARGIN = 0.25
+    const val MARGIN = 0.05
 
     fun grow(box: Bbox, margin: Double = MARGIN): Bbox {
         val dLon = (box.east - box.west) * margin

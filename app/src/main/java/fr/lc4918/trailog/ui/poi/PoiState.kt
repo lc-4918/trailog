@@ -155,6 +155,7 @@ class PoiState {
         if (!on) {
             armed = false
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null; loadedOsm = null
+            loadedComplete = false; loadedAt = 0L
             tooFar = false; needsNetwork = false; partial = false
             failedBox = null
         }
@@ -169,6 +170,8 @@ class PoiState {
         loaded = null
         loadedFilters = null
         loadedOsm = null
+        loadedComplete = false
+        loadedAt = 0L
         tooFar = false
         needsNetwork = false
         partial = false
@@ -211,12 +214,21 @@ class PoiState {
     var partial by mutableStateOf(false)
         private set
 
+    /** L'emprise retenue l'a-t-elle ete sur un chargement COMPLET. Sinon elle est tronquee, et se
+     *  redemande des qu'on resserre ou que le temps passe (cf. [needsLoad]). */
+    private var loadedComplete = false
+
+    /** Instant du dernier chargement retenu, en temps depuis le demarrage de l'appareil. */
+    private var loadedAt = 0L
+
     fun publish(
         box: Bbox, filters: PoiFilters, list: List<Poi>, osmComplement: Boolean = true,
         cache: Boolean = false, offline: Boolean = false, incomplete: Boolean = false,
         /** Sans valeur par defaut, et volontairement : c'est l'oubli de cette question qui a fait
          *  disparaitre les restaurants d'Albi. Chaque appelant doit dire s'il a tout recu. */
         complete: Boolean,
+        /** Temps depuis le demarrage de l'appareil : sert au frein d'une emprise tronquee. */
+        now: Long = 0L,
     ) {
         pois = list
         /*
@@ -240,7 +252,24 @@ class PoiState {
          * Le prix est une requete a chaque geste tant qu'un chargement n'aboutit pas - c'est le prix juste :
          * on sait qu'on ne montre pas tout.
          */
-        loaded = if (complete) box else null
+        /*
+         * L'emprise est retenue MEME TRONQUEE, et c'est la correction du defaut le plus couteux.
+         *
+         * Elle ne l'etait qu'a la condition d'un chargement complet, ce qui est parfaitement raisonnable
+         * pour une reponse interrompue - on la redemandera - mais ruineux pour une reponse TRONQUEE : dans
+         * une ville dense, la reponse l'est toujours, l'emprise n'etait donc jamais retenue, et chaque
+         * immobilisation de la carte relancait le cycle entier. Mesure sur Toulouse : une vingtaine de
+         * secondes par geste, et de quoi se faire refuser par le service en quelques minutes.
+         *
+         * Elle est donc retenue, avec ce qu'il faut pour ne pas s'en contenter indefiniment (cf.
+         * [needsLoad]) : resserrer nettement la vue redemande, et le temps qui passe aussi.
+         *
+         * Une emprise INTERROMPUE, elle, n'est toujours pas retenue : une source qui n'a pas repondu ne
+         * dit rien de ce qu'elle contient, et ce qui manque doit pouvoir revenir au geste suivant.
+         */
+        loaded = if (complete || incomplete) box else null
+        loadedComplete = complete
+        loadedAt = now
         loadedFilters = filters
         loadedOsm = osmComplement
         tooFar = false
@@ -279,6 +308,7 @@ class PoiState {
     fun retryAfterReconnect() {
         if (!fromCache && !needsNetwork && failedBox == null) return
         loaded = null
+        loadedComplete = false
         failedBox = null
     }
 
@@ -323,8 +353,26 @@ class PoiState {
         val e = failedBox
         if (e != null && now - failedAt < PoiLoading.RETRY_AFTER_FAIL_MS && contient(e, box)) return false
         val d = loaded ?: return true
-        return !contient(d, box)
+        if (!contient(d, box)) return true
+        if (loadedComplete) return false
+        /*
+         * L'emprise retenue etait TRONQUEE : on ne s'en contente pas indefiniment, mais on ne la redemande
+         * pas non plus a chaque frisson de la carte.
+         *
+         * Deux portes de sortie, et deux seulement :
+         * - **resserrer nettement** (cf. [PoiLoading.ZOOM_RETRY_RATIO]) : c'est le geste qui rend la
+         *   reponse complete, moins de lieux tenant dans une vue plus etroite, et le seul qui ait une
+         *   chance d'apporter du neuf. Un simple deplacement dans la zone deja chargee n'en a aucune ;
+         * - **le temps** (cf. [PoiLoading.PARTIAL_TTL_MS]) : au bout d'un moment, redemander vaut la
+         *   peine, ne serait-ce que parce que le decoupage peut mieux tomber.
+         */
+        if (aire(box) < aire(d) * PoiLoading.ZOOM_RETRY_RATIO) return true
+        return now - loadedAt >= PoiLoading.PARTIAL_TTL_MS
     }
+
+    /** Surface approchee d'une emprise, en degres carres : elle ne sert qu'a comparer deux emprises entre
+     *  elles, et l'echelle exacte n'a donc aucune importance. */
+    private fun aire(b: Bbox): Double = (b.east - b.west) * (b.north - b.south)
 
     /** [dehors] contient-elle entierement [dedans]. */
     private fun contient(dehors: Bbox, dedans: Bbox): Boolean =

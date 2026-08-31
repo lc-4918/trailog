@@ -308,6 +308,7 @@
     <string name="settings_enable_route_planner">Mostrar el botón del planificador</string>
     <string name="settings_enable_track_measure">Mostrar el botón de medición</string>
     <string name="settings_section_geocoding_service">Servicio de geocodificación</string>
+    <string name="settings_section_poi_osm_service">Puntos de interés de OpenStreetMap</string>
     <string name="settings_section_routing_service">Servicio de rutas</string>
     <string name="settings_section_route_engine">Motor de rutas</string>
     <string name="settings_route_engine_hint">Ambos motores responden a las mismas disciplinas y a las mismas preferencias. BRouter sigue mejor las vías verdes y los senderos; Valhalla es el original.</string>

@@ -57,13 +57,58 @@ class OverpassTest {
         assertTrue(q, """nwr["tourism"="information"]["information"="office"]""" in q)
     }
 
-    /** `nwr` et `out center` : un camping ou un musee est souvent dessine en contour, pas pose en noeud. */
+    /**
+     * `nwr` et le centre des surfaces : un camping ou un musee est souvent dessine en contour, pas pose en
+     * noeud.
+     *
+     * `out TAGS center` et non `out center` : le second est un `out body`, qui joint a chaque chemin la
+     * liste de ses noeuds - une donnee dont on ne fait rien, le centre suffisant a poser un marqueur.
+     */
     @Test fun `la requete demande aussi les surfaces et leur centre`() {
         val q = Overpass.query(grenoble, setOf(PoiCategory.CAMPINGS))!!
         assertTrue(q, q.startsWith("[out:json][timeout:"))
         assertTrue(q, "nwr[" in q)
-        assertTrue(q, q.endsWith("out center ${Overpass.LIMIT};"))
+        assertTrue(q, q.endsWith("out tags center ${Overpass.LIMIT};"))
     }
+
+    /** La geometrie complete des chemins n'est jamais demandee : elle pese sans rien apprendre. */
+    @Test fun `la requete ne demande pas la geometrie des chemins`() {
+        val q = Overpass.query(grenoble, setOf(PoiCategory.CAMPINGS))!!
+        assertTrue(q, "geom" !in q)
+    }
+
+    // ---------- le decoupage d'une tuile trop dense ----------
+
+    /**
+     * Les quatre quadrants pavent l'emprise sans trou ni recouvrement.
+     *
+     * Un trou serait une bande de carte sans point d'interet, qu'aucun geste ne peuplerait ; un
+     * recouvrement rendrait deux fois les memes lieux - sans dommage, mais pour rien.
+     */
+    @Test fun `les quadrants pavent l'emprise`() {
+        val q = Overpass.quadrants(grenoble)
+        assertEquals(4, q.size)
+        assertEquals(grenoble.west, q.minOf { it.west }, 1e-9)
+        assertEquals(grenoble.east, q.maxOf { it.east }, 1e-9)
+        assertEquals(grenoble.south, q.minOf { it.south }, 1e-9)
+        assertEquals(grenoble.north, q.maxOf { it.north }, 1e-9)
+        val milieuLon = (grenoble.west + grenoble.east) / 2
+        val milieuLat = (grenoble.south + grenoble.north) / 2
+        assertTrue("les quatre se touchent au centre", q.all {
+            (it.west == grenoble.west || it.west == milieuLon) &&
+                (it.south == grenoble.south || it.south == milieuLat)
+        })
+        assertEquals("chacun fait le quart de la surface",
+            aire(grenoble) / 4, aire(q.first()), 1e-9)
+    }
+
+    /** Les quatre quadrants sont distincts : un decoupage qui rendrait deux fois la meme tuile tournerait
+     *  en rond sans jamais resserrer. */
+    @Test fun `les quatre quadrants sont distincts`() {
+        assertEquals(4, Overpass.quadrants(grenoble).toSet().size)
+    }
+
+    private fun aire(b: Bbox) = (b.east - b.west) * (b.north - b.south)
 
     /** Aucune categorie retenue ne porte d'etiquette OSM : il n'y a rien a demander, et on ne demande rien. */
     @Test fun `sans etiquette connue, pas de requete`() {

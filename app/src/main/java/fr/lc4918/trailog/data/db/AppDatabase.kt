@@ -460,6 +460,11 @@ internal object MigrationSql {
     const val ADD_POI_TRACK_CORRIDOR =
         "ALTER TABLE settings ADD COLUMN poiTrackCorridorM INTEGER NOT NULL DEFAULT 0"
 
+    /** L'instance Overpass devient reglable, comme le geocodeur et le moteur d'itineraire. Vide = celle
+     *  qui etait en dur jusqu'ici, donc aucun changement de comportement a la mise a jour. */
+    const val ADD_POI_OSM_URL =
+        "ALTER TABLE settings ADD COLUMN poiOsmUrl TEXT NOT NULL DEFAULT ''"
+
     /** Le nouveau defaut de repere, pousse aux bases restees sur l'ancien (cf. MIGRATION_58_59). */
     const val DEFAULT_MARKER_ARROW =
         "UPDATE settings SET gpsMarkerStyle = 'arrow_filled', gpsMarkerSizeDp = 30, " +
@@ -502,7 +507,7 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 61
+internal const val DB_VERSION = 62
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
@@ -858,6 +863,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // L'instance Overpass devient reglable : une colonne de plus, vide par defaut.
+        private val MIGRATION_61_62 = object : Migration(61, 62) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_POI_OSM_URL)
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -868,7 +880,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

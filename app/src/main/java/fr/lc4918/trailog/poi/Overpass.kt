@@ -8,6 +8,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -80,14 +81,39 @@ object Overpass {
     private const val RETRY_DELAY_MS = 1_500L
 
     /**
-     * Le même plafond que l'autre source, et relevé pour la même raison : sous ce plafond, les lieux
-     * excédentaires étaient écartés dans un ordre que rien ne fixe, et disparaissaient d'un déplacement de
-     * carte au suivant sans que rien ne l'explique (cf. [Datatourisme.PAGE_SIZE]).
+     * Le plafond d'une TUILE, au-delà duquel on la découpe plutôt que de rendre un échantillon.
      *
-     * Il ne coûte pas le travail du serveur, seulement la taille de la réponse : Overpass ramasse de toute
-     * façon tout ce qui correspond avant d'en rendre le nombre demandé.
+     * **Ce plafond ne protégeait de rien, il mutilait.** Relevé sur le centre de Toulouse, groupe
+     * restauration : 1781 objets correspondent, on en demandait 250. Et le tri d'Overpass est par type puis
+     * par identifiant - les 250 rendus étaient donc **tous des noeuds**, aucun des 114 chemins n'était
+     * jamais atteint. Un restaurant cartographié comme bâtiment était structurellement invisible, et parmi
+     * les noeuds seuls les plus anciens passaient.
+     *
+     * Le relever ne suffit pas : à 600, la même requête rend 600 noeuds et toujours **zéro chemin**. Il
+     * faut passer SOUS le plafond pour que le tri cesse de couper, et c'est le découpage qui y mène
+     * (cf. [around]). Mesuré sur les quatre quadrants de la même emprise : 173, 461, 167 objets - complets,
+     * chemins compris - et un seul encore tronqué, celui du centre-ville.
+     *
+     * 600 plutôt que 250 pour que le découpage s'arrête vite : trois quadrants sur quatre y tiennent.
      */
-    const val LIMIT = 250
+    const val LIMIT = 600
+
+    /**
+     * Profondeur maximale du découpage : la tuile de départ, puis deux subdivisions.
+     *
+     * Au-delà, on rend ce qu'on a et l'on annonce un affichage incomplet : mieux vaut le dire que d'ouvrir
+     * une descente sans fond sur un centre-ville, où chaque niveau quadruple le nombre de requêtes.
+     */
+    const val MAX_DEPTH = 2
+
+    /**
+     * Nombre maximal de requêtes par groupe et par chargement.
+     *
+     * Le découpage est adaptatif - une tuile n'est divisée que si elle déborde - mais un centre-ville dense
+     * pourrait en demander vingt et une. Ce plafond-là borne la dépense envers un service public qui
+     * n'accorde que deux créneaux par adresse ; ce qu'il coupe est annoncé comme incomplet.
+     */
+    const val MAX_TILES = 12
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -118,7 +144,10 @@ object Overpass {
                 add("nwr$paires$emprise;")
             }
         }
-        return "[out:json][timeout:$QUERY_TIMEOUT_S];(${corps.joinToString("")});out center $LIMIT;"
+        // `out tags center` et non `out center` : le second est un `out body`, qui joint a chaque chemin la
+        // LISTE DE SES NOEUDS - une donnee dont on ne fait rien, le centre suffisant a poser un marqueur.
+        // Mesure a nombre d'elements egal sur une requete qui rend des chemins : 7 501 contre 6 279 octets.
+        return "[out:json][timeout:$QUERY_TIMEOUT_S];(${corps.joinToString("")});out tags center $LIMIT;"
     }
 
     /**
@@ -172,24 +201,89 @@ object Overpass {
         runCatching { jsonPrimitive.content.toDouble() }.getOrNull()
 
     /**
-     * Charge les points d'intérêt d'une emprise. Liste vide quand il n'y a rien à montrer ici, et **null
-     * quand l'instance n'a pas répondu** - les deux ne se valent pas, et les confondre faisait passer un
-     * refus pour une zone déserte (cf. [PoiRepository.load]).
+     * Ce qu'une tuile a rendu, et **pourquoi elle s'est arrêtée** quand elle s'arrête.
+     *
+     * [tronque] se lit sur le nombre d'éléments **bruts** de la réponse, et non sur les POI retenus après
+     * filtrage : un objet écarté faute de catégorie connue compte tout autant dans ce que le plafond a
+     * coupé. Le compter après filtrage faisait passer pour complète une réponse qui ne l'était pas, et
+     * l'emprise était alors retenue avec ses lieux manquants.
+     */
+    internal data class Tuile(val pois: List<Poi>, val tronque: Boolean, val echec: Boolean)
+
+    /**
+     * Charge les points d'intérêt d'une emprise, **en la découpant tant qu'elle déborde**.
+     *
+     * **Pourquoi découper plutôt que relever le plafond.** Overpass rend ses résultats triés par type puis
+     * par identifiant, et coupe à la fin : une réponse tronquée n'est donc pas un échantillon, c'est le
+     * début de la liste. Relevé sur le centre de Toulouse, groupe restauration - 1781 objets présents,
+     * plafond à 250 : les 250 rendus sont **tous des noeuds**, et pas un des 114 chemins. Porter le plafond
+     * à 600 rend 600 noeuds et toujours aucun chemin. Seule une tuile qui tient **sous** le plafond rend
+     * ce qu'elle contient vraiment.
+     *
+     * Le découpage est **adaptatif** : on ne divise que ce qui déborde. Sur la même emprise, trois
+     * quadrants sur quatre tiennent d'un coup (173, 461 et 167 objets, chemins compris) et seul celui du
+     * centre-ville demande un niveau de plus. Une zone rurale reste donc à une requête, comme avant.
+     *
+     * Borné par [MAX_DEPTH] et [MAX_TILES] : ce qui n'a pas pu être découpé assez finement est rendu quand
+     * même, et signalé tronqué - la carte le dit alors, plutôt que de laisser croire qu'elle montre tout.
+     */
+    internal suspend fun tiles(
+        base: String, box: Bbox, categories: Set<PoiCategory>,
+    ): Tuile = withContext(Dispatchers.IO) {
+        var restant = MAX_TILES
+        val trouves = LinkedHashMap<String, Poi>()
+        var tronqueFinal = false
+        var echecFinal = false
+        // Largeur d'abord : on épuise un niveau avant de descendre, de sorte qu'un budget serré rende une
+        // couverture homogène plutôt qu'un seul coin très détaillé.
+        var niveau = listOf(box)
+        var profondeur = 0
+        while (niveau.isNotEmpty() && restant > 0) {
+            val aDecouper = mutableListOf<Bbox>()
+            for (tuile in niveau) {
+                if (restant <= 0) { tronqueFinal = true; break }
+                coroutineContext.ensureActive()
+                restant--
+                val r = fetchTile(base, tuile, categories)
+                r.pois.forEach { p -> trouves.merge(p.uuid, p) { a, b -> mieuxClasse(a, b) } }
+                if (r.echec) echecFinal = true
+                if (!r.tronque) continue
+                // Trop dense pour cette tuile : on la coupe en quatre, sauf si l'on est au bout.
+                if (profondeur < MAX_DEPTH) aDecouper += quadrants(tuile) else tronqueFinal = true
+            }
+            niveau = aDecouper
+            profondeur++
+        }
+        if (niveau.isNotEmpty()) tronqueFinal = true
+        Tuile(trouves.values.toList(), tronqueFinal, echecFinal)
+    }
+
+    /** Les quatre quadrants d'une emprise, dans l'ordre sud-ouest, sud-est, nord-ouest, nord-est. */
+    internal fun quadrants(box: Bbox): List<Bbox> {
+        val midLon = (box.west + box.east) / 2
+        val midLat = (box.south + box.north) / 2
+        return listOf(
+            Bbox(west = box.west, south = box.south, east = midLon, north = midLat),
+            Bbox(west = midLon, south = box.south, east = box.east, north = midLat),
+            Bbox(west = box.west, south = midLat, east = midLon, north = box.north),
+            Bbox(west = midLon, south = midLat, east = box.east, north = box.north),
+        )
+    }
+
+    /**
+     * Une requête, et une seule tuile.
      *
      * En POST et non en GET : la requête dépasse couramment le millier de caractères, et une URL de cette
      * longueur se fait tronquer par les intermédiaires.
      *
-     * **Deux tentatives**, pour la raison dite plus haut : l'instance publique refuse une requête sur deux
-     * aux heures chargées, et son refus arrive bien avant qu'elle n'ait travaillé.
+     * **Deux tentatives** : l'instance publique refuse une requête sur deux aux heures chargées, et son
+     * refus arrive bien avant qu'elle n'ait travaillé.
      */
-    suspend fun around(
-        base: String, box: Bbox, categories: Set<PoiCategory>,
-    ): List<Poi>? = withContext(Dispatchers.IO) {
+    private suspend fun fetchTile(base: String, box: Bbox, categories: Set<PoiCategory>): Tuile {
         // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
-        val ql = query(box, categories) ?: return@withContext emptyList()
+        val ql = query(box, categories) ?: return Tuile(emptyList(), tronque = false, echec = false)
         val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
         val cible = base.ifBlank { DEFAULT_URL }
-        var repondu = false
         repeat(2) { essai ->
             if (essai > 0) delay(RETRY_DELAY_MS)
             /*
@@ -201,7 +295,7 @@ object Overpass {
              * Ici, l'annulation interrompt le thread, la lecture leve, et la requete s'arrete pour de bon.
              * `ensureActive` evite en plus d'en lancer une seconde apres coup.
              */
-            ensureActive()
+            coroutineContext.ensureActive()
             val resp = runInterruptible {
                 TileHttp.post(
                     cible, corps,
@@ -210,13 +304,22 @@ object Overpass {
                 )
             }
             val corpsRecu = resp.body ?: return@repeat
-            repondu = true
-            val lieux = parse(corpsRecu.toString(Charsets.UTF_8), categories)
-            if (lieux.isNotEmpty()) return@withContext lieux
+            val brut = count(corpsRecu.toString(Charsets.UTF_8))
+            return Tuile(
+                parse(corpsRecu.toString(Charsets.UTF_8), categories),
+                tronque = brut >= LIMIT,
+                echec = false,
+            )
         }
-        // Null quand l'instance n'a jamais repondu - un 504, une coupure, un delai depasse. La zone peut
-        // etre reellement vide, mais on n'en sait rien, et l'appelant ne doit pas retenir cette emprise
-        // comme chargee : le groupe manquant ne serait plus jamais redemande (cf. PoiLoad.complete).
-        if (repondu) emptyList() else null
+        // L'instance n'a jamais repondu - un 504, une coupure, un delai depasse. La zone peut etre reellement
+        // vide, mais on n'en sait rien, et l'appelant ne doit pas retenir cette emprise comme chargee : le
+        // groupe manquant ne serait plus jamais redemande (cf. PoiLoad.complete).
+        return Tuile(emptyList(), tronque = false, echec = true)
     }
+
+    /** Le nombre d'elements BRUTS de la reponse, avant tout filtrage : c'est lui que le plafond a coupe. */
+    private fun count(body: String): Int = runCatching {
+        json.parseToJsonElement(body).jsonObject["elements"]?.jsonArray?.size ?: 0
+    }.getOrDefault(0)
+
 }

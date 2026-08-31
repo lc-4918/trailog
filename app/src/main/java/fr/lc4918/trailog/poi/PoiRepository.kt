@@ -49,11 +49,22 @@ class PoiRepository(private val dao: PoiDao) {
     fun load(
         base: String, box: Bbox, categories: Set<PoiCategory>,
         osmBase: String = Overpass.DEFAULT_URL, osmComplement: Boolean = true,
+        /**
+         * Ce que la carte AFFICHE au moment ou ce chargement commence : il est repris tant que la requete
+         * qui le contredirait n'a pas repondu (cf. [poiStream]).
+         *
+         * Borne a l'emprise demandee : un lieu reste d'une vue precedente, hors de celle-ci, n'a rien a
+         * faire dans la reponse - il se poserait hors de l'ecran et fausserait le compte de troncature.
+         */
+        affiche: List<Poi> = emptyList(),
     ): Flow<PoiLoad> = poiStream(
         datatourisme = { datatourisme(base, box, categories) },
         osm = osmSources(osmBase, box, categories, osmComplement),
         garder = { frais -> garder(frais) },
         cache = { duCache(box, categories) },
+        precedent = affiche.filter {
+            it.lon >= box.west && it.lon <= box.east && it.lat >= box.south && it.lat <= box.north
+        },
     )
 
     /** Écrit au cache ce qu'une source vient de rendre, et fait le ménage des lignes périmées. */
@@ -125,7 +136,7 @@ class PoiRepository(private val dao: PoiDao) {
         if (!PoiSources.datatourismeCovers(box)) return PoiBatch(emptyList(), tronque = false)
         if (categories.isEmpty()) return PoiBatch(emptyList(), tronque = false)
         val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, categories)
-        return PoiBatch(r, tronque = r.size >= Datatourisme.PAGE_SIZE)
+        return PoiBatch(r.pois, tronque = r.tronque, echec = r.echec, couvre = categories)
     }
 
     /**
@@ -142,12 +153,10 @@ class PoiRepository(private val dao: PoiDao) {
         val creneaux = Semaphore(OSM_CRENEAUX)
         return PoiSources.osmGroups(box, categories, complement).map { groupe ->
             {
-                val lieux = creneaux.withPermit { Overpass.around(base, box, groupe) }
-                PoiBatch(
-                    lieux.orEmpty(),
-                    tronque = (lieux?.size ?: 0) >= Overpass.LIMIT,
-                    echec = lieux == null,
-                )
+                // Le decoupage adaptatif vit dans le client : c'est lui qui sait ce qu'une tuile a rendu
+                // et s'il faut la couper en quatre (cf. Overpass.tiles).
+                val tuile = creneaux.withPermit { Overpass.tiles(base, box, groupe) }
+                PoiBatch(tuile.pois, tronque = tuile.tronque, echec = tuile.echec, couvre = groupe)
             }
         }
     }
@@ -220,7 +229,22 @@ data class PoiLoad(
  * enregistrements illisibles ou hors catégorie ont été écartés. Il peut donc manquer une troncature, jamais
  * en inventer une - on préfère se taire à tort qu'alarmer à tort.
  */
-internal data class PoiBatch(val pois: List<Poi>, val tronque: Boolean, val echec: Boolean = false)
+internal data class PoiBatch(
+    val pois: List<Poi>,
+    val tronque: Boolean,
+    val echec: Boolean = false,
+    /**
+     * Les categories que cette requete COUVRAIT, qu'elle ait rendu quelque chose ou non.
+     *
+     * Sert au report d'un chargement sur le suivant (cf. [poiStream]) : une requete qui a repondu contredit
+     * ce qu'on affichait de ses categories, une requete qui n'a pas encore repondu ne contredit rien. Sans
+     * cette liste, on ne saurait pas distinguer "cette categorie est vide ici" de "on ne l'a pas encore
+     * demandee".
+     *
+     * Vide par defaut : rien n'est alors contredit, ce qui est le repli sur - on garde ce qu'on affichait.
+     */
+    val couvre: Set<PoiCategory> = emptySet(),
+)
 
 private fun Poi.toEntity(now: Long, pinned: Boolean = false) = PoiCacheEntity(
     uuid = uuid, label = label, lat = lat, lon = lon, categoryKey = category.key,
@@ -240,8 +264,10 @@ private fun PoiCacheEntity.toPoi(): Poi? {
  * qui publie, quand, et ce que porte chaque émission - et cela se teste avec deux fonctions bidon, là où
  * le dépôt entier demanderait deux services en ligne et une base (cf. `PoiStreamTest`).
  *
- * Les règles tiennent en quatre lignes :
+ * Les règles tiennent en cinq lignes :
  * - une source qui rend quelque chose publie **aussitôt**, avec ce que l'autre a déjà rendu ;
+ * - **ce qu'on affichait déjà est REPRIS** tant que la requête qui le contredirait n'a pas répondu
+ *   (cf. [precedent]) ;
  * - une source muette ne publie rien - elle n'a rien à ajouter, et une émission de plus ferait clignoter
  *   la carte pour rien ;
  * - les deux muettes, on se rabat sur le cache, et l'émission finale le dit. Elle a lieu **même vide** :
@@ -250,12 +276,29 @@ private fun PoiCacheEntity.toPoi(): Poi? {
  * - **une émission finale close le flux dès que toutes les sources ont répondu**, et elle seule porte
  *   [PoiLoad.complete]. C'est ce qui distingue "voici tout ce qu'il y a ici" de "voici ce qui est arrivé
  *   jusqu'à présent" - un chargement interrompu en cours de route ne doit pas passer pour terminé.
+ *
+ * @param precedent ce que la carte AFFICHE au moment où ce chargement commence.
+ *
+ * **Le défaut que ce report corrige, et il se voyait à l'oeil nu.** Les accumulateurs repartaient de zéro
+ * à chaque chargement, et l'écran remplace sa liste à chaque émission. Or DATAtourisme répond en une demi-
+ * seconde quand Overpass met cinq à vingt-cinq secondes : la première émission d'un nouveau chargement
+ * effaçait donc de la carte **tous les points d'OpenStreetMap** - restaurants, eau, toilettes - qui ne
+ * revenaient qu'au retour d'Overpass. Comme l'emprise n'est jamais retenue tant qu'une réponse est
+ * tronquée, cela se reproduisait à chaque geste de carte : "il y a des POI qui apparaissent brièvement et
+ * disparaissent". Et en déplaçant la carte avant le retour d'Overpass, ils ne s'affichaient jamais.
+ *
+ * Le report est **borné par ce que chaque requête couvre** (cf. [PoiBatch.couvre]) : une requête qui a
+ * répondu contredit ce qu'on montrait de SES catégories - et les retire, même si elle rend une liste vide,
+ * ce qui est la seule façon de faire disparaître un lieu qui a fermé. Une requête qui n'a pas répondu, ou
+ * qui a échoué, ne contredit rien. Un tour complet ne reporte donc rien : chaque catégorie affichée a été
+ * redemandée.
  */
 internal fun poiStream(
     datatourisme: suspend () -> PoiBatch,
     osm: List<suspend () -> PoiBatch>,
     garder: suspend (List<Poi>) -> Unit,
     cache: suspend () -> List<Poi>,
+    precedent: List<Poi> = emptyList(),
 ): Flow<PoiLoad> = channelFlow {
     val verrou = Mutex()
     var deDatatourisme = emptyList<Poi>()
@@ -268,26 +311,50 @@ internal fun poiStream(
     val dOsm = LinkedHashMap<String, Poi>()
     var publie = false
 
+    // Ce qui reste a reporter du chargement precedent : on en retire les categories au fur et a mesure que
+    // les requetes qui les couvrent repondent.
+    val reporte = precedent.toMutableList()
+
     // Une source qui n'a pas repondu n'est pas une source qui n'a rien a dire : l'emprise ne peut alors
     // pas etre retenue comme chargee, sans quoi le groupe manquant ne serait jamais redemande.
     var echec = false
 
+    /** Ce qui s'affiche a cet instant : les reponses de ce tour, completees de ce qu'on reporte. */
+    fun etat(): List<Poi> {
+        val frais = PoiSources.merge(deDatatourisme, dOsm.values.toList())
+        if (reporte.isEmpty()) return frais
+        val vus = frais.mapTo(HashSet()) { it.uuid }
+        return frais + reporte.filter { it.uuid !in vus }
+    }
+
     suspend fun arrivee(reponse: PoiBatch, venuDeDatatourisme: Boolean) {
         val lieux = reponse.pois
         if (reponse.tronque) partiel = true
-        if (reponse.echec) echec = true
-        if (lieux.isEmpty()) return
+        if (reponse.echec) { echec = true; return }
         // Sous verrou : les sources arrivent sur des fils distincts, et l'emission doit porter un etat
         // coherent - jamais la moitie d'une reunion en cours.
         verrou.withLock {
+            /*
+             * Cette requete a repondu : ce qu'on reportait de SES categories n'a plus lieu d'etre.
+             *
+             * La source se lit sur le prefixe de l'identifiant - c'est le seul qui distingue les deux, et
+             * il est pose a la lecture de chaque reponse (cf. Overpass.parse). Une requete DATAtourisme ne
+             * contredit pas un lieu d'OpenStreetMap, et reciproquement : les deux couvrent les memes
+             * categories sans decrire les memes objets.
+             */
+            val retire = reporte.removeAll { p ->
+                (p.uuid.startsWith(OSM_PREFIX) != venuDeDatatourisme) && p.category in reponse.couvre
+            }
+            // Rien rendu ET rien retire : l'affichage ne bouge pas, une emission de plus le ferait
+            // clignoter pour rien.
+            if (lieux.isEmpty() && !retire) return@withLock
             if (venuDeDatatourisme) deDatatourisme = lieux
             else lieux.forEach { p -> dOsm.merge(p.uuid, p) { a, b -> mieuxClasse(a, b) } }
-            garder(lieux)
-            publie = true
-            send(PoiLoad(
-                PoiSources.merge(deDatatourisme, dOsm.values.toList()),
-                fromCache = false, partial = partiel,
-            ))
+            if (lieux.isNotEmpty()) {
+                garder(lieux)
+                publie = true
+            }
+            send(PoiLoad(etat(), fromCache = false, partial = partiel))
         }
     }
 
@@ -299,14 +366,18 @@ internal fun poiStream(
     // Toutes les sources ont repondu : l'emission finale porte le meme etat que la derniere, et le dit.
     // C'est elle, et elle seule, qui autorise l'ecran a retenir l'emprise.
     val retenable = !partiel && !echec
-    if (publie) {
-        send(PoiLoad(
-            PoiSources.merge(deDatatourisme, dOsm.values.toList()),
-            fromCache = false, partial = partiel, complete = retenable, failed = echec,
-        ))
+    val courant = etat()
+    if (publie || courant.isNotEmpty()) {
+        send(PoiLoad(courant, fromCache = false, partial = partiel, complete = retenable, failed = echec))
     } else {
+        // Rien de neuf, et rien a reporter : le cache est le seul a pouvoir dire quelque chose de cet
+        // endroit. C'est ce qui peuple la couche sans reseau, sur le bord d'un chemin.
         val gardes = cache()
         send(PoiLoad(gardes, fromCache = gardes.isNotEmpty(), partial = partiel,
             complete = retenable, failed = echec))
     }
 }
+
+/** Prefixe des identifiants d'OpenStreetMap (cf. `Overpass.parse`) : le seul signe qui distingue les deux
+ *  sources une fois leurs lieux reunis. */
+private const val OSM_PREFIX = "osm:"
