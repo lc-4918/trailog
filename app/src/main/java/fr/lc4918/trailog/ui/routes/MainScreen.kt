@@ -335,6 +335,7 @@ fun MainScreen(
         bandHeightPx = insets.plannerBandPx,
         routeTracks = mapPoint.routeTracks,
         routeRevision = mapPoint.measureRevision,
+        geocodingBase = geocodingBase,
         currentPosition = { location.currentPosition() },
     )
     /*
@@ -424,6 +425,7 @@ fun MainScreen(
         offline = offline,
         measure = measure,
         mapPoint = mapPoint,
+        planner = planner,
         edit = edit,
         layers = layers,
         vm = vm,
@@ -470,6 +472,7 @@ fun MainScreen(
         geo = geo,
         measure = measure,
         mapPoint = mapPoint,
+        planner = planner,
         gpsMarker = gpsMarker,
         gpsMarkerColor = gpsMarkerColor,
         gpsMarkerSizeDp = gpsMarkerSizeDp,
@@ -833,6 +836,9 @@ fun MainScreen(
                         onPickCurrentPosition = { step ->
                             location.withLocationPermission { planner.choose(step, StepTarget.CurrentPosition) }
                         },
+                        // La bande se range d'elle-meme pour rendre la carte, et la consigne du haut prend
+                        // le relais (cf. RoutePlannerState.startPickingOnMap).
+                        onPickOnMap = { step -> planner.startPickingOnMap(step) },
                         sensorEnabled = location.sensorEnabled,
                         geocoding = GeocodingParams(geocodingBase,
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
@@ -867,6 +873,25 @@ fun MainScreen(
                         onClose = { measure.closeBand() },
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { insets.measureBarPx = it.size.height },
+                    )
+                }
+                /*
+                 * Consigne du choix d'une étape sur la carte, EN HAUT de l'écran - la seule des consignes
+                 * qui n'est pas en bas.
+                 *
+                 * Le bas est occupé : la bande du planificateur vient tout juste de s'y ranger, et le
+                 * bouton qui la redéploie s'y trouve encore. Une consigne posée par-dessus se serait lue
+                 * comme un morceau de la bande, alors qu'elle dit précisément qu'on l'a quittée. Elle
+                 * rejoint donc les avertissements du haut, sous la colonne des boutons.
+                 *
+                 * Sa croix rend la bande telle qu'on l'avait laissée (cf. RoutePlannerState.collapse).
+                 */
+                if (planner.pickingOnMap) {
+                    MapPromptBar(
+                        text = stringResource(R.string.planner_pick_on_map_prompt),
+                        onClose = { planner.cancelPickingOnMap() },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                            .padding(top = with(density) { insets.topControlsPx.toDp() } + 16.dp),
                     )
                 }
                 // Consigne du choix d'un point de référence : même barre que la mesure sur trace, l'une et

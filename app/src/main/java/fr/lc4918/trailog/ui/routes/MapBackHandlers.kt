@@ -69,6 +69,10 @@ internal fun MapBackHandlers(
     // priorité du choix d'un point de référence, qui est le mode de saisie en cours.
     BackHandler(enabled = mapPoint.point != null) { mapPoint.clear() }
     BackHandler(enabled = mapPoint.pickingPoint) { mapPoint.cancelPickingPoint() }
+    // Etape d'itineraire montree du doigt : le retour rend la bande telle qu'on l'avait laissee, sans rien
+    // poser sur la carte. Declare APRES les gestes du planificateur, plus haut : la bande est rangee
+    // pendant ce choix, et son propre retour - "replier, puis demander" - repondrait a sa place.
+    BackHandler(enabled = planner.pickingOnMap) { planner.cancelPickingOnMap() }
     // Popup de progression ouverte : Retour la réduit (si en cours) ou la ferme (fin/erreur).
     BackHandler(enabled = offlineDownload?.minimized == false) {
         val dl = offlineDownload

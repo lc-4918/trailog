@@ -175,6 +175,8 @@
     <string name="planner_end">Finish</string>
     <string name="planner_via">Waypoint</string>
     <string name="planner_current_position">Current location</string>
+    <string name="planner_pick_on_map">Pick a point on the map</string>
+    <string name="planner_pick_on_map_prompt">Select a point on the map</string>
     <string name="planner_add_step">Add a waypoint</string>
     <string name="planner_move_up">Move up</string>
     <string name="planner_move_down">Move down</string>

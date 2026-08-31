@@ -20,6 +20,7 @@ import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.ui.geocode.GeocodeSearchState
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import kotlinx.coroutines.delay
 
 /**
@@ -51,6 +52,7 @@ internal fun MapOverlayEffects(
     geo: GeocodeSearchState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
+    planner: RoutePlannerState,
     gpsMarker: GpsMarkerStyle,
     gpsMarkerColor: String,
     gpsMarkerSizeDp: Float,
@@ -77,6 +79,12 @@ internal fun MapOverlayEffects(
     // encore, sur leur propre calque - les deux fonctions peuvent être à l'écran en même temps.
     LaunchedEffect(mapPoint.markers, styleTick, markerPx) {
         controller.setMapPointMarkers(mapPoint.markers, markerPx)
+    }
+    // Épingles noires des étapes d'itinéraire montrées du doigt : rien d'autre ne dirait où elles sont -
+    // un départ de sentier ou un col ne portent ni trace ni marqueur. Calque à part, encore : le
+    // planificateur reste ouvert pendant qu'on désigne un point ou qu'on cherche un lieu.
+    LaunchedEffect(planner.mapPins, styleTick, markerPx) {
+        controller.setPlannerMarkers(planner.mapPins, markerPx)
     }
     // Symbole du repère de position, tel que les réglages le décrivent. Rejoué sur styleTick : le repère est
     // reposé avec la dernière position connue, sans attendre que le capteur en donne une nouvelle.

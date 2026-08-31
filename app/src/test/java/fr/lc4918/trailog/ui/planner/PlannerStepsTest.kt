@@ -405,4 +405,141 @@ class PlannerStepsTest {
         assertTrue("le planificateur reste ouvert", etat.open)
         assertTrue("la question est posee", etat.cancelDialog)
     }
+
+    // ---------- Une etape montree du doigt sur la carte ----------
+
+    /**
+     * Choisir "un point sur la carte" RANGE la bande.
+     *
+     * Elle occupe le bas de l'ecran et le clavier le reste : sans ce repli, l'endroit qu'on doit montrer
+     * serait justement celui qu'on ne voit pas.
+     */
+    @Test fun `montrer un point range la bande`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        assertTrue("le mode est actif", etat.pickingOnMap)
+        assertTrue("la carte est rendue", etat.collapsed)
+        assertTrue("le trajet n'est pas ferme pour autant", etat.open)
+    }
+
+    /**
+     * Le tap sur la carte pose l'etape et redeploie la bande, avec les coordonnees pour libelle : le
+     * calcul n'attend pas l'adresse, qui n'est qu'un nom (cf. `nameMapPoint`).
+     */
+    @Test fun `le point montre devient une etape et rend la bande`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        val pose = etat.steps.first().target as StepTarget.Place
+        assertEquals(6.08, pose.place.lon, 1e-9)
+        assertEquals(44.56, pose.place.lat, 1e-9)
+        assertEquals("44.56000, 6.08000", pose.place.label)
+        assertFalse("le mode est termine", etat.pickingOnMap)
+        assertFalse("la bande revient", etat.collapsed)
+        assertEquals("une epingle, la ou l'on a montre", listOf(6.08 to 44.56), etat.mapPins)
+        assertTrue("l'adresse reste a chercher", etat.steps.first().addressPending)
+    }
+
+    /**
+     * L'adresse arrivee remplace les coordonnees SANS relancer le calcul : le point n'a pas bouge, seul
+     * son nom a change. Recalculer renverrait au moteur un parcours deja calcule, et le perdrait sur un
+     * service muet.
+     */
+    @Test fun `l'adresse remplace les coordonnees sans recalculer`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        val avant = etat.revision
+        etat.nameMapPoint(etat.steps.first(), listOf("Col de Vars", "Hautes-Alpes"))
+        val pose = etat.steps.first().target as StepTarget.Place
+        assertEquals("Col de Vars, Hautes-Alpes", pose.place.label)
+        assertEquals("le point n'a pas bouge", 6.08, pose.place.lon, 1e-9)
+        assertEquals("rien a recalculer", avant, etat.revision)
+        assertFalse(etat.steps.first().addressPending)
+    }
+
+    /**
+     * Service muet, ou rien a cet endroit : l'etape garde ses coordonnees et reste parfaitement valable.
+     * Un point au milieu d'un bois est peut-etre le depart du sentier.
+     */
+    @Test fun `sans adresse, l'etape garde ses coordonnees`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        etat.nameMapPoint(etat.steps.first(), null)
+        val pose = etat.steps.first().target as StepTarget.Place
+        assertEquals("44.56000, 6.08000", pose.place.label)
+        assertFalse("on cesse de l'attendre", etat.steps.first().addressPending)
+    }
+
+    /** Redeployer la bande sort du mode : les deux ne peuvent pas occuper l'ecran ensemble, et c'est la
+     *  bande qu'on vient de redemander. */
+    @Test fun `redeployer la bande sort du choix`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.collapse(false)
+        assertFalse(etat.pickingOnMap)
+    }
+
+    /** L'epingle disparait avec l'etape : elle ne montrait qu'elle. */
+    @Test fun `effacer l'etape retire son epingle`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        etat.clearStep(etat.steps.first())
+        assertTrue(etat.mapPins.isEmpty())
+    }
+
+    /** Taper par-dessus la retire aussi : la frappe remplace le point, l'epingle ne montre plus rien. */
+    @Test fun `taper par-dessus retire l'epingle`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        etat.type(etat.steps.first(), "Mire")
+        assertTrue(etat.mapPins.isEmpty())
+    }
+
+    /**
+     * L'epingle traverse la mort du processus avec son etape : le parcours revient du disque, et l'endroit
+     * qu'on avait montre doit rester montre. Son adresse, elle, est deja dans le libelle - rien a
+     * redemander au geocodeur.
+     */
+    @Test fun `l'epingle revient du disque avec l'etape`() {
+        val avant = RoutePlannerState()
+        avant.openPlanner()
+        avant.startPickingOnMap(avant.steps.first())
+        avant.pickOnMap(6.08, 44.56, "44.56000, 6.08000")
+        avant.nameMapPoint(avant.steps.first(), listOf("Col de Vars"))
+        avant.choose(avant.steps.last(), StepTarget.Place(lieu("Mirepoix")))
+        avant.publish(RouteState.Done(120.0, 600.0, parcoursVide))
+
+        val apres = RoutePlannerState()
+        apres.restore(avant.snapshot())
+        assertEquals(listOf(6.08 to 44.56), apres.mapPins)
+        assertFalse("l'adresse est deja la", apres.steps.first().addressPending)
+        assertEquals("Col de Vars", (apres.steps.first().target as StepTarget.Place).place.label)
+    }
+
+    /** Un lieu cherche au clavier ne pose aucune epingle : il en porte deja une, celle du geocodage. */
+    @Test fun `un lieu cherche ne pose pas d'epingle`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        assertTrue(etat.mapPins.isEmpty())
+    }
+
+    /** Fermer le trajet sort du mode : la consigne ne doit pas survivre au planificateur qui l'a ouverte. */
+    @Test fun `fermer le trajet sort du choix`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.startPickingOnMap(etat.steps.first())
+        etat.close()
+        assertFalse(etat.pickingOnMap)
+    }
 }

@@ -15,6 +15,7 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.geocode.GeocodePlace
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,6 +56,7 @@ class RoutePlannerBandUiTest {
                     lastLabelInsetPx = 0f,
                     maxHeight = 600.dp,
                     onPickCurrentPosition = {},
+                    onPickOnMap = { state.startPickingOnMap(it) },
                     sensorEnabled = false,
                     geocoding = GeocodingParams("http://localhost", "fr", 5),
                     history = PlannerHistory(),
@@ -114,5 +116,32 @@ class RoutePlannerBandUiTest {
         val state = planificateurOuvert().apply { collapse(true) }
         affiche(state)
         compose.onNodeWithText(ctx.getString(R.string.planner_start)).assertDoesNotExist()
+    }
+
+    /**
+     * "Choisir un point sur la carte" est offert au focus d'un champ vierge, SANS condition de capteur -
+     * a la difference de la position actuelle : montrer un endroit ne demande rien a personne.
+     *
+     * Le test compose sans capteur (`sensorEnabled = false`), ce qui est exactement le cas ou la liste
+     * etait auparavant vide.
+     */
+    @Test fun `un champ vierge propose de montrer un point sur la carte`() {
+        val state = planificateurOuvert()
+        affiche(state)
+        compose.onNodeWithText(ctx.getString(R.string.planner_start)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_pick_on_map)).assertIsDisplayed()
+    }
+
+    /** Le choisir range la bande et passe la main a la carte (cf. RoutePlannerState.startPickingOnMap). */
+    @Test fun `choisir un point sur la carte range la bande`() {
+        val state = planificateurOuvert()
+        affiche(state)
+        compose.onNodeWithText(ctx.getString(R.string.planner_start)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_pick_on_map)).performClick()
+        compose.waitForIdle()
+        assertTrue(state.pickingOnMap)
+        assertTrue(state.collapsed)
     }
 }

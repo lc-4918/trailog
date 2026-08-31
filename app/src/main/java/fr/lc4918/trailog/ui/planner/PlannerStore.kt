@@ -15,6 +15,10 @@ import java.io.File
  *
  * Un booleen plutot que deux types : la position du porteur n'a ni libelle ni coordonnees a garder - elle
  * se resout au calcul, et le parcours qu'on reprend porte deja sa geometrie.
+ *
+ * [mapPicked] dit la meme chose d'un lieu MONTRE sur la carte : le point est deja dans [lon] et [lat], et
+ * son adresse dans [lines] - il ne reste a retenir que le fait qu'on l'ait designe du doigt, pour reposer
+ * son epingle noire (cf. RoutePlannerState.mapPins). Defaut faux : un fichier ecrit avant lui se relit.
  */
 @Serializable
 data class StepSnapshot(
@@ -22,14 +26,15 @@ data class StepSnapshot(
     val lon: Double = 0.0,
     val lat: Double = 0.0,
     val currentPosition: Boolean = false,
+    val mapPicked: Boolean = false,
 ) {
     fun target(): StepTarget =
         if (currentPosition) StepTarget.CurrentPosition else StepTarget.Place(GeocodePlace(lines, lon, lat))
 
     companion object {
-        fun of(t: StepTarget): StepSnapshot = when (t) {
+        fun of(t: StepTarget, mapPicked: Boolean = false): StepSnapshot = when (t) {
             StepTarget.CurrentPosition -> StepSnapshot(currentPosition = true)
-            is StepTarget.Place -> StepSnapshot(t.place.lines, t.place.lon, t.place.lat)
+            is StepTarget.Place -> StepSnapshot(t.place.lines, t.place.lon, t.place.lat, mapPicked = mapPicked)
         }
     }
 }

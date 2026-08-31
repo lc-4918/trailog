@@ -175,6 +175,8 @@
     <string name="planner_end">Ziel</string>
     <string name="planner_via">Zwischenziel</string>
     <string name="planner_current_position">Aktueller Standort</string>
+    <string name="planner_pick_on_map">Einen Punkt auf der Karte wählen</string>
+    <string name="planner_pick_on_map_prompt">Wählen Sie einen Punkt auf der Karte</string>
     <string name="planner_add_step">Zwischenziel hinzufügen</string>
     <string name="planner_move_up">Nach oben</string>
     <string name="planner_move_down">Nach unten</string>

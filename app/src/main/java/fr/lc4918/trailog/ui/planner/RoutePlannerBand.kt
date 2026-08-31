@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.CircularProgressIndicator
@@ -145,6 +146,7 @@ fun RoutePlannerBand(
     lastLabelInsetPx: Float,
     maxHeight: Dp,
     onPickCurrentPosition: (PlannerStep) -> Unit,
+    onPickOnMap: (PlannerStep) -> Unit,
     sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
@@ -178,7 +180,7 @@ fun RoutePlannerBand(
                 onClose = { state.requestClose() },
             )
             RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
-            StepList(state, onPickCurrentPosition, sensorEnabled, geocoding, history, onPlaceChosen,
+            StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
                 onPlaceForgotten,
                 onImport, onDownload,
                 Modifier.weight(1f, fill = false).padding(top = 10.dp))
@@ -225,6 +227,7 @@ private fun BandHeader(
 private fun StepList(
     state: RoutePlannerState,
     onPickCurrentPosition: (PlannerStep) -> Unit,
+    onPickOnMap: (PlannerStep) -> Unit,
     sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
@@ -246,6 +249,7 @@ private fun StepList(
                     }
                 ),
                 onPickCurrentPosition = onPickCurrentPosition,
+                onPickOnMap = onPickOnMap,
                 sensorEnabled = sensorEnabled,
                 geocoding = geocoding,
                 history = history,
@@ -296,6 +300,7 @@ private fun StepRow(
     index: Int,
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
+    onPickOnMap: (PlannerStep) -> Unit,
     sensorEnabled: Boolean,
     geocoding: GeocodingParams,
     history: PlannerHistory,
@@ -451,8 +456,10 @@ private fun StepRow(
         }
         val vierge = focused && step.untouched
         val rappels = if (vierge) history.places.filter { !state.usesPlace(it.label, step) } else emptyList()
+        // Un champ vierge propose TOUJOURS quelque chose - au minimum le point a montrer sur la carte, qui
+        // ne depend d'aucun capteur : la zone de propositions se ramene donc dans le champ des qu'il est vierge.
         val suggesting = focused && (step.searching || step.results.isNotEmpty() ||
-            step.failed || (sensorEnabled && vierge) || rappels.isNotEmpty())
+            step.failed || vierge || rappels.isNotEmpty())
         LaunchedEffect(suggesting, step.results.size, step.searching) {
             if (suggesting) bringIntoView.bringIntoView()
         }
@@ -469,6 +476,26 @@ private fun StepRow(
                 label = stringResource(R.string.planner_current_position),
                 icon = true,
                 onClick = { onPickCurrentPosition(step); settle() },
+            )
+        }
+        /*
+         * Un point MONTRE sur la carte, juste apres la position actuelle - et en tete quand celle-ci sert
+         * deja ailleurs dans le trajet, la ligne ci-dessus ne s'affichant plus.
+         *
+         * **Ce qu'aucune frappe ne trouve.** Un depart de sentier, un col, un croisement de pistes, le coin
+         * d'un parking : le geocodeur n'a pas de nom pour eux, et les chercher au clavier ne rend rien. Le
+         * seul moyen de les designer est de les montrer, et la carte est deja dessous.
+         *
+         * Offerte sans condition de capteur ni de reseau, a la difference de la position actuelle : montrer
+         * un endroit ne demande rien a personne. L'adresse qui suivra, elle, passe par le geocodeur - mais
+         * son silence ne coute que le nom (cf. RoutePlannerState.nameMapPoint), jamais l'etape.
+         */
+        if (vierge) {
+            SuggestionRow(
+                label = stringResource(R.string.planner_pick_on_map),
+                icon = true,
+                image = Icons.Filled.Place,
+                onClick = { onPickOnMap(step); settle() },
             )
         }
         /*

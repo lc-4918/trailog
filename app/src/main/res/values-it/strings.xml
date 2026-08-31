@@ -175,6 +175,8 @@
     <string name="planner_end">Arrivo</string>
     <string name="planner_via">Tappa</string>
     <string name="planner_current_position">Posizione attuale</string>
+    <string name="planner_pick_on_map">Scegliere un punto sulla mappa</string>
+    <string name="planner_pick_on_map_prompt">Seleziona un punto sulla mappa</string>
     <string name="planner_add_step">Aggiungi una tappa</string>
     <string name="planner_move_up">Su</string>
     <string name="planner_move_down">Giù</string>

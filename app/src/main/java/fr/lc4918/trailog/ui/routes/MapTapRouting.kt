@@ -13,15 +13,17 @@ import fr.lc4918.trailog.ui.edit.TrackEditState
 import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
+import fr.lc4918.trailog.ui.planner.RoutePlannerState
 
 /**
  * A QUI revient un tap sur la carte.
  *
- * **Le probleme que cela resout.** Cinq choses veulent les taps, et jamais dans le meme sens : le trace
+ * **Le probleme que cela resout.** Six choses veulent les taps, et jamais dans le meme sens : le trace
  * de l'emprise hors-ligne, le choix des deux points d'une mesure, le choix du point de reference d'une
- * distance, la retouche des traces, et - a defaut - la selection habituelle qui ouvre un profil ou une
- * infobulle. Ce sont des MODES exclusifs, et l'ordre dans lequel on les departage est une regle a part
- * entiere : disperse dans l'ecran, il se serait defait au premier mode ajoute.
+ * distance, le choix d'une etape d'itineraire montree du doigt, la retouche des traces, et - a defaut - la
+ * selection habituelle qui ouvre un profil ou une infobulle. Ce sont des MODES exclusifs, et l'ordre dans
+ * lequel on les departage est une regle a part entiere : disperse dans l'ecran, il se serait defait au
+ * premier mode ajoute.
  *
  * Ils ne sont de fait jamais actifs ensemble - le trace d'emprise part du menu lateral, qui ferme la
  * carte ; les deux suivants partent d'une barre ou d'une infobulle que l'autre a fait disparaitre - mais
@@ -33,11 +35,17 @@ internal fun MapTapRouting(
     offline: OfflineFlowState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
+    planner: RoutePlannerState,
     edit: TrackEditState,
     layers: List<LayerEntity>,
     vm: MainViewModel,
 ) {
     val sameSegmentMessage = stringResource(R.string.edit_same_segment)
+    // Libelle provisoire d'une etape montree du doigt : ses coordonnees, le temps que le geocodeur en
+    // rende l'adresse (cf. RoutePlannerState.pickOnMap). Point decimal impose, comme partout ou l'on ecrit
+    // un couple de coordonnees : la virgule d'une locale francaise separerait a la fois les decimales et
+    // les deux valeurs, et donnerait "44,56, 6,08".
+    fun coordLabel(lon: Double, lat: Double) = "%.5f, %.5f".format(java.util.Locale.US, lat, lon)
 
     // Modes de saisie exclusifs (tracé de la bounding box hors-ligne, choix des points de mesure, choix du
     // point de référence d'une distance) : tout tap leur revient, y compris sur une trace ou un marqueur,
@@ -46,7 +54,8 @@ internal fun MapTapRouting(
     // Ils ne sont jamais actifs ensemble (le tracé de bbox part du menu latéral, qui ferme la carte ; les
     // deux autres partent d'une barre ou d'une infobulle que l'autre a fait disparaître), mais l'ordre
     // reste explicite : celui qui occupe déjà l'écran garde les taps.
-    LaunchedEffect(controller, offline.drawingActive, measure.picking, mapPoint.pickingPoint, edit.awaitingTap) {
+    LaunchedEffect(controller, offline.drawingActive, measure.picking, mapPoint.pickingPoint,
+        planner.pickingOnMap, edit.awaitingTap) {
         when {
             offline.drawingActive -> controller.onRawTap = { lon, lat ->
                 if (offline.bboxPoints.size < 2) offline.bboxPoints = offline.bboxPoints + (lon to lat)
@@ -65,6 +74,12 @@ internal fun MapTapRouting(
                 }
             }
             mapPoint.pickingPoint -> controller.onRawTap = { lon, lat -> mapPoint.chooseRefPoint(lon, lat) }
+            // Etape du planificateur montree du doigt : le tap lui revient ENTIER, y compris sur un
+            // marqueur, un point d'interet ou une trace - on designe un ENDROIT, et ouvrir une infobulle
+            // ou un profil par-dessus la consigne repondrait a une question qu'on n'a pas posee.
+            planner.pickingOnMap -> controller.onRawTap = { lon, lat ->
+                planner.pickOnMap(lon, lat, coordLabel(lon, lat))
+            }
             // Retouche : les taps sur une trace lui reviennent, et n'ouvrent donc pas de profil. Le vide
             // ne referme rien - sortir du mode se fait par la barre, pas par un tap a cote.
             edit.awaitingTap -> {

@@ -80,6 +80,28 @@ class PlannerStep(val id: Long) {
         internal set
 
     /**
+     * Le point DESIGNE SUR LA CARTE dont cette etape est faite, en (lon, lat) - null pour un lieu cherche
+     * par son nom, comme pour la position du porteur.
+     *
+     * Il sert a l'epingle noire posee la ou l'on a montre : un depart de sentier, un col, un croisement de
+     * pistes ne portent ni trace ni marqueur, et rien d'autre ne dirait ou l'etape se trouve.
+     *
+     * Garde meme une fois l'adresse trouvee : c'est l'endroit MONTRE qui fait l'etape, l'adresse n'en est
+     * que le nom.
+     */
+    var pickedOnMap by mutableStateOf<Pair<Double, Double>?>(null)
+        internal set
+
+    /**
+     * L'adresse du point designe est encore a chercher : le champ montre ses coordonnees en attendant.
+     *
+     * Un drapeau, et non la seule presence de [pickedOnMap] : celui-ci revient du disque avec l'adresse
+     * deja trouvee, et le relire en ferait redemander une a chaque lancement.
+     */
+    var addressPending by mutableStateOf(false)
+        internal set
+
+    /**
      * L'utilisateur a-t-il touche au champ depuis qu'il a pris le focus ?
      *
      * Commande la proposition de position actuelle, offerte au focus tant que rien n'a ete tape. Un
@@ -226,6 +248,26 @@ class RoutePlannerState {
      */
     val usesCurrentPosition: Boolean get() = steps.any { it.target == StepTarget.CurrentPosition }
 
+    /**
+     * L'etape qui attend qu'on lui designe un point sur la carte, ou null hors de ce mode.
+     *
+     * **Un mode, parce que la carte est cachee au moment ou l'on en a besoin.** La bande occupe le bas de
+     * l'ecran et le clavier le reste : montrer un endroit demande de rendre la carte d'abord. La bande se
+     * range donc (cf. [startPickingOnMap]), une consigne prend sa place en haut, et tout tap revient a
+     * l'etape - y compris sur une trace, un marqueur ou un point d'interet, qui n'ouvrent alors ni profil
+     * ni infobulle (cf. MapTapRouting).
+     *
+     * L'etape elle-meme et non son index : la liste se reordonne et se supprime pendant qu'on regarde la
+     * carte, et un rang ne designerait plus la meme ligne au retour.
+     */
+    var pickingStep by mutableStateOf<PlannerStep?>(null)
+        private set
+
+    val pickingOnMap: Boolean get() = pickingStep != null
+
+    /** Epingles noires des etapes designees sur la carte (cf. [PlannerStep.pickedOnMap]). */
+    val mapPins: List<Pair<Double, Double>> get() = steps.mapNotNull { it.pickedOnMap }
+
     val done: RouteState.Done? get() = route as? RouteState.Done
 
     /**
@@ -308,6 +350,7 @@ class RoutePlannerState {
         open = false
         collapsed = false
         cancelDialog = false
+        pickingStep = null
         steps.clear()
         steps.add(PlannerStep(nextId++))
         steps.add(PlannerStep(nextId++))
@@ -327,7 +370,58 @@ class RoutePlannerState {
         if (isEmpty) close() else askCancel()
     }
 
-    fun collapse(v: Boolean) { collapsed = v }
+    /**
+     * Range la bande, ou la redeploie.
+     *
+     * **La redeployer sort du choix d'un point sur la carte** (cf. [pickingStep]) : la bande et la consigne
+     * ne peuvent pas occuper l'ecran ensemble, et c'est la bande qu'on vient de redemander. Sans cela, le
+     * bouton d'itineraire de la carte ramenait la bande en laissant le mode actif, et le tap suivant sur la
+     * carte remplissait une etape que plus rien n'annoncait.
+     */
+    fun collapse(v: Boolean) {
+        collapsed = v
+        if (!v) pickingStep = null
+    }
+
+    /** L'etape attend un point : la bande se range pour rendre la carte, la consigne prend le relais. */
+    fun startPickingOnMap(step: PlannerStep) {
+        pickingStep = step
+        collapsed = true
+    }
+
+    /** La croix de la consigne, ou le retour Android : la bande revient telle qu'on l'avait laissee. */
+    fun cancelPickingOnMap() { collapse(false) }
+
+    /**
+     * Tap sur la carte pendant le choix : l'etape prend ce point, et la bande se redeploie.
+     *
+     * [label] n'est que provisoire - les coordonnees du point, faute de mieux. Le calcul, lui, n'attend
+     * pas : il ne demande que des coordonnees, et il les a. L'adresse arrive apres et remplace ce libelle
+     * (cf. [nameMapPoint]), sans rien recalculer.
+     */
+    fun pickOnMap(lon: Double, lat: Double, label: String) {
+        val step = pickingStep ?: return
+        collapse(false)
+        choose(step, StepTarget.Place(GeocodePlace(label, lon, lat)))
+        step.pickedOnMap = lon to lat
+        step.addressPending = true
+    }
+
+    /**
+     * L'adresse du point designe est arrivee : elle remplace ses coordonnees dans le champ.
+     *
+     * [lines] nulle ou vide - service muet, ou rien a cet endroit -, le libelle reste les coordonnees : un
+     * point au milieu d'un bois est une etape parfaitement legitime, et n'avoir pas de nom ne la defait pas.
+     *
+     * N'invalide PAS le parcours : le point n'a pas bouge, seul son nom a change. Le recalculer renverrait
+     * au moteur un itineraire deja calcule, et le perdrait sur un service muet.
+     */
+    fun nameMapPoint(step: PlannerStep, lines: List<String>?) {
+        step.addressPending = false
+        if (lines.isNullOrEmpty()) return
+        val p = (step.target as? StepTarget.Place)?.place ?: return
+        step.target = StepTarget.Place(GeocodePlace(lines, p.lon, p.lat))
+    }
 
     /**
      * Le bouton "reduire" : range la bande dans son coin - ou ferme, si elle ne porte rien a retrouver
@@ -391,6 +485,10 @@ class RoutePlannerState {
         step.searching = false
         step.failed = false
         step.query = ""
+        // L'etape change de point : l'epingle de l'ancien n'a plus rien a montrer, et l'adresse qu'on
+        // cherchait pour lui ne vaut plus. [pickOnMap] les repose juste apres, pour le point qu'il designe.
+        step.pickedOnMap = null
+        step.addressPending = false
         invalidate()
     }
 
@@ -457,6 +555,8 @@ class RoutePlannerState {
         step.untouched = false
         if (step.target != null) {
             step.target = null
+            step.pickedOnMap = null
+            step.addressPending = false
             invalidate()
         }
     }
@@ -495,6 +595,8 @@ class RoutePlannerState {
         step.searching = false
         step.failed = false
         step.target = null
+        step.pickedOnMap = null
+        step.addressPending = false
         step.untouched = true
         if (had) invalidate()
     }
@@ -541,7 +643,7 @@ class RoutePlannerState {
         val fait = done ?: return null
         if (!open) return null
         return PlannerSnapshot(
-            steps = steps.mapNotNull { it.target }.map { StepSnapshot.of(it) },
+            steps = steps.mapNotNull { s -> s.target?.let { StepSnapshot.of(it, s.pickedOnMap != null) } },
             profile = profile.key,
             collapsed = collapsed,
             meters = fait.meters,
@@ -567,6 +669,9 @@ class RoutePlannerState {
             val etape = PlannerStep(nextId++)
             etape.target = s.target()
             etape.untouched = false
+            // L'epingle revient avec l'etape : le point designe sur la carte reste montre. Son adresse,
+            // elle, est deja dans le libelle - rien a redemander au geocodeur (cf. PlannerStep.addressPending).
+            if (s.mapPicked) etape.pickedOnMap = s.lon to s.lat
             steps.add(etape)
         }
         profile = RoutingProfile.of(snapshot.profile)

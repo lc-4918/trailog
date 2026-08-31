@@ -673,6 +673,20 @@ class MapController {
     fun setMapPointMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
         setBlackPins(MAP_POINTS, MAP_POINTS_SRC, points, heightPx)
 
+    /** Calque et source des epingles noires des etapes montrees du doigt (cf. [setPlannerMarkers]). */
+    private val PLANNER_PTS = "planner-pins"
+    private val PLANNER_SRC = "planner-pins-src"
+
+    /**
+     * Épingles noires des étapes d'itinéraire désignées sur la carte (zéro à vingt-cinq).
+     *
+     * Elles ont leur propre calque, comme les précédentes : le planificateur reste ouvert pendant qu'on
+     * consulte un point d'intérêt ou qu'on cherche un lieu, et les épingles des unes ne doivent pas
+     * disparaître avec celles des autres.
+     */
+    fun setPlannerMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
+        setBlackPins(PLANNER_PTS, PLANNER_SRC, points, heightPx)
+
     /** Calque et source des marqueurs noirs de la mesure sur trace (cf. [setMeasureMarkers]). */
     private val MEASURE_PTS = "measure-points"
     private val MEASURE_SRC = "measure-points-src"

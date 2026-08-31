@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.planner
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,6 +12,7 @@ import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
+import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.components.MapController
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,7 @@ import kotlinx.coroutines.withContext
  *   itineraires eux-memes.
  * @param currentPosition une position ponctuelle demandee au capteur, pour l'etape "d'ou je suis".
  * @param bandHeightPx hauteur de la bande, qui masque le bas de la carte : le cadrage doit s'en degager.
+ * @param geocodingBase l'instance Photon a interroger, pour l'adresse d'une etape montree du doigt.
  */
 @Composable
 fun PlannerEffects(
@@ -53,9 +56,41 @@ fun PlannerEffects(
     bandHeightPx: Int,
     routeTracks: List<ComputedTrack>,
     routeRevision: Int,
+    geocodingBase: String,
     currentPosition: suspend () -> Pair<Double, Double>?,
 ) {
     val ctx = LocalContext.current
+
+    /*
+     * Adresse d'une etape MONTREE DU DOIGT (geocodage inverse), qui remplace ses coordonnees dans le champ.
+     *
+     * **Apres coup, et non avant.** L'etape est posee des le tap et le parcours part aussitot au moteur :
+     * il ne demande que des coordonnees, et il les a. Attendre le geocodeur pour calculer ferait payer une
+     * requete de plus - et son silence - a un trajet qui n'en a pas besoin. Le nom arrive quand il arrive ;
+     * s'il ne vient pas, l'etape garde ses coordonnees et reste parfaitement valable (cf. nameMapPoint).
+     *
+     * ICI plutot que dans la bande : celle-ci ne compose plus rien une fois rangee (cf. RoutePlannerBand),
+     * et un effet qui y vivrait serait annule par le repli - c'est-a-dire par le geste meme qui sert a
+     * designer le point suivant.
+     *
+     * Une seconde tentative avant d'abandonner, comme partout ailleurs face a ce service : le premier appel
+     * paie l'ouverture de la liaison et echoue parfois au delai.
+     */
+    state.steps.forEach { step ->
+        key(step.id) {
+            LaunchedEffect(step.pickedOnMap, step.addressPending) {
+                val point = step.pickedOnMap ?: return@LaunchedEffect
+                if (!step.addressPending) return@LaunchedEffect
+                val (lon, lat) = point
+                val lang = ctx.resources.configuration.locales[0].language
+                val r = Photon.reverse(geocodingBase, lon, lat, lang)
+                    ?: Photon.reverse(geocodingBase, lon, lat, lang)
+                // L'etape a pu changer de point pendant l'appel : l'adresse d'alors ne la nomme plus.
+                if (step.pickedOnMap != point) return@LaunchedEffect
+                state.nameMapPoint(step, r?.firstOrNull()?.lines)
+            }
+        }
+    }
     // Le parcours affiche a-t-il deja ete cadre. Un recalcul ne doit pas redeplacer la carte : on ne cadre
     // qu'a la premiere version d'un trajet, pas a chacune de ses retouches.
     var routeFramed by remember { mutableStateOf(false) }
