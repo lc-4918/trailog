@@ -215,6 +215,27 @@ fun ColumnScopeMarker.SetRow(
     }
 }
 
+/**
+ * Une suite de commandes posee SOUS une ligne de reglage, alignee a droite comme ce qu'elle prolonge.
+ *
+ * **Pour ce qui ne tient pas au bout de la ligne.** Le contenu de fin d'une [SetRow] partage sa largeur
+ * avec le libelle, qui a le poids : une commande de trop le comprime jusqu'a le faire disparaitre, et la
+ * ligne enfle en hauteur pour loger le texte replie. C'est ce qui arrivait aux mises a jour des qu'on
+ * passait en manuel - le mot "Mises a jour" s'evanouissait, et un grand vide s'ouvrait au-dessus des trois
+ * commandes.
+ *
+ * Les memes marges laterales que la ligne : ce qui pend dessous doit s'aligner sur ce qui la termine.
+ */
+@Composable
+fun ColumnScopeMarker.RowTrailingBelow(content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, bottom = RowPadV),
+        horizontalArrangement = Arrangement.spacedBy(RowGap, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
 /** Valeur affichee au bout d'une ligne : c'est elle qui porte l'accent, pas le libelle. */
 @Composable
 fun ValueText(text: String) {

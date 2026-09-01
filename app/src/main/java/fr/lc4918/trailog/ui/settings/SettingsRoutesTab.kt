@@ -399,9 +399,13 @@ import kotlinx.coroutines.launch
 }
 
 /**
- * Reglage "Mises a jour" : mode Auto/Manuel, et en Manuel seulement le bouton de verification immediate,
- * pose sur la meme ligne que les puces de mode (d'ou sa hauteur et son libelle calques dessus, sans quoi
- * la ligne deborderait en largeur sur un ecran etroit).
+ * Reglage "Mises a jour" : mode Auto/Manuel, et en Manuel seulement le bouton de verification immediate.
+ *
+ * **Le bouton est SOUS la ligne, aligne a droite**, et non au bout de celle-ci. Il y etait, et la ligne
+ * n'en voulait pas : son contenu de fin partage sa largeur avec le libelle, qui a le poids. Une troisieme
+ * commande comprimait donc "Mises a jour" jusqu'a le faire disparaitre, et la ligne enflait en hauteur
+ * pour loger le texte replie - un grand vide au-dessus de trois commandes sans intitule.
+ *
  * En build debug, la verification est inoperante (cf. UpdateManager.isSupported) : on le dit plutot que de
  * laisser un bouton qui ne repondrait jamais rien.
  */
@@ -420,7 +424,9 @@ import kotlinx.coroutines.launch
         SettingsChip(stringResource(R.string.update_mode_manual), cur.updateCheckMode == "manual") {
             vm.save(cur.copy(updateCheckMode = "manual"))
         }
-        if (UpdateManager.isSupported && cur.updateCheckMode == "manual") {
+    }
+    if (UpdateManager.isSupported && cur.updateCheckMode == "manual") {
+        RowTrailingBelow {
             if (checking) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             } else {
