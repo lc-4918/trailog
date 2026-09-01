@@ -10,6 +10,7 @@ import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
+import fr.lc4918.trailog.data.ThemePrefs
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import fr.lc4918.trailog.data.repo.TrailogRepository
@@ -97,6 +98,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.composites.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val basemapFolders: StateFlow<List<BasemapFolderEntity>> =
         repo.basemapFolders.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Les defauts de la premiere image, ou le theme n'est PAS celui de l'entite.
+     *
+     * `SettingsEntity()` declare "system", et la carte s'affichait donc un instant dans le theme de
+     * l'appareil - boutons blancs sur un ecran qui allait devenir sombre - avant que Room ne livre le
+     * theme choisi. MainActivity evitait deja ce clignotement pour MaterialTheme en relisant le cache
+     * SharedPreferences (cf. ThemePrefs) ; les ornements de la carte, eux, lisent ces reglages-ci, et
+     * partaient sans lui.
+     */
+    private val startupSettings = SettingsEntity(theme = ThemePrefs.get(app))
+
     /**
      * Les reglages, JAMAIS null : la ligne absente - ou pas encore lue - rend les defauts de
      * [SettingsEntity], qui sont precisement les valeurs qu'elle contiendrait.
@@ -111,8 +124,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * lue reviendrait a ecrire des defauts par-dessus les reglages de quelqu'un.
      */
     val settings: StateFlow<SettingsEntity> =
-        repo.settingsFlow.map { it ?: SettingsEntity() }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsEntity())
+        repo.settingsFlow.map { it ?: startupSettings }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, startupSettings)
 
     // --- rendu carte (toutes les couches visibles ; une couche peut avoir points ET lignes) ---
     private val renderTick = MutableStateFlow(0)
