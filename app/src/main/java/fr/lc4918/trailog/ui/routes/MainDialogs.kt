@@ -568,7 +568,7 @@ internal fun MainDialogs(
                  * Sans effet s'il tourne deja (cf. LocationControls.startGps, qui ne fait rien de plus
                  * que ce que le service sait deja).
                  */
-                if (!location.gpsActive) location.startGps()
+                if (!location.gpsActive) location.startGps(forFollow = true)
             },
             onStop = { TrackWatch.stop(); alert.closeChooser() },
             onDismiss = { alert.closeChooser() },

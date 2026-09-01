@@ -22,7 +22,10 @@ class MapFollowTest {
         plannerExpanded: Boolean = false,
         layerOpen: Boolean = false,
         bubbleOpen: Boolean = false,
-    ) = MapFollow.follows(enabled, gpsActive, resumed, plannerExpanded, layerOpen, bubbleOpen)
+        cameraReleased: Boolean = false,
+    ) = MapFollow.follows(
+        enabled, gpsActive, resumed, plannerExpanded, layerOpen, bubbleOpen, cameraReleased,
+    )
 
     @Test fun `le suivi demande le reglage et le capteur`() {
         assertTrue(suit())
@@ -155,5 +158,26 @@ class MapFollowTest {
     /** Suivi allume et position deja centree : il n'y a plus rien a demander, l'appui rend la carte. */
     @Test fun `le suivi allume et la position centree, l'appui eteint`() {
         assertEquals(MapFollow.FollowTap.DISARM, MapFollow.tapAction(following = true, positionCentered = true))
+    }
+
+    /**
+     * **Le refus de recentrage a l'allumage suspend le suivi continu**, et c'est le correctif d'un reglage
+     * qui semblait sans effet.
+     *
+     * "Recentrer sur ma position" eteint suffisait a ce que l'allumage ne bouge rien - mais le suivi
+     * continu, lui, se recentre a chaque position recue. La premiere arrivait dans la seconde, et la carte
+     * sautait donc quand meme sur la position.
+     */
+    @Test fun `la camera laissee ou elle est suspend le suivi`() {
+        assertFalse(suit(cameraReleased = true))
+    }
+
+    /**
+     * C'est la seule des quatre suspensions qui ne se leve pas d'elle-meme : les trois autres attendent
+     * qu'on referme ce qui occupe la carte, celle-ci attend un geste qui RECLAME la position - le bouton
+     * de recentrage, ou l'armement du suivi (cf. LocationControls.claimCamera).
+     */
+    @Test fun `la camera reclamee rend le suivi`() {
+        assertTrue(suit(cameraReleased = false))
     }
 }

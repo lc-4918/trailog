@@ -414,6 +414,10 @@ internal fun BoxScope.MapBottomRightControls(
                     when (geste) {
                         MapFollow.FollowTap.ARM -> {
                             vm.setMapFollowPosition(true)
+                            // Armer le suivi RECLAME la camera : c'est le geste qui demande a etre
+                            // rejoint, et il leve donc le refus pose a l'allumage (cf.
+                            // LocationControls.cameraReleased).
+                            location.claimCamera()
                             // Le silence d'apres-geste est leve : le geste, c'est ce bouton-ci, et
                             // faire attendre cinq secondes celui qui vient de demander a etre suivi
                             // laisserait croire que l'appui n'a rien fait.

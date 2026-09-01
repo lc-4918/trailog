@@ -68,6 +68,13 @@ object MapFollow {
      *
      * Le retour au premier plan leve en outre le silence d'apres-geste (cf.
      * [LocationControls.clearUserGesture]) : le dernier geste date d'avant qu'on quitte l'ecran.
+     *
+     * **[cameraReleased] : l'utilisateur a demande a ne PAS etre recentre a l'allumage** (cf. le reglage
+     * Carte > GPS, et [LocationControls.cameraReleased]). C'est la quatrieme suspension, et la seule qui
+     * ne se leve pas d'elle-meme : les trois autres attendent qu'on referme ce qui occupe la carte, celle-ci
+     * attend un geste qui reclame la position - le bouton de recentrage, ou l'armement du suivi. Sans elle,
+     * le reglage etait a peu pres sans effet : `startGps` ne bougeait plus rien, mais le suivi continu
+     * recentrait a la premiere position recue, dans la seconde qui suivait.
      */
     fun follows(
         enabled: Boolean,
@@ -76,7 +83,9 @@ object MapFollow {
         plannerExpanded: Boolean,
         layerOpen: Boolean,
         bubbleOpen: Boolean,
-    ): Boolean = enabled && gpsActive && resumed && !plannerExpanded && !layerOpen && !bubbleOpen
+        cameraReleased: Boolean,
+    ): Boolean = enabled && gpsActive && resumed && !plannerExpanded && !layerOpen && !bubbleOpen &&
+        !cameraReleased
 
     /** Ce que fait l'appui sur le bouton de suivi. */
     enum class FollowTap {
@@ -203,6 +212,7 @@ internal fun MapFollowEffect(
         plannerExpanded = planner.expanded,
         layerOpen = layerOpen,
         bubbleOpen = bubbleOpen,
+        cameraReleased = location.cameraReleased,
     )
     LaunchedEffect(followsPosition, location.lastUserLocation, location.lastUserGestureAt) {
         if (!followsPosition) return@LaunchedEffect

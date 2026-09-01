@@ -81,6 +81,25 @@ internal fun OffTrackAlertEffects(
             alert.reset()
         }
     }
+    /*
+     * **La trace suivie s'arrete : le capteur qu'elle avait allume se rend.**
+     *
+     * Choisir une trace allume le suivi tout seul (cf. MainDialogs) - c'est ce qu'on vient demander. Mais
+     * l'arret ne rendait rien : le service continuait de tourner, et sa notification "Suivi de position"
+     * restait dans le volet avec son bouton "Arreter", seul moyen de s'en defaire. On avait allume sans le
+     * demander, et il fallait eteindre a la main.
+     *
+     * Ici plutot qu'au bouton d'arret de la fenetre : une trace cesse d'etre suivie par cinq chemins - le
+     * bouton, la couche masquee ou supprimee, le parcours du planificateur referme, le reglage eteint, la
+     * localisation coupee - et quatre d'entre eux auraient oublie de rendre le capteur.
+     *
+     * Le capteur allume par le BOUTON de localisation, lui, survit : il n'a pas ete allume pour cette
+     * trace, et le repere qu'on regarde n'a pas a disparaitre parce qu'on cesse de suivre un itineraire
+     * (cf. LocationControls.startedForFollow).
+     */
+    LaunchedEffect(followed, location.startedForFollow) {
+        if (followed == null && location.startedForFollow) location.stopGps()
+    }
     // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
     // Le parcours du planificateur n'a pas de couche : c'est l'effet suivant qui veille sur lui.
     //

@@ -210,6 +210,7 @@ class LocationControls internal constructor(
      * il n'a rien a annoncer, et rien ne doit le rallumer.
      */
     fun stopGps() {
+        startedForFollow = false
         LocationHub.stopRequestedByUser()
         LocationService.stop(ctx)
     }
@@ -225,11 +226,20 @@ class LocationControls internal constructor(
         else -> null
     }
 
+    /**
+     * Allume le capteur.
+     *
+     * [forFollow] dit que c'est le choix d'une trace qui le demande, et non le bouton de localisation :
+     * l'arret de la trace le rendra alors (cf. [startedForFollow]).
+     */
     @SuppressLint("MissingPermission")
-    fun startGps() {
+    fun startGps(forFollow: Boolean = false) {
         if (!hasLocationPermission()) return
         val provider = enabledProvider() ?: return
         askNotificationPermission()
+        // Un allumage demande par le bouton ADOPTE le capteur : ce qui suit ne se rendra plus a l'arret
+        // d'une trace, l'utilisateur l'ayant voulu pour lui-meme.
+        startedForFollow = forFollow && !gpsActive
         LocationHub.wantTracking()
         LocationService.start(ctx)
         // Le planificateur DEPLOYE cadre deja le trajet qu'on compose : sauter sur la position a
@@ -249,7 +259,15 @@ class LocationControls internal constructor(
          * gpsRecenterOnStart) : le repere se pose sur la carte, et celui qui veut l'y rejoindre a le
          * bouton de recentrage sous le pouce.
          */
-        if (!recenterOnStart) { pendingCenter = false; return }
+        if (!recenterOnStart) {
+            pendingCenter = false
+            // Et le suivi continu ne prend pas la main non plus : sans cela il recentrerait a la premiere
+            // position, ce que le reglage vient precisement de refuser (cf. cameraReleased).
+            cameraReleased = true
+            return
+        }
+        // Recentrage demande : la camera est a nouveau au suivi.
+        cameraReleased = false
         // Recentrage demande : on se pose sur la derniere position connue sans toucher au zoom, et l'on
         // attend la premiere mesure quand il n'y en a pas.
         val last = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
@@ -261,8 +279,12 @@ class LocationControls internal constructor(
         }
     }
 
-    /** Recentre la carte sur la derniere position GPS connue (bouton de recentrage). */
-    fun recenterOnGps() { lastUserLocation?.let { (la, lo) -> controller.centerOn(la, lo) } }
+    /** Recentre la carte sur la derniere position GPS connue (bouton de recentrage). Le geste reclame la
+     *  camera : on vient de demander la position, le suivi continu peut reprendre (cf. [cameraReleased]). */
+    fun recenterOnGps() {
+        claimCamera()
+        lastUserLocation?.let { (la, lo) -> controller.centerOn(la, lo) }
+    }
 
     /**
      * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
@@ -402,6 +424,39 @@ class LocationControls internal constructor(
 
     /** Le reglage "Afficher la derniere position mesuree", tenu a jour par l'ecran comme les autres. */
     var showLastFix: Boolean = false
+
+    /**
+     * La camera est LAISSEE OU ELLE EST : l'allumage du suivi ne doit pas l'emmener sur la position.
+     *
+     * **Ce que ce drapeau repare.** [recenterOnStart] eteint suffisait a ce que `startGps` ne bouge rien -
+     * mais le suivi CONTINU de la camera (cf. MapFollow), arme par le bouton de la carte, se recentre a
+     * chaque position recue. La premiere arrivait dans la seconde, et la carte sautait donc quand meme sur
+     * la position : le reglage semblait sans effet, et il l'etait a peu pres.
+     *
+     * Il ne se leve QUE sur un geste qui demande explicitement la position : le bouton de recentrage, ou
+     * l'armement du suivi. Ni un deplacement de carte, ni le temps qui passe - ils ne disent pas qu'on veut
+     * etre rejoint.
+     */
+    var cameraReleased by mutableStateOf(false)
+        private set
+
+    /** Le bouton de recentrage, ou l'armement du suivi : on demande la position, la camera la rejoint. */
+    fun claimCamera() { cameraReleased = false }
+
+    /**
+     * Le capteur a ete allume POUR SUIVRE UNE TRACE, et non par le bouton de localisation.
+     *
+     * **Ce que ce drapeau repare.** Choisir une trace allume le suivi tout seul - c'est ce qu'on vient
+     * demander, et l'alerte a besoin du service pour mesurer l'ecart ecran eteint. Mais l'arret de la
+     * trace ne rendait rien : le service continuait de tourner, et sa notification restait dans le volet
+     * avec son bouton "Arreter", seul moyen de s'en defaire. On avait allume sans le demander, et il
+     * fallait eteindre a la main.
+     *
+     * Le capteur allume PAR L'UTILISATEUR, lui, survit a l'arret de la trace : il ne l'a pas allume pour
+     * elle, et le repere qu'il regarde n'a pas a disparaitre parce qu'il cesse de suivre un itineraire.
+     */
+    var startedForFollow by mutableStateOf(false)
+        private set
 
 }
 
