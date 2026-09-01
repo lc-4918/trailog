@@ -146,8 +146,14 @@ internal fun OfflineTrackPickDialog(
         title = { Text(stringResource(R.string.offline_extent_track)) },
         text = {
             if (candidates.isEmpty()) Text(stringResource(R.string.offline_extent_no_track))
+            // Cible pleine largeur, comme les destinations d'import : choisir dans une liste se fait
+            // a la ligne.
             else Column(Modifier.verticalScroll(rememberScrollState())) {
-                candidates.forEach { l -> TextButton(onClick = { onPick(l) }) { Text(l.name) } }
+                candidates.forEach { l ->
+                    TextButton(onClick = { onPick(l) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(l.name, modifier = Modifier.fillMaxWidth())
+                    }
+                }
             }
         },
         confirmButton = {},
@@ -173,15 +179,23 @@ internal fun ImportFolderDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.dialog_import_into_title)) },
         text = {
+            // Chaque destination occupe toute la largeur : c'est la ligne qu'on vise, pas le mot. Un nom
+            // de dossier court faisait autrement une cible de quelques millimetres au milieu du vide.
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                TextButton(onClick = onNewFolder) {
+                TextButton(onClick = onNewFolder, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Outlined.CreateNewFolder, null)
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.label_new_folder))
+                    Text(stringResource(R.string.label_new_folder), modifier = Modifier.weight(1f))
                 }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                TextButton(onClick = { onPick(null) }) { Text(stringResource(R.string.label_root)) }
-                folders.forEach { f -> TextButton(onClick = { onPick(f.id) }) { Text(f.name) } }
+                TextButton(onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.label_root), modifier = Modifier.fillMaxWidth())
+                }
+                folders.forEach { f ->
+                    TextButton(onClick = { onPick(f.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(f.name, modifier = Modifier.fillMaxWidth())
+                    }
+                }
             }
         },
         confirmButton = {},
@@ -247,8 +261,15 @@ internal fun RouteImportDialog(
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     Text(stringResource(R.string.dialog_import_into_title),
                         style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = { onImport(layerName, null) }) { Text(stringResource(R.string.label_root)) }
-                    folders.forEach { f -> TextButton(onClick = { onImport(layerName, f.id) }) { Text(f.name) } }
+                    // Meme cible pleine largeur que dans ImportFolderDialog : c'est la meme question.
+                    TextButton(onClick = { onImport(layerName, null) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.label_root), modifier = Modifier.fillMaxWidth())
+                    }
+                    folders.forEach { f ->
+                        TextButton(onClick = { onImport(layerName, f.id) }, modifier = Modifier.fillMaxWidth()) {
+                            Text(f.name, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
                 }
             }
         },
