@@ -80,7 +80,8 @@ class MainScreenUiTest {
         var controller: MapController? = null
         @Composable override fun Render(
             modifier: Modifier, controller: MapController,
-            styleJson: String?, styleUrl: String?, onReady: () -> Unit,
+            styleJson: String?, styleUrl: String?, ambientCacheMb: Int,
+            onReady: () -> Unit,
         ) {
             SideEffect { this.controller = controller }
         }

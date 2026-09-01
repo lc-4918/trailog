@@ -378,7 +378,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.Default) {
                     profiles.mapIndexedNotNull { i, ct ->
                         TrackMeasure.project(ct.samples, lon, lat)?.let { p ->
-                            TrackCandidate(ly.id, ly.name, i, profiles.size, p.awayM, ct.samples)
+                            TrackCandidate(ly.id, ly.name, i, profiles.size, p.awayM, ct.samples, p.alongM)
                         }
                     }
                 }

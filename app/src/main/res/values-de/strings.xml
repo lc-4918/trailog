@@ -466,6 +466,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Titel des Seitenmenüs</string>
     <string name="settings_sw_gps_button">GPS-Standort</string>
+    <string name="settings_sw_gps_recenter">Auf meinen Standort zentrieren</string>
+    <string name="settings_sw_gps_recenter_sub">Beim Einschalten der Ortung. Die Zoomstufe wird nie verändert.</string>
     <string name="settings_sw_geocoding">Orts- und Adresssuche</string>
     <string name="settings_sw_planner">Routenberechnung</string>
     <string name="settings_sw_measure">Messen auf Track</string>
@@ -507,8 +509,18 @@
     <string name="alert_track_planned">Laufende Route</string>
     <string name="alert_track_following">Verfolgt</string>
     <string name="alert_stop_following">Nicht mehr verfolgen</string>
+    <string name="follow_speed">Geschwindigkeit</string>
+    <string name="follow_elapsed">Verstrichene Zeit</string>
+    <string name="follow_eta">Geschätzte Restzeit</string>
+    <string name="follow_done">Zurückgelegte Strecke</string>
+    <string name="follow_remaining">Verbleibende Strecke</string>
+    <string name="follow_ascent_done">Zurückgelegter Anstieg</string>
+    <string name="follow_descent_done">Zurückgelegter Abstieg</string>
+    <string name="follow_ascent_remaining">Verbleibender Anstieg</string>
+    <string name="follow_descent_remaining">Verbleibender Abstieg</string>
+    <string name="follow_dashboard_title">Verfolgt</string>
     <string name="alert_off_track_banner">Sie sind %1$s von der Spur \"%2$s\" entfernt</string>
-    <string name="alert_needs_gps_text">Der Abweichungsalarm braucht Ihre Position. GPS-Standort einschalten?</string>
+    <string name="alert_needs_gps_text">Die Ortung ist auf diesem Telefon ausgeschaltet. Die Spurverfolgung braucht Ihre Position, um nahe Spuren zu sortieren.</string>
     <string name="settings_section_off_track">Abweichungsalarm</string>
     <string name="settings_label_off_track_distance">Auslösender Abstand</string>
     <string name="settings_sw_off_track_sound">Ton abspielen</string>
@@ -579,7 +591,7 @@
     <string name="poi_group_practical">Praktisch</string>
     <string name="settings_poi_select_all">Alle auswählen</string>
     <string name="settings_label_poi_corridor">Maximaler Abstand zu einer Spur</string>
-    <string name="settings_poi_corridor_off">Aus</string>
+    <string name="settings_poi_corridor_off">Ohne Begrenzung</string>
     <string name="settings_poi_corridor_hint">Points of Interest, die von allen angezeigten Spuren entfernt sind, werden nicht angezeigt. Ohne angezeigte Spur wird nichts gefiltert.</string>
     <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
     <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>
@@ -589,5 +601,6 @@
     <string name="settings_poi_cache_hint">Einmal gesehene Orte bleiben eine Woche lang ohne Netz verfügbar. Das Leeren zwingt Trailog, sie erneut abzufragen, etwa wenn ein Eintrag falsch ist.</string>
     <string name="poi_from_cache">Zuletzt bekannte Punkte (offline)</string>
     <string name="poi_partial">Zu viele Orte hier: nicht alle werden angezeigt</string>
+    <string name="poi_away_from_tracks">Keine Spur in der Nähe (Abstandseinstellung)</string>
     <string name="poi_needs_network">Verbindung erforderlich, um Sehenswürdigkeiten dieses Gebiets zu laden</string>
 </resources>

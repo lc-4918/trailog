@@ -901,16 +901,40 @@ class MigrationsTest {
     // ---------- 60 -> 61 : le couloir des traces pour les points d'interet ----------
 
     /**
-     * Le couloir arrive ETEINT sur une base deja en place.
-     *
-     * C'est un filtre qui RETIRE de la carte : l'allumer d'office ferait disparaitre, sans un mot, des
-     * lieux qu'on voyait la veille - et la couche se lirait comme une panne.
+     * Le couloir arrive ETEINT sur une base deja en place - c'est la colonne, telle que la version 61 la
+     * pose. Le defaut de l'ENTITE, lui, est passe a cinq kilometres depuis (cf. `63 vers 64`) : c'est la
+     * migration suivante qui pousse la valeur, cette colonne-ci naissant a zero.
      */
-    @Test fun `60 vers 61 laisse le couloir eteint`() {
+    @Test fun `60 vers 61 pose le couloir a zero`() {
         val db = freshDb("m6061"); settingsV16(db)
         db.execSQL(MigrationSql.ADD_POI_TRACK_CORRIDOR)
         assertEquals(0, scalar(db, "SELECT poiTrackCorridorM FROM settings") { it.getInt(0) })
-        assertEquals("defaut de l'entite", 0, SettingsEntity().poiTrackCorridorM)
+        db.close()
+    }
+
+    /**
+     * ... et la version 64 le porte a cinq kilometres, sur les bases deja en place comme sur une neuve.
+     *
+     * Il etait eteint par prudence, mais il n'a jamais ete livre autrement : personne n'a pu le regler a
+     * zero volontairement, et le laisser eteint reviendrait a n'en faire profiter que les installations
+     * neuves.
+     */
+    @Test fun `63 vers 64 porte le couloir a cinq kilometres`() {
+        val db = freshDb("m6364"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_POI_TRACK_CORRIDOR)
+        db.execSQL(MigrationSql.DEFAULT_POI_CORRIDOR_5KM)
+        assertEquals(5_000, scalar(db, "SELECT poiTrackCorridorM FROM settings") { it.getInt(0) })
+        assertEquals("defaut de l'entite", 5_000, SettingsEntity().poiTrackCorridorM)
+        db.close()
+    }
+
+    /** L'instance Overpass et le recentrage GPS arrivent avec leurs defauts, qui sont ceux d'avant :
+     *  aucune de ces deux colonnes ne change le comportement d'une base deja en place. */
+    @Test fun `62 vers 63 laisse le recentrage GPS eteint`() {
+        val db = freshDb("m6263"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_GPS_RECENTER)
+        assertEquals(0, scalar(db, "SELECT gpsRecenterOnStart FROM settings") { it.getInt(0) })
+        assertEquals("defaut de l'entite", false, SettingsEntity().gpsRecenterOnStart)
         db.close()
     }
 
@@ -1016,7 +1040,7 @@ class MigrationsTest {
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
-            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl")
+            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

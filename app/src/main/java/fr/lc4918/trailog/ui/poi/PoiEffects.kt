@@ -82,7 +82,7 @@ fun PoiEffects(
     val enLigne by remember(ctx) { NetworkStatus.online(ctx) }.collectAsState(initial = true)
 
     LaunchedEffect(state.visible, state.masked, idleTick, filters, osmComplement, osmUrl, positioned,
-        enLigne) {
+        enLigne, corridorTracks, corridorM) {
         if (!state.visible) return@LaunchedEffect
         // Couche mise de cote : rien a charger tant qu'on ne la remet pas. Ce qui a deja ete recu reste en
         // memoire, et la remettre ne coute donc aucune requete (cf. PoiState.masked).
@@ -108,6 +108,21 @@ fun PoiEffects(
             val maintenant = SystemClock.elapsedRealtime()
             if (!state.needsLoad(vue, filters, osmComplement, maintenant)) return@LaunchedEffect
             val box = PoiLoading.grow(vue)
+            /*
+             * **Aucune trace affichee assez pres : on ne demande RIEN.**
+             *
+             * Le couloir ne filtrait que l'affichage. A plusieurs centaines de kilometres de toute trace,
+             * on interrogeait donc les deux services, on recevait tout, et on jetait tout : la carte
+             * restait vide - ce qui est l'effet voulu - mais on avait paye le chargement, et le rond du
+             * bouton tournait pour rien. Le reglage doit gouverner la REQUETE, pas seulement ce qu'on en
+             * garde.
+             *
+             * L'emprise est retenue comme chargee : il n'y a rien a redemander tant qu'on ne bouge pas.
+             */
+            if (!PoiCorridor.crosses(box, corridorTracks, corridorM.toDouble())) {
+                state.awayFromTracks(box, filters, osmComplement, maintenant)
+                return@LaunchedEffect
+            }
             state.beginLoad()
             // Les categories retenues, telles quelles : le depot se charge du cache - service d'abord,
             // dernier connu si le reseau manque (cf. PoiRepository).

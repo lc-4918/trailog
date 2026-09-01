@@ -180,4 +180,52 @@ class PoiSourcesTest {
     @Test fun `sans rien de coche, aucune requete`() {
         assertTrue(PoiSources.osmGroups(berlin, emptySet()).isEmpty())
     }
+
+    // ---------- Ce que DATAtourisme recoit ----------
+
+    /**
+     * **Il ne recevait pas la regle de partage**, alors que ce fichier la documente depuis longtemps :
+     * la restauration et le pratique reviennent a OpenStreetMap, qui les connait cent fois mieux - six
+     * restaurants contre cent cinquante a Albi, et les six sont des hotels.
+     *
+     * Le prix se payait en data - 258 ko par chargement sur Toulouse, sans compression - et en LIEUX : les
+     * classes de restauration mangeaient le plafond de 250 objets au detriment des hebergements et des
+     * loisirs, que DATAtourisme est justement le seul a bien decrire.
+     */
+    @Test fun `DATAtourisme ne recoit que ce qu'il sait decrire`() {
+        val siennes = PoiSources.datatourismeCategories(grenoble, PoiCategory.entries.toSet())
+        assertTrue("les hebergements lui restent", PoiCategory.HOTELS in siennes)
+        assertTrue("les loisirs aussi", PoiCategory.CULTURAL_SITES in siennes)
+        assertFalse("la restauration part a OSM", PoiCategory.RESTAURANTS in siennes)
+        assertFalse("le pratique aussi", PoiCategory.WATER in siennes)
+    }
+
+    /** Les deux sources se partagent le travail sans trou ni recouvrement : chaque categorie cochee va a
+     *  l'une ou a l'autre, et a une seule. */
+    @Test fun `les deux sources se partagent les categories sans trou`() {
+        val toutes = PoiCategory.entries.toSet()
+        val dt = PoiSources.datatourismeCategories(grenoble, toutes)
+        val osm = PoiSources.osmCategories(grenoble, toutes)
+        assertEquals("aucune categorie servie deux fois", emptySet<PoiCategory>(), dt intersect osm)
+        assertEquals("aucune categorie oubliee", toutes, dt + osm)
+    }
+
+    /** Hors de France, il n'a rien a dire : on ne l'interroge pas du tout. */
+    @Test fun `hors de France, DATAtourisme ne recoit rien`() {
+        assertTrue(PoiSources.datatourismeCategories(berlin, PoiCategory.entries.toSet()).isEmpty())
+    }
+
+    /**
+     * **Le complement coupe, il les reprend TOUTES.**
+     *
+     * OSM ne repond plus rien en France quand le reglage est eteint : lui retirer en plus la restauration
+     * et le pratique viderait ces deux groupes sans que rien sur la carte ne l'explique. Six restaurants
+     * valent mieux que zero, meme si ce sont six hotels.
+     */
+    @Test fun `sans le complement OSM, DATAtourisme reprend tout`() {
+        val toutes = PoiCategory.entries.toSet()
+        val siennes = PoiSources.datatourismeCategories(grenoble, toutes, complement = false)
+        assertEquals(toutes, siennes)
+        assertTrue("et OSM ne recoit rien", PoiSources.osmCategories(grenoble, toutes, complement = false).isEmpty())
+    }
 }

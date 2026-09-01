@@ -22,6 +22,7 @@ import fr.lc4918.trailog.domain.model.SchemaItem
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
+import fr.lc4918.trailog.ui.alert.FollowProgress
 import fr.lc4918.trailog.ui.alert.TrackChooserDialog
 import fr.lc4918.trailog.ui.edit.TrackEditState
 import fr.lc4918.trailog.ui.location.LocationControls
@@ -447,6 +448,8 @@ internal fun MainDialogs(
     selectedFeature: PointFeature?,
     schema: List<SchemaItem>,
     followed: TrackWatch.Followed?,
+    /** L'avancement sur la trace suivie, pour le tableau de bord du suivi (cf. TrackChooserDialog). */
+    followProgress: FollowProgress?,
     imperial: Boolean,
     alertDistanceM: Int,
     /** Le reglage "Emettre un son" de l'alerte d'eloignement (cf. TrackChooserDialog). */
@@ -537,7 +540,10 @@ internal fun MainDialogs(
 
     if (alert.needsGpsDialog) {
         AlertNeedsGpsDialog(
-            onEnable = { alert.awaitGps(); location.onGpsButtonTap() },
+            // Droit aux reglages du systeme : cette boite ne parait plus que la localisation du telephone
+            // eteinte, et passer par le bouton de la carte en aurait ouvert une seconde pour redire la
+            // meme chose. Au retour, le capteur relu ouvre la liste mise en attente (cf. awaitGps).
+            onEnable = { alert.awaitGps(); location.openLocationSettings() },
             onDismiss = { alert.dismissNeedsGps() },
         )
     }
@@ -548,7 +554,22 @@ internal fun MainDialogs(
             followed = followed,
             imperial = imperial,
             soundEnabled = alertSoundEnabled,
-            onPick = { alert.follow(it, alertDistanceM.toDouble()) },
+            progress = followProgress,
+            onPick = {
+                alert.follow(it, alertDistanceM.toDouble())
+                /*
+                 * Choisir une trace ALLUME le suivi.
+                 *
+                 * C'est ce qu'on vient demander : une trace suivie sans position ne dit rien, et
+                 * l'alerte d'eloignement a besoin du service pour mesurer l'ecart - ecran eteint compris.
+                 * L'exiger AVANT, en refusant la liste, obligeait a repasser par le bouton de la carte
+                 * pour un geste que celui-ci implique.
+                 *
+                 * Sans effet s'il tourne deja (cf. LocationControls.startGps, qui ne fait rien de plus
+                 * que ce que le service sait deja).
+                 */
+                if (!location.gpsActive) location.startGps()
+            },
             onStop = { TrackWatch.stop(); alert.closeChooser() },
             onDismiss = { alert.closeChooser() },
         )

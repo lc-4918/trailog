@@ -58,7 +58,7 @@ class PoiRepository(private val dao: PoiDao) {
          */
         affiche: List<Poi> = emptyList(),
     ): Flow<PoiLoad> = poiStream(
-        datatourisme = { datatourisme(base, box, categories) },
+        datatourisme = { datatourisme(base, box, categories, osmComplement) },
         osm = osmSources(osmBase, box, categories, osmComplement),
         garder = { frais -> garder(frais) },
         cache = { duCache(box, categories) },
@@ -110,7 +110,7 @@ class PoiRepository(private val dao: PoiDao) {
         // En parallele, comme le chargement de la carte : on emporte une zone entiere, et les deux services
         // n'ont aucune raison de s'attendre.
         val frais = coroutineScope {
-            val d = async { datatourisme(base, box, categories) }
+            val d = async { datatourisme(base, box, categories, osmComplement = true) }
             val o = osmSources(osmBase, box, categories).map { source -> async { source() } }
             PoiSources.merge(d.await().pois, o.flatMap { it.await().pois })
         }
@@ -132,11 +132,15 @@ class PoiRepository(private val dao: PoiDao) {
      * Une seule requete depuis que le filtre "uniquement les lieux velo" a ete retire : il en imposait une
      * seconde, limitee au theme velo des groupes ainsi restreints.
      */
-    private suspend fun datatourisme(base: String, box: Bbox, categories: Set<PoiCategory>): PoiBatch {
-        if (!PoiSources.datatourismeCovers(box)) return PoiBatch(emptyList(), tronque = false)
-        if (categories.isEmpty()) return PoiBatch(emptyList(), tronque = false)
-        val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, categories)
-        return PoiBatch(r.pois, tronque = r.tronque, echec = r.echec, couvre = categories)
+    private suspend fun datatourisme(
+        base: String, box: Bbox, categories: Set<PoiCategory>, osmComplement: Boolean,
+    ): PoiBatch {
+        // Les seules categories qu'il sait decrire, et non tout ce qui est coche : la restauration et le
+        // pratique reviennent a OpenStreetMap, qui les connait cent fois mieux (cf. PoiSources).
+        val siennes = PoiSources.datatourismeCategories(box, categories, osmComplement)
+        if (siennes.isEmpty()) return PoiBatch(emptyList(), tronque = false, couvre = siennes)
+        val r = Datatourisme.catalog(base, box.north, box.west, box.south, box.east, siennes)
+        return PoiBatch(r.pois, tronque = r.tronque, echec = r.echec, couvre = siennes)
     }
 
     /**

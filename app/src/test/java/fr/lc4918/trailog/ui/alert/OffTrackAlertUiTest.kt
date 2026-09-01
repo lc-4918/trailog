@@ -4,6 +4,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -71,7 +74,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
+                followed = null, imperial = false, soundEnabled = true, progress = null, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText("GR 9").assertIsDisplayed()
@@ -85,7 +88,7 @@ class OffTrackAlertUiTest {
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "Traversee", 30.0, index = 1, count = 3)),
-                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
+                followed = null, imperial = false, soundEnabled = true, progress = null, onPick = {}, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_track_segment, "Traversee", 2, 3))
@@ -96,59 +99,91 @@ class OffTrackAlertUiTest {
         var choisie: TrackCandidate? = null
         val c = candidate(1, "GR 9", 30.0)
         compose.setContent {
-            TrackChooserDialog(listOf(c), null, false, true, onPick = { choisie = it }, onStop = {}, onDismiss = {})
+            TrackChooserDialog(listOf(c), null, false, true, progress = null, onPick = { choisie = it }, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText("GR 9").performClick()
         assertEquals(c, choisie)
     }
 
     /**
-     * La trace qu'on suit DEJA se distingue des autres.
+     * **Une trace suivie remplace la liste par un en-tete et un tableau de bord.**
      *
-     * La question posee en ouvrant cette liste est "laquelle est-ce que je suis en ce moment ?", et une
-     * simple graisse de caractere n'y repondait pas : sur huit lignes qui portent le meme genre de nom,
-     * celle en gras se cherche. Le mot est la marque qui compte ici - c'est la seule que lit une synthese
-     * vocale, et la seule qu'un test peut voir : ni l'aplat ni la cloche ne portent de texte.
+     * La liste restait affichee sous la ligne en surbrillance, c'est-a-dire que la popup consacrait tout
+     * son espace a la seule chose dont on n'a plus besoin - choisir - quand la question devenue urgente
+     * est "combien reste-t-il, et combien de montee".
      */
-    @Test fun `la trace suivie se distingue dans la liste`() {
+    @Test fun `une trace suivie remplace la liste par son en-tete`() {
         val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
         compose.setContent {
             TrackChooserDialog(
                 candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = suivie, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
+                followed = suivie, imperial = false, soundEnabled = true, progress = progres(),
+                onPick = {}, onStop = {}, onDismiss = {},
             )
         }
-        compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertIsDisplayed()
+        compose.onNodeWithText("GR 9").assertIsDisplayed()
+        compose.onNodeWithText("Boucle du lac").assertDoesNotExist()
+        compose.onAllNodesWithText(ctx.getString(R.string.alert_track_away, "30 m")).assertCountEquals(0)
     }
 
-    /** Une seule ligne la porte : la marque ne vaut rien si toutes l'ont. */
-    @Test fun `la marque ne va qu'a la trace suivie`() {
+    /** Le tableau de bord porte les neuf chiffres du suivi. */
+    @Test fun `le tableau de bord affiche l'avancement`() {
         val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
         compose.setContent {
             TrackChooserDialog(
-                candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
-                followed = suivie, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
+                candidates = emptyList(), followed = suivie, imperial = false, soundEnabled = true,
+                progress = progres(), onPick = {}, onStop = {}, onDismiss = {},
             )
         }
-        assertEquals(1, compose.onAllNodesWithText(ctx.getString(R.string.alert_track_following))
-            .fetchSemanticsNodes().size)
+        compose.onNodeWithText("2,0 km").assertIsDisplayed()      // distance parcourue
+        compose.onNodeWithText("3,0 km").assertIsDisplayed()      // distance restante
+        compose.onNodeWithText("400 m").assertIsDisplayed()       // denivele positif restant
     }
 
-    /** Rien de suivi : personne ne porte la marque. */
-    @Test fun `sans suivi, aucune trace n'est marquee`() {
+    /** L'appui long sur un indicateur en donne le nom : neuf pictogrammes ne se devinent pas. */
+    @Test fun `l'appui long nomme l'indicateur`() {
+        val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
         compose.setContent {
             TrackChooserDialog(
-                candidates = listOf(candidate(1, "GR 9", 30.0)),
-                followed = null, imperial = false, soundEnabled = true, onPick = {}, onStop = {}, onDismiss = {},
+                candidates = emptyList(), followed = suivie, imperial = false, soundEnabled = true,
+                progress = progres(), onPick = {}, onStop = {}, onDismiss = {},
             )
         }
-        compose.onNodeWithText(ctx.getString(R.string.alert_track_following)).assertDoesNotExist()
+        // Le libelle n'est pas la avant qu'on le demande : c'est ce qui distingue l'appui long d'une
+        // legende permanente, que neuf indicateurs rendraient illisible.
+        compose.onNodeWithText(ctx.getString(R.string.follow_done), substring = true).assertDoesNotExist()
+        compose.onNodeWithText("2,0 km").performTouchInput { longClick() }
+        compose.waitForIdle()
+        // `assertExists` et non `assertIsDisplayed` : la ligne d'explication est sous la grille, et le
+        // dialogue mesure dans un test peut la poser hors du cadre - ce n'est pas ce qu'on verifie ici.
+        compose.onNodeWithText(ctx.getString(R.string.follow_done), substring = true).assertExists()
     }
+
+    /** Sans suivi, la liste des traces est bien la : c'est le cas ou l'on vient choisir. */
+    @Test fun `sans suivi, la liste des traces s'affiche`() {
+        compose.setContent {
+            TrackChooserDialog(
+                candidates = listOf(candidate(1, "GR 9", 30.0), candidate(2, "Boucle du lac", 240.0)),
+                followed = null, imperial = false, soundEnabled = true, progress = null,
+                onPick = {}, onStop = {}, onDismiss = {},
+            )
+        }
+        compose.onNodeWithText("GR 9").assertIsDisplayed()
+        compose.onNodeWithText("Boucle du lac").assertIsDisplayed()
+    }
+
+    /** Un avancement de reference : 5 km de trace, 2 faits, 400 m de montee devant. */
+    private fun progres() = fr.lc4918.trailog.ui.alert.FollowProgress(
+        speedMps = 4f, doneM = 2_000.0, remainingM = 3_000.0,
+        doneAscentM = 300.0, doneDescentM = 100.0,
+        remainingAscentM = 400.0, remainingDescentM = 250.0,
+        elapsedMs = 1_800_000L, etaMs = 2_700_000L,
+    )
 
     /** Le bouton d'arret n'existe que si l'on suit deja quelque chose : sinon il n'aurait rien a arreter. */
     @Test fun `l'arret n'apparait que pendant un suivi`() {
         compose.setContent {
-            TrackChooserDialog(emptyList(), null, false, true, onPick = {}, onStop = {}, onDismiss = {})
+            TrackChooserDialog(emptyList(), null, false, true, progress = null, onPick = {}, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_stop_following)).assertDoesNotExist()
     }
@@ -157,7 +192,7 @@ class OffTrackAlertUiTest {
         var arrete = false
         val suivie = TrackWatch.Followed(1, "GR 9", 0, 1, emptyList())
         compose.setContent {
-            TrackChooserDialog(emptyList(), suivie, false, true, onPick = {}, onStop = { arrete = true }, onDismiss = {})
+            TrackChooserDialog(emptyList(), suivie, false, true, progress = null, onPick = {}, onStop = { arrete = true }, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_stop_following)).performClick()
         assertTrue(arrete)
@@ -166,7 +201,7 @@ class OffTrackAlertUiTest {
     /** Aucune trace a proximite : on le dit, plutot que de laisser une boite vide. */
     @Test fun `une liste vide s'explique`() {
         compose.setContent {
-            TrackChooserDialog(emptyList(), null, false, true, onPick = {}, onStop = {}, onDismiss = {})
+            TrackChooserDialog(emptyList(), null, false, true, progress = null, onPick = {}, onStop = {}, onDismiss = {})
         }
         compose.onNodeWithText(ctx.getString(R.string.alert_pick_track_empty)).assertIsDisplayed()
     }
@@ -187,7 +222,7 @@ class OffTrackAlertUiTest {
             TrackChooserDialog(
                 candidates = listOf(enCours, candidate(1, "GR 9", 300.0)),
                 followed = null, imperial = false, soundEnabled = true,
-                onPick = { etat.follow(it, thresholdM = 100.0) }, onStop = {}, onDismiss = {},
+                progress = null, onPick = { etat.follow(it, thresholdM = 100.0) }, onStop = {}, onDismiss = {},
             )
         }
         compose.onNodeWithText("Itineraire en cours").assertIsDisplayed()

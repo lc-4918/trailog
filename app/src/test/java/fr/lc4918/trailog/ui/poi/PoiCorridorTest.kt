@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.poi
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.poi.Poi
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -95,5 +96,55 @@ class PoiCorridorTest {
         val b = auNord("b", 100.0, lon = 5.05)
         val c = auNord("c", 100.0, lon = 5.08)
         assertEquals(listOf(a, b, c), PoiCorridor.filter(listOf(a, b, c), listOf(trace), 1_000.0))
+    }
+
+    // ---------- Faut-il seulement interroger les services ? ----------
+
+    private fun vue(w: Double, s: Double, e: Double, n: Double) =
+        fr.lc4918.trailog.map.offline.Bbox(west = w, south = s, east = e, north = n)
+
+    /**
+     * **La question a poser AVANT d'interroger les services**, et c'est le correctif d'un gaspillage :
+     * le couloir ne filtrait que l'affichage, si bien qu'a plusieurs centaines de kilometres de toute
+     * trace on demandait tout, on recevait tout, et on jetait tout. La carte restait vide - ce qui est
+     * l'effet voulu - mais le chargement etait paye et le rond du bouton tournait pour rien.
+     */
+    @Test fun `une vue loin de toute trace ne merite aucune requete`() {
+        val loin = vue(10.0, 48.0, 10.2, 48.2)   // plusieurs centaines de km de la trace
+        assertFalse(PoiCorridor.crosses(loin, listOf(trace), 5_000.0))
+    }
+
+    @Test fun `une vue posee sur la trace merite une requete`() {
+        assertTrue(PoiCorridor.crosses(vue(5.05, 44.95, 5.15, 45.05), listOf(trace), 5_000.0))
+    }
+
+    /** Une trace qui passe a moins du seuil, sans entrer dans la vue, la merite aussi : les lieux du bord
+     *  de la vue peuvent border cette trace-la. */
+    @Test fun `une trace proche sans etre dans la vue merite une requete`() {
+        // Vue au nord de la trace, a environ 2 km de distance.
+        val proche = vue(5.05, 45.018, 5.15, 45.03)
+        assertFalse("hors de portee a 1 km", PoiCorridor.crosses(proche, listOf(trace), 1_000.0))
+        assertTrue("a portee a 5 km", PoiCorridor.crosses(proche, listOf(trace), 5_000.0))
+    }
+
+    /**
+     * **Une trace qui TRAVERSE la vue sans y poser de sommet compte quand meme.**
+     *
+     * Une trace decimee pose ses sommets a plusieurs centaines de metres l'un de l'autre : tester les
+     * seuls sommets conclurait qu'elle est loin, et l'on n'interrogerait rien au milieu meme du trajet.
+     */
+    @Test fun `une trace traverse la vue sans y poser de sommet`() {
+        val ecartes = listOf(4.0 to 45.0, 7.0 to 45.0)   // deux sommets, 235 km d'ecart
+        assertTrue(PoiCorridor.crosses(vue(5.4, 44.99, 5.6, 45.01), listOf(ecartes), 500.0))
+    }
+
+    /** Sans limite - le curseur tout a gauche - tout merite une requete : c'est le reglage qui le dit. */
+    @Test fun `sans limite, toute vue merite une requete`() {
+        assertTrue(PoiCorridor.crosses(vue(10.0, 48.0, 10.2, 48.2), listOf(trace), 0.0))
+    }
+
+    /** Sans trace affichee non plus : la couche ne depend pas de la bibliotheque. */
+    @Test fun `sans trace affichee, toute vue merite une requete`() {
+        assertTrue(PoiCorridor.crosses(vue(10.0, 48.0, 10.2, 48.2), emptyList(), 5_000.0))
     }
 }

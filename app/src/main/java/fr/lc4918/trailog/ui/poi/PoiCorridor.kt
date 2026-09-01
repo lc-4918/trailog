@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.poi
 
+import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.poi.Poi
 import kotlin.math.abs
 import kotlin.math.cos
@@ -107,6 +108,64 @@ object PoiCorridor {
         val dx = px - (ax + t * vx)
         val dy = py - (ay + t * vy)
         return dx * dx + dy * dy
+    }
+
+    /**
+     * Une des [tracks] passe-t-elle a moins de [maxM] de [box] ?
+     *
+     * **La question a poser AVANT d'interroger les services.** Le couloir ne filtrait que l'affichage :
+     * a plusieurs centaines de kilometres de toute trace, on demandait quand meme les points d'interet aux
+     * deux services, on les recevait tous, et on les jetait tous. La carte restait vide - ce qui est
+     * l'effet voulu - mais on avait paye le chargement, et le rond du bouton tournait pour rien.
+     *
+     * Vrai quand il n'y a pas de couloir a appliquer : une distance nulle - le reglage eteint - ou aucune
+     * trace affichee ne filtrent rien, et tout ce que la vue porte a donc lieu d'etre demande.
+     *
+     * Le test porte sur les SEGMENTS et non sur les seuls sommets : une trace decimee peut traverser la
+     * vue de part en part sans y poser un seul sommet, et l'on conclurait qu'elle en est loin.
+     */
+    fun crosses(box: Bbox, tracks: List<List<Pair<Double, Double>>>, maxM: Double): Boolean {
+        if (maxM <= 0.0) return true
+        val utiles = tracks.filter { it.isNotEmpty() }
+        if (utiles.isEmpty()) return true
+        // L'emprise elargie du seuil : une trace qui la touche a bien un point a moins de maxM de la vue.
+        val dLat = maxM / M_PER_DEG_LAT
+        val cosMin = cos(Math.toRadians(max(abs(box.south), abs(box.north)))).coerceAtLeast(1e-6)
+        val dLon = dLat / cosMin
+        val large = Boite(box.west - dLon, box.south - dLat, box.east + dLon, box.north + dLat)
+        return utiles.any { track ->
+            // Rejet par l'enveloppe d'abord : deux comparaisons contre quelques milliers de segments.
+            val b = boite(track, 0.0)
+            if (b.west > large.east || b.east < large.west ||
+                b.south > large.north || b.north < large.south
+            ) return@any false
+            if (track.any { (lon, lat) -> large.contient(lon, lat) }) return@any true
+            (1 until track.size).any { i -> coupe(large, track[i - 1], track[i]) }
+        }
+    }
+
+    /** Le segment [a,b] traverse-t-il la boite, aucun de ses bouts n'y etant. Decoupage de Liang-Barsky,
+     *  ramene a ce qu'on en demande : oui ou non, sans le morceau retenu. */
+    private fun coupe(b: Boite, a: Pair<Double, Double>, z: Pair<Double, Double>): Boolean {
+        var t0 = 0.0
+        var t1 = 1.0
+        val dx = z.first - a.first
+        val dy = z.second - a.second
+        val bornes = listOf(
+            -dx to (a.first - b.west), dx to (b.east - a.first),
+            -dy to (a.second - b.south), dy to (b.north - a.second),
+        )
+        for ((p, q) in bornes) {
+            if (p == 0.0) {
+                // Segment parallele a ce bord : hors de la bande, il ne peut pas la traverser.
+                if (q < 0) return false
+                continue
+            }
+            val r = q / p
+            if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r }
+            else { if (r < t0) return false; if (r < t1) t1 = r }
+        }
+        return true
     }
 
     private class Boite(

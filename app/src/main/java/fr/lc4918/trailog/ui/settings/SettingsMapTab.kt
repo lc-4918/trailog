@@ -91,6 +91,24 @@ import kotlinx.coroutines.launch
         SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
             vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
         }
+        /*
+         * Recentrer a l'allumage, ou rester ou l'on regarde.
+         *
+         * Eteint par defaut : "ou suis-je" et "emmene-moi" sont deux questions distinctes. On regardait une
+         * vallee pour preparer la suite, on touchait le bouton pour se situer, et l'on se retrouvait au coin
+         * d'une rue - la zone qu'on etudiait perdue, et rien pour la retrouver. Le repere se pose sur la
+         * carte de toute facon ; le bouton de recentrage est la pour qui veut l'y rejoindre.
+         *
+         * Le ZOOM ne bouge jamais, recentrage demande ou non : ce n'est donc pas un reglage, c'est une
+         * regle (cf. LocationControls.startGps).
+         */
+        if (cur.showGpsButton) {
+            RowDivider()
+            SwitchLine(
+                stringResource(R.string.settings_sw_gps_recenter), cur.gpsRecenterOnStart,
+                sub = stringResource(R.string.settings_sw_gps_recenter_sub),
+            ) { vm.save(cur.copy(gpsRecenterOnStart = it)) }
+        }
         RowDivider()
         /*
          * Suivi de trace : la cloche qui previent qu'on s'est ecarte de la trace suivie.

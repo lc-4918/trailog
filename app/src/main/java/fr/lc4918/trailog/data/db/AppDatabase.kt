@@ -465,6 +465,22 @@ internal object MigrationSql {
     const val ADD_POI_OSM_URL =
         "ALTER TABLE settings ADD COLUMN poiOsmUrl TEXT NOT NULL DEFAULT ''"
 
+    /** Le recentrage a l'allumage du GPS devient un reglage, eteint : c'est le comportement qu'on vient
+     *  de corriger, et le rallumer par surprise reproduirait la gene signalee. */
+    const val ADD_GPS_RECENTER =
+        "ALTER TABLE settings ADD COLUMN gpsRecenterOnStart INTEGER NOT NULL DEFAULT 0"
+
+    /**
+     * Le couloir des traces passe de "eteint" a cinq kilometres, sur les bases deja en place comme sur une
+     * neuve.
+     *
+     * Il etait eteint par prudence - un filtre qui retire de la carte sans le dire se lit comme une panne -
+     * mais il n'a jamais ete livre autrement : personne n'a pu le regler a zero volontairement, et le
+     * laisser eteint reviendrait a n'en faire profiter que les installations neuves.
+     */
+    const val DEFAULT_POI_CORRIDOR_5KM =
+        "UPDATE settings SET poiTrackCorridorM = 5000 WHERE poiTrackCorridorM = 0"
+
     /** Le nouveau defaut de repere, pousse aux bases restees sur l'ancien (cf. MIGRATION_58_59). */
     const val DEFAULT_MARKER_ARROW =
         "UPDATE settings SET gpsMarkerStyle = 'arrow_filled', gpsMarkerSizeDp = 30, " +
@@ -507,7 +523,7 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 62
+internal const val DB_VERSION = 64
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
@@ -870,6 +886,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Le recentrage a l'allumage du GPS devient un reglage, eteint par defaut.
+        private val MIGRATION_62_63 = object : Migration(62, 63) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_GPS_RECENTER)
+            }
+        }
+
+        // Le couloir des traces devient un curseur de 500 m a 20 km, et son defaut passe a cinq
+        // kilometres : les bases restees a zero le recoivent (cf. DEFAULT_POI_CORRIDOR_5KM).
+        private val MIGRATION_63_64 = object : Migration(63, 64) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.DEFAULT_POI_CORRIDOR_5KM)
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -880,7 +911,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

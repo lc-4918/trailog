@@ -104,6 +104,10 @@ class LocationControls internal constructor(
     /** La derniere position connue, en (lat, lon), ou null tant que le suivi n'a rien recu. */
     val lastUserLocation: Pair<Double, Double>? get() = fixState.value?.let { it.lat to it.lon }
 
+    /** La derniere mesure entiere, pour ce qui a besoin d'autre chose que des coordonnees - le cap et la
+     *  vitesse de la fleche de position (cf. HeadingEffect). */
+    val lastFix: LocationHub.Fix? get() = fixState.value
+
     /**
      * La localisation est-elle allumee dans le telephone.
      *
@@ -133,6 +137,14 @@ class LocationControls internal constructor(
     /** Vrai tant qu'un recentrage automatique est du (activation du capteur, ou retour au premier plan) :
      *  consomme des que la prochaine position arrive. */
     private var pendingCenter by mutableStateOf(false)
+
+    /**
+     * Le reglage "recentrer la carte a l'allumage de la localisation", tenu a jour par l'ecran.
+     *
+     * Une propriete et non un parametre de [startGps] : le reglage vit dans la base, l'ecran le lit deja,
+     * et le passer de main en main jusqu'ici n'apprendrait rien de plus.
+     */
+    var recenterOnStart: Boolean = false
 
     /**
      * La bande du planificateur est DEPLOYEE : elle cadre le trajet qu'on compose, et l'ecran maintient
@@ -227,13 +239,25 @@ class LocationControls internal constructor(
         // l'instant meme ou on allume le capteur l'emporterait hors de l'ecran. Le repere se pose quand
         // meme - c'est le service qui le fait, plus bas - seule la camera ne bouge pas.
         if (plannerExpanded) { pendingCenter = false; return }
-        // Le cadrage reste ici, et lui seul : le service pose le repere, l'ecran decide de ce que la camera
-        // en fait. La derniere position connue est relue plutot qu'attendue du flux - c'est elle qui
-        // distingue les deux cadrages, un saut au zoom 15 sur un point qu'on tient deja, un simple
-        // recentrage a l'arrivee de la premiere mesure.
+        /*
+         * **Le zoom ne bouge JAMAIS a l'allumage du capteur**, et le recentrage ne se fait que si on l'a
+         * demande.
+         *
+         * Allumer la localisation sautait a la position AU ZOOM 15, quel que soit celui qu'on avait :
+         * on regardait une vallee pour preparer la suite, on touchait le bouton pour savoir ou l'on est,
+         * et l'on se retrouvait au coin d'une rue - la zone qu'on etudiait perdue, et rien pour la
+         * retrouver. Or les deux questions sont distinctes : "ou suis-je" ne veut pas dire "emmene-moi".
+         *
+         * Le recentrage lui-meme est donc un reglage, ETEINT par defaut (cf. `SettingsEntity`.
+         * gpsRecenterOnStart) : le repere se pose sur la carte, et celui qui veut l'y rejoindre a le
+         * bouton de recentrage sous le pouce.
+         */
+        if (!recenterOnStart) { pendingCenter = false; return }
+        // Recentrage demande : on se pose sur la derniere position connue sans toucher au zoom, et l'on
+        // attend la premiere mesure quand il n'y en a pas.
         val last = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
         if (last != null) {
-            controller.moveTo(last.latitude, last.longitude, 15.0)
+            controller.centerOn(last.latitude, last.longitude)
             pendingCenter = false
         } else {
             pendingCenter = true   // pas de derniere position connue : on centre des que le capteur en donne une

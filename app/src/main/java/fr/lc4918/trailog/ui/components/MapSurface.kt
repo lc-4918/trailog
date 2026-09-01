@@ -29,6 +29,9 @@ interface MapSurface {
         controller: MapController,
         styleJson: String?,
         styleUrl: String?,
+        /** Taille du cache de tuiles, en Mo, telle que les reglages la veulent. Zero = on ne touche a
+         *  rien, ce que fait la carte bidon des tests. */
+        ambientCacheMb: Int,
         onReady: () -> Unit,
     )
 }
@@ -41,9 +44,11 @@ object MapLibreSurface : MapSurface {
         controller: MapController,
         styleJson: String?,
         styleUrl: String?,
+        ambientCacheMb: Int,
         onReady: () -> Unit,
     ) = MapLibreView(
         modifier = modifier, controller = controller,
-        styleJson = styleJson, styleUrl = styleUrl, onReady = onReady,
+        styleJson = styleJson, styleUrl = styleUrl,
+        ambientCacheMb = ambientCacheMb, onReady = onReady,
     )
 }

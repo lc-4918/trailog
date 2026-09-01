@@ -47,6 +47,28 @@ object TrackWatch {
     /** Ecart a la trace suivie a la derniere position recue (m). */
     val awayM: StateFlow<Double?> = _awayM.asStateFlow()
 
+    private val _alongM = MutableStateFlow<Double?>(null)
+
+    /**
+     * Kilometrage sur la trace suivie, depuis son debut (m).
+     *
+     * Il etait deja calcule a chaque position - la projection qui donne l'ecart le rend du meme coup - et
+     * jete aussitot. C'est pourtant lui qui dit ou l'on en est : ce qui reste, le denivele qui reste, et
+     * le temps qu'il faudra (cf. `FollowProgressMath`).
+     */
+    val alongM: StateFlow<Double?> = _alongM.asStateFlow()
+
+    private val _startedAtMs = MutableStateFlow<Long?>(null)
+
+    /**
+     * Instant ou le suivi a commence, en temps depuis le demarrage de l'appareil.
+     *
+     * Pas l'heure murale : une remise a l'heure du reseau ne doit ni allonger ni raccourcir la sortie.
+     * Repart a chaque changement de trace - suivre une autre trace, c'est commencer autre chose - et
+     * survit a une reprise du disque, ou l'on ne sait plus depuis quand on roule (cf. [restore]).
+     */
+    val startedAtMs: StateFlow<Long?> = _startedAtMs.asStateFlow()
+
     private val _alerting = MutableStateFlow(false)
 
     /** Au-dela du seuil regle, avec sa marge de retour (cf. [OffTrack.alerting]). */
@@ -64,9 +86,12 @@ object TrackWatch {
      * Trace retenue : on repart d'une alerte vierge, l'ecart de la trace precedente n'ayant rien a dire de
      * celle-ci. L'ecart est en revanche connu d'emblee - c'est celui qui a servi a classer les candidates.
      */
-    fun follow(f: Followed, awayM: Double, thresholdM: Double) {
+    fun follow(f: Followed, awayM: Double, thresholdM: Double, alongM: Double? = null, nowMs: Long = 0L) {
         _followed.value = f
         _awayM.value = awayM
+        _alongM.value = alongM
+        // Le chronometre repart : suivre une autre trace, c'est commencer autre chose.
+        _startedAtMs.value = nowMs
         _alerting.value = awayM >= thresholdM
         _silenced.value = false
     }
@@ -79,10 +104,15 @@ object TrackWatch {
      * designer. L'ecart et l'alerte, eux, repartent a zero : ils se mesurent a la prochaine position, et
      * celui d'avant l'arret ne dit rien d'ou l'on est maintenant.
      */
-    fun restore(f: Followed?) {
+    fun restore(f: Followed?, nowMs: Long = 0L) {
         if (f == null || _followed.value != null) return
         _followed.value = f
         _awayM.value = null
+        _alongM.value = null
+        // Le chronometre repart de la reprise, faute de mieux : on ne sait plus depuis quand on roulait, et
+        // une duree inventee serait pire qu'une duree qui recommence - le tableau de bord la donne pour ce
+        // qu'elle est, le temps ecoule DEPUIS LE DEBUT DU SUIVI.
+        _startedAtMs.value = nowMs
         _alerting.value = false
         _silenced.value = false
     }
@@ -91,6 +121,8 @@ object TrackWatch {
     fun stop() {
         _followed.value = null
         _awayM.value = null
+        _alongM.value = null
+        _startedAtMs.value = null
         _alerting.value = false
         _silenced.value = false
     }
@@ -102,8 +134,9 @@ object TrackWatch {
      * le franchissement, il ne sonne pas tant qu'on est loin. Revenir sous le seuil leve le silence - la
      * croix ne tait que l'ecart du moment, pas la fonction - et rearme donc l'annonce suivante.
      */
-    fun update(away: Double, thresholdM: Double): Boolean {
+    fun update(away: Double, thresholdM: Double, alongM: Double? = null): Boolean {
         _awayM.value = away
+        if (alongM != null) _alongM.value = alongM
         val avant = _alerting.value
         val next = OffTrack.alerting(avant, away, thresholdM)
         if (!next) _silenced.value = false

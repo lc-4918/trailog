@@ -27,6 +27,7 @@ import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.ui.profile.SlopeRamp
+import fr.lc4918.trailog.map.AmbientCache
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -1151,12 +1152,18 @@ fun MapLibreView(
     styleUrl: String?,
     gesturesEnabled: Boolean = true,
     destroyOnDispose: Boolean = false,
+    /** Taille du cache de tuiles, en Mo, telle que les reglages la veulent (cf. [AmbientCache]). */
+    ambientCacheMb: Int = 0,
     onReady: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val density = LocalDensity.current.density
     val mapView = remember { MapLibre.getInstance(context); MapView(context).apply { onCreate(null) } }
+    // La taille du cache, appliquee apres l'initialisation de la bibliotheque - qui cree le fichier - et
+    // relancee si le reglage change. Sans cela, MapLibre restait sur ses 50 Mo et le reglage affiche ne
+    // commandait rien.
+    LaunchedEffect(ambientCacheMb) { AmbientCache.apply(context, ambientCacheMb) }
 
     DisposableEffect(lifecycleOwner) {
         val obs = LifecycleEventObserver { _, e ->

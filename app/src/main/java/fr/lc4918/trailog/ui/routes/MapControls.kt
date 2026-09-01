@@ -5,7 +5,6 @@ import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Directions
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
@@ -31,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -458,17 +458,23 @@ internal fun BoxScope.MapBottomRightControls(
                 }
             }
         }
-        // Cloche de l'alerte d'éloignement, juste au-dessus du planificateur : la fonction sert
-        // PENDANT la sortie, et le pouce la trouve au même endroit que le reste.
-        //
-        // Elle se lit à la couleur de son dessin, comme les autres commandes de la carte : gris
-        // tant qu'aucune trace n'est suivie, bleu dès qu'on en suit une, rouge quand on s'en est
-        // écarté - la bannière du bas dit alors de combien, mais la cloche l'annonce déjà à qui
-        // regarde la carte.
+        /*
+         * Suivi de trace, juste au-dessus du planificateur : la fonction sert PENDANT la sortie, et le
+         * pouce la trouve au même endroit que le reste.
+         *
+         * **Le dessin est celui de la route**, celui-là même que l'onglet Trajets des réglages portait
+         * avant de prendre celui du calcul d'itinéraire. La cloche disait l'ALERTE - un son, un
+         * avertissement - alors que le bouton ouvre le suivi d'une trace, dont l'alerte n'est qu'une
+         * conséquence. Une route dit ce qu'on suit ; une cloche disait ce qui pourrait sonner.
+         *
+         * Il se lit à la couleur de son dessin, comme les autres commandes de la carte : gris tant
+         * qu'aucune trace n'est suivie, bleu dès qu'on en suit une, rouge quand on s'en est écarté - la
+         * bannière du haut dit alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
+         */
         if (alertEnabled) {
             IconButton(onClick = { onBellTap() }, modifier = chrome.buttonBackground) {
                 Icon(
-                    Icons.Outlined.NotificationsNone,
+                    Icons.Filled.Route,
                     stringResource(R.string.content_desc_off_track_alert),
                     tint = when {
                         alerting -> OffTrackAlertColor

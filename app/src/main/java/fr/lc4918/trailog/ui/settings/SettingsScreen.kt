@@ -26,8 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -168,7 +168,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
     val tabs = listOf(
         stringResource(R.string.settings_tab_map) to Icons.Filled.Map,
         stringResource(R.string.settings_tab_tiles) to Icons.Filled.Layers,
-        stringResource(R.string.settings_tab_routes) to Icons.Filled.Route,
+        stringResource(R.string.settings_tab_routes) to Icons.Outlined.Directions,
         stringResource(R.string.settings_tab_general) to Icons.Filled.Tune,
     )
 

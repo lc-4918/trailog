@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.routes
 
 import android.annotation.SuppressLint
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -71,6 +72,7 @@ import fr.lc4918.trailog.net.ServiceUrl
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
+import fr.lc4918.trailog.ui.alert.FollowProgressMath
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreSurface
@@ -101,6 +103,7 @@ import fr.lc4918.trailog.ui.poi.PoiState
 import fr.lc4918.trailog.ui.poi.PoiStatusBanner
 import fr.lc4918.trailog.ui.poi.poiGroupColor
 import fr.lc4918.trailog.ui.poi.poiIcon
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
@@ -207,7 +210,13 @@ fun MainScreen(
     val gpsMarkerSizeDp = (settings.gpsMarkerSizeDp).toFloat()
 
     // Orientation du telephone, quand le symbole choisi en porte une (cf. HeadingEffect).
-    HeadingEffect(location.gpsActive && gpsMarker.oriented, location.lastUserLocation) { controller.setUserHeading(it) }
+    // La mesure entiere et non les seules coordonnees : sa vitesse et son cap decident si la fleche montre
+    // le deplacement ou la boussole (cf. HeadingFusion).
+    HeadingEffect(
+        active = location.gpsActive && gpsMarker.oriented,
+        position = location.lastUserLocation,
+        fix = location.lastFix,
+    ) { controller.setUserHeading(it) }
 
     // ---------- alerte d'éloignement de la trace suivie ----------
     /*
@@ -227,9 +236,37 @@ fun MainScreen(
      * celui qu'elle doit prevenir n'alerte personne. L'ecran n'en lit que le resultat.
      */
     val followed by TrackWatch.followed.collectAsState()
+    // La vitesse du moment, lue a part : c'est la seule des neuf valeurs du tableau de bord qui vienne du
+    // capteur et non de la trace.
+    val lastFixSpeed = location.lastFix?.speedMps
     val alerting by TrackWatch.alerting.collectAsState()
     val silenced by TrackWatch.silenced.collectAsState()
     val awayM by TrackWatch.awayM.collectAsState()
+    val alongM by TrackWatch.alongM.collectAsState()
+    val followStartedAt by TrackWatch.startedAtMs.collectAsState()
+    /*
+     * L'avancement sur la trace suivie, recalcule a la seconde tant que la popup de suivi est OUVERTE.
+     *
+     * A la seconde parce que deux de ses neuf chiffres - le temps ecoule, le temps restant - avancent sans
+     * qu'aucune position n'arrive : les calculer sur le seul flux du capteur les figerait entre deux
+     * mesures, soit deux secondes d'horloge arretee sous les yeux.
+     *
+     * Et seulement la popup ouverte : c'est un parcours de la trace entiere, quelques milliers
+     * d'echantillons, et le faire tourner en fond pendant toute une sortie ne servirait personne.
+     */
+    var followTick by remember { mutableStateOf(0L) }
+    LaunchedEffect(alert.chooserOpen) {
+        while (alert.chooserOpen) {
+            followTick = SystemClock.elapsedRealtime()
+            delay(1_000)
+        }
+    }
+    val followProgress = remember(followed, alongM, followStartedAt, followTick, lastFixSpeed) {
+        val f = followed ?: return@remember null
+        val along = alongM ?: return@remember null
+        val depuis = followStartedAt ?: return@remember null
+        FollowProgressMath.of(f.samples, along, lastFixSpeed, depuis, SystemClock.elapsedRealtime())
+    }
     val alertBanner = alerting && !silenced
 
     // ---------- recherche de lieu / adresse (géocodage) ----------
@@ -310,6 +347,9 @@ fun MainScreen(
     // planificateur deploye interdit le premier saut de camera a l'activation du GPS (cf.
     // LocationControls.startGps), pour la meme raison que le suivi continu s'y suspend deja.
     location.plannerExpanded = planner.expanded
+    // Le reglage de recentrage, tenu a jour comme le precedent : l'allumage du capteur ne deplace la
+    // camera que si on le lui a demande, et ne touche jamais au zoom (cf. LocationControls.startGps).
+    location.recenterOnStart = settings.gpsRecenterOnStart
     // ---------- retouche des traces ----------
     val edit = screen.edit
     val canUndo by vm.canUndo.collectAsState()
@@ -711,6 +751,9 @@ fun MainScreen(
                 map.Render(
                     modifier = Modifier.fillMaxSize(), controller = controller,
                     styleJson = style?.styleJson, styleUrl = style?.styleUrl,
+                    // Le reglage de cache de tuiles, enfin branche : il vivait dans la base et s'affichait
+                    // en reglages sans rien commander, MapLibre restant sur ses 50 Mo (cf. AmbientCache).
+                    ambientCacheMb = settings.ambientCacheMb,
                     onReady = { styleTick++ },
                 )
                 // bande de barre de statut : couleur du thème, ou transparente (carte dessous)
@@ -820,7 +863,9 @@ fun MainScreen(
                     idleTick = idleTick,
                     maxWidthPx = constraints.maxWidth,
                     maxHeightPx = constraints.maxHeight,
-                    onBellTap = { alert.onBellTap(location.gpsActive) },
+                    // Le CAPTEUR du telephone, et non le bouton de la carte : celui-ci ne commande que
+                    // l'affichage du repere, et n'a pas a barrer la liste des traces a suivre.
+                    onBellTap = { alert.onBellTap(location.sensorEnabled) },
                     onNoConnection = { dialogs.noConnection = true },
                 )
 
@@ -1099,6 +1144,7 @@ fun MainScreen(
         selectedFeature = selectedFeature,
         schema = markerLayerData?.schema ?: emptyList(),
         followed = followed,
+        followProgress = followProgress,
         imperial = imperialUnits,
         alertDistanceM = alertDistanceM,
         alertSoundEnabled = settings.offTrackAlertSound,

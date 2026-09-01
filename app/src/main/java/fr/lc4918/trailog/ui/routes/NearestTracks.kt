@@ -83,5 +83,5 @@ fun plannedCandidate(
 ): TrackCandidate? {
     if (samples == null || samples.size < 2) return null
     val p = TrackMeasure.project(samples, lon, lat) ?: return null
-    return TrackCandidate(PlannedRouteLayerId, label, 0, 1, p.awayM, samples)
+    return TrackCandidate(PlannedRouteLayerId, label, 0, 1, p.awayM, samples, p.alongM)
 }

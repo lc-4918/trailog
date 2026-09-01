@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.domain.model.Sample
+import android.os.SystemClock
 import fr.lc4918.trailog.location.TrackWatch
 
 /**
@@ -24,6 +25,9 @@ data class TrackCandidate(
     val trackCount: Int,
     val awayM: Double,
     val samples: List<Sample>,
+    /** Kilometrage du projete sur la trace (m) : deja calcule pour classer les candidates, et c'est lui
+     *  qui amorce le tableau de bord des le choix (cf. FollowProgressMath). */
+    val alongM: Double = 0.0,
 )
 
 /**
@@ -60,10 +64,17 @@ class OffTrackAlertState {
     var candidates by mutableStateOf<List<TrackCandidate>?>(null)
 
     /**
-     * La cloche a ete touchee capteur eteint : on propose d'aller l'allumer.
+     * Le suivi a ete demande alors que **la localisation du telephone est eteinte** : on propose d'aller
+     * l'allumer dans les reglages du systeme.
      *
-     * Tout ici est suspendu au capteur - sans position, il n'y a rien a projeter sur la trace. Ouvrir la
-     * liste quand meme donnerait un choix de traces classees par une distance qu'on ne sait pas mesurer.
+     * C'est la seule situation qui empeche vraiment : sans capteur, il n'y a aucune position a projeter
+     * sur une trace, et la liste ne pourrait que proposer des traces classees par une distance qu'on ne
+     * sait pas mesurer.
+     *
+     * **Le bouton de localisation de la CARTE, lui, n'entre plus en compte.** Il ne commande que
+     * l'affichage du repere, et l'on s'en voyait pourtant refuser la liste des traces - alors que le
+     * telephone savait parfaitement ou l'on etait. Choisir une trace allume desormais le suivi tout seul
+     * (cf. `MainDialogs`) : c'est ce qu'on venait demander.
      */
     var needsGpsDialog by mutableStateOf(false)
         private set
@@ -84,9 +95,15 @@ class OffTrackAlertState {
         candidates = null
     }
 
-    /** Le geste de la cloche : la liste si le capteur tourne, la proposition de l'allumer sinon. */
-    fun onBellTap(gpsActive: Boolean) {
-        if (gpsActive) openChooser() else needsGpsDialog = true
+    /**
+     * Le geste du bouton de suivi : la liste des traces, ou la proposition d'allumer la localisation du
+     * telephone quand elle est coupee.
+     *
+     * [sensorEnabled] est la localisation du SYSTEME, et non le bouton de la carte : c'est la seule des
+     * deux dont l'absence rend la liste impossible a construire.
+     */
+    fun onBellTap(sensorEnabled: Boolean) {
+        if (sensorEnabled) openChooser() else needsGpsDialog = true
     }
 
     /** "Allumer" : la boite se referme, et la liste attend la premiere position. */
@@ -98,8 +115,8 @@ class OffTrackAlertState {
     fun dismissNeedsGps() { needsGpsDialog = false }
 
     /** Le capteur repond : la liste mise en attente s'ouvre enfin. */
-    fun openPendingChooser(gpsActive: Boolean) {
-        if (chooserPending && gpsActive) {
+    fun openPendingChooser(sensorEnabled: Boolean) {
+        if (chooserPending && sensorEnabled) {
             chooserPending = false
             openChooser()
         }
@@ -127,6 +144,10 @@ class OffTrackAlertState {
         TrackWatch.follow(
             TrackWatch.Followed(c.layerId, c.layerName, c.trackIndex, c.trackCount, c.samples),
             c.awayM, thresholdM,
+            // Le kilometrage de la candidate est celui de sa projection, deja calcule pour la classer : le
+            // tableau de bord a donc ses chiffres des la premiere image, sans attendre une position.
+            alongM = c.alongM,
+            nowMs = SystemClock.elapsedRealtime(),
         )
         closeChooser()
     }

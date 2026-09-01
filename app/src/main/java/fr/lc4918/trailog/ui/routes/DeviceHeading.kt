@@ -16,7 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.R
-import kotlin.math.abs
+import fr.lc4918.trailog.location.LocationHub
 
 /**
  * L'orientation du telephone, pour les symboles de position qui en portent une (les deux fleches).
@@ -72,12 +72,6 @@ internal fun azimuthDegrees(rotationVector: FloatArray, displayRotation: Int): F
     return Math.toDegrees(orientation[0].toDouble()).toFloat()
 }
 
-/** Ecart entre deux caps, par le plus court des deux chemins : 359 et 1 sont a 2 degres l'un de l'autre. */
-internal fun angleGap(a: Float, b: Float): Float {
-    val d = abs(a - b) % 360f
-    return if (d > 180f) 360f - d else d
-}
-
 /**
  * Ecoute le capteur d'orientation tant que [active], et rend le cap en degres depuis le nord VRAI.
  *
@@ -89,11 +83,21 @@ internal fun angleGap(a: Float, b: Float): Float {
  *
  * [position] sert a corriger la declinaison magnetique - l'ecart entre le nord de la boussole et celui de
  * la carte, qui depend du lieu et atteint plusieurs degres en Europe.
+ *
+ * **La boussole n'est PAS la premiere source du cap affiche.** Des qu'on avance, c'est celui du
+ * deplacement qui s'impose (cf. [HeadingFusion]) : le telephone pointe ou son support le tient, et la
+ * fleche s'affichait donc en biais sur la trace suivie et tournait sur elle-meme des qu'on prenait
+ * l'appareil en main. La boussole ne reprend la main qu'a l'arret, ou elle est la seule a dire quelque
+ * chose - et lissee, car c'est la qu'elle tremble le plus.
+ *
+ * @param fix la derniere mesure du capteur : sa vitesse et son cap decident laquelle des deux sources
+ *   parle. Null tant qu'aucune position n'est arrivee, la boussole repond alors seule.
  */
 @Composable
 internal fun HeadingEffect(
     active: Boolean,
     position: Pair<Double, Double>?,
+    fix: LocationHub.Fix?,
     onHeading: (Float) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -107,6 +111,17 @@ internal fun HeadingEffect(
     val currentDeclination by rememberUpdatedState(declination)
     val current = rememberUpdatedState(onHeading)
     val displayRotation = rememberDisplayRotation()
+    // La mesure du moment, relue par l'ecouteur sans le relancer : le capteur d'orientation parle toutes
+    // les 60 ms, le GPS toutes les 2 s, et redemarrer l'ecoute a chaque position couterait un
+    // desabonnement pour rien.
+    val currentFix = rememberUpdatedState(fix)
+    /*
+     * Le cap AFFICHE, garde d'une mesure a l'autre.
+     *
+     * Hors de l'ecouteur, qui est recree a chaque rotation de l'ecran : le garder dedans repartait de zero
+     * et faisait balayer tout le cadran a la fleche au moment ou l'on tourne le telephone.
+     */
+    val affiche = remember { mutableStateOf<Float?>(null) }
     DisposableEffect(active, displayRotation) {
         val sensors = (ctx.getSystemService(Context.SENSOR_SERVICE) as? SensorManager)?.takeIf { active }
         // Aucun capteur d'orientation : la fleche reste alors pointee au nord, ce que fait deja tout le
@@ -114,19 +129,39 @@ internal fun HeadingEffect(
         val sensor = sensors?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         if (sensors == null || sensor == null) return@DisposableEffect onDispose { }
         val listener = object : SensorEventListener {
-            private var last = Float.NaN
             override fun onSensorChanged(e: SensorEvent) {
                 val deg = azimuthDegrees(e.values, displayRotation) + currentDeclination
-                val heading = ((deg % 360f) + 360f) % 360f
+                val boussole = HeadingFusion.normalize(deg)
+                val f = currentFix.value
+                val heading = HeadingFusion.heading(
+                    previous = affiche.value,
+                    compassDeg = boussole,
+                    speedMps = f?.speedMps,
+                    gpsBearingDeg = f?.bearingDeg,
+                ) ?: return
+                val precedent = affiche.value
+                affiche.value = heading
                 // Sous le degre, le symbole ne bougerait pas d'un pixel : on epargne a MapLibre un redessin
                 // par mesure, a 60 ms d'intervalle.
-                if (!last.isNaN() && angleGap(heading, last) < 1f) return
-                last = heading
+                if (precedent != null && HeadingFusion.gap(heading, precedent) < 1f) return
                 current.value(heading)
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
         sensors.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
         onDispose { sensors.unregisterListener(listener) }
+    }
+    /*
+     * Le cap du deplacement s'applique aussi SANS attendre le capteur d'orientation.
+     *
+     * Deux raisons : un appareil sans boussole n'aurait jamais rien pose du tout, l'ecouteur ci-dessus ne
+     * s'installant pas ; et meme avec, faire attendre une position fraiche jusqu'au prochain tic du
+     * magnetometre serait mettre la fleche en retard sur le virage qu'on vient de prendre.
+     */
+    LaunchedEffect(active, fix?.bearingDeg, fix?.speedMps) {
+        if (!active) return@LaunchedEffect
+        val cap = HeadingFusion.travelBearing(fix?.speedMps, fix?.bearingDeg) ?: return@LaunchedEffect
+        affiche.value = cap
+        current.value(cap)
     }
 }

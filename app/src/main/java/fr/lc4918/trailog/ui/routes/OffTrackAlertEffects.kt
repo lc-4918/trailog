@@ -44,12 +44,21 @@ internal fun OffTrackAlertEffects(
     routeSamples: List<Sample>?,
     routeLabel: String,
 ) {
-    LaunchedEffect(location.gpsActive, alert.chooserPending) { alert.openPendingChooser(location.gpsActive) }
-    // Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
-    // couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
+    LaunchedEffect(location.sensorEnabled, alert.chooserPending) {
+        alert.openPendingChooser(location.sensorEnabled)
+    }
+    /*
+     * Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
+     * couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
+     *
+     * **La position est DEMANDÉE au capteur**, et non lue du repère affiché : celui-ci n'existe que si le
+     * suivi tourne, et l'on se voyait donc refuser la liste des traces alors que le téléphone savait
+     * parfaitement où l'on était. `currentPosition` lit la dernière position connue du système avant
+     * d'interroger le capteur, et répond donc le plus souvent sur-le-champ (cf. LocationControls).
+     */
     LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
         if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
-        val (la, lo) = location.lastUserLocation ?: return@LaunchedEffect
+        val (la, lo) = location.currentPosition() ?: return@LaunchedEffect
         // Le parcours du planificateur passe EN TETE, hors classement : c'est celui qu'on vient de
         // composer, et une trace de la bibliotheque qui passerait plus pres ne repond pas a la question
         // qu'on pose en touchant la cloche. Projete a l'ecart de la composition - un itineraire fait
@@ -57,9 +66,17 @@ internal fun OffTrackAlertEffects(
         val enCours = withContext(Dispatchers.Default) { plannedCandidate(routeSamples, routeLabel, la, lo) }
         vm.nearestTracks(la, lo) { alert.candidates = listOfNotNull(enCours) + it }
     }
-    // Le réglage éteint, ou le capteur coupé : plus rien à suivre. La liste ouverte se referme avec.
-    LaunchedEffect(alertEnabled, location.gpsActive) {
-        if (!alertEnabled || !location.gpsActive) {
+    /*
+     * Le réglage éteint, ou la localisation du téléphone coupée : plus rien à suivre. La liste ouverte se
+     * referme avec.
+     *
+     * **Le capteur du système, et non le bouton de la carte** : celui-ci ne commande que l'affichage du
+     * repère, et l'éteindre ne doit pas arrêter une trace qu'on suit - le service continue de veiller, la
+     * bannière et le bouton disent toujours où l'on en est. Sans capteur, en revanche, plus rien ne se
+     * calcule, et une trace suivie se réveillerait au hasard d'un rallumage, des jours plus tard.
+     */
+    LaunchedEffect(alertEnabled, location.sensorEnabled) {
+        if (!alertEnabled || !location.sensorEnabled) {
             TrackWatch.stop()
             alert.reset()
         }

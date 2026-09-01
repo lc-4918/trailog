@@ -104,15 +104,42 @@ fun TrackChooserDialog(
     /** Le reglage "Emettre un son" de l'alerte d'eloignement : commande la cloche de la ligne suivie
      *  (cf. TrackChoice). */
     soundEnabled: Boolean,
+    /** L'avancement sur la trace suivie, ou null quand on n'en suit aucune - ou qu'aucune position n'est
+     *  encore arrivee pour le calculer. */
+    progress: FollowProgress?,
     onPick: (TrackCandidate) -> Unit,
     onStop: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.alert_pick_track_title)) },
+        title = {
+            Text(stringResource(
+                if (followed != null) R.string.follow_dashboard_title else R.string.alert_pick_track_title,
+            ))
+        },
         text = {
             when {
+                /*
+                 * **Une trace suivie : son nom, et ou l'on en est. Pas la liste des autres.**
+                 *
+                 * La liste restait affichee sous la ligne en surbrillance, c'est-a-dire que la popup
+                 * consacrait tout son espace a la seule chose dont on n'a plus besoin - choisir - quand la
+                 * question devenue urgente est "combien reste-t-il, et combien de montee". Choisir une
+                 * autre trace se fait en arretant celle-ci, ce que le bouton d'en bas propose.
+                 */
+                followed != null -> Column(Modifier.verticalScroll(rememberScrollState())) {
+                    FollowedHeader(followed, soundEnabled)
+                    if (progress != null) {
+                        FollowDashboard(progress, imperial, Modifier.padding(top = 10.dp))
+                    } else {
+                        // Suivi tout juste repris, position pas encore arrivee : le tableau de bord n'a
+                        // rien a montrer, et neuf tirets vaudraient moins qu'une attente franche.
+                        Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                }
                 // Position pas encore recue, ou recherche en cours : les deux se ressemblent assez pour
                 // partager leur attente - il n'y a rien a dire de plus qu'"on cherche".
                 candidates == null -> Box(Modifier.fillMaxWidth().padding(12.dp), Alignment.Center) {
@@ -123,7 +150,7 @@ fun TrackChooserDialog(
                     candidates.forEach { c ->
                         TrackChoice(
                             candidate = c,
-                            current = followed?.layerId == c.layerId && followed.trackIndex == c.trackIndex,
+                            current = false,
                             imperial = imperial,
                             soundEnabled = soundEnabled,
                             onPick = onPick,
@@ -134,6 +161,8 @@ fun TrackChooserDialog(
         },
         // Le bouton d'arret prend la place du bouton de confirmation : il n'y a rien a confirmer ici, un
         // tap dans la liste vaut choix. Absent tant qu'on ne suit rien - il n'aurait rien a arreter.
+        // L'arret rend la liste des traces, la popup restant ouverte : on arrete presque toujours pour en
+        // suivre une autre.
         confirmButton = {
             if (followed != null) {
                 TextButton(onClick = onStop) { Text(stringResource(R.string.alert_stop_following)) }
@@ -141,6 +170,39 @@ fun TrackChooserDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
     )
+}
+
+/**
+ * L'en-tete de la trace suivie : son nom, sur l'aplat qui le distingue, et la cloche s'il doit sonner.
+ *
+ * Elle etait une ligne parmi d'autres, en surbrillance dans la liste. Elle est maintenant SEULE en haut de
+ * la popup, ce qui rend la surbrillance moins necessaire - mais l'aplat reste : il rattache d'un coup
+ * d'oeil ce titre au bouton bleu de la carte, et dit que ceci n'est pas un choix mais un etat.
+ */
+@Composable
+private fun FollowedHeader(followed: TrackWatch.Followed, soundEnabled: Boolean) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                trackLabel(followed.layerName, followed.trackIndex, followed.trackCount),
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            // La cloche ne dit pas "suivie" mais "sonnera" : sans le reglage du son, l'ecart se voit
+            // toujours - banniere, couleur du bouton - mais rien ne sonne, et elle promettrait un bruit
+            // qui ne vient pas.
+            if (soundEnabled) Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(18.dp))
+        }
+    }
 }
 
 /**

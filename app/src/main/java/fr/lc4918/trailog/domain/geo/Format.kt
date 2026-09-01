@@ -40,4 +40,17 @@ object Format {
 
     fun elevation(m: Double, imperial: Boolean = false): String =
         if (imperial) "${(m * 3.28084).roundToInt()} ft" else "${m.roundToInt()} m"
+
+    /**
+     * Vitesse, du metre par seconde du capteur au kilometre-heure qu'on lit sur un compteur.
+     *
+     * Une decimale sous 10, aucune au-dela : a 4 km/h le dixieme distingue la marche de la flanerie, a
+     * 27 km/h il ne fait que battre la mesure sans rien apprendre.
+     */
+    fun speed(mps: Double, imperial: Boolean = false): String {
+        if (!mps.isFinite() || mps < 0) return ""
+        val v = if (imperial) mps * 2.236936 else mps * 3.6
+        val unite = if (imperial) "mph" else "km/h"
+        return if (v < 10.0) "${"%.1f".format(v)} $unite" else "${v.roundToInt()} $unite"
+    }
 }

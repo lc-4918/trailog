@@ -261,16 +261,16 @@ data class SettingsEntity(
     // et l'eteindre viderait la couche (cf. PoiSources).
     val poiOsmComplement: Boolean = true,
     // Distance maximale a une trace AFFICHEE, en metres, au-dela de laquelle un point d'interet n'est pas
-    // montre (cf. ui/poi/PoiCorridor). 0 = aucun couloir, tout ce que le service rend s'affiche.
+    // montre (cf. ui/poi/PoiCorridor). Reglee par un curseur, de 500 m a 20 km.
     //
     // C'est ce couloir qui rend supportable un zoom de chargement plus bas (cf. PoiLoading.MIN_ZOOM) : a
     // l'echelle d'une region, la vue porte des milliers de lieux, dont seuls ceux qui bordent le trajet
     // interessent qui le prepare. Sans trace affichee il ne filtre rien - la couche ne depend pas de la
-    // bibliotheque.
+    // bibliotheque, et une carte vide faute d'itineraire ouvert serait une panne, non un filtre.
     //
-    // Eteint par defaut : c'est un filtre qui RETIRE de la carte, et une couche qui montre moins que ce
-    // qu'on lui a demande sans l'avoir dit se lit comme une panne.
-    val poiTrackCorridorM: Int = 0,
+    // Cinq kilometres par defaut : de quoi englober ce vers quoi on accepte de faire un detour en fin
+    // d'etape, sans ramener la ville d'a cote.
+    val poiTrackCorridorM: Int = 5_000,
     // Instance Overpass interrogee pour les points d'interet d'OpenStreetMap. Vide = instance publique
     // (Overpass.DEFAULT_URL) ; renseignable comme le geocodeur et le moteur d'itineraire le sont deja.
     //
@@ -278,6 +278,10 @@ data class SettingsEntity(
     // 504, deux fois sur cinq sur un releve de cinq tentatives. Pouvoir en changer sans attendre une
     // nouvelle version est la seule parade a la disposition de l'utilisateur.
     val poiOsmUrl: String = "",
+    // Recentrer la carte sur la position a l'allumage de la localisation. ETEINT par defaut : "ou suis-je"
+    // et "emmene-moi" sont deux questions distinctes, et l'allumage sautait a la position en emportant la
+    // zone qu'on etudiait. Le zoom, lui, ne bouge JAMAIS - meme recentrage demande (cf. startGps).
+    val gpsRecenterOnStart: Boolean = false,
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

@@ -97,6 +97,36 @@ object PoiSources {
     private val COMPLETES_PAR_OSM = setOf(PoiGroup.PRACTICAL, PoiGroup.FOOD)
 
     /**
+     * Les categories a demander a DATAtourisme pour cette emprise.
+     *
+     * **Il les recevait TOUTES, y compris celles qu'il ne sait pas decrire**, et ce fichier documentait
+     * pourtant depuis longtemps pourquoi elles reviennent a OpenStreetMap : sur le centre d'Albi, six
+     * restaurants contre cent cinquante - et les six sont des hotels ; sur Grenoble, zero point d'eau,
+     * zero toilettes, zero borne de recharge contre 129, 46 et 165. La regle de partage n'etait ecrite
+     * que d'un cote.
+     *
+     * Le prix se payait deux fois. En DATA d'abord : la reponse de Toulouse pese 258 ko pour toutes les
+     * categories, sans compression - ce service n'en offre pas - et une bonne part decrit des lieux qu'on
+     * n'affichera pas. En LIEUX ensuite : les classes de restauration mangeaient le plafond de 250 objets
+     * au detriment des hebergements et des loisirs, que DATAtourisme est justement le seul a bien decrire -
+     * jusqu'a 729 objets de restauration sur Marseille, la ou la ville compte quatorze hotels.
+     *
+     * Hors de France il ne rend rien du tout, et l'on ne l'interroge donc pas (cf. [datatourismeCovers]).
+     *
+     * **[complement] coupe, il les REPREND toutes** : le reglage "Completer avec OpenStreetMap" eteint,
+     * OSM ne repond plus rien en France, et lui retirer en plus la restauration et le pratique viderait
+     * ces deux groupes sans que rien sur la carte ne l'explique. Six restaurants valent mieux que zero,
+     * meme si ce sont six hotels.
+     */
+    fun datatourismeCategories(
+        box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true,
+    ): Set<PoiCategory> = when {
+        !datatourismeCovers(box) -> emptySet()
+        !complement -> libres
+        else -> libres.filterNotTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
+    }
+
+    /**
      * Les catégories à demander à OpenStreetMap pour cette emprise.
      *
      * [libres] est le jeu des catégories cochées **hors** thème vélo : celles limitées au vélo ne passent

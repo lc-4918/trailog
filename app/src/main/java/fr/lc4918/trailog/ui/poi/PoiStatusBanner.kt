@@ -15,6 +15,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -24,6 +29,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.ui.components.MapController
+import kotlinx.coroutines.delay
+
+/** Combien de temps un CONSTAT reste a l'ecran. Assez pour se lire deux fois, assez peu pour ne pas
+ *  devenir un decor. Le message du zoom, lui, ne part pas tout seul : il se tape. */
+private const val NoticeMs = 4_000L
 
 /**
  * Pourquoi la couche des points d'interet ne montre rien.
@@ -42,6 +52,40 @@ internal fun BoxScope.PoiStatusBanner(
 ) {
     val density = LocalDensity.current
     /*
+     * Le bandeau se retire de lui-meme au bout de quelques secondes, sauf celui du zoom.
+     *
+     * **Trois de ces quatre messages sont des CONSTATS**, que rien ni personne ne leve d'un doigt : pas de
+     * reseau, points du cache, affichage incomplet. Ils disaient vrai a l'instant ou ils se sont poses, et
+     * y restaient - "Affichage incomplet" tenait le haut de l'ecran en permanence dans une ville dense.
+     * Un avertissement qui ne s'en va jamais devient un decor, et un decor ne se lit plus.
+     *
+     * Le quatrieme, celui du zoom, ne part PAS tout seul : il se tape, et il zoome. Retirer un message
+     * pendant qu'on avance la main vers lui serait pire que de le laisser.
+     *
+     * La cle est le message AFFICHE et non le seul fait qu'il y en ait un : passer d'un constat a un autre
+     * relance le compte, et l'on ne perd pas le second parce que le premier avait deja tourne.
+     */
+    val message = when {
+        !poi.showingMarkers -> null
+        poi.tooFar -> R.string.poi_zoom_in
+        poi.needsNetwork -> R.string.poi_needs_network
+        poi.fromCache -> R.string.poi_from_cache
+        // Le couloir des traces a tout ecarte, et rien n'a meme ete demande : c'est un reglage qui parle,
+        // et c'est la seule facon de ne pas laisser croire a une panne.
+        poi.awayFromTracks -> R.string.poi_away_from_tracks
+        // En dernier : les trois autres disent pourquoi la carte est vide ou vieille, celui-ci pourquoi
+        // elle est incomplete - c'est le moins grave.
+        poi.partial -> R.string.poi_partial
+        else -> null
+    }
+    var expire by remember(message) { mutableStateOf(false) }
+    LaunchedEffect(message) {
+        expire = false
+        if (message == null || message == R.string.poi_zoom_in) return@LaunchedEffect
+        delay(NoticeMs)
+        expire = true
+    }
+    /*
      * Deux mots discrets sous les commandes du haut, quand la couche est allumee mais qu'elle ne peut
      * rien montrer : trop dezoome, ou pas de reseau et rien que le cache. Sans eux, la carte reste
      * simplement vide, et l'on croit la couche cassee.
@@ -53,7 +97,7 @@ internal fun BoxScope.PoiStatusBanner(
     if (poi.bubbleOpen) return
     // Couche mise de cote : ces quatre messages disent pourquoi la carte ne montre rien, et la reponse est
     // alors qu'on vient de la ranger soi-meme (cf. PoiState.masked).
-    if (poi.showingMarkers && (poi.tooFar || poi.needsNetwork || poi.fromCache || poi.partial)) {
+    if (message != null && !expire) {
         /*
          * Le message du zoom se TAPE, et zoome. Les deux autres ne sont que des constats -
          * pas de reseau, points du cache - que rien ni personne ne leve d'un doigt, et les
@@ -112,16 +156,7 @@ internal fun BoxScope.PoiStatusBanner(
                     Spacer(Modifier.width(6.dp))
                 }
                 Text(
-                    stringResource(
-                        when {
-                            poi.tooFar -> R.string.poi_zoom_in
-                            poi.needsNetwork -> R.string.poi_needs_network
-                            poi.fromCache -> R.string.poi_from_cache
-                            // En dernier : les trois autres disent pourquoi la carte est vide ou
-                            // vieille, celui-ci pourquoi elle est incomplete - c'est le moins grave.
-                            else -> R.string.poi_partial
-                        }
-                    ),
+                    stringResource(message),
                     fontSize = 12.sp,
                     // La couleur des commandes quand le message en est une, celle du texte ordinaire
                     // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un

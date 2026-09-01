@@ -156,7 +156,7 @@ class PoiState {
             armed = false
             pois = emptyList(); selected = null; loaded = null; loadedFilters = null; loadedOsm = null
             loadedComplete = false; loadedAt = 0L
-            tooFar = false; needsNetwork = false; partial = false
+            tooFar = false; needsNetwork = false; partial = false; awayFromTracks = false
             failedBox = null
         }
     }
@@ -175,6 +175,7 @@ class PoiState {
         tooFar = false
         needsNetwork = false
         partial = false
+        awayFromTracks = false
         failedBox = null
     }
 
@@ -213,6 +214,40 @@ class PoiState {
      */
     var partial by mutableStateOf(false)
         private set
+
+    /**
+     * La vue est trop loin de toute trace affichee pour que le couloir laisse passer quoi que ce soit
+     * (cf. `SettingsEntity.poiTrackCorridorM`).
+     *
+     * Rien n'est demande aux services dans ce cas - c'est tout l'objet - mais la carte le DIT : une couche
+     * allumee qui ne montre rien doit s'expliquer, sans quoi elle se lit comme une panne. Le message se
+     * retire de lui-meme comme les autres constats (cf. `PoiStatusBanner`).
+     */
+    var awayFromTracks by mutableStateOf(false)
+        private set
+
+    /**
+     * Rien a demander : aucune trace affichee ne passe assez pres de cette vue.
+     *
+     * L'emprise est retenue comme CHARGEE, et c'est voulu : il n'y a rien a redemander tant qu'on ne
+     * bouge pas, et un chargement par geste de carte serait exactement ce qu'on cherche a eviter.
+     */
+    fun awayFromTracks(box: Bbox, filters: PoiFilters, osm: Boolean, now: Long) {
+        pois = emptyList()
+        selected = null
+        loaded = box
+        loadedComplete = true
+        loadedAt = now
+        loadedFilters = filters
+        loadedOsm = osm
+        failedBox = null
+        tooFar = false
+        fromCache = false
+        needsNetwork = false
+        partial = false
+        awayFromTracks = true
+        loading = false
+    }
 
     /** L'emprise retenue l'a-t-elle ete sur un chargement COMPLET. Sinon elle est tronquee, et se
      *  redemande des qu'on resserre ou que le temps passe (cf. [needsLoad]). */
@@ -276,6 +311,7 @@ class PoiState {
         fromCache = cache
         needsNetwork = offline
         partial = incomplete
+        awayFromTracks = false
     }
 
     /**

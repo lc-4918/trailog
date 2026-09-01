@@ -466,6 +466,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Título del menú lateral</string>
     <string name="settings_sw_gps_button">Ubicación GPS</string>
+    <string name="settings_sw_gps_recenter">Centrar en mi ubicación</string>
+    <string name="settings_sw_gps_recenter_sub">Al activar la localización. El nivel de zoom nunca se modifica.</string>
     <string name="settings_sw_geocoding">Búsqueda de lugar y dirección</string>
     <string name="settings_sw_planner">Cálculo de ruta</string>
     <string name="settings_sw_measure">Medición sobre traza</string>
@@ -507,8 +509,18 @@
     <string name="alert_track_planned">Itinerario en curso</string>
     <string name="alert_track_following">En seguimiento</string>
     <string name="alert_stop_following">Dejar de seguir</string>
+    <string name="follow_speed">Velocidad</string>
+    <string name="follow_elapsed">Tiempo transcurrido</string>
+    <string name="follow_eta">Tiempo restante estimado</string>
+    <string name="follow_done">Distancia recorrida</string>
+    <string name="follow_remaining">Distancia restante</string>
+    <string name="follow_ascent_done">Desnivel positivo recorrido</string>
+    <string name="follow_descent_done">Desnivel negativo recorrido</string>
+    <string name="follow_ascent_remaining">Desnivel positivo restante</string>
+    <string name="follow_descent_remaining">Desnivel negativo restante</string>
+    <string name="follow_dashboard_title">Siguiendo</string>
     <string name="alert_off_track_banner">Estás a %1$s de la traza \"%2$s\"</string>
-    <string name="alert_needs_gps_text">La alerta de alejamiento necesita tu posición. ¿Activar la localización GPS?</string>
+    <string name="alert_needs_gps_text">La localización está desactivada en el teléfono. El seguimiento de trazas necesita tu posición para ordenar las trazas cercanas.</string>
     <string name="settings_section_off_track">Alerta de alejamiento</string>
     <string name="settings_label_off_track_distance">Distancia de aviso</string>
     <string name="settings_sw_off_track_sound">Emitir un sonido</string>
@@ -579,7 +591,7 @@
     <string name="poi_group_practical">Práctico</string>
     <string name="settings_poi_select_all">Seleccionar todo</string>
     <string name="settings_label_poi_corridor">Distancia máxima a una traza</string>
-    <string name="settings_poi_corridor_off">Desactivado</string>
+    <string name="settings_poi_corridor_off">Sin límite</string>
     <string name="settings_poi_corridor_hint">Los puntos de interés alejados de todas las trazas mostradas no se muestran. Sin traza mostrada, no se filtra nada.</string>
     <string name="settings_poi_attribution">Datos: DATAtourisme, Licencia Abierta Etalab 2.0, y OpenStreetMap, licencia ODbL.</string>
     <string name="settings_clear_poi_cache">Vaciar la caché de puntos de interés</string>
@@ -589,5 +601,6 @@
     <string name="settings_poi_cache_hint">Los lugares vistos una vez siguen disponibles sin red durante una semana. Vaciarlos obliga a Trailog a pedirlos de nuevo, por ejemplo si una ficha es errónea.</string>
     <string name="poi_from_cache">Últimos puntos conocidos (sin conexión)</string>
     <string name="poi_partial">Demasiados lugares aquí: no se muestran todos</string>
+    <string name="poi_away_from_tracks">Ninguna traza cerca (ajuste de distancia)</string>
     <string name="poi_needs_network">Se necesita conexión para cargar los puntos de interés de esta zona</string>
 </resources>

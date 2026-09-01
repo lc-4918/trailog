@@ -466,6 +466,8 @@
     <string name="settings_label_avatar">Avatarra</string>
     <string name="settings_label_side_title">Alboko menuaren izenburua</string>
     <string name="settings_sw_gps_button">GPS kokapena</string>
+    <string name="settings_sw_gps_recenter">Zentratu nire kokapenean</string>
+    <string name="settings_sw_gps_recenter_sub">Kokapena aktibatzean. Zoom-maila ez da inoiz aldatzen.</string>
     <string name="settings_sw_geocoding">Leku eta helbide bilaketa</string>
     <string name="settings_sw_planner">Ibilbidearen kalkulua</string>
     <string name="settings_sw_measure">Neurketa arrastoan</string>
@@ -507,8 +509,18 @@
     <string name="alert_track_planned">Ibilbidea sortzen</string>
     <string name="alert_track_following">Jarraitzen</string>
     <string name="alert_stop_following">Utzi jarraitzeari</string>
+    <string name="follow_speed">Abiadura</string>
+    <string name="follow_elapsed">Igarotako denbora</string>
+    <string name="follow_eta">Gelditzen den denbora</string>
+    <string name="follow_done">Egindako distantzia</string>
+    <string name="follow_remaining">Gelditzen den distantzia</string>
+    <string name="follow_ascent_done">Egindako desnibel positiboa</string>
+    <string name="follow_descent_done">Egindako desnibel negatiboa</string>
+    <string name="follow_ascent_remaining">Gelditzen den desnibel positiboa</string>
+    <string name="follow_descent_remaining">Gelditzen den desnibel negatiboa</string>
+    <string name="follow_dashboard_title">Jarraitzen</string>
     <string name="alert_off_track_banner">\"%2$s\" arrastotik %1$s-ra zaude</string>
-    <string name="alert_needs_gps_text">Urruntze-alertak zure kokapena behar du. GPS kokapena aktibatu nahi duzu?</string>
+    <string name="alert_needs_gps_text">Kokapena desaktibatuta dago telefonoan. Aztarna-jarraipenak zure kokapena behar du inguruko aztarnak ordenatzeko.</string>
     <string name="settings_section_off_track">Urruntze-alerta</string>
     <string name="settings_label_off_track_distance">Abisu-tartea</string>
     <string name="settings_sw_off_track_sound">Soinua jo</string>
@@ -579,7 +591,7 @@
     <string name="poi_group_practical">Praktiko</string>
     <string name="settings_poi_select_all">Hautatu dena</string>
     <string name="settings_label_poi_corridor">Aztarna baterako gehieneko distantzia</string>
-    <string name="settings_poi_corridor_off">Desaktibatuta</string>
+    <string name="settings_poi_corridor_off">Mugarik gabe</string>
     <string name="settings_poi_corridor_hint">Erakutsitako aztarna guztietatik urrun dauden intereseko puntuak ez dira erakusten. Aztarnarik erakutsi gabe, ez da ezer iragazten.</string>
     <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
     <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
@@ -589,5 +601,6 @@
     <string name="settings_poi_cache_hint">Behin ikusitako lekuak astebetez daude eskuragarri sarerik gabe. Hustean, Trailogek berriro eskatuko ditu, adibidez fitxa bat okerra bada.</string>
     <string name="poi_from_cache">Azken puntu ezagunak (lineaz kanpo)</string>
     <string name="poi_partial">Leku gehiegi hemen: ez dira guztiak erakusten</string>
+    <string name="poi_away_from_tracks">Ez dago aztarnarik gertu (distantzia-ezarpena)</string>
     <string name="poi_needs_network">Konexioa behar da eremu honetako interesguneak kargatzeko</string>
 </resources>

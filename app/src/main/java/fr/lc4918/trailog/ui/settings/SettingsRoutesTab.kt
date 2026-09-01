@@ -189,12 +189,21 @@ import kotlinx.coroutines.launch
              * Eteint par defaut, ici comme en base : c'est un filtre qui RETIRE de la carte, et une couche
              * qui montre moins qu'on ne lui a demande sans l'avoir dit se lit comme une panne.
              */
-            PickRow(
+            SliderRow(
                 label = stringResource(R.string.settings_label_poi_corridor),
-                current = cur.poiTrackCorridorM,
-                options = PoiCorridorChoicesM,
-                optionLabel = { poiCorridorLabel(it) },
-            ) { vm.save(cur.copy(poiTrackCorridorM = it)) }
+                value = poiCorridorLabel(cur.poiTrackCorridorM),
+                fraction = fractionOf(
+                    cur.poiTrackCorridorM / PoiCorridorStepM,
+                    MinPoiCorridorM / PoiCorridorStepM, MaxPoiCorridorM / PoiCorridorStepM,
+                ),
+                steps = (MaxPoiCorridorM - MinPoiCorridorM) / PoiCorridorStepM - 1,
+                onFraction = {
+                    val pas = valueOf(
+                        it, MinPoiCorridorM / PoiCorridorStepM, MaxPoiCorridorM / PoiCorridorStepM,
+                    )
+                    vm.save(cur.copy(poiTrackCorridorM = pas * PoiCorridorStepM))
+                },
+            )
             Hint(stringResource(R.string.settings_poi_corridor_hint))
             RowDivider()
         }
@@ -528,17 +537,31 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
 }
 
 /**
- * Les distances offertes pour le couloir des traces, en metres. Zero = aucun couloir.
+ * Bornes du couloir des traces, en metres : de zero - sans limite - a vingt kilometres.
  *
- * Cinq valeurs et pas davantage : de "le long du chemin" a "dans le coin". Un pas plus fin ne repondrait a
- * aucune question qu'on se pose vraiment.
+ * **Un curseur et non une liste de valeurs**, et le pas de cinq cents metres en est la raison : entre "le
+ * long du chemin" et "dans le coin" il y a un continuum, et l'endroit ou l'on veut s'arreter depend du
+ * pays qu'on traverse - deux kilometres en ville, dix dans une vallee vide. Une poignee de valeurs
+ * imposees obligeait a choisir la moins fausse.
+ *
+ * **Zero, tout a gauche, retire la limite** : on explore une region ou l'on n'a aucune trace ouverte, et
+ * l'on veut voir ce qu'elle porte. Sans cette position, il fallait laisser une distance qui ne voulait
+ * rien dire - et le couloir empeche desormais la requete elle-meme (cf. PoiCorridor.crosses), ce qui
+ * viderait la carte pour de bon.
  */
-private val PoiCorridorChoicesM = listOf(0, 500, 1_000, 2_000, 5_000, 10_000)
+private const val MinPoiCorridorM = 0
+private const val MaxPoiCorridorM = 20_000
 
-/** "Desactive", "500 m", "2 km" : le metre sous le kilometre, le kilometre au-dela. */
+/** Le pas du curseur : cinq cents metres. Au-dessous, on reglerait la precision d'un trace, pas la
+ *  distance a laquelle on accepte de faire un detour. */
+private const val PoiCorridorStepM = 500
+
+/** "Sans limite", "500 m", "5 km" : le metre sous le kilometre, le kilometre au-dela, avec sa decimale
+ *  quand elle compte - "2,5 km" est une distance qu'on se represente, "2500 m" beaucoup moins. */
 @Composable
 private fun poiCorridorLabel(m: Int): String = when {
     m <= 0 -> stringResource(R.string.settings_poi_corridor_off)
     m < 1_000 -> "$m m"
-    else -> "${m / 1_000} km"
+    m % 1_000 == 0 -> "${m / 1_000} km"
+    else -> "${m / 1_000},${(m % 1_000) / 100} km"
 }

@@ -466,6 +466,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Títol del menú lateral</string>
     <string name="settings_sw_gps_button">Ubicació GPS</string>
+    <string name="settings_sw_gps_recenter">Centra en la meva ubicació</string>
+    <string name="settings_sw_gps_recenter_sub">En activar la localització. El nivell de zoom mai no es modifica.</string>
     <string name="settings_sw_geocoding">Cerca de lloc i adreça</string>
     <string name="settings_sw_planner">Càlcul d\'itinerari</string>
     <string name="settings_sw_measure">Mesura sobre traça</string>
@@ -507,8 +509,18 @@
     <string name="alert_track_planned">Itinerari en curs</string>
     <string name="alert_track_following">En seguiment</string>
     <string name="alert_stop_following">Deixar de seguir</string>
+    <string name="follow_speed">Velocitat</string>
+    <string name="follow_elapsed">Temps transcorregut</string>
+    <string name="follow_eta">Temps restant estimat</string>
+    <string name="follow_done">Distància recorreguda</string>
+    <string name="follow_remaining">Distància restant</string>
+    <string name="follow_ascent_done">Desnivell positiu recorregut</string>
+    <string name="follow_descent_done">Desnivell negatiu recorregut</string>
+    <string name="follow_ascent_remaining">Desnivell positiu restant</string>
+    <string name="follow_descent_remaining">Desnivell negatiu restant</string>
+    <string name="follow_dashboard_title">Seguint</string>
     <string name="alert_off_track_banner">Ets a %1$s de la traça \"%2$s\"</string>
-    <string name="alert_needs_gps_text">L\'alerta d\'allunyament necessita la teva posició. Vols activar la localització GPS?</string>
+    <string name="alert_needs_gps_text">La localització està desactivada al telèfon. El seguiment de traces necessita la teva posició per ordenar les traces properes.</string>
     <string name="settings_section_off_track">Alerta d\'allunyament</string>
     <string name="settings_label_off_track_distance">Distància d\'avís</string>
     <string name="settings_sw_off_track_sound">Emetre un so</string>
@@ -579,7 +591,7 @@
     <string name="poi_group_practical">Pràctic</string>
     <string name="settings_poi_select_all">Selecciona-ho tot</string>
     <string name="settings_label_poi_corridor">Distància màxima a una traça</string>
-    <string name="settings_poi_corridor_off">Desactivat</string>
+    <string name="settings_poi_corridor_off">Sense límit</string>
     <string name="settings_poi_corridor_hint">Els punts d\'interès allunyats de totes les traces mostrades no es mostren. Sense cap traça mostrada, no es filtra res.</string>
     <string name="settings_poi_attribution">Dades: DATAtourisme, Llicència Oberta Etalab 2.0, i OpenStreetMap, llicència ODbL.</string>
     <string name="settings_clear_poi_cache">Buida la memòria cau de punts d\'interès</string>
@@ -589,5 +601,6 @@
     <string name="settings_poi_cache_hint">Els llocs vistos un cop resten consultables sense xarxa durant una setmana. Buidar-los obliga Trailog a demanar-los de nou, per exemple si una fitxa és errònia.</string>
     <string name="poi_from_cache">Últims punts coneguts (fora de línia)</string>
     <string name="poi_partial">Massa llocs aquí: no es mostren tots</string>
+    <string name="poi_away_from_tracks">Cap traça a prop (ajust de distància)</string>
     <string name="poi_needs_network">Cal connexió per carregar els punts d\'interès d\'aquesta zona</string>
 </resources>

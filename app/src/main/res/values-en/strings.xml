@@ -466,6 +466,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Side menu title</string>
     <string name="settings_sw_gps_button">GPS location</string>
+    <string name="settings_sw_gps_recenter">Recentre on my location</string>
+    <string name="settings_sw_gps_recenter_sub">When location is switched on. The zoom level is never changed.</string>
     <string name="settings_sw_geocoding">Place and address search</string>
     <string name="settings_sw_planner">Route planning</string>
     <string name="settings_sw_measure">Measure on track</string>
@@ -507,8 +509,18 @@
     <string name="alert_track_planned">Route in progress</string>
     <string name="alert_track_following">Following</string>
     <string name="alert_stop_following">Stop following</string>
+    <string name="follow_speed">Speed</string>
+    <string name="follow_elapsed">Elapsed time</string>
+    <string name="follow_eta">Estimated time left</string>
+    <string name="follow_done">Distance covered</string>
+    <string name="follow_remaining">Distance left</string>
+    <string name="follow_ascent_done">Ascent covered</string>
+    <string name="follow_descent_done">Descent covered</string>
+    <string name="follow_ascent_remaining">Ascent left</string>
+    <string name="follow_descent_remaining">Descent left</string>
+    <string name="follow_dashboard_title">Following</string>
     <string name="alert_off_track_banner">You are %1$s from the track \"%2$s\"</string>
-    <string name="alert_needs_gps_text">The off-track alert needs your position. Turn GPS location on?</string>
+    <string name="alert_needs_gps_text">Location is turned off on this phone. Track following needs your position to rank nearby tracks.</string>
     <string name="settings_section_off_track">Off-track alert</string>
     <string name="settings_label_off_track_distance">Triggering gap</string>
     <string name="settings_sw_off_track_sound">Play a sound</string>
@@ -579,8 +591,8 @@
     <string name="poi_group_practical">Practical</string>
     <string name="settings_poi_select_all">Select all</string>
     <string name="settings_label_poi_corridor">Maximum distance from a track</string>
-    <string name="settings_poi_corridor_off">Off</string>
-    <string name="settings_poi_corridor_hint">Points of interest far from every displayed track are not shown. With no track displayed, nothing is filtered.</string>
+    <string name="settings_poi_corridor_off">No limit</string>
+    <string name="settings_poi_corridor_hint">Points of interest far from every displayed track are not requested. At the far left, no limit applies. With no track displayed, nothing is filtered.</string>
     <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0, and OpenStreetMap, ODbL licence.</string>
     <string name="settings_clear_poi_cache">Clear the points of interest cache</string>
     <string name="settings_poi_cache_empty">No cached venue</string>
@@ -589,5 +601,6 @@
     <string name="settings_poi_cache_hint">Venues seen once stay available offline for a week. Clearing them forces Trailog to ask again, for instance when an entry is wrong.</string>
     <string name="poi_from_cache">Last known points (offline)</string>
     <string name="poi_partial">Too many venues here: not all are shown</string>
+    <string name="poi_away_from_tracks">No track nearby (distance setting)</string>
     <string name="poi_needs_network">Connection required to load points of interest for this area</string>
 </resources>

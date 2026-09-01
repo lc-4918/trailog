@@ -16,6 +16,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -326,8 +327,11 @@ class LocationService : Service() {
             if (followed == null) { notice.value = null; return@collect }
             val reglages = settings
             val seuil = (reglages?.offTrackAlertDistanceM ?: DEFAULT_ALERT_M).toDouble()
-            val away = TrackMeasure.project(followed.samples, fix.lon, fix.lat)?.awayM ?: return@collect
-            val entree = TrackWatch.update(away, seuil)
+            // La projection rend l'ecart ET le kilometrage : le second etait jete, alors que c'est lui qui
+            // dit ou l'on en est de la trace (cf. FollowProgressMath).
+            val projete = TrackMeasure.project(followed.samples, fix.lon, fix.lat) ?: return@collect
+            val away = projete.awayM
+            val entree = TrackWatch.update(away, seuil, projete.alongM)
             notice.value = getString(
                 R.string.location_notice_following,
                 followed.layerName,
@@ -352,7 +356,7 @@ class LocationService : Service() {
      * relance alors que l'ecran vient de designer une autre trace.
      */
     private fun watchFollowed() = scope.launch {
-        TrackWatch.restore(FollowedStore.load(this@LocationService))
+        TrackWatch.restore(FollowedStore.load(this@LocationService), SystemClock.elapsedRealtime())
         TrackWatch.followed.collect { suivie ->
             FollowedStore.save(this@LocationService, suivie)
             // Plus rien a suivre : la notification le dit TOUT DE SUITE. Elle ne se recalculait qu'a la
