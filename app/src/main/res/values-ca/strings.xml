@@ -468,6 +468,8 @@
     <string name="settings_sw_gps_button">Ubicació GPS</string>
     <string name="settings_sw_gps_recenter">Centra en la meva ubicació</string>
     <string name="settings_sw_gps_recenter_sub">En activar la localització. El nivell de zoom mai no es modifica.</string>
+    <string name="settings_sw_gps_last_fix">Mostra l\'última posició mesurada</string>
+    <string name="settings_sw_gps_last_fix_sub">En aturar el seguiment, es queda al mapa en gris, immòbil.</string>
     <string name="settings_sw_geocoding">Cerca de lloc i adreça</string>
     <string name="settings_sw_planner">Càlcul d\'itinerari</string>
     <string name="settings_sw_measure">Mesura sobre traça</string>

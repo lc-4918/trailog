@@ -468,6 +468,8 @@
     <string name="settings_sw_gps_button">GPS kokapena</string>
     <string name="settings_sw_gps_recenter">Zentratu nire kokapenean</string>
     <string name="settings_sw_gps_recenter_sub">Kokapena aktibatzean. Zoom-maila ez da inoiz aldatzen.</string>
+    <string name="settings_sw_gps_last_fix">Erakutsi neurtutako azken kokapena</string>
+    <string name="settings_sw_gps_last_fix_sub">Jarraipena gelditzean, mapan geratzen da grisez, geldirik.</string>
     <string name="settings_sw_geocoding">Leku eta helbide bilaketa</string>
     <string name="settings_sw_planner">Ibilbidearen kalkulua</string>
     <string name="settings_sw_measure">Neurketa arrastoan</string>

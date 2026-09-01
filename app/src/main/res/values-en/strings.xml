@@ -468,6 +468,8 @@
     <string name="settings_sw_gps_button">GPS location</string>
     <string name="settings_sw_gps_recenter">Recentre on my location</string>
     <string name="settings_sw_gps_recenter_sub">When location is switched on. The zoom level is never changed.</string>
+    <string name="settings_sw_gps_last_fix">Show the last measured position</string>
+    <string name="settings_sw_gps_last_fix_sub">When tracking stops, it stays on the map in grey, motionless.</string>
     <string name="settings_sw_geocoding">Place and address search</string>
     <string name="settings_sw_planner">Route planning</string>
     <string name="settings_sw_measure">Measure on track</string>

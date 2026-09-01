@@ -198,15 +198,19 @@ fun MainScreen(
     val gpsMarker = GpsMarkerStyle.of(settings.gpsMarkerStyle)
     val gpsMarkerColorReglee = settings.gpsMarkerColor.takeIf { it.isNotBlank() } ?: gpsMarker.defaultColor
     /**
-     * Le repere passe au GRIS quand il ne dit plus la verite.
+     * Le repere passe au GRIS quand il n'est plus suivi.
      *
-     * Un repere fige est visuellement identique a un repere juste : on regarde un point qui affirme ou
-     * l'on est, et il a raison depuis dix minutes. La banniere le dit en toutes lettres, mais elle
-     * s'adresse a qui lit le bas de l'ecran ; la couleur s'adresse a qui regarde la carte, c'est-a-dire a
-     * tout le monde. C'est la seule teinte de l'application qui dise un doute, et elle vaut pour tous les
-     * symboles de repere - le reglage de couleur reprend la main des que le capteur repond.
+     * **Ce n'est plus l'immobilite qui le grise.** Il virait au gris des que le capteur n'avait plus rien
+     * donne depuis trente secondes - l'idee etant qu'un repere fige ressemble a un repere juste. Mais un
+     * cycliste s'arrete, et le repere annoncait alors un doute qui n'existait pas, sur ce qui est le plus
+     * regarde de la carte.
+     *
+     * Le gris dit desormais quelque chose de sur : ce point est la derniere position MESUREE, le suivi
+     * est arrete, et il ne bougera plus (cf. LocationControls.lastFixShown). Le reglage de couleur reprend
+     * la main des que le suivi repart.
      */
-    val gpsMarkerColor = if (location.positionStale) GpsStaleColor else gpsMarkerColorReglee
+    val gpsMarkerColor =
+        if (location.lastFixShown != null) GpsStaleColor else gpsMarkerColorReglee
     val gpsMarkerSizeDp = (settings.gpsMarkerSizeDp).toFloat()
 
     // Orientation du telephone, quand le symbole choisi en porte une (cf. HeadingEffect).
@@ -350,6 +354,8 @@ fun MainScreen(
     // Le reglage de recentrage, tenu a jour comme le precedent : l'allumage du capteur ne deplace la
     // camera que si on le lui a demande, et ne touche jamais au zoom (cf. LocationControls.startGps).
     location.recenterOnStart = settings.gpsRecenterOnStart
+    // Le reglage "Afficher la derniere position mesuree" : lu ici, applique a l'arret du suivi.
+    location.showLastFix = settings.gpsShowLastFix
     // ---------- retouche des traces ----------
     val edit = screen.edit
     val canUndo by vm.canUndo.collectAsState()

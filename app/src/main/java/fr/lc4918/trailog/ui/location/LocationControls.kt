@@ -42,9 +42,6 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 
-/** Cadence de relecture de l'age de la position : la seconde suffit pour un seuil de trente. */
-private const val STALE_TICK_MS = 1_000L
-
 /**
  * Age en deca duquel la derniere position connue du systeme vaut "ou je suis", et dispense d'interroger le
  * capteur (cf. [LocationControls.currentPosition]).
@@ -365,57 +362,47 @@ class LocationControls internal constructor(
     /** Une position de plus : le repere se deplace, et la camera le suit si un recentrage etait du - sauf
      *  si le planificateur deploye l'interdit entre-temps (cf. [plannerExpanded]). */
     internal fun onFix(fix: LocationHub.Fix) {
+        // Le suivi a repris : le point fige n'a plus lieu d'etre, celui-ci est vivant. C'est ce qui rend
+        // le gris honnete - il dirait "plus suivi" sur un repere qui vient de recommencer a bouger.
+        lastFixShown = null
         controller.setUserLocation(fix.lon, fix.lat, fix.accuracyM)
         if (pendingCenter && !plannerExpanded) { controller.centerOn(fix.lat, fix.lon); pendingCenter = false }
     }
 
-    /** Suivi arrete : plus de repere. */
+    /**
+     * Suivi arrete : le repere s'efface, ou reste en gris a la derniere position mesuree.
+     *
+     * Le reglage eteint - le defaut - rien ne subsiste : c'est le comportement de toujours. Allume, le
+     * point reste la ou le capteur l'a laisse, dans le gris qui dit "ce n'est plus suivi" : on retrouve
+     * d'ou l'on vient sur la carte, sans confondre avec un repere vivant.
+     */
     internal fun onTrackingStopped() {
-        controller.clearUserLocation()
+        val derniere = fixState.value?.takeIf { showLastFix }
+        lastFixShown = derniere
+        if (derniere == null) controller.clearUserLocation()
+        else controller.setUserLocation(derniere.lon, derniere.lat, derniere.accuracyM)
         pendingCenter = false
     }
 
     /**
-     * L'age de la derniere mesure, en millisecondes, ou null s'il n'y en a aucune.
+     * La derniere position mesuree, gardee APRES l'arret du suivi (cf. `SettingsEntity.gpsShowLastFix`).
      *
-     * Recalcule a la demande : ce n'est pas la position qui vieillit dans un etat, c'est l'horloge qui
-     * avance. Lu par [positionStale], que l'ecran surveille.
+     * **Ce qui a disparu d'ici, et pourquoi.** Le repere passait au gris quand le capteur n'avait plus
+     * rien donne depuis trente secondes : l'idee etait qu'un repere fige est visuellement identique a un
+     * repere juste. Mais un cycliste s'arrete - un col, un pique-nique, une reparation - et le repere
+     * virait au gris alors qu'il disait parfaitement vrai. La couleur annoncait un doute qui n'existait
+     * pas, sur ce qui est le plus regarde de la carte.
+     *
+     * Le gris sert desormais a autre chose, et a quelque chose de sur : dire que ce point n'est PLUS
+     * suivi. Le suivi arrete, la derniere position reste sur la carte, immobile et grise - on sait d'ou
+     * l'on vient, sans croire un instant que le point continue de suivre.
      */
-    private fun fixAgeMs(): Long? = fixState.value?.let { SystemClock.elapsedRealtime() - it.receivedAtMs }
-
-    /** Depuis combien de temps le capteur n'a plus rien donne, ou null s'il n'y a pas de repere. */
-    val positionAgeMs: Long? get() = fixAgeMs()
-
-    /**
-     * Le repere ment : le capteur n'a plus rien donne depuis [STALE_AFTER_MS].
-     *
-     * Un repere fige est visuellement identique a un repere juste - c'est le meme accident que la
-     * disparition, sous une forme plus sournoise : on regarde un point qui affirme ou l'on est, et il a
-     * raison depuis dix minutes.
-     *
-     * **Il se dit par la COULEUR du repere, et par rien d'autre.** Une banniere l'annoncait aussi ; elle a
-     * ete retiree. Un trou de reception dure ce qu'il dure - une gorge, un couvert, un tunnel - et une
-     * banniere qu'on ne peut ni corriger ni eviter occupait le bas de la carte pour rien. Le gris, lui,
-     * est a l'endroit exact du fait qu'il rapporte, et ne recouvre rien.
-     */
-    var positionStale by mutableStateOf(false)
+    var lastFixShown by mutableStateOf<LocationHub.Fix?>(null)
         private set
 
-    internal fun refreshStale() {
-        val age = fixAgeMs()
-        positionStale = gpsActive && age != null && age > STALE_AFTER_MS
-    }
+    /** Le reglage "Afficher la derniere position mesuree", tenu a jour par l'ecran comme les autres. */
+    var showLastFix: Boolean = false
 
-    companion object {
-        /**
-         * Au-dela, le repere est declare vieux.
-         *
-         * Le capteur est demande toutes les deux secondes. Trente, c'est quinze mesures manquees - assez
-         * pour n'etre pas un trou passager sous un pont, assez peu pour qu'a velo cela ne fasse que
-         * cent cinquante metres d'erreur.
-         */
-        const val STALE_AFTER_MS = 30_000L
-    }
 }
 
 /**
@@ -448,7 +435,10 @@ fun rememberLocationControls(controller: MapController, showGpsButton: Boolean?)
     // Suivi arrete : plus de repere. Ici et non dans stopGps, parce que le service peut aussi s'arreter de
     // lui-meme - la notification, ou le systeme qui reprend sa memoire.
     val tracking by trackingState
-    LaunchedEffect(tracking) { if (!tracking) controls.onTrackingStopped() }
+    // Le suivi s'arrete : le repere s'efface, ou reste en gris a la derniere position mesuree selon le
+    // reglage (cf. onTrackingStopped). Relance sur `fix` aussi : au tout premier passage, la mesure n'est
+    // pas encore arrivee, et il n'y aurait rien a figer.
+    LaunchedEffect(tracking, fix) { if (!tracking) controls.onTrackingStopped() }
 
     // La bascule de la localisation dans le telephone, et le retour au premier plan (cf. sensorEnabled).
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -490,13 +480,6 @@ fun rememberLocationControls(controller: MapController, showGpsButton: Boolean?)
      * [LocationControls.sensorEnabled] reste lu, mais pour ce qui INTERROGE le capteur sans afficher de
      * repere - le planificateur, les mesures depuis la position.
      */
-
-    // L'age de la derniere mesure : ce n'est pas elle qui change, c'est l'horloge qui avance. D'ou une
-    // relecture reguliere, et seulement tant que le suivi tourne - rien a surveiller sinon.
-    LaunchedEffect(tracking, fix) {
-        controls.refreshStale()
-        while (tracking) { delay(STALE_TICK_MS); controls.refreshStale() }
-    }
 
     /*
      * Rien n'est desabonne a la disparition de l'ecran, et c'est tout l'objet du service : le suivi doit

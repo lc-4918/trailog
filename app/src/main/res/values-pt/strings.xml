@@ -468,6 +468,8 @@
     <string name="settings_sw_gps_button">Localização GPS</string>
     <string name="settings_sw_gps_recenter">Centrar na minha posição</string>
     <string name="settings_sw_gps_recenter_sub">Ao ativar a localização. O nível de zoom nunca é alterado.</string>
+    <string name="settings_sw_gps_last_fix">Mostrar a última posição medida</string>
+    <string name="settings_sw_gps_last_fix_sub">Ao parar o seguimento, fica no mapa a cinzento, imóvel.</string>
     <string name="settings_sw_geocoding">Pesquisa de local e endereço</string>
     <string name="settings_sw_planner">Cálculo de itinerário</string>
     <string name="settings_sw_measure">Medição sobre trilho</string>

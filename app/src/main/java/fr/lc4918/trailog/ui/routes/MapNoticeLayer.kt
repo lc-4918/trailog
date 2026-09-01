@@ -34,8 +34,12 @@ import fr.lc4918.trailog.ui.location.LocationNoticeBar
  * depuis x". Elle disait un fait reel, mais au mauvais endroit : un trou de reception dure ce qu'il dure -
  * une gorge, un couvert, un tunnel - et la banniere occupait alors le bas de la carte sans que personne
  * puisse rien y faire. Une alerte qu'on ne peut ni corriger ni eviter finit par se lire comme un decor,
- * ce qui est exactement ce qu'une alerte ne doit pas devenir. Le fait, lui, reste dit : le repere passe
- * au gris sur la carte (cf. LocationControls.positionStale), la ou il ment.
+ * ce qui est exactement ce qu'une alerte ne doit pas devenir.
+ *
+ * Le repere qui passait au gris pour la meme raison a suivi : un cycliste s'arrete - un col, un
+ * pique-nique, une reparation - et le gris annoncait alors un doute qui n'existait pas. Il dit desormais
+ * quelque chose de sur : le suivi est arrete, et ce point est la derniere position mesuree
+ * (cf. LocationControls.lastFixShown).
  *
  * L'ecart et le son ne se calculent pas ici mais dans le service (cf. LocationService.watchTrack) :
  * l'ecran eteint, la composition s'arrete, et une alerte qui ne se declenche que sous les yeux de celui

@@ -282,6 +282,11 @@ data class SettingsEntity(
     // et "emmene-moi" sont deux questions distinctes, et l'allumage sautait a la position en emportant la
     // zone qu'on etudiait. Le zoom, lui, ne bouge JAMAIS - meme recentrage demande (cf. startGps).
     val gpsRecenterOnStart: Boolean = false,
+    // Garder sur la carte, en gris et immobile, la derniere position mesuree quand le suivi s'arrete.
+    // Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme elle l'a toujours
+    // fait. Le gris qui servait a dire "cette position est vieille" sert desormais a dire "elle n'est
+    // plus suivie" - un fait sur, la ou l'immobilite en annoncait un faux (cf. LocationControls).
+    val gpsShowLastFix: Boolean = false,
     // La carte suit la position tant que le capteur tourne, et rend la main cinq secondes apres chaque
     // geste (cf. MapFollow). Actif par defaut : en sortie, c'est ce qu'on attend d'une carte allumee.
     val mapFollowPosition: Boolean = true,

@@ -108,6 +108,20 @@ import kotlinx.coroutines.launch
                 stringResource(R.string.settings_sw_gps_recenter), cur.gpsRecenterOnStart,
                 sub = stringResource(R.string.settings_sw_gps_recenter_sub),
             ) { vm.save(cur.copy(gpsRecenterOnStart = it)) }
+            RowDivider()
+            /*
+             * La derniere position mesuree, gardee sur la carte quand le suivi s'arrete.
+             *
+             * Elle y reste en GRIS et immobile - la teinte qui servait a dire "cette position est vieille",
+             * et qui dit desormais quelque chose de sur : ce point n'est plus suivi. On retrouve d'ou l'on
+             * vient sans confondre avec un repere vivant.
+             *
+             * Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme toujours.
+             */
+            SwitchLine(
+                stringResource(R.string.settings_sw_gps_last_fix), cur.gpsShowLastFix,
+                sub = stringResource(R.string.settings_sw_gps_last_fix_sub),
+            ) { vm.save(cur.copy(gpsShowLastFix = it)) }
         }
         RowDivider()
         /*
