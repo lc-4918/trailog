@@ -159,7 +159,7 @@ import kotlinx.coroutines.launch
     SettingsCard {
         Row(Modifier.fillMaxWidth()) {
             CardButton(
-                stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_download),
+                stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_import),
                 modifier = Modifier.weight(1f), onClick = onPickMbtiles,
             )
             CardButton(
