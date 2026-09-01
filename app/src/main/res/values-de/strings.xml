@@ -482,6 +482,7 @@
     <string name="poi_filter_hide_all">Alle ausblenden</string>
     <string name="poi_filter_hide_layer">Points of Interest ausblenden</string>
     <string name="poi_filter_show_layer">Points of Interest anzeigen</string>
+    <string name="settings_section_gps_tracking">Standortverfolgung</string>
     <string name="settings_section_gps_marker">Positionsmarke</string>
     <string name="settings_label_gps_marker_style">Symbol</string>
     <string name="settings_label_gps_marker_color">Farbe</string>

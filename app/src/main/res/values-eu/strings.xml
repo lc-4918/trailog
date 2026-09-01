@@ -482,6 +482,7 @@
     <string name="poi_filter_hide_all">Ezkutatu dena</string>
     <string name="poi_filter_hide_layer">Ezkutatu intereseko puntuak</string>
     <string name="poi_filter_show_layer">Erakutsi intereseko puntuak</string>
+    <string name="settings_section_gps_tracking">Kokapenaren jarraipena</string>
     <string name="settings_section_gps_marker">Kokapen markatzailea</string>
     <string name="settings_label_gps_marker_style">Ikurra</string>
     <string name="settings_label_gps_marker_color">Kolorea</string>

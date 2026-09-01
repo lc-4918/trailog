@@ -85,54 +85,22 @@ import kotlinx.coroutines.launch
     GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
     SectionTitle(stringResource(R.string.settings_section_position), tight = true)
     SettingsCard {
-        // Éteindre la localisation éteint l'alerte d'éloignement avec elle : celle-ci n'a que la position
-        // pour matière, et sa cloche resterait sur la carte sans rien pour allumer ni couper le capteur.
-        // Le lien inverse est tenu par le réglage de l'alerte, plus bas.
+        // Éteindre la localisation éteint le suivi de trace avec lui : celui-ci n'a que la position pour
+        // matière, et son bouton resterait sur la carte sans rien pour allumer ni couper le capteur.
+        // Le lien inverse est tenu par le réglage du suivi, plus bas.
         SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
             vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
         }
-        /*
-         * Recentrer a l'allumage, ou rester ou l'on regarde.
-         *
-         * Eteint par defaut : "ou suis-je" et "emmene-moi" sont deux questions distinctes. On regardait une
-         * vallee pour preparer la suite, on touchait le bouton pour se situer, et l'on se retrouvait au coin
-         * d'une rue - la zone qu'on etudiait perdue, et rien pour la retrouver. Le repere se pose sur la
-         * carte de toute facon ; le bouton de recentrage est la pour qui veut l'y rejoindre.
-         *
-         * Le ZOOM ne bouge jamais, recentrage demande ou non : ce n'est donc pas un reglage, c'est une
-         * regle (cf. LocationControls.startGps).
-         */
-        if (cur.showGpsButton) {
-            RowDivider()
-            SwitchLine(
-                stringResource(R.string.settings_sw_gps_recenter), cur.gpsRecenterOnStart,
-                sub = stringResource(R.string.settings_sw_gps_recenter_sub),
-            ) { vm.save(cur.copy(gpsRecenterOnStart = it)) }
-            RowDivider()
-            /*
-             * La derniere position mesuree, gardee sur la carte quand le suivi s'arrete.
-             *
-             * Elle y reste en GRIS et immobile - la teinte qui servait a dire "cette position est vieille",
-             * et qui dit desormais quelque chose de sur : ce point n'est plus suivi. On retrouve d'ou l'on
-             * vient sans confondre avec un repere vivant.
-             *
-             * Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme toujours.
-             */
-            SwitchLine(
-                stringResource(R.string.settings_sw_gps_last_fix), cur.gpsShowLastFix,
-                sub = stringResource(R.string.settings_sw_gps_last_fix_sub),
-            ) { vm.save(cur.copy(gpsShowLastFix = it)) }
-        }
         RowDivider()
         /*
-         * Suivi de trace : la cloche qui previent qu'on s'est ecarte de la trace suivie.
+         * Suivi de trace : le bouton qui ouvre le choix d'une trace, et previent qu'on s'en ecarte.
          *
-         * Juste sous la localisation, dont elle depend : c'est un bouton de position comme celui du
-         * dessus, et le nom qu'elle portait avant - "Afficher le bouton" - ne disait rien de ce qu'elle
-         * allume. Ses reglages - distance, son - restent ensemble plus bas, avec le reste du groupe GPS.
+         * Juste sous la localisation, dont il depend : c'est un bouton de position comme celui du dessus,
+         * et le nom qu'il portait avant - "Afficher le bouton" - ne disait rien de ce qu'il allume. Ses
+         * reglages - distance, son - restent ensemble plus bas, avec le reste du groupe GPS.
          *
          * Elle allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
-         * position, et la cloche sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper.
+         * position, et le suivi sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper.
          * Le lien inverse est tenu par la ligne du bouton GPS, juste au-dessus.
          */
         SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
@@ -186,6 +154,8 @@ import kotlinx.coroutines.launch
      */
     GroupTitle(stringResource(R.string.settings_group_gps))
 
+    GpsTrackingSettings(cur, vm)
+
     GpsMarkerSettings(cur, vm)
 
     OffTrackAlertSettings(cur, vm)
@@ -229,7 +199,8 @@ import kotlinx.coroutines.launch
 }
 
 /**
- * Alerte d'eloignement : la cloche sur la carte, l'ecart qui la declenche, et le son qui l'accompagne.
+ * Alerte d'eloignement : l'ecart qui la declenche, et le son qui l'accompagne. Elle se commande depuis
+ * le bouton de suivi de trace, pose sur la carte.
  *
  * L'interrupteur qui la POSE sur la carte n'est plus ici : il a rejoint "Boutons et gestes" sous le nom
  * de ce qu'il allume, "Suivi de trace" - il s'appelait "Afficher le bouton", et seul le titre de cette
@@ -304,6 +275,52 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
  * La couleur affichee est la couleur EFFECTIVE - celle reglee, ou celle propre au symbole tant qu'on n'a
  * rien choisi -, si bien que la pastille dit toujours ce qu'on verra sur la carte.
  */
+/**
+ * Ce que la carte fait quand le suivi s'allume, et quand il s'arrete.
+ *
+ * **Ces deux reglages etaient dans "Boutons et gestes"**, aupres de l'interrupteur qui POSE le bouton de
+ * localisation. Ils n'y parlaient pas de la meme chose : celui-la decide si un bouton s'affiche, ceux-ci
+ * de ce qui arrive a la camera et au repere. Leur place est dans le groupe GPS, avec le symbole du repere
+ * et l'alerte d'eloignement - tout ce que la position commande.
+ *
+ * En TETE du groupe, et avant le symbole : on regle d'abord ce que le suivi fait, ensuite a quoi il
+ * ressemble.
+ */
+@Composable private fun GpsTrackingSettings(cur: SettingsEntity, vm: SettingsViewModel) {
+    SectionTitle(stringResource(R.string.settings_section_gps_tracking), tight = true)
+    SettingsCard {
+        /*
+         * Recentrer a l'allumage, ou rester ou l'on regarde.
+         *
+         * Eteint par defaut : "ou suis-je" et "emmene-moi" sont deux questions distinctes. On regardait une
+         * vallee pour preparer la suite, on touchait le bouton pour se situer, et l'on se retrouvait au coin
+         * d'une rue - la zone qu'on etudiait perdue, et rien pour la retrouver. Le repere se pose sur la
+         * carte de toute facon ; le bouton de recentrage est la pour qui veut l'y rejoindre.
+         *
+         * Le ZOOM ne bouge jamais, recentrage demande ou non : ce n'est donc pas un reglage, c'est une
+         * regle (cf. LocationControls.startGps).
+         */
+        SwitchLine(
+            stringResource(R.string.settings_sw_gps_recenter), cur.gpsRecenterOnStart,
+            sub = stringResource(R.string.settings_sw_gps_recenter_sub),
+        ) { vm.save(cur.copy(gpsRecenterOnStart = it)) }
+        RowDivider()
+        /*
+         * La derniere position mesuree, gardee sur la carte quand le suivi s'arrete.
+         *
+         * Elle y reste en GRIS et immobile - la teinte qui servait a dire "cette position est vieille", et
+         * qui dit desormais quelque chose de sur : ce point n'est plus suivi. On retrouve d'ou l'on vient
+         * sans confondre avec un repere vivant.
+         *
+         * Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme toujours.
+         */
+        SwitchLine(
+            stringResource(R.string.settings_sw_gps_last_fix), cur.gpsShowLastFix,
+            sub = stringResource(R.string.settings_sw_gps_last_fix_sub),
+        ) { vm.save(cur.copy(gpsShowLastFix = it)) }
+    }
+}
+
 @Composable private fun GpsMarkerSettings(cur: SettingsEntity, vm: SettingsViewModel) {
     val marker = GpsMarkerStyle.of(cur.gpsMarkerStyle)
     val color = cur.gpsMarkerColor.takeIf { it.isNotBlank() } ?: marker.defaultColor
