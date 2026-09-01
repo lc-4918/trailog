@@ -267,12 +267,14 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
     // ou vivent les donnees, et comment elles en sortent.
     SectionTitle(stringResource(R.string.settings_section_backup))
     SettingsCard {
+        // Meme sens de fleche que partout ailleurs : la montante charge dans l'application (restaurer),
+        // la descendante en sort un fichier (enregistrer).
         SetRow(stringResource(R.string.settings_backup_create)) {
-            InlineButton(stringResource(R.string.action_save), Icons.Filled.FileUpload, onBackup)
+            InlineButton(stringResource(R.string.action_save), Icons.Filled.FileDownload, onBackup)
         }
         RowDivider()
         SetRow(stringResource(R.string.settings_backup_restore)) {
-            InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileDownload, onRestore)
+            InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileUpload, onRestore)
         }
         Hint(stringResource(R.string.settings_backup_hint))
     }

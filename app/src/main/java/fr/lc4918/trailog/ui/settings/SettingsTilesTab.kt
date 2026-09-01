@@ -210,8 +210,11 @@ import kotlinx.coroutines.launch
                         Text(stringResource(R.string.settings_section_providers), fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
                             modifier = Modifier.weight(1f))
-                        RowIcon(Icons.Filled.FileUpload, stringResource(R.string.action_export)) { exportLauncher.launch("trailog_providers.json") }
-                        RowIcon(Icons.Filled.FileDownload, stringResource(R.string.action_import)) { importLauncher.launch("application/json") }
+                        // La fleche montante charge dans l'application (importer), la descendante en sort
+                        // un fichier (exporter) : meme sens que dans le tiroir principal, ou la fleche
+                        // montante ouvre deja l'import.
+                        RowIcon(Icons.Filled.FileUpload, stringResource(R.string.action_import)) { importLauncher.launch("application/json") }
+                        RowIcon(Icons.Filled.FileDownload, stringResource(R.string.action_export)) { exportLauncher.launch("trailog_providers.json") }
                         RowIcon(Icons.Filled.Close, stringResource(R.string.action_close)) { providersDialogOpen = false }
                     }
                     Spacer(Modifier.height(8.dp))

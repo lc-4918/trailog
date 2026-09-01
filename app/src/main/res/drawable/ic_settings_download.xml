@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fleche vers un socle : importer un fichier. Trace de la maquette des reglages
+<!-- Fleche qui monte depuis un socle : importer un fichier, il entre dans l'application.
+     Meme sens que les fleches des autres ecrans. Trace de la maquette des reglages
      (captures/trailog-settings-refined.html), grille de 20, contour de 1,8. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="20" android:viewportHeight="20">
-    <path android:pathData="M10,3v9M6.5,8.5L10,12l3.5,-3.5"
+    <path android:pathData="M10,3v9M6.5,6.5L10,3l3.5,3.5"
         android:strokeColor="#000000" android:strokeWidth="1.8"
         android:strokeLineCap="round" android:strokeLineJoin="round" />
     <path android:pathData="M3.5,15.5h13"
