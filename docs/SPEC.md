@@ -195,11 +195,21 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
   icône porte le bleu du point de position. La comparaison se fait à l'écran et non sur les coordonnées :
   la question est "la position est-elle au milieu de ce que je vois", et sa réponse doit valoir à tout
   zoom. Le planificateur, sous lui, ne bouge pas pour autant : la colonne est alignée en bas.
-- **Un repère figé passe au gris.** Au-delà de trente secondes sans mesure - une gorge, un couvert, un
-  tunnel - le repère affirme une position qu'il ne connaît plus, et un repère figé est visuellement
-  identique à un repère juste. La couleur le dit à l'endroit exact du fait. Aucune bannière ne l'annonce :
-  un ennui qu'on ne peut ni corriger ni éviter n'a pas à occuper le bas de la carte, et une alerte qu'on ne
-  peut pas faire taire finit par se lire comme un décor.
+- **Le gris dit que le repère n'est plus suivi**, et non qu'il est immobile. Il passait au gris au-delà de
+  trente secondes sans mesure : l'idée était qu'un repère figé est visuellement identique à un repère
+  juste. Mais un cycliste s'arrête - un col, un pique-nique, une réparation - et la couleur annonçait alors
+  un doute qui n'existait pas, sur ce qui est le plus regardé de la carte. Un réglage (Carte > Position,
+  éteint par défaut) garde désormais la **dernière position mesurée** sur la carte quand le suivi s'arrête :
+  elle y reste grise et immobile, on retrouve d'où l'on vient sans la confondre avec un repère vivant.
+- **La flèche montre la direction du DÉPLACEMENT**, non l'orientation du téléphone. Elle tirait son cap de
+  la boussole, si bien qu'elle tournait sur elle-même dès qu'on prenait l'appareil en main, et s'affichait
+  de biais sur la trace suivie - un téléphone sur un guidon pointe où son support le tient. Le cap du GPS
+  commande dès qu'on avance ; la boussole ne reprend qu'à l'arrêt, lissée, où elle est seule à dire quelque
+  chose.
+- **L'allumage de la localisation ne change jamais le zoom.** Il sautait à la position au zoom 15 : on
+  regardait une vallée pour préparer la suite, on touchait le bouton pour se situer, et l'on se retrouvait
+  au coin d'une rue. Le recentrage lui-même est un réglage, éteint par défaut - « où suis-je » et
+  « emmène-moi » sont deux questions distinctes.
 - **Suivre ma position** (réglage, onglet Carte, allumé par défaut) recentre la carte à chaque mesure, et se
   tait cinq secondes après chaque geste : regarder plus loin sur l'itinéraire est un besoin aussi réel que
   le suivi, et une carte qui revient sous les doigts est inutilisable. Trois choses le **suspendent**, parce
@@ -214,7 +224,7 @@ son rangement est justement ce qu'on ne voulait pas parcourir.
   position**, au zoom qu'on avait : la rotation n'est pas une demande de changer d'endroit ni d'échelle.
 - **Les commandes se répartissent en trois coins.** En haut à gauche : le menu, l'interrupteur GPS, la
   recherche de lieu (dont la barre de saisie se déplie juste dessous, ce qui la retient là) et la mesure
-  sur trace. En bas à droite, à portée du pouce : le recentrage sur la position, la cloche de l'alerte
+  sur trace. En bas à droite, à portée du pouce : le recentrage sur la position, le bouton de suivi de trace
   d'éloignement et le planificateur, ce dernier au plus près du coin - c'est celui qui reste, les autres
   n'apparaissant que le capteur allumé ou le réglage coché, et un bouton qui change de place au gré du GPS
   se chercherait à chaque fois. En bas à gauche : l'échelle graphique.
@@ -481,27 +491,38 @@ temps, et c'est la question qu'on se pose devant une trace inconnue.
 
 ### Alerte d'éloignement
 
-Une cloche, sous le planificateur, pour être **prévenu** au lieu d'avoir à surveiller. Commandée par un
+Un bouton **Suivi de trace**, sous le planificateur, pour être **prévenu** au lieu d'avoir à surveiller.
+Il porte le dessin d'une route et non plus une cloche : une cloche disait l'alerte, quand ce bouton ouvre
+le suivi d'une trace dont l'alerte n'est qu'une conséquence. Commandée par un
 réglage désactivé par défaut (onglet Carte > Alerte d'éloignement), elle ne s'affiche jamais sans le bouton
 de localisation : une alerte n'a que la position pour matière, et l'allumer sans que rien ne montre ni ne
 coupe le capteur serait une position qui tourne en cachette. Les deux réglages sont donc liés dans les deux
 sens - cocher l'alerte affiche le bouton GPS, décocher le bouton GPS éteint l'alerte.
 
-Un tap sur la cloche demande **quelle trace on suit**, en proposant celles qui passent le plus près de la
-position, chacune avec son écart. **Celle qu'on suit déjà se distingue** - un aplat, une cloche et le mot
-« Suivie » : la question posée en ouvrant cette liste est « laquelle est-ce que je suis en ce moment ? », et
-sur huit lignes qui portent le même genre de nom, une simple graisse de caractère se cherche. Elle reste
-choisissable comme les autres ; ce qui l'arrête est le bouton d'arrêt, à l'opposé. Ce n'est pas la
-bibliothèque : suivre une trace, c'est suivre celle sur
+Un tap sur le bouton demande **quelle trace on suit**, en proposant celles qui passent le plus près de la
+position, chacune avec son écart. Ce n'est pas la bibliothèque : suivre une trace, c'est suivre celle sur
 laquelle on se tient, et un catalogue de deux cents entrées ne répondrait pas à la question. Les couches
-masquées n'y figurent pas, et une couche qui porte plusieurs segments les numérote. Le capteur éteint, la
-cloche propose d'abord de l'allumer, puis ouvre son choix une fois la position reçue.
+masquées n'y figurent pas, et une couche qui porte plusieurs segments les numérote.
+
+**Le bouton n'exige pas le repère affiché.** Il consultait le bouton de localisation de la carte, qui ne
+commande que l'affichage, et refusait la liste alors que le téléphone savait parfaitement où l'on était.
+Seule la localisation du système, coupée, empêche - elle mène alors droit aux réglages, et la liste
+demandée s'ouvre au retour. Choisir une trace **allume le suivi tout seul** : c'est ce qu'on venait
+demander, et l'alerte a besoin du service pour mesurer l'écart écran éteint.
+
+**Une trace suivie remplace la liste par un tableau de bord.** La fenêtre consacrait tout son espace à la
+seule chose dont on n'a plus besoin - choisir - quand la question devenue urgente est combien reste-t-il, et
+combien de montée. La trace suivie occupe un en-tête, et dessous neuf indicateurs à pictogrammes : vitesse,
+temps écoulé et restant, distance parcourue et restante, dénivelé positif et négatif faits et devant. Un
+appui long en donne le nom. Le dénivelé est interpolé aux deux bouts, sans quoi il sauterait à chaque sommet
+franchi ; le temps restant part de la vitesse **moyenne** tenue, l'instantanée tombant à zéro à chaque arrêt
+et annonçant alors l'infini. L'arrêt du suivi rend la liste.
 
 **Le parcours du planificateur y figure en premier**, dès qu'il en existe un, et sans avoir été importé
 dans la bibliothèque : c'est le cas le plus courant - on compose son trajet, on part, et on veut être
 prévenu si on le quitte. L'importer d'abord serait un détour, et laisserait derrière soi une couche dont on
 ne voulait pas. Il passe en tête hors classement, une trace de la bibliothèque qui passerait dix mètres
-plus près ne répondant pas à la question qu'on pose en touchant la cloche. Le suivi s'arrête si le calcul
+plus près ne répondant pas à la question qu'on pose en touchant ce bouton. Le suivi s'arrête si le calcul
 d'itinéraire est fermé - le parcours quitte alors la carte, comme une couche qu'on masque ; un simple
 recalcul, lui, ne l'interrompt pas.
 
@@ -515,7 +536,7 @@ en alerte, une fois, et non tant qu'on est loin.
 L'alerte s'allume à l'écart réglé mais ne se lâche qu'à 80 % de celui-ci : sans cette marge, une position
 qui oscille autour du seuil - le lot d'un GPS de téléphone sous couvert - rallumerait la bannière et son son
 toutes les deux secondes. La croix de la bannière tait l'écart du moment sans arrêter le suivi ; revenir sur
-la trace réarme l'alerte suivante. Le suivi, lui, s'arrête depuis la cloche, là où il a commencé - et de
+la trace réarme l'alerte suivante. Le suivi, lui, s'arrête depuis son bouton, là où il a commencé - et de
 lui-même si le capteur s'éteint ou si la trace quitte la carte.
 
 ## 14 ter. Points d'intérêt

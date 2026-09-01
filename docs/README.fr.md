@@ -78,7 +78,10 @@ sans dépendre d'un service en ligne.
   touristique ignore : les restaurants et les bars de quartier, les points d'eau, les toilettes, les aires
   de pique-nique, les bornes de recharge et les réparateurs de vélos. Ce complément se coupe d'un réglage
   si vous préférez une carte immédiate à une carte complète. Ce qui a été vu une fois reste consultable
-  sans réseau, et *Réglages / Trajets* vide ce cache d'un bouton si une fiche vous paraît fausse.
+  sans réseau, et *Réglages / Trajets* vide ce cache d'un bouton si une fiche vous paraît fausse. Un oeil
+  range la couche un instant sans perdre votre sélection, et un **réglage de proximité** ne garde que les
+  lieux qui bordent une trace affichée - de 500 m à 20 km, ou sans limite du tout quand vous explorez une
+  région où aucune trace n'est ouverte.
 - **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
   propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache. Une case permet d'emporter
   aussi les **points d'intérêt** de la zone : ils resteront consultables là où il n'y a pas de signal.
@@ -98,15 +101,29 @@ sans dépendre d'un service en ligne.
 - **Trois gestes vers l'itinéraire**, sur toute infobulle qui désigne un endroit - un lieu cherché, un point
   d'intérêt, un point touché longuement sur la carte : en faire le départ, l'arrivée, ou une étape de plus.
   Le planificateur s'ouvre déjà rempli.
+- **Désigner une étape sur la carte** : au focus d'un champ vierge, le calcul d'itinéraire propose aussi de
+  montrer un point du doigt. La bande se range, la carte vous est rendue, et l'endroit touché devient une
+  étape - une épingle noire là où vous avez montré, et son adresse renseignée un instant plus tard. Un
+  départ de sentier, un col, un croisement de pistes : des endroits qu'aucune recherche ne trouve par leur
+  nom.
 - **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
   l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
-  ou depuis un second point que vous désignez.
+  ou depuis un second point que vous désignez. Les deux mêmes mesures figurent sur l'infobulle d'un point
+  d'intérêt : c'est un endroit de la carte au même titre, et l'on s'y pose la même question.
 - **Mesure sur une trace** (à activer dans les réglages) : deux points posés du doigt sur une trace
   affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
 - **Alerte d'éloignement** (à activer dans les réglages) : choisissez la trace que vous suivez parmi
-  les plus proches de vous, et Trailog vous prévient - bandeau en bas de l'écran, et son au choix -
+  les plus proches de vous, et Trailog vous prévient - bandeau en haut de l'écran, et son au choix -
   dès que vous vous en écartez de plus que la distance réglée. L'**itinéraire que vous venez de calculer**
   est proposé en premier, sans avoir à l'importer dans la bibliothèque.
+- **Un tableau de bord pendant le suivi** : une fois la trace choisie, la fenêtre cesse de proposer les
+  autres et montre où vous en êtes - vitesse, temps écoulé et restant, distance parcourue et restante,
+  dénivelé positif et négatif faits et encore devant. Neuf chiffres derrière neuf pictogrammes, qu'un appui
+  long nomme. La distance seule ne dit jamais si les trois derniers kilomètres sont une descente ou le mur
+  du col.
+- **La flèche montre où vous allez**, et non où pointe le téléphone : dès que vous avancez, elle prend le
+  cap du déplacement plutôt que celui de la boussole - elle ne tourne plus sur elle-même quand vous prenez
+  l'appareil en main, et ne s'affiche plus en biais par rapport à la piste.
 - **Le suivi continue écran éteint** : une fois la position allumée, elle est suivie même l'application
   fermée et le téléphone en poche - c'est là que l'alerte d'éloignement sert. Une notification permanente
   vous le rappelle, dit votre écart à la trace suivie, et permet de tout arrêter d'un tap. Un réglage

@@ -45,9 +45,12 @@ app/src/main/java/fr/lc4918/trailog/
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
 ├─ location/                    suivi de position hors de l'ecran : service de premier plan, veille sur la trace, son de l'alerte
 ├─ net/                         ServiceUrl (reseau local ou service externe)
-├─ poi/                         points d'interet : DATAtourisme, Overpass (OSM), regle de partage, cache
-├─ routing/                     Valhalla et BRouter (itineraire, duree, trace ; 5 disciplines), Polyline
-├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre)
+├─ poi/                         points d'interet : DATAtourisme, Overpass (OSM, requetes decoupees en
+│                              tuiles), regle de partage entre les deux sources, cache
+├─ routing/                     Valhalla et BRouter (itineraire, duree, trace ; 5 disciplines), Polyline,
+│                              RouteTimeout (delai proportionnel a la longueur demandee)
+├─ map/                         BasemapIcons, CompositeBasemaps, StyleBuilder (style MapLibre),
+│                              AmbientCache (taille du cache de tuiles)
 │  └─ offline/                  TileMath, TileUrl, TileHttp, OfflineTileDownloader, OfflineThumbnails
 ├─ update/                      UpdateManager (manifeste + installateur), UpdateDialog
 └─ ui/
@@ -59,13 +62,17 @@ app/src/main/java/fr/lc4918/trailog/
    │                              MapChrome (commandes posees sur la carte, echelle, legende),
    │                              MapEffects (ce que l'ecran demande au controleur MapLibre),
    │                              ImportFlow (du fichier a la couche, d'ou qu'il vienne),
-   │                              ProfilePanels, TrackEditUi, MainDialogs, DeviceHeading, ImportPicker
+   │                              ProfilePanels, TrackEditUi, MainDialogs, ImportPicker,
+   │                              DeviceHeading et HeadingFusion (d'ou la fleche tire sa direction)
    ├─ location/                  le suivi de position vu de l'ecran : autorisations, allumage, position ponctuelle
-   ├─ alert/                     alerte d'eloignement : banniere, choix de la trace, son
-   ├─ poi/                       couche des points d'interet : marqueurs, infobulle, chargement
+   ├─ alert/                     suivi de trace : banniere d'eloignement, choix de la trace, son, et le
+   │                              tableau de bord de l'avancement (FollowProgress, FollowDashboard)
+   ├─ poi/                       couche des points d'interet : marqueurs, infobulle, chargement,
+   │                              PoiCorridor (couloir autour des traces affichees)
    ├─ points/                    InfoBubble, PropertyEditor, FieldMeta, BubblePlacement, AnchoredBubble
    ├─ geocode/                   barre de recherche, infobulle du lieu, etat de la recherche
-   ├─ mappoint/                  point designe par un appui long : adresse et mesures de distance
+   ├─ mappoint/                  point designe par un appui long : son adresse, et PointMeasures - les
+   │                              deux distances, que l'infobulle d'un point d'interet porte aussi
    ├─ measure/                   mesure d'une distance entre deux points d'une trace
    ├─ planner/                   bande du planificateur d'itineraire, etat de ses etapes
    ├─ offline/                   Saisie de la zone et configuration du téléchargement
@@ -108,6 +115,15 @@ Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
 | `routing/PolylineTest` | décodage des polylignes, dont la précision propre à Valhalla |
 | `poi/OverpassTest` | requête et lecture de la réponse d'OpenStreetMap, la seconde source de points d'intérêt |
 | `location/TrackWatchTest` | alerte d'éloignement : déclenchement, zone morte, réarmement |
+| `poi/PoiStreamTest` | ordre d'affichage des deux sources, et report d'un chargement sur le suivant |
+| `poi/PoiSourcesTest` | qui répond pour quelles catégories : le partage entre DATAtourisme et OSM |
+| `ui/poi/PoiCorridorTest` | couloir autour des traces : ce qu'on affiche, et ce qu'on demande |
+| `ui/poi/PoiStateTest` | ce que la couche dit d'elle-même, et quand elle redemande une emprise |
+| `routing/RouteTimeoutTest` | délai accordé au moteur selon la longueur du trajet |
+| `ui/routes/HeadingFusionTest` | d'où la flèche tire sa direction : déplacement ou boussole |
+| `ui/alert/FollowProgressTest` | les neuf chiffres du tableau de bord du suivi |
+| `ui/mappoint/PointMeasuresTest` | les deux distances, et leur indépendance d'une bulle à l'autre |
+| `ui/location/LastFixShownTest` | la dernière position mesurée, gardée à l'arrêt du suivi |
 
 `ReleaseInfoTest` mérite une note : il garde un contrat entre deux fichiers qui ne se compilent
 pas ensemble, le `jq` du workflow et le parseur Kotlin. Une divergence n'y produirait aucune
@@ -129,6 +145,10 @@ vrai SQLite.
 4. Vérifier que `./gradlew :app:assembleDebug` et les tests passent localement.
 5. Ouvrir une **Pull Request** vers `main` sur `lc-4918/trailog`.
 6. Revue de code, puis merge.
+
+La publication d'une version, elle, est décrite dans [`WORKFLOW.md`](WORKFLOW.md) : un tag `vX.Y.Z`
+poussé sur `main` déclenche l'APK signé, la Release GitHub et le manifeste que lisent les
+installations existantes.
 
 ## 7. Architecture
 

@@ -527,7 +527,7 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 | `TrackWatchTest` | 13 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme, et la reprise après une mort du processus |
 | `FollowedStoreTest` | 5 | la trace suivie gardée sur le disque : ce qui traverse la mort du processus |
 | `LocationHubTest` | 9 | la différence entre un suivi qu'on arrête et un suivi qui s'arrête |
-| `PositionStaleTest` | 4 | le repère qui ment : quand la carte le passe au gris, et quand il redevient honnête |
+| `LastFixShownTest` | 5 | la dernière position mesurée, gardée en gris quand le suivi s'arrête |
 
 `LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
 repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application ne savait plus où il était.
@@ -539,15 +539,22 @@ Deux mutations vérifient que ces tests attrapent bien le défaut d'origine. Fai
 comportement exact d'avant - fait tomber **5 tests** ; effacer l'intention à l'arrêt, ce qui supprimerait
 la reprise automatique, en fait tomber **3**.
 
-`PositionStaleTest` (dans `ui/location`) garde ce que la carte dit d'un repère qui ne bouge plus : passé le
-délai, il passe au gris là où il ment. Une bannière l'annonçait aussi - « Position figée depuis x » - et la
-moitié de ces cas portait sur sa croix ; elle a été retirée. Un trou de réception dure ce qu'il dure, une
-gorge, un couvert, un tunnel : une alerte qu'on ne peut ni corriger ni éviter occupait le bas de la carte
-pour rien, jusqu'à se lire comme un décor - ce qu'une alerte ne doit jamais devenir.
+`LastFixShownTest` (dans `ui/location`) garde ce que la carte dit d'un repère qu'on ne suit plus. Il
+s'appelait `PositionStaleTest` et vérifiait l'inverse : passé trente secondes sans mesure, le repère
+passait au gris là où il mentait. Le raisonnement tenait - un repère figé est visuellement identique à un
+repère juste - mais il ignorait le cas courant : **un cycliste s'arrête**. Un col, un pique-nique, une
+réparation, et la couleur annonçait un doute qui n'existait pas.
 
-Deux règles s'y décident. Refermer dit **« j'ai lu »**, pas « c'est faux » : le repère garde sa couleur de
-péremption sur la carte, le fait restant vrai. Et le silence ne vaut que pour **cette** péremption : la
-prochaine mesure le lève, faute de quoi se taire une fois reviendrait à se taire pour le reste de la sortie.
+Le gris dit désormais quelque chose de sûr : ce point n'est plus suivi. Un réglage éteint par défaut garde
+la dernière position mesurée sur la carte quand on coupe le suivi. Ce que ces cinq cas verrouillent est
+surtout ce qui rend cette couleur honnête - le point figé s'efface à la première nouvelle **mesure** et non
+à la reprise du suivi, sans quoi le gris dirait « plus suivi » sur un repère qui vient de recommencer à
+bouger.
+
+Une bannière annonçait autrefois la même péremption - « Position figée depuis x » - et la moitié des cas
+d'alors portait sur sa croix ; elle a été retirée avant le reste. Un trou de réception dure ce qu'il dure,
+une gorge, un couvert, un tunnel : une alerte qu'on ne peut ni corriger ni éviter occupait le bas de la
+carte pour rien, jusqu'à se lire comme un décor - ce qu'une alerte ne doit jamais devenir.
 
 Cet état vit **hors de l'écran** depuis que le suivi tourne dans un service de premier plan : c'est lui, et
 non la composition, qui décide qu'il faut sonner. Une faute ici ne se voit pas à l'écran - elle se constate
@@ -873,8 +880,8 @@ la dernière couche insérée par son identifiant.
 
 Toutes les classes partagent **une seule JVM** (`forkEvery = 0`) et le bac à sable Robolectric qui va
 avec. Deux états y sont globaux, et les toucher sans les refermer bloque tout ce qui suit. Les deux ont
-été découverts le même jour, par la même classe - `PositionStaleTest` (alors `StaleNoticeTest`), qui ne
-compose pourtant rien.
+été découverts le même jour, par la même classe - `LastFixShownTest` (alors `StaleNoticeTest`, puis
+`PositionStaleTest`), qui ne compose pourtant rien.
 
 **L'horloge du bac à sable.** `ShadowSystemClock.advanceBy` avance le temps pour toutes les classes
 suivantes. Ce qui se mesure par une différence de dates se simule sur la **donnée**, jamais sur

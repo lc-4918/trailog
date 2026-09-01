@@ -14,7 +14,8 @@ Il ne redit pas ce que disent les autres documents du dépôt :
 | [`WORKFLOW.md`](WORKFLOW.md) | Intégration continue, signature, publication |
 | **`ARCHITECTURE.md`** | **Comment c'est bâti, et ce qui doit le rester** |
 
-Version décrite : 0.14.1. Chiffres relevés sur le dépôt à cette version.
+Version décrite : 0.14.1, sauf mention contraire. Chiffres relevés sur le dépôt à cette version - ceux de
+la section Migrations sont tenus à jour, la marche à suivre qu'elle décrit devant valoir maintenant.
 
 ---
 
@@ -398,7 +399,7 @@ alors porté par `SettingsEntity`, et une faute de nom ne compile pas.
 
 ### 6.3 Migrations
 
-Base en **version 58**, 42 migrations explicites conservées, aucune destruction. Ajouter un réglage
+Base en **version 65**, 49 migrations explicites conservées, aucune destruction. Ajouter un réglage
 demande quatre gestes, et les quatre sont obligatoires :
 
 1. le champ dans `SettingsEntity` ;
@@ -890,7 +891,9 @@ c'est le seul chemin de reprise qui vaille aussi pour le parcours du planificate
 couche derrière lui.
 
 **Un repère figé est un repère qui ment.** `Fix` porte son heure de réception, sur l'horloge de l'appareil
-et non l'heure murale. Au-delà de trente secondes sans mesure, le repère **passe au gris**, là où il ment.
+et non l'heure murale. Le repère **passe au gris** quand le suivi s'arrête, et seulement alors : il le
+faisait aussi au-delà de trente secondes sans mesure, ce qui grisait un repère parfaitement juste chaque
+fois qu'on s'arrêtait pour souffler.
 Une bannière l'annonçait aussi ; elle a été retirée. Un trou de réception dure ce qu'il dure - une gorge, un
 couvert, un tunnel - et une alerte qu'on ne peut ni corriger ni éviter occupait le bas de la carte pour
 rien, jusqu'à se lire comme un décor. Une couleur posée sur l'objet même dont elle parle ne recouvre rien et

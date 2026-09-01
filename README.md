@@ -79,7 +79,9 @@ them on a map with a synchronised elevation profile, without depending on any on
   restaurants and bars, drinking water, public toilets, picnic areas, charging points and bicycle
   repairers. A setting turns that complement off if you would rather have an immediate map than a complete
   one. What has been seen once stays available offline, and *Settings / Routes* clears that cache in one
-  tap if an entry looks wrong.
+  tap if an entry looks wrong. An eye puts the layer aside for a moment without losing your selection, and
+  a **proximity setting** keeps only the places that border a displayed track - from 500 m to 20 km, or no
+  limit at all when you are exploring an area with no track open.
 - **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
   basemaps, and tiles already viewed stay in cache. A checkbox also takes the area's **points of interest**
   along: they stay available where there is no signal.
@@ -97,14 +99,26 @@ them on a map with a synchronised elevation profile, without depending on any on
 - **Three gestures towards a route**, on every info bubble that points at a place - a place you searched, a
   point of interest, a spot you long-pressed on the map: make it the start, the end, or one more stop. The
   planner opens already filled in.
+- **Point at a stop on the map**: when a field is empty, the planner also offers to pick a spot with your
+  finger. The band tucks itself away, the map is yours, and the place you tap becomes a stop - with a black
+  pin where you pointed and its address filled in a moment later. A trailhead, a pass, a crossing of
+  forest tracks: places no search will ever find by name.
 - **Long press on the map**: anywhere off a track, an info bubble gives the address of the spot
   touched, and measures the distance and time to reach it - from your GPS position, or from a
-  second point you pick.
+  second point you pick. The same two measurements sit on a point of interest's bubble: it is a place on
+  the map just the same, and one asks the same question of it.
 - **Measuring along a track** (to be enabled in settings): put two points on a displayed track and
   Trailog gives the distance between them **along the route**, with no network.
 - **Off-track alert** (to be enabled in the settings): pick the track you are following from the ones
-  nearest to you, and Trailog warns you - a banner at the bottom of the screen, and a sound if you
+  nearest to you, and Trailog warns you - a banner at the top of the screen, and a sound if you
   want one - as soon as you stray from it by more than the distance you set.
+- **A dashboard while you follow a track**: once a track is picked, the popup stops offering the others and
+  shows where you stand instead - speed, time elapsed and left, distance covered and remaining, ascent and
+  descent both done and still ahead. Nine figures behind nine icons, a long press naming any of them. The
+  distance alone never tells you whether the last three kilometres are a descent or the wall of the pass.
+- **The arrow points where you are going**, not where the phone is aimed: as soon as you move, it takes its
+  heading from your travel rather than from the compass - it no longer spins on itself when you pick the
+  phone up, nor sits askew to the track you are following.
 - **Tracking survives the screen going off**: once location is on, it keeps being followed with the app
   in the background and the phone in a pocket - which is exactly when the off-track alert matters. An
   ongoing notification says so, shows how far off the followed track you are, and stops everything in one
