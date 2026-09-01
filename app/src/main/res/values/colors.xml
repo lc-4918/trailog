@@ -1,6 +1,8 @@
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
-    <!-- Même valeur que MaterialTheme.colorScheme.background par défaut (lightColorScheme, Neutral98) :
-         le splash natif doit se fondre sans coupure visible avec le premier écran Compose. -->
-    <color name="splash_background">#FEF7FF</color>
+    <!-- Sombre quel que soit le mode de l'appareil, et non plus accorde au premier ecran Compose : on
+         ouvre Trailog dehors, souvent de nuit, et un aplat quasi blanc en plein ecran eblouit pour
+         plusieurs secondes. Gris tres foncé plutot que noir, comme le fond des ornements de la carte
+         (cf. MapChromeDarkBg) : un aplat franchement noir se lit comme un ecran eteint. -->
+    <color name="splash_background">#2C2C2E</color>
 </resources>
