@@ -351,7 +351,7 @@ Un point au milieu d'un bois est une étape parfaitement légitime - c'est peut-
 et n'accepter que les endroits qui ont une adresse reviendrait à ne planifier qu'en ville.
 
 Les deux mesures donnent la **distance et la durée d'un itinéraire** suivant la voirie, non un vol
-d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, gravel, VTC, VTT, à pied. Le moteur
+d'oiseau, pour l'une des cinq disciplines réglables : vélo de route, VTC, gravel, VTT, à pied. Le moteur
 se règle lui aussi, entre **Valhalla** et **BRouter**. Chacun garde **sa** propre URL de service, comme le
 géocodeur a la sienne : basculer pour comparer ne fait donc pas perdre l'adresse de l'autre, et n'envoie
 jamais la requête d'un moteur au serveur du voisin - une faute qui échouerait en silence.
@@ -373,8 +373,8 @@ pente : sa géométrie arrive dans la même réponse que le total, encodée en p
 
 Chaque discipline arrive avec ce qu'elle demande, réglable en trois questions - quelles voies, quel
 relief, quel revêtement - mais déjà juste sans y toucher : le **vélo de route** reste sur la route et
-c'est la seule à exiger le revêtu ; le **gravel** accepte les chemins et le dénivelé et privilégie les
-chemins ; le **VTC** accepte les chemins et privilégie les voies vertes, sans chercher le dénivelé ; le
+c'est la seule à exiger le revêtu ; le **VTC** accepte les chemins et privilégie les voies vertes, sans
+chercher le dénivelé ; le **gravel** accepte les chemins et le dénivelé et privilégie les chemins ; le
 **VTT** privilégie les chemins plus fort que tous, et accepte le dénivelé ; la **marche** accepte les
 chemins, y compris les sentiers de montagne, et le dénivelé - qui la raccourcit au lieu de l'allonger,
 le détour évitant la côte coûtant plus cher que la côte.

@@ -189,7 +189,7 @@ tourne, il suffit de la désigner. Le défaut vide, et non l'URL publique écrit
 changement de défaut dans le code laisse les installations existantes sur l'ancienne adresse.
 
 Le moteur d'itinéraire suit la même règle. **Valhalla** y est retenu pour une raison qui lui est propre :
-ses cinq disciplines (route, gravel, VTC, VTT, marche) sortent d'une **seule** instance, via le
+ses cinq disciplines (route, VTC, gravel, VTT, marche) sortent d'une **seule** instance, via le
 `bicycle_type` de son modèle de coût. OSRM demanderait un serveur par profil, soit cinq à héberger, et
 GraphHopper n'offre pas d'instance publique sans clé. BRouter, seul à savoir router hors ligne, resterait
 le choix du jour où l'on voudrait s'affranchir du réseau : il faudrait alors gérer ses tuiles `.rd5`.

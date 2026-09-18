@@ -90,7 +90,7 @@ sans dépendre d'un service en ligne.
 - **Calcul d'itinéraire** (à activer dans les réglages) : une bande où vous empilez vos étapes, de 2 à
   25 - chacune cherchée par son nom, ou remplacée par **votre position**, résolue au moment du calcul et
   non au moment du choix. Les étapes se réordonnent et se suppriment, le parcours se
-  recalcule à chaque changement pour la discipline réglée (vélo de route, gravel, VTC, VTT, à pied), se
+  recalcule à chaque changement pour la discipline réglée (vélo de route, VTC, gravel, VTT, à pied), se
   dessine sur la carte et porte son propre profil altimétrique. Un champ vide vous repropose les **huit
   derniers lieux** que vous avez rencontrés - une étape retenue, un lieu cherché, un point d'intérêt
   consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder. Chacun s'oublie
@@ -209,7 +209,7 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   et la distance depuis un second point, que vous désignez ensuite d'un tap sur la carte.
 - **Distance et durée jusqu'au point** : ce ne sont pas des distances à vol d'oiseau mais celles de
   l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Trajets* :
-  vélo de route, gravel, VTC, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle.
+  vélo de route, VTC, gravel, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle.
   L'itinéraire lui-même se dessine sur la carte, teinté selon la pente. Les services
   interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
   leur substituer vos propres instances en renseignant leurs URL dans les réglages.

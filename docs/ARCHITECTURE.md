@@ -903,7 +903,7 @@ ne demande rien.
 
 **Le problème.** Calculer un itinéraire demande un graphe routier et un modèle de coût, soit bien plus que
 ce qu'un téléphone peut porter. Il faut donc un service distant, et l'application doit servir **cinq
-disciplines** : route, gravel, VTC, VTT, à pied.
+disciplines** : route, VTC, gravel, VTT, à pied.
 
 **Les options, et ce qui les départage.**
 
