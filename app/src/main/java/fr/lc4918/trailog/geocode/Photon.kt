@@ -1,11 +1,13 @@
 package fr.lc4918.trailog.geocode
 
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URLEncoder
+import kotlin.math.log10
 
 /**
  * Un lieu proposé par l'autocomplétion : ce qu'on affiche, et où c'est.
@@ -51,22 +53,72 @@ object Photon {
      */
     private const val TIMEOUT_MS = 12_000
 
+    /** Nombre maximal de candidats demandes au service pour en reordonner quelques-uns (cf. [search]). */
+    private const val MAX_CANDIDATES = 30
+
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
      * URL de requête.
      *
-     * Volontairement sans les paramètres `lat`/`lon` que Photon accepte : ils réordonnent les résultats par
-     * proximité, ce qui fait remonter un hameau voisin devant la ville que l'on cherchait. Sans eux, le
-     * classement reste celui de l'importance OSM, qui met la ville en tête.
+     * [center], en (lon, lat), ajoute les paramètres `lat`/`lon` que Photon accepte. Ils ne servent pas à
+     * CLASSER - c'est [rank] qui s'en charge, et lui seul décide de l'ordre affiché - mais à faire entrer
+     * les lieux proches dans la liste des candidats : un hameau à dix kilomètres n'a aucune chance d'y
+     * figurer par sa seule notoriété OSM, et un classement ne rattrape pas ce qui n'a pas été renvoyé.
+     *
+     * Coordonnées interpolées par `toString()`, insensible à la locale : `format()` écrirait une virgule
+     * décimale en français, que le service lirait comme un séparateur de valeurs (même précaution que
+     * [reverseUrl]).
      */
-    fun url(base: String, query: String, lang: String, limit: Int): String {
+    fun url(base: String, query: String, lang: String, limit: Int, center: Pair<Double, Double>? = null): String {
         val sep = if ('?' in base) '&' else '?'
         val l = if (lang in SUPPORTED_LANGS) lang else "en"
         val sb = StringBuilder(base.trimEnd('&', '?'))
         sb.append(sep).append("q=").append(URLEncoder.encode(query, "UTF-8"))
         sb.append("&limit=").append(limit).append("&lang=").append(l)
+        center?.let { (lon, lat) -> sb.append("&lat=").append(lat).append("&lon=").append(lon) }
         return sb.toString()
+    }
+
+    /**
+     * Le dosage du classement (cf. [rank]) : la distance en deçà de laquelle la proximité ne pèse presque
+     * rien, et ce qu'un lieu très lointain perd de places dans la liste.
+     *
+     * 200 km, c'est-à-dire la région au sens large : deux lieux à 5 et 80 km sont l'un comme l'autre "par
+     * ici", et rien ne justifierait de les départager sur la distance plutôt que sur ce qu'ils sont. Les
+     * trois places, elles, disent ce que la distance peut renverser : une commune qui devance une autre
+     * d'un rang le doit à sa notoriété, et elle le garde jusqu'à deux ou trois cents kilomètres ; au-delà,
+     * le lieu tout proche reprend l'avantage. L'homonyme d'un autre continent, lui, perd cinq places - il
+     * sort de l'écran.
+     */
+    private const val NEAR_KM = 200.0
+    private const val PENALTY_RANKS = 3.0
+
+    /**
+     * L'ordre AFFICHÉ : celui du service, corrigé de la distance à [center] (en lon, lat).
+     *
+     * **Pourquoi ici et non dans la requête.** Photon sait biaiser lui-même par proximité, mais son biais
+     * fait remonter un hameau voisin devant la ville du même nom - c'est ce qui l'avait fait écarter. Le
+     * calcul fait ici garde les deux : le rang rendu par le service dit la notoriété du lieu, et la
+     * distance vient s'y ajouter sur une **échelle logarithmique** - 5 km contre 80 ne change presque rien,
+     * 200 km contre 9000 change tout. Une ville à 200 km reste donc devant un hameau tout proche, et
+     * l'homonyme d'un autre continent tombe en bas de liste.
+     *
+     * Deuxième raison, aussi décisive : le classement est ici la seule chose qu'on puisse vérifier sans
+     * réseau, comme [url] et [parse].
+     *
+     * Tri STABLE : à score égal, l'ordre du service est conservé. Sans centre connu, la liste ressort telle
+     * quelle - il n'y a alors rien à quoi comparer.
+     */
+    internal fun rank(places: List<GeocodePlace>, center: Pair<Double, Double>?, limit: Int): List<GeocodePlace> {
+        val c = center ?: return places.take(limit)
+        return places.withIndex()
+            .sortedBy { (i, p) ->
+                val km = TrackMath.haversine(c.first, c.second, p.lon, p.lat) / 1000.0
+                i + PENALTY_RANKS * log10(1 + km / NEAR_KM)
+            }
+            .map { it.value }
+            .take(limit)
     }
 
     /**
@@ -148,12 +200,16 @@ object Photon {
      * Réutilise le client HTTP des tuiles (mêmes en-têtes, mêmes garde-fous) plutôt que d'en ouvrir un second.
      */
     suspend fun search(
-        base: String, query: String, lang: String, limit: Int,
+        base: String, query: String, lang: String, limit: Int, center: Pair<Double, Double>? = null,
     ): List<GeocodePlace>? = withContext(Dispatchers.IO) {
-        val resp = TileHttp.fetch(url(base, query, lang, limit), TIMEOUT_MS, TIMEOUT_MS)
+        // Trois fois plus de candidats qu'on n'en affichera, le temps de les reordonner (cf. [rank]) : le
+        // lieu proche qu'on cherche arrive souvent en huitieme position d'une liste qui n'en montre que
+        // trois. Plafonne, parce qu'au-dela la reponse coute plus qu'elle ne rapporte.
+        val demande = if (center == null) limit else (limit * 3).coerceAtMost(MAX_CANDIDATES)
+        val resp = TileHttp.fetch(url(base, query, lang, demande, center), TIMEOUT_MS, TIMEOUT_MS)
         if (resp.status !in 200..299) return@withContext null
         val body = resp.body ?: return@withContext null
-        parse(body.toString(Charsets.UTF_8))
+        rank(parse(body.toString(Charsets.UTF_8)), center, limit)
     }
 
     /**

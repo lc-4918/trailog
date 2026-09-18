@@ -22,14 +22,63 @@ class PhotonTest {
     }
 
     /**
-     * La requete ne doit **jamais** porter de biais geographique. Photon accepte `lat`/`lon` et reordonne
-     * alors les resultats par proximite : chercher "Beziers" depuis l'Herault ferait remonter un hameau
-     * voisin du meme nom devant la ville. Sans eux, le classement reste celui de l'importance OSM.
+     * Le centre connu part avec la requete : ce n'est pas lui qui CLASSE - c'est [Photon.rank] -, mais lui
+     * qui fait entrer les lieux proches dans la liste des candidats. Un hameau a dix kilometres n'y
+     * figurerait jamais par sa seule notoriete, et un classement ne rattrape pas ce qui n'a pas ete rendu.
      */
-    @Test fun `la requete ne porte aucun biais de proximite`() {
-        val u = Photon.url(Photon.DEFAULT_URL, "beziers", "fr", 4)
-        assertTrue("biais de proximite dans $u", "lat=" !in u && "lon=" !in u)
+    @Test fun `la requete porte le centre quand on le connait`() {
+        val u = Photon.url(Photon.DEFAULT_URL, "beziers", "fr", 4, 3.21 to 43.34)
+        assertTrue("centre absent de $u", "lat=43.34" in u && "lon=3.21" in u)
     }
+
+    /** Aucun centre connu - localisation eteinte, carte pas encore cadree : la requete est celle d'avant,
+     *  au caractere pres. */
+    @Test fun `sans centre, la requete ne porte aucune coordonnee`() {
+        val u = Photon.url(Photon.DEFAULT_URL, "beziers", "fr", 4)
+        assertTrue("coordonnees dans $u", "lat=" !in u && "lon=" !in u)
+    }
+
+    // ---------- Classement ----------
+
+    /**
+     * Un homonyme d'un autre continent passait devant le lieu cherche a vingt kilometres : son orthographe
+     * collait, et sa notoriete le mettait en tete. La distance le fait tomber en bas de liste.
+     */
+    @Test fun `l'homonyme lointain passe derriere le lieu proche`() {
+        val loin = lieu("Beziers, Bresil", -47.0, -15.0)
+        val pres = lieu("Beziers, Herault", 3.21, 43.34)
+        val r = Photon.rank(listOf(loin, pres), center = 3.87 to 43.61, limit = 10)
+        assertEquals(listOf(pres, loin), r)
+    }
+
+    /**
+     * Mais la notoriete ne se perd pas pour autant : la ville qu'on cherchait, a 150 km, reste devant le
+     * hameau du meme nom a trois. C'est le dosage retenu - la distance compte sur une echelle
+     * logarithmique, ou la region entiere se lit comme "par ici".
+     */
+    @Test fun `la ville a cent cinquante kilometres reste devant le hameau tout proche`() {
+        val ville = lieu("Beziers, ville", 2.00, 43.60)
+        val hameau = lieu("Beziers, hameau", 3.90, 43.63)
+        val r = Photon.rank(listOf(ville, hameau), center = 3.87 to 43.61, limit = 10)
+        assertEquals(listOf(ville, hameau), r)
+    }
+
+    /** Sans centre connu, il n'y a rien a quoi comparer : l'ordre du service ressort tel quel. */
+    @Test fun `sans centre, le classement du service est conserve`() {
+        val a = lieu("A", -47.0, -15.0)
+        val b = lieu("B", 3.21, 43.34)
+        assertEquals(listOf(a, b), Photon.rank(listOf(a, b), center = null, limit = 10))
+    }
+
+    /** La liste rendue tient dans ce que l'ecran affiche : les candidats supplementaires ne servaient
+     *  qu'a reordonner. */
+    @Test fun `la liste est coupee a la limite demandee`() {
+        val lieux = (1..9).map { lieu("L$it", 3.0 + it / 100.0, 43.0) }
+        assertEquals(3, Photon.rank(lieux, center = 3.0 to 43.0, limit = 3).size)
+        assertEquals(3, Photon.rank(lieux, center = null, limit = 3).size)
+    }
+
+    private fun lieu(nom: String, lon: Double, lat: Double) = GeocodePlace(nom, lon, lat)
 
     /** Une instance auto-hebergee peut exposer une URL portant deja une chaine de requete (chemin derriere
      *  un reverse proxy, cle de service). Coller "?q=" derriere donnerait une URL invalide. */
@@ -46,8 +95,9 @@ class PhotonTest {
         assertTrue("lang=de" in Photon.url(Photon.DEFAULT_URL, "gap", "de", 4))
     }
 
-    /** Photon rend ses resultats deja classes : les reordonner ici defairait ce classement. */
-    @Test fun `l'ordre du service est conserve`() {
+    /** La LECTURE de la reponse ne reordonne rien : le classement est le fait de [Photon.rank], et lui
+     *  seul (cf. plus haut). */
+    @Test fun `l'ordre du service est conserve a la lecture`() {
         val r = Photon.parse(fc(
             feature(""""name":"Béziers","postcode":"34500","city":"Béziers","country":"France""""),
             feature(""""name":"Béziers","county":"Aude","country":"France""""),

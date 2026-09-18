@@ -345,10 +345,10 @@ private fun StepRow(
         delay(350)
         // Une seconde tentative avant d'abandonner : le premier appel paie l'ouverture de la liaison et
         // echoue parfois au delai, la ou le suivant, sur connexion deja etablie, repond aussitot.
-        var found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit)
+        var found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
         if (found == null) {
             delay(300)
-            found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit)
+            found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
         }
         step.results = found ?: emptyList()
         step.failed = found == null
@@ -720,11 +720,17 @@ fun defaultRouteName(steps: List<StepTarget>, currentPositionLabel: String): Str
 }
 
 /**
- * De quoi interroger le geocodeur depuis une etape : l'instance reglee, la langue, et le nombre de
- * propositions. Un porteur de valeurs plutot qu'une fonction de recherche : une lambda `suspend` traversant
- * un composable perd son caractere suspendu a la compilation, et l'appel ne compile plus.
+ * De quoi interroger le geocodeur depuis une etape : l'instance reglee, la langue, le nombre de propositions
+ * et l'endroit autour duquel chercher. Un porteur de valeurs plutot qu'une fonction de recherche : une
+ * lambda `suspend` traversant un composable perd son caractere suspendu a la compilation, et l'appel ne
+ * compile plus.
+ *
+ * [center], en (lon, lat), classe les propositions par proximite sans perdre la notoriete des lieux (cf.
+ * Photon.rank). Nul - aucune position connue, aucune carte encore cadree -, le service repond comme avant.
  */
-data class GeocodingParams(val base: String, val lang: String, val limit: Int)
+data class GeocodingParams(
+    val base: String, val lang: String, val limit: Int, val center: Pair<Double, Double>? = null,
+)
 
 /** Discipline retenue au demarrage du planificateur, tiree des reglages. */
 fun initialProfile(settings: SettingsEntity): RoutingProfile = RoutingProfile.of(settings.routingProfile)

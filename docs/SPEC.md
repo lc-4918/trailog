@@ -287,8 +287,25 @@ parce qu'il est conçu pour l'autocomplétion au clavier (Nominatim l'interdit d
 qu'il est **auto-hébergeable** : son URL est un réglage, une instance personnelle ne demande donc pas une
 nouvelle version de l'application.
 
-Les propositions sont classées par importance du lieu, sans biais de proximité : Photon accepte un centre
-de recherche, mais il ferait remonter un hameau voisin devant la ville du même nom.
+Les propositions mêlent **importance du lieu et proximité**. L'importance seule laissait passer devant un
+homonyme d'un autre continent - l'orthographe collait, la notoriété faisait le reste - pendant que le lieu
+cherché à vingt kilomètres attendait plus bas. Le biais de proximité de Photon, lui, fait l'inverse : il
+remonte un hameau voisin devant la ville du même nom.
+
+Le classement est donc **calculé dans l'application**, à partir de l'ordre rendu par le service : le rang
+dit la notoriété, la distance s'y ajoute sur une **échelle logarithmique**. Cinq kilomètres contre quatre-
+vingts ne change presque rien ; deux cents kilomètres contre neuf mille change tout. Une commune qui en
+devance une autre d'un rang garde son avantage jusqu'à deux ou trois cents kilomètres ; l'homonyme
+lointain, lui, perd cinq places et sort de l'écran. La référence est la **position GPS** quand elle est
+connue, le **centre de la carte affichée** à défaut : on cherche un lieu autour de là où l'on est, et à
+défaut autour de ce qu'on regarde - préparer une sortie depuis chez soi commence par amener la carte sur la
+région.
+
+La requête, elle, porte bien le centre : ce n'est pas lui qui classe, mais lui qui fait **entrer** les
+lieux proches dans la liste des candidats - un hameau à dix kilomètres n'y figurerait jamais par sa seule
+notoriété, et aucun classement ne rattrape ce qui n'a pas été renvoyé. Trois fois plus de candidats sont
+demandés qu'il n'en sera affiché, le temps de les réordonner. Le classement final tient dans une fonction
+pure, vérifiable sans réseau - comme la construction de l'URL et la lecture de la réponse.
 
 Le lieu choisi se marque d'une épingle noire, avec un zoom minimal garanti (12) pour qu'il reste situable
 depuis une vue à l'échelle d'un pays ; son infobulle en donne l'adresse, et rien de plus. Il entre aussi

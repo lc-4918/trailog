@@ -199,8 +199,9 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   d'information sur la carte qui déplie leur légende.
 - **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
   recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
-  en donne l'adresse. Les propositions sont classées par importance du lieu, une ville passant donc
-  avant un hameau du même nom.
+  en donne l'adresse. Les propositions mêlent l'importance du lieu et sa distance : une ville passe
+  devant un hameau du même nom, mais un homonyme d'un autre continent passe derrière ce qui est près
+  de vous — près de votre position GPS si elle est connue, près du centre de la carte sinon.
 - **Interroger un point de la carte** : un appui long n'importe où hors d'un marqueur — y compris sur
   une trace, un col ou un croisement de sentiers étant justement un endroit qu'on veut interroger — y pose
   une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet

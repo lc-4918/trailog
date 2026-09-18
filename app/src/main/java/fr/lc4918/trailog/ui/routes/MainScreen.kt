@@ -278,8 +278,6 @@ fun MainScreen(
     // Les deux boites que l'ecran ouvre pour son compte : service injoignable, editeur de proprietes.
     val dialogs = screen.dialogs
 
-    GeocodeSearchEffects(geo = geo, settings = settings, resultLimit = GeocodeResultLimit)
-
     // ---------- mesure sur trace ----------
     val measure = screen.measure
     // La mesure désactivée dans les réglages alors qu'elle est en cours efface tout : sans cela les
@@ -584,6 +582,23 @@ fun MainScreen(
     val moveTick = ticks.move
     val idleTick = ticks.idle
     val bearing = remember(moveTick) { controller.bearing() }
+
+    /*
+     * Autour de quoi le geocodeur cherche : la position du porteur, le centre de la carte a defaut.
+     *
+     * Les propositions se classent sur cette reference (cf. Photon.rank) : on cherche presque toujours un
+     * lieu autour de la ou l'on est, et a defaut autour de ce qu'on regarde - preparer une sortie depuis
+     * chez soi commence par amener la carte sur la region.
+     *
+     * [LocationControls.lastFix] est une simple lecture, sans rien demander au capteur : une frappe ne doit
+     * pas attendre un point. Le centre de la carte se relit a chaque immobilisation, la ou une mesure prise
+     * a chaque image du geste ne changerait rien au classement.
+     */
+    val vueCentre = remember(idleTick) { controller.cameraState()?.let { (la, lo, _) -> lo to la } }
+    val geocodeCenter = location.lastFix?.let { it.lon to it.lat } ?: vueCentre
+
+    GeocodeSearchEffects(geo = geo, settings = settings, resultLimit = GeocodeResultLimit,
+        center = geocodeCenter)
 
     /*
      * ---------- Points d'interet (DATAtourisme) ----------
@@ -941,7 +956,8 @@ fun MainScreen(
                         onPickOnMap = { step -> planner.startPickingOnMap(step) },
                         sensorEnabled = location.sensorEnabled,
                         geocoding = GeocodingParams(geocodingBase,
-                            ctx.resources.configuration.locales[0].language, GeocodeResultLimit),
+                            ctx.resources.configuration.locales[0].language, GeocodeResultLimit,
+                            geocodeCenter),
                         history = PlannerHistory.of(settings.plannerHistory),
                         // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
                         onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },

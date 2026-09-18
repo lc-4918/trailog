@@ -19,6 +19,9 @@ fun GeocodeSearchEffects(
     geo: GeocodeSearchState,
     settings: SettingsEntity,
     resultLimit: Int,
+    /** Autour de quoi chercher, en (lon, lat) : la position du porteur, le centre de la carte a defaut.
+     *  Les propositions se classent dessus sans perdre la notoriete des lieux (cf. Photon.rank). */
+    center: Pair<Double, Double>? = null,
 ) {
     val ctx = LocalContext.current
     // Interrogation du géocodeur, une frappe stabilisée. Sans ce délai, chaque lettre partirait en requête :
@@ -33,8 +36,8 @@ fun GeocodeSearchEffects(
         // barre de recherche de la carte n'a pas de place pour un message.
         val base = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         val lang = ctx.resources.configuration.locales[0].language
-        geo.results = (Photon.search(base, q, lang, resultLimit)
-            ?: Photon.search(base, q, lang, resultLimit)).orEmpty()
+        geo.results = (Photon.search(base, q, lang, resultLimit, center)
+            ?: Photon.search(base, q, lang, resultLimit, center)).orEmpty()
         geo.searching = false
     }
     // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela
