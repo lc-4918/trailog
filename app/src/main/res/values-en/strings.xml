@@ -582,6 +582,7 @@
     <string name="poi_cat_toilets">Toilets</string>
     <string name="poi_cat_canoe">Canoe rental</string>
     <string name="poi_bubble_title">Point of interest</string>
+    <string name="poi_google_maps">Google Maps listing</string>
     <string name="poi_set_start">Set as start point</string>
     <string name="poi_set_end">Set as end point</string>
     <string name="poi_add_step">Add as waypoint</string>

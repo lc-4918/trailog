@@ -44,6 +44,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.poi.Poi
+import java.net.URLEncoder
 import fr.lc4918.trailog.ui.mappoint.MeasureState
 import fr.lc4918.trailog.ui.geocode.CloseCorner
 import fr.lc4918.trailog.ui.geocode.MeasureAction
@@ -154,10 +155,19 @@ fun PoiBubble(
                 Column(Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) {
                     // La categorie sous l'en-tete, et non par-dessus la photo : posee sur l'image, elle
                     // en masquait le bas - justement la ou le cliche montre le lieu.
-                    CategoryChip(
-                        poi, fontSp,
-                        Modifier.padding(top = if (poi.imageUrl != null) 8.dp else 6.dp, bottom = 2.dp),
-                    )
+                    //
+                    // Le lien vers Google Maps lui fait face, a l'autre bout de la meme ligne : la
+                    // categorie est courte, la place a sa droite etait perdue, et un bouton pose la ne
+                    // coute aucune hauteur a une bulle qui en manque.
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .padding(top = if (poi.imageUrl != null) 8.dp else 6.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CategoryChip(poi, fontSp, Modifier.weight(1f, fill = false))
+                        Spacer(Modifier.weight(1f))
+                        GoogleMapsLink(poi, fontSp, onOpenWeb)
+                    }
                     /*
                      * Les memes cinq actions que l'infobulle d'un appui long, et dans le meme ordre : les
                      * deux mesures d'abord, les trois actions d'itineraire ensuite.
@@ -231,6 +241,53 @@ private fun Nom(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
             .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp),
     )
+}
+
+/**
+ * Le lien vers la fiche Google Maps du lieu : son "G", a l'autre bout de la ligne de la categorie.
+ *
+ * **Ce que Google sait et que DATAtourisme ne dit pas** : les horaires du jour, le telephone, les avis, la
+ * photo prise la semaine derniere. L'infobulle ne cherche pas a les reproduire - elle mene a l'endroit qui
+ * les tient deja, et rend la main.
+ *
+ * La recherche vise le NOM et la commune plutot que les seules coordonnees : des coordonnees ouvrent une
+ * epingle posee au milieu de rien, quand un nom tombe sur la fiche du lieu, avec tout ce qu'elle porte. Le
+ * lieu sans nom - une fontaine, des toilettes - retombe sur ses coordonnees, faute de mieux : c'est encore
+ * l'endroit exact, simplement sans fiche.
+ *
+ * Le "G" officiel, dans ses quatre couleurs (cf. `res/drawable/ic_google_g.xml`) : c'est la marque du
+ * service vers lequel on part, et la reconnaitre est tout l'interet d'un bouton de cette taille. Pose avec
+ * [Image] et non [Icon], qui le repeindrait d'une seule teinte.
+ */
+@Composable
+private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
+    val libelle = stringResource(R.string.poi_google_maps)
+    Box(
+        Modifier.size((fontSp + 14).dp).clip(RoundedCornerShape(50))
+            .clickable { onOpenWeb(googleMapsUrl(poi)) },
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(painterResource(R.drawable.ic_google_g), libelle, Modifier.size((fontSp + 2).dp))
+    }
+}
+
+/**
+ * L'URL de recherche Google Maps qui ouvre la fiche du lieu.
+ *
+ * La forme documentee par Google (`?api=1&query=`), la seule dont le contrat soit ecrit : les URL de carte
+ * lues dans une barre d'adresse changent sans preavis. La commune accompagne le nom quand on la connait -
+ * "Chateau de Foix" seul peut tomber a l'autre bout du pays, et les homonymes sont la regle pour un lavoir
+ * ou une chapelle.
+ *
+ * Point decimal impose pour les coordonnees, comme partout ailleurs : la virgule d'une locale francaise
+ * separerait a la fois les decimales et les deux valeurs.
+ */
+internal fun googleMapsUrl(poi: Poi): String {
+    val recherche = poi.label.ifBlank { null }
+        ?.let { nom -> listOfNotNull(nom, poi.city).joinToString(", ") }
+        ?: "%.6f,%.6f".format(java.util.Locale.US, poi.lat, poi.lon)
+    return "https://www.google.com/maps/search/?api=1&query=" +
+        URLEncoder.encode(recherche, "UTF-8")
 }
 
 /** Le libellé de la catégorie, sur l'aplat de son groupe : la même couleur que le marqueur qu'on vient de

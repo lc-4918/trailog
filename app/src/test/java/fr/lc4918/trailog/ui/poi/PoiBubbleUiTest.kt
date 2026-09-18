@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -108,6 +109,29 @@ class PoiBubbleUiTest {
         ouvre(camping, onOpenWeb = { ouvert = it })
         compose.onNodeWithText("Camping du Drac").performClick()
         assertEquals("https://exemple.fr", ouvert)
+    }
+
+    /**
+     * Le "G" mene a la fiche Google Maps du lieu : la recherche vise son NOM et sa commune.
+     *
+     * Les seules coordonnees ouvriraient une epingle posee au milieu de rien, la ou un nom tombe sur la
+     * fiche - horaires, telephone, avis, photos -, tout ce que l'infobulle ne cherche pas a reproduire.
+     */
+    @Test fun `le G ouvre la fiche Google Maps du lieu`() {
+        var ouvert: String? = null
+        ouvre(camping, onOpenWeb = { ouvert = it })
+        compose.onNodeWithContentDescription(ctx.getString(R.string.poi_google_maps)).performClick()
+        assertEquals(
+            "https://www.google.com/maps/search/?api=1&query=Camping+du+Drac%2C+Grenoble", ouvert)
+    }
+
+    /** Un lieu sans nom retombe sur ses coordonnees : c'est encore l'endroit exact, simplement sans
+     *  fiche - une fontaine n'en a pas. */
+    @Test fun `un lieu sans nom mene a ses coordonnees`() {
+        var ouvert: String? = null
+        ouvre(fontaine, onOpenWeb = { ouvert = it })
+        compose.onNodeWithContentDescription(ctx.getString(R.string.poi_google_maps)).performClick()
+        assertEquals("https://www.google.com/maps/search/?api=1&query=45.200000%2C5.700000", ouvert)
     }
 
     /** Sans site, le nom ne mene nulle part : un tap dessus ne doit rien declencher, ni planter. */

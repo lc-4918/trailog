@@ -582,6 +582,7 @@
     <string name="poi_cat_toilets">Komunak</string>
     <string name="poi_cat_canoe">Kanoa-alokairua</string>
     <string name="poi_bubble_title">Interesgunea</string>
+    <string name="poi_google_maps">Google Maps fitxa</string>
     <string name="poi_set_start">Ezarri hasiera-puntu gisa</string>
     <string name="poi_set_end">Ezarri helmuga-puntu gisa</string>
     <string name="poi_add_step">Gehitu etapa gisa</string>

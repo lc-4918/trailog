@@ -582,6 +582,7 @@
     <string name="poi_cat_toilets">Sanitários</string>
     <string name="poi_cat_canoe">Aluguer de canoas</string>
     <string name="poi_bubble_title">Ponto de interesse</string>
+    <string name="poi_google_maps">Ficha do Google Maps</string>
     <string name="poi_set_start">Definir como ponto de partida</string>
     <string name="poi_set_end">Definir como ponto de chegada</string>
     <string name="poi_add_step">Adicionar como etapa</string>

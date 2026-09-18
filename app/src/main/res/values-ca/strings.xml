@@ -582,6 +582,7 @@
     <string name="poi_cat_toilets">Lavabos</string>
     <string name="poi_cat_canoe">Lloguer de caiacs</string>
     <string name="poi_bubble_title">Punt d\'interès</string>
+    <string name="poi_google_maps">Fitxa de Google Maps</string>
     <string name="poi_set_start">Defineix com a punt de partida</string>
     <string name="poi_set_end">Defineix com a punt d\'arribada</string>
     <string name="poi_add_step">Afegeix com a etapa</string>

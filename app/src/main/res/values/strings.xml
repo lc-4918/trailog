@@ -584,6 +584,7 @@
     <string name="poi_cat_toilets">Toilettes</string>
     <string name="poi_cat_canoe">Location de canoë</string>
     <string name="poi_bubble_title">Point d\'intérêt</string>
+    <string name="poi_google_maps">Fiche Google Maps</string>
     <string name="poi_set_start">Définir comme point de départ</string>
     <string name="poi_set_end">Définir comme point d\'arrivée</string>
     <string name="poi_add_step">Ajouter l\'étape</string>

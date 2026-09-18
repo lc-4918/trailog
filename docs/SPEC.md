@@ -638,7 +638,13 @@ d'elle-même.
 Chaque lieu est un **marqueur en forme de goutte**, à la couleur de son groupe et portant le pictogramme de
 sa catégorie - une tente pour un camping, un panier pour un marché, une goutte pour un point d'eau. Un tap
 ouvre son infobulle : sa **photo en image de garde** quand il en publie une (un lieu sur trois environ), son
-nom par-dessus sur fond blanc, cliquable vers son site s'il en a un, et le badge de sa catégorie. Puis les
+nom par-dessus sur fond blanc, cliquable vers son site s'il en a un, et le badge de sa catégorie. À l'autre
+bout de cette ligne-là, le **"G" de Google Maps** mène à la fiche du lieu : ce que les deux bases ne disent
+pas - les horaires du jour, le téléphone, les avis, la photo prise la semaine dernière - s'y trouve déjà, et
+l'infobulle ne cherche pas à le reproduire. La recherche vise le **nom et la commune** plutôt que les seules
+coordonnées, qui n'ouvriraient qu'une épingle posée au milieu de rien ; un lieu sans nom - une fontaine, des
+toilettes - retombe faute de mieux sur ses coordonnées. La place à droite du badge était perdue, et le
+bouton n'y coûte aucune hauteur à une bulle qui en manque. Puis les
 **trois actions d'itinéraire** - définir comme point de départ, comme point d'arrivée, ajouter l'étape - qui
 remplissent le planificateur et l'ouvrent. **Ouvrir l'infobulle suffit** à inscrire le lieu dans
 l'historique du planificateur (section 14), sans attendre l'une des trois : on regarde d'abord, on compose
