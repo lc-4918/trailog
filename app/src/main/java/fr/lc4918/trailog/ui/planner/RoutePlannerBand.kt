@@ -542,8 +542,10 @@ private fun StepRow(
             ) {
                 Text(stringResource(R.string.planner_search_failed), fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                // Meme graisse que le libelle d'un bouton de dialogue (labelLarge, demi-gras) : c'est le
+                // meme genre de geste, et le gras le faisait crier plus fort que le "Fermer" d'une boite.
                 Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
             }
         }
         step.results.forEach { place ->
@@ -629,7 +631,7 @@ private fun ResultsZone(
             Text(stringResource(R.string.planner_no_network), fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
             Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
-                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
         }
         is RouteState.Done -> {
             // Fenetre affichee du profil : la plage zoomee, ou tout le parcours. Le kilometrage n'est
