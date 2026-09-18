@@ -227,10 +227,34 @@ class PoiState {
         private set
 
     /**
+     * Le couloir des traces a CHANGE : ce qu'il avait ecarte est a redemander.
+     *
+     * **Sans cela, la couche restait vide pour de bon.** L'emprise ecartee est retenue comme chargee (cf.
+     * [awayFromTracks]) - a juste titre, tant que rien ne bouge. Mais afficher une trace qui passe par la,
+     * ou elargir la distance du reglage, ne bougeait ni la vue ni les filtres : le chargement se croyait
+     * fait, et la carte restait nue sans que rien ne l'explique. Le geste qui devait ramener les points
+     * n'avait aucun effet, et l'on pouvait chercher longtemps.
+     *
+     * Ne touche QUE la marque posee par le couloir : un vrai chargement, lui, reste valable - le couloir
+     * ne change rien a ce que les services ont deja rendu pour cette vue.
+     */
+    fun corridorChanged() {
+        if (!awayFromTracks) return
+        loaded = null
+        loadedFilters = null
+        loadedOsm = null
+        loadedComplete = false
+        loadedAt = 0L
+        awayFromTracks = false
+    }
+
+    /**
      * Rien a demander : aucune trace affichee ne passe assez pres de cette vue.
      *
      * L'emprise est retenue comme CHARGEE, et c'est voulu : il n'y a rien a redemander tant qu'on ne
-     * bouge pas, et un chargement par geste de carte serait exactement ce qu'on cherche a eviter.
+     * bouge pas, et un chargement par geste de carte serait exactement ce qu'on cherche a eviter. Ce qui
+     * FAIT bouger, en revanche - une trace qu'on affiche, une distance qu'on change -, leve la marque
+     * (cf. [corridorChanged]).
      */
     fun awayFromTracks(box: Bbox, filters: PoiFilters, osm: Boolean, now: Long) {
         pois = emptyList()

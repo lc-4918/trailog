@@ -27,6 +27,36 @@ class PoiStateTest {
      *  quelque chose (cf. PoiFilters) : l'ecran le lui dit, et c'est ce que reproduit cet appel. */
     private fun couche() = PoiState().apply { showLayer(true) }
 
+    // ---------- Le couloir des traces ----------
+
+    /**
+     * Le couloir a ecarte cette vue, puis il CHANGE : ce qu'il avait ecarte redevient a demander.
+     *
+     * **Le defaut venait du terrain** : une seule trace affichee, a quatre cents kilometres, et un couloir
+     * de cinq. Rien ne se chargeait - c'est la regle - mais masquer la trace, ou elargir la distance, n'y
+     * changeait rien : l'emprise ecartee etait retenue comme chargee, et le geste qui devait ramener les
+     * points restait sans effet. Il fallait relancer l'application.
+     */
+    @Test fun `un couloir qui change redemande ce qu'il avait ecarte`() {
+        val poi = couche()
+        poi.awayFromTracks(vue, filtres, osm = true, now = 0L)
+        assertTrue("la vue est tenue pour chargee", poi.awayFromTracks)
+        assertFalse(poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
+        poi.corridorChanged()
+        assertFalse("le message n'a plus lieu d'etre", poi.awayFromTracks)
+        assertTrue("et la vue se redemande", poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
+    }
+
+    /** Un VRAI chargement, lui, reste valable : le couloir ne change rien a ce que les services ont
+     *  deja rendu pour cette vue. */
+    @Test fun `un couloir qui change ne jette pas un chargement abouti`() {
+        val poi = couche()
+        poi.publish(vue, filtres, listOf(lieu), complete = true, now = 0L)
+        poi.corridorChanged()
+        assertFalse("rien a redemander", poi.needsLoad(vue, filtres, osm = true, now = 1_000L))
+        assertEquals(listOf(lieu), poi.pois)
+    }
+
     /**
      * Le message de zoom se leve DES QUE le zoom est bon, sans attendre les points.
      *

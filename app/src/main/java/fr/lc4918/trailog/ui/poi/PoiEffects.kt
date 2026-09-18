@@ -81,6 +81,16 @@ fun PoiEffects(
      */
     val enLigne by remember(ctx) { NetworkStatus.online(ctx) }.collectAsState(initial = true)
 
+    /*
+     * Le couloir a change - une trace affichee ou masquee, la distance du reglage deplacee : ce qu'il
+     * avait ecarte redevient a demander (cf. PoiState.corridorChanged).
+     *
+     * Un effet a part, et AVANT celui du chargement : celui-ci s'execute dans la foulee, sur un etat deja
+     * remis a plat. Regroupes, la marque aurait ete levee apres avoir ete lue, c'est-a-dire un geste trop
+     * tard.
+     */
+    LaunchedEffect(corridorTracks, corridorM) { state.corridorChanged() }
+
     LaunchedEffect(state.visible, state.masked, idleTick, filters, osmComplement, osmUrl, positioned,
         enLigne, corridorTracks, corridorM) {
         if (!state.visible) return@LaunchedEffect
