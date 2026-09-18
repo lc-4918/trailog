@@ -623,6 +623,29 @@ fun MainScreen(
     // Les traces affichees, pour le couloir des points d'interet (cf. PoiCorridor). Collectees ici et non
     // dans les effets : c'est le ViewModel qui les tient, deja decimees et deja lues.
     val trackCorridor by vm.trackCorridor.collectAsState()
+    /*
+     * **Le parcours qu'on vient de calculer borde le couloir comme une trace de la bibliotheque.**
+     *
+     * C'est meme le cas qui compte le plus : on cherche ou dormir et ou manger LE LONG DU TRAJET QU'ON
+     * PREPARE, et ce trajet-la n'est pas encore une couche - il ne le devient qu'en l'enregistrant. La
+     * carte restait donc vide au-dessus de l'itineraire affiche, a moins d'avoir par chance une trace
+     * importee dans les parages.
+     *
+     * Decime a [CorridorMaxPoints] : le couloir se mesure en kilometres, et un sommet tous les cent metres
+     * y repond aussi bien qu'un sommet tous les cinq. Le filtre compare chaque lieu a chaque sommet, et un
+     * parcours de trois cents kilometres en porte des dizaines de milliers.
+     */
+    val routeCorridor = remember(planner.done?.track) {
+        val s = planner.done?.track?.samples.orEmpty()
+        if (s.isEmpty()) null
+        else {
+            val pas = (s.size / CorridorMaxPoints + 1)
+            s.filterIndexed { i, _ -> i % pas == 0 }.map { it.lon to it.lat }
+        }
+    }
+    val corridorTracks = remember(trackCorridor, routeCorridor) {
+        if (routeCorridor == null) trackCorridor else trackCorridor + listOf(routeCorridor)
+    }
     LaunchedEffect(poiFilters, settings.poiEnabled) {
         poi.showLayer(settings.poiEnabled && !poiFilters.nothingShown)
     }
@@ -637,7 +660,7 @@ fun MainScreen(
         osmComplement = settings.poiOsmComplement,
         osmUrl = settings.poiOsmUrl,
         filters = poiFilters,
-        corridorTracks = trackCorridor,
+        corridorTracks = corridorTracks,
         corridorM = settings.poiTrackCorridorM,
         idleTick = idleTick,
         markerPx = markerPx,
@@ -1198,6 +1221,10 @@ fun MainScreen(
 /** Propositions demandées au géocodeur. Plus que les 4 visibles : le défilement de la liste n'a de sens
  *  que s'il y a de quoi défiler, et le service facture le même aller-retour dans les deux cas. */
 private const val GeocodeResultLimit = 10
+
+/** Nombre maximal de sommets retenus du parcours calcule pour border le couloir des points d'interet
+ *  (cf. PoiCorridor) : le couloir se mesure en kilometres, un sommet tous les cent metres y suffit. */
+private const val CorridorMaxPoints = 1_000
 
 /** Part de la hauteur d'ecran que la bande du planificateur ne depasse jamais. */
 private const val PlannerMaxHeightRatio = 0.6f

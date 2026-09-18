@@ -595,7 +595,7 @@
     <string name="settings_poi_select_all">Select all</string>
     <string name="settings_label_poi_corridor">Maximum distance from a track</string>
     <string name="settings_poi_corridor_off">No limit</string>
-    <string name="settings_poi_corridor_hint">Points of interest far from every displayed track are not requested. At the far left, no limit applies. With no track displayed, nothing is filtered.</string>
+    <string name="settings_poi_corridor_hint">Points of interest far from every displayed track and from the calculated route are not requested. At the far left, no limit applies. With no track or route displayed, nothing is filtered.</string>
     <string name="settings_poi_attribution">Data: DATAtourisme, Etalab Open Licence 2.0, and OpenStreetMap, ODbL licence.</string>
     <string name="settings_clear_poi_cache">Clear the points of interest cache</string>
     <string name="settings_poi_cache_empty">No cached venue</string>

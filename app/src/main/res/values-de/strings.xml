@@ -595,7 +595,7 @@
     <string name="settings_poi_select_all">Alle auswählen</string>
     <string name="settings_label_poi_corridor">Maximaler Abstand zu einer Spur</string>
     <string name="settings_poi_corridor_off">Ohne Begrenzung</string>
-    <string name="settings_poi_corridor_hint">Points of Interest, die von allen angezeigten Spuren entfernt sind, werden nicht angezeigt. Ohne angezeigte Spur wird nichts gefiltert.</string>
+    <string name="settings_poi_corridor_hint">Points of Interest, die von allen angezeigten Spuren und von der berechneten Route entfernt sind, werden nicht angezeigt. Ohne angezeigte Spur oder Route wird nichts gefiltert.</string>
     <string name="settings_poi_attribution">Daten: DATAtourisme, Etalab Open Licence 2.0, und OpenStreetMap, ODbL-Lizenz.</string>
     <string name="settings_clear_poi_cache">Zwischenspeicher der Sonderziele leeren</string>
     <string name="settings_poi_cache_empty">Keine gespeicherten Orte</string>

@@ -595,7 +595,7 @@
     <string name="settings_poi_select_all">Selecciona-ho tot</string>
     <string name="settings_label_poi_corridor">Distància màxima a una traça</string>
     <string name="settings_poi_corridor_off">Sense límit</string>
-    <string name="settings_poi_corridor_hint">Els punts d\'interès allunyats de totes les traces mostrades no es mostren. Sense cap traça mostrada, no es filtra res.</string>
+    <string name="settings_poi_corridor_hint">Els punts d\'interès allunyats de totes les traces mostrades i de l\'itinerari calculat no es mostren. Sense cap traça ni itinerari mostrat, no es filtra res.</string>
     <string name="settings_poi_attribution">Dades: DATAtourisme, Llicència Oberta Etalab 2.0, i OpenStreetMap, llicència ODbL.</string>
     <string name="settings_clear_poi_cache">Buida la memòria cau de punts d\'interès</string>
     <string name="settings_poi_cache_empty">Cap lloc a la memòria cau</string>

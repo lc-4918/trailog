@@ -58,6 +58,27 @@ object Overpass {
     const val DEFAULT_URL = "https://overpass-api.de/api/interpreter"
 
     /**
+     * Les instances de SECOURS, essayees dans l'ordre quand celle d'origine n'a pas repondu.
+     *
+     * **Deux tentatives sur la meme instance ne suffisent pas.** Le refus d'`overpass-api.de` n'est pas un
+     * hoquet : aux heures chargees, la passerelle rend des 504 en rafale pendant plusieurs minutes, et il
+     * arrive qu'elle refuse la liaison tout court. Le groupe "Manger" - que la base touristique ne connait
+     * pas et qui ne vient donc que d'OpenStreetMap - disparaissait alors de la carte sans explication, la
+     * ou l'hebergement, servi par l'autre source, restait la. Un autre serveur repond, lui, tout de suite :
+     * ces instances servent la MEME base, et la question posee est la meme.
+     *
+     * Elles ne sont essayees que si l'on interroge l'instance PAR DEFAUT - URL vide, ou egale a
+     * [DEFAULT_URL], les deux formes arrivant ici selon le chemin emprunte. Qui vise sa propre instance a
+     * une raison de le faire - un reseau ferme, une base a soi -, et l'envoyer en cachette chez des tiers
+     * trahirait ce choix. Le repli n'appartient qu'au defaut.
+     */
+    private val MIRRORS = listOf(
+        "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    )
+
+    /**
      * Délai annoncé au serveur, en secondes : c'est lui qui abandonne, plutôt que nous.
      *
      * Cinquante et non vingt-cinq, et c'est une correction : mesurée sur `overpass-api.de`, une requête de
@@ -67,9 +88,40 @@ object Overpass {
      */
     private const val QUERY_TIMEOUT_S = 50
 
-    /** Délai de la liaison, plus large que celui de la requête : le serveur doit avoir le temps de rendre
+    /** Délai de LECTURE, plus large que celui de la requête : le serveur doit avoir le temps de rendre
      *  son propre abandon, qui vaut mieux qu'une coupure sans réponse. */
     private const val TIMEOUT_MS = 60_000
+
+    /**
+     * Délai d'ÉTABLISSEMENT de la liaison, court et volontairement distinct du précédent.
+     *
+     * Une instance qui ne répond plus du tout - hôte injoignable, port fermé - ne se distingue autrement
+     * d'une instance lente qu'au bout d'une minute entière ; avec plusieurs instances de secours à essayer
+     * (cf. [MIRRORS]), la carte attendait alors des minutes avant de montrer quoi que ce soit. Une liaison
+     * qui ne s'ouvre pas en huit secondes ne s'ouvrira pas : c'est la poignée de main, pas le travail du
+     * serveur, et celui-ci garde sa minute une fois la liaison établie.
+     */
+    private const val CONNECT_TIMEOUT_MS = 8_000
+
+    /**
+     * Délai de lecture des instances de SECOURS, plus court que celui de l'instance d'origine.
+     *
+     * Une minute par instance, essayées l'une après l'autre, faisait attendre la carte trois minutes avant
+     * de renoncer - et le groupe *Manger* n'arrivait jamais. Ces instances-là sont un repli : si l'une
+     * d'elles n'a rien rendu en vingt-cinq secondes, la suivante a plus de chances d'aboutir vite que
+     * celle-ci d'aboutir enfin.
+     */
+    private const val MIRROR_TIMEOUT_MS = 25_000
+
+    /**
+     * La dernière instance qui a RÉPONDU, essayée en tête la fois suivante.
+     *
+     * Une mémoire de session, et c'est assez : quand l'instance par défaut est injoignable depuis un réseau
+     * donné - ce qui arrive, et pas seulement aux heures chargées -, chaque tuile repayait sinon la cascade
+     * entière, deux échecs et leurs délais compris, pour finir au même endroit. La carte se charge par
+     * groupes et par quadrants : la première tuile paie la recherche, les autres partent droit au but.
+     */
+    @Volatile private var derniereQuiRepond: String? = null
 
     /**
      * Attente avant la seconde tentative.
@@ -276,15 +328,26 @@ object Overpass {
      * En POST et non en GET : la requête dépasse couramment le millier de caractères, et une URL de cette
      * longueur se fait tronquer par les intermédiaires.
      *
-     * **Deux tentatives** : l'instance publique refuse une requête sur deux aux heures chargées, et son
-     * refus arrive bien avant qu'elle n'ait travaillé.
+     * **Deux tentatives, puis les instances de secours** (cf. [MIRRORS]) : l'instance publique refuse une
+     * requête sur deux aux heures chargées, et son refus arrive bien avant qu'elle n'ait travaillé - mais
+     * il lui arrive aussi de refuser pendant plusieurs minutes d'affilée, et insister ne mène alors nulle
+     * part. Une URL réglée par l'utilisateur ne connaît pas ce repli : elle est essayée deux fois, et c'est
+     * tout.
      */
     private suspend fun fetchTile(base: String, box: Bbox, categories: Set<PoiCategory>): Tuile {
         // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
         val ql = query(box, categories) ?: return Tuile(emptyList(), tronque = false, echec = false)
         val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
-        val cible = base.ifBlank { DEFAULT_URL }
-        repeat(2) { essai ->
+        // L'instance reglee d'abord, deux fois ; puis les instances de secours, une fois chacune - mais
+        // seulement quand rien n'a ete regle (cf. MIRRORS).
+        val defaut = base.isBlank() || base.trim() == DEFAULT_URL
+        val cascade = if (defaut) listOf(DEFAULT_URL, DEFAULT_URL) + MIRRORS else listOf(base, base)
+        // Celle qui a repondu la derniere fois passe devant, sans disparaitre de la suite : si elle flanche
+        // a son tour, la cascade ordinaire reprend derriere elle.
+        val cibles = derniereQuiRepond
+            ?.takeIf { defaut && it != cascade.first() }
+            ?.let { listOf(it) + cascade } ?: cascade
+        cibles.forEachIndexed { essai, cible ->
             if (essai > 0) delay(RETRY_DELAY_MS)
             /*
              * `runInterruptible` et non un appel direct : un geste de carte de plus annule ce chargement,
@@ -300,10 +363,12 @@ object Overpass {
                 TileHttp.post(
                     cible, corps,
                     contentType = "application/x-www-form-urlencoded; charset=utf-8",
-                    connectTimeoutMs = TIMEOUT_MS, readTimeoutMs = TIMEOUT_MS,
+                    connectTimeoutMs = CONNECT_TIMEOUT_MS,
+                    readTimeoutMs = if (cible == DEFAULT_URL || !defaut) TIMEOUT_MS else MIRROR_TIMEOUT_MS,
                 )
             }
-            val corpsRecu = resp.body ?: return@repeat
+            val corpsRecu = resp.body ?: return@forEachIndexed
+            derniereQuiRepond = cible
             val brut = count(corpsRecu.toString(Charsets.UTF_8))
             return Tuile(
                 parse(corpsRecu.toString(Charsets.UTF_8), categories),
@@ -311,7 +376,7 @@ object Overpass {
                 echec = false,
             )
         }
-        // L'instance n'a jamais repondu - un 504, une coupure, un delai depasse. La zone peut etre reellement
+        // Aucune instance n'a repondu - des 504, une coupure, un delai depasse. La zone peut etre reellement
         // vide, mais on n'en sait rien, et l'appelant ne doit pas retenir cette emprise comme chargee : le
         // groupe manquant ne serait plus jamais redemande (cf. PoiLoad.complete).
         return Tuile(emptyList(), tronque = false, echec = true)

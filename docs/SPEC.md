@@ -679,6 +679,42 @@ lève d'un doigt. Ce qui a été vu une fois est **gardé une semaine** : sans r
 couche montre les derniers points connus et l'annonce ; si elle ne connaît rien de cette zone, elle réclame
 une connexion plutôt que de laisser croire à une région sans un seul café.
 
+**Quand l'instance publique d'OpenStreetMap refuse, une autre prend le relais.** Overpass rend des 504 en
+rafale aux heures chargées, parfois plusieurs minutes durant, et il lui arrive de refuser la liaison tout
+court : insister sur le même serveur ne mène alors nulle part. Le groupe *Manger* - que la base touristique
+ne connaît qu'à travers les hôtels qui servent à manger, et qui vient donc d'OpenStreetMap - disparaissait
+de la carte sans explication, pendant que l'hébergement, servi par l'autre source, restait là. Après deux
+tentatives, la requête part donc vers des **instances de secours**, qui servent la même base. Une URL
+**réglée** par l'utilisateur n'a pas ce repli : viser sa propre instance est un choix - un réseau fermé, une
+base à soi - et l'envoyer en cachette chez des tiers le trahirait.
+
+Deux détails font la différence entre un repli théorique et une carte qui se remplit. Les instances de
+secours ont un **délai de lecture plus court** que l'instance d'origine (vingt-cinq secondes contre une
+minute) : essayées l'une après l'autre, elles faisaient sinon attendre trois minutes avant de renoncer. Et
+la **dernière qui a répondu passe en tête** la fois suivante, le temps de la session : la carte se charge
+par groupes et par quadrants, la première tuile paie la recherche, les autres partent droit au but. Sur un
+réseau d'où l'instance par défaut est injoignable - cela arrive, et pas seulement aux heures chargées -,
+c'est ce qui sépare un groupe *Manger* qui arrive en quelques secondes d'un groupe qui n'arrive jamais.
+
+**Le couloir des traces, et l'itinéraire avec elles.** Un réglage - *Distance maximale à une trace* - écarte
+les lieux éloignés de tout ce que la carte montre comme parcours : on cherche où dormir et où manger **le
+long du trajet**, pas au hasard d'une ville traversée. Le réglage gouverne la **requête** et pas seulement
+l'affichage : à plusieurs centaines de kilomètres de toute trace, on interrogeait les deux services pour
+tout jeter ensuite - la carte restait vide, ce qui est l'effet voulu, mais on avait payé le chargement.
+L'écran dit alors pourquoi il ne montre rien, faute de quoi le réglage se lirait comme une panne.
+
+**Le parcours du planificateur compte comme une trace**, et c'est même le cas principal : on prépare un
+trajet, on veut voir ce qu'il longe, et ce trajet-là n'est pas encore une couche - il ne le devient qu'en
+l'enregistrant. Sans lui, la carte restait vide au-dessus de l'itinéraire qu'on venait de calculer, à moins
+d'avoir par chance une trace importée dans les parages. Ses sommets sont décimés pour ce seul usage : le
+couloir se mesure en kilomètres, un sommet tous les cent mètres y répond aussi bien qu'un sommet tous les
+cinq, et le filtre compare chaque lieu à chaque sommet.
+
+**Ce que le couloir a écarté se redemande dès qu'il change.** L'emprise écartée est retenue comme chargée -
+il n'y a rien à redemander tant que rien ne bouge - mais afficher une trace qui passe par là, ou élargir la
+distance, lève cette marque. Sans cela, le geste qui devait ramener les points restait sans effet : le
+chargement se croyait fait, et il fallait relancer l'application.
+
 **Une zone téléchargée hors ligne peut emporter ses lieux** avec ses tuiles, par une case de l'écran de
 configuration - présente seulement si la couche est allumée, cochée d'office si elle l'est. C'est ce qui
 manquait pour tenir la promesse du hors-ligne : le cache ordinaire ne retient que ce qu'on a survolé

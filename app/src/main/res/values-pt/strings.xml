@@ -595,7 +595,7 @@
     <string name="settings_poi_select_all">Selecionar tudo</string>
     <string name="settings_label_poi_corridor">Distância máxima a um trajeto</string>
     <string name="settings_poi_corridor_off">Sem limite</string>
-    <string name="settings_poi_corridor_hint">Os pontos de interesse afastados de todos os trajetos apresentados não são mostrados. Sem trajeto apresentado, nada é filtrado.</string>
+    <string name="settings_poi_corridor_hint">Os pontos de interesse afastados de todos os trajetos apresentados e do itinerário calculado não são mostrados. Sem trajeto nem itinerário apresentado, nada é filtrado.</string>
     <string name="settings_poi_attribution">Dados: DATAtourisme, Licença Aberta Etalab 2.0, e OpenStreetMap, licença ODbL.</string>
     <string name="settings_clear_poi_cache">Esvaziar a cache dos pontos de interesse</string>
     <string name="settings_poi_cache_empty">Nenhum local em cache</string>

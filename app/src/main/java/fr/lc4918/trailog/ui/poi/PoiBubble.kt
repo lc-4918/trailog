@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -262,12 +263,18 @@ private fun Nom(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
 @Composable
 private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
     val libelle = stringResource(R.string.poi_google_maps)
+    val cible = (fontSp + 14).dp
+    val dessin = (fontSp + 2).dp
     Box(
-        Modifier.size((fontSp + 14).dp).clip(RoundedCornerShape(50))
+        // Decale de la moitie de sa marge interne : c'est le DESSIN du G qui doit tomber sur le bord droit
+        // de la bulle - la ou s'arretent le nom et les libelles au-dessus -, non la cible tactile qui
+        // l'entoure. Sans ce decalage, le pictogramme flottait a six points du bord, seul element de la
+        // bulle a ne pas s'aligner sur sa marge.
+        Modifier.offset(x = (cible - dessin) / 2).size(cible).clip(RoundedCornerShape(50))
             .clickable { onOpenWeb(googleMapsUrl(poi)) },
         contentAlignment = Alignment.Center,
     ) {
-        Image(painterResource(R.drawable.ic_google_g), libelle, Modifier.size((fontSp + 2).dp))
+        Image(painterResource(R.drawable.ic_google_g), libelle, Modifier.size(dessin))
     }
 }
 

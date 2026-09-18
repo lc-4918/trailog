@@ -595,7 +595,7 @@
     <string name="settings_poi_select_all">Hautatu dena</string>
     <string name="settings_label_poi_corridor">Aztarna baterako gehieneko distantzia</string>
     <string name="settings_poi_corridor_off">Mugarik gabe</string>
-    <string name="settings_poi_corridor_hint">Erakutsitako aztarna guztietatik urrun dauden intereseko puntuak ez dira erakusten. Aztarnarik erakutsi gabe, ez da ezer iragazten.</string>
+    <string name="settings_poi_corridor_hint">Erakutsitako aztarna guztietatik eta kalkulatutako ibilbidetik urrun dauden intereseko puntuak ez dira erakusten. Aztarnarik edo ibilbiderik erakutsi gabe, ez da ezer iragazten.</string>
     <string name="settings_poi_attribution">Datuak: DATAtourisme, Etalab Lizentzia Irekia 2.0, eta OpenStreetMap, ODbL lizentzia.</string>
     <string name="settings_clear_poi_cache">Hustu intereseko puntuen cachea</string>
     <string name="settings_poi_cache_empty">Cachean lekurik ez</string>
