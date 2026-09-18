@@ -490,9 +490,17 @@ class RoutePlannerState {
         invalidate()
     }
 
+    /**
+     * Une etape de plus, glissee JUSTE AVANT L'ARRIVEE.
+     *
+     * Le plus ajoutait sa ligne en fin de liste, et l'arrivee se retrouvait etape intermediaire : il
+     * fallait reprendre la derniere ligne pour rendre au trajet le bout qu'il avait deja. Or on n'ajoute
+     * pas une etape pour changer de destination - on la met EN CHEMIN, entre la ou l'on est et la ou l'on
+     * va. Les deux bouts du trajet restent donc les memes, et la nouvelle ligne se remplit a sa place.
+     */
     fun addStep() {
         if (!canAddStep) return
-        steps.add(PlannerStep(nextId++))
+        steps.add(steps.lastIndex.coerceAtLeast(0), PlannerStep(nextId++))
         // Pas d'invalidation : une etape vierge n'ajoute aucun point au trajet, qui reste celui d'avant.
     }
 
