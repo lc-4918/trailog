@@ -619,6 +619,18 @@ private fun ResultsZone(
         RouteState.NoPosition -> Text(stringResource(R.string.planner_no_position),
             fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        // Le reseau, lui, porte de quoi REDEMANDER : rien n'est a corriger dans le trajet, il n'y a qu'a
+        // recommencer une fois la liaison revenue. Meme ligne que l'echec de la recherche d'un lieu, au
+        // dessus : c'est le meme genre de panne, et le meme geste la repare.
+        RouteState.NoNetwork -> Row(
+            Modifier.fillMaxWidth().clickable { state.retryRoute() }.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.planner_no_network), fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
+                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
         is RouteState.Done -> {
             // Fenetre affichee du profil : la plage zoomee, ou tout le parcours. Le kilometrage n'est
             // jamais remis a zero, seules les stats du bandeau sont recalculees sur la portion visible.

@@ -238,8 +238,8 @@ object Valhalla {
     suspend fun route(
         base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
         prefs: RoutingPrefs = RoutingPrefs.Balanced,
-    ): RouteResult? = withContext(Dispatchers.IO) {
-        if (points.size < 2) return@withContext null
+    ): RouteOutcome = withContext(Dispatchers.IO) {
+        if (points.size < 2) return@withContext RouteOutcome.NoRoute
         /*
          * Le delai suit la longueur demandee (cf. RouteTimeout) : 15 s fixes suffisaient a la sortie du
          * dimanche et pas a un cinq cents kilometres, qui expirait sur un "Aucun itineraire" alors que le
@@ -248,14 +248,19 @@ object Valhalla {
          * Une seconde tentative quand la premiere N'A PAS ABOUTI - delai depasse, liaison coupee, pas de
          * reseau : le statut est alors nul (cf. TileHttp.Response). Un service qui REPOND qu'il n'y a pas
          * d'itineraire, lui, rendrait la meme reponse au second essai, et l'on aurait attendu deux fois
-         * pour le meme non.
+         * pour le meme non. Les deux echecs se distinguent dans ce qui est rendu (cf. RouteOutcome).
          */
         val delai = RouteTimeout.msFor(points)
         val cible = url(base, points, profile, prefs)
-        val resp = TileHttp.fetch(cible, delai, delai)
-        val r = resp.body?.let { parse(it.toString(Charsets.UTF_8)) }
-        if (r != null || resp.status != 0) return@withContext r
-        TileHttp.fetch(cible, delai, delai).body?.let { parse(it.toString(Charsets.UTF_8)) }
+        val premier = TileHttp.fetch(cible, delai, delai)
+        premier.body?.let { parse(it.toString(Charsets.UTF_8)) }?.let { return@withContext RouteOutcome.Done(it) }
+        // Le service a REPONDU - meme par une erreur, meme par un corps qu'on ne sait pas lire : c'est un
+        // vrai non, et le redemander rendrait le meme.
+        if (premier.status != 0) return@withContext RouteOutcome.NoRoute
+        val second = TileHttp.fetch(cible, delai, delai)
+        second.body?.let { parse(it.toString(Charsets.UTF_8)) }?.let { return@withContext RouteOutcome.Done(it) }
+        // Rien n'a repondu, deux fois : c'est le reseau, et l'ecran doit le dire comme tel (cf. RouteOutcome).
+        if (second.status == 0) RouteOutcome.Unreachable else RouteOutcome.NoRoute
     }
 
     @Serializable internal data class Response(val trip: Trip? = null)

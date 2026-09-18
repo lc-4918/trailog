@@ -63,6 +63,16 @@ sealed interface RouteState {
      * message.
      */
     data object NoPosition : RouteState
+
+    /**
+     * Le moteur n'a pas repondu du tout : reseau absent, liaison coupee, delai depasse (cf. RouteOutcome).
+     *
+     * **Distinct de [Failed], pour la meme raison que [NoPosition] l'est.** Les deux disaient "Aucun
+     * itineraire", ce qui envoie chercher la faute du cote du trajet - on change de discipline, on deplace
+     * une etape - alors que la requete n'est jamais arrivee. Rien n'est a corriger ici, il n'y a qu'a
+     * redemander une fois le reseau revenu, et le message porte donc de quoi le faire.
+     */
+    data object NoNetwork : RouteState
     data class Done(val meters: Double, val seconds: Double, val track: ComputedTrack) : RouteState
 }
 
@@ -763,6 +773,16 @@ class RoutePlannerState {
     fun tapProfile(alongM: Double) { cursor = alongM }
 
     /** Le parcours affiche ne correspond plus aux etapes : on le retire avant d'en recalculer un. */
+    /**
+     * "Reessayer", sous un echec de reseau : on redemande le meme trajet, tel quel.
+     *
+     * Rien a changer dans les etapes - c'est le reseau qui manquait -, mais l'effet de calcul ne se relance
+     * que sur une empreinte differente (cf. RouteInputs) : la revision avance donc, et elle seule.
+     */
+    fun retryRoute() {
+        revision++
+    }
+
     private fun invalidate() {
         // Le parcours affiche reste en place jusqu'a l'arrivee du nouveau (cf. recomputing). Seuls le
         // curseur et le zoom retombent : ils designaient un parcours qui n'aura plus la meme longueur.

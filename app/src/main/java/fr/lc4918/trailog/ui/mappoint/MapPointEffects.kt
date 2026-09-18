@@ -100,8 +100,10 @@ fun PointMeasureEffects(
      * la ligne sur la carte, et en retirer un sur deux couperait les virages du tracé affiché.
      */
     suspend fun measureTo(fromLat: Double, fromLon: Double, toLat: Double, toLon: Double): MeasureState {
+        // Une panne de reseau et un refus du moteur se valent ici : la bulle n'a qu'une ligne pour le dire
+        // (cf. RouteOutcome.routeOrNull).
         val r = Router.route(ctx, routeEngine, routingUrl, listOf(fromLat to fromLon, toLat to toLon),
-            routingProfile, prefs) ?: return MeasureState.Failed
+            routingProfile, prefs).routeOrNull ?: return MeasureState.Failed
         val track = withContext(Dispatchers.Default) {
             if (r.points.size < 2) null
             else TrackMath.compute(r.points, smoothingM = smoothingM, maxPoints = 0, ignoreStops = false)

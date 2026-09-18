@@ -647,6 +647,35 @@ class PlannerStepsTest {
         assertNull("rien a afficher", etat.done)
     }
 
+    /**
+     * Le moteur injoignable ne se dit pas non plus "aucun itineraire".
+     *
+     * Reseau absent, liaison coupee, delai depasse : la requete n'est jamais arrivee (cf. RouteOutcome).
+     * Le message d'un trajet impossible envoie changer de discipline ou deplacer une etape, alors qu'il
+     * n'y a rien a corriger - seulement a redemander.
+     */
+    @Test fun `le moteur injoignable ne se dit pas aucun itineraire`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.publish(RouteState.NoNetwork)
+        assertEquals(RouteState.NoNetwork, etat.route)
+        assertNull("rien a afficher", etat.done)
+    }
+
+    /** "Reessayer" redemande le MEME trajet : rien ne change dans les etapes, seule la revision avance -
+     *  c'est elle qui relance le calcul (cf. RouteInputs). */
+    @Test fun `reessayer relance le calcul sans toucher aux etapes`() {
+        val etat = RoutePlannerState()
+        etat.openPlanner()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
+        etat.publish(RouteState.NoNetwork)
+        val avant = etat.revision
+        etat.retryRoute()
+        assertTrue("la revision avance", etat.revision > avant)
+        assertEquals("les etapes sont intactes",
+            StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+    }
+
     /** Comme tout echec, elle laisse le planificateur ouvert et le curseur retombe : il designait un
      *  parcours qui n'existe plus. */
     @Test fun `la position introuvable retire le curseur`() {

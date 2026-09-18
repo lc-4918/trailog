@@ -48,16 +48,22 @@ object Router {
     }
 
     /**
-     * Calcule l'itinéraire passant par [points], en (lat, lon). Null quand il n'y en a pas - étapes non
-     * reliées, service muet, réseau absent - et, pour BRouter, quand son profil manque des assets.
+     * Calcule l'itinéraire passant par [points], en (lat, lon).
+     *
+     * Rend ce qui s'est passé (cf. [RouteOutcome]) et non un simple parcours nullable : un moteur
+     * injoignable et un moteur qui refuse de relier ces étapes-là appellent deux messages opposés, et
+     * l'un des deux seulement mérite qu'on redemande.
+     *
+     * Le profil BRouter absent des assets compte comme un refus : rien n'a été demandé au réseau, et
+     * réessayer ne le ferait pas apparaître.
      */
     suspend fun route(
         ctx: Context, engine: RouteEngine, base: String, points: List<Pair<Double, Double>>,
         profile: RoutingProfile, prefs: RoutingPrefs,
-    ): RouteResult? = when (engine) {
+    ): RouteOutcome = when (engine) {
         RouteEngine.VALHALLA -> Valhalla.route(base, points, profile, prefs)
         RouteEngine.BROUTER -> profileText(ctx, profile)?.let {
             Brouter.route(base, points, profile, prefs, it)
-        }
+        } ?: RouteOutcome.NoRoute
     }
 }

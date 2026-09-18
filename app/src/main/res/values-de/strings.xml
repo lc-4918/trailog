@@ -176,6 +176,7 @@
     <string name="planner_pick_on_map">Einen Punkt auf der Karte wählen</string>
     <string name="planner_pick_on_map_prompt">Wählen Sie einen Punkt auf der Karte</string>
     <string name="planner_no_position">Position nicht auffindbar: Standort aktivieren oder einen Startpunkt wählen</string>
+    <string name="planner_no_network">Netzwerkverbindungsproblem</string>
     <string name="planner_add_step">Zwischenziel hinzufügen</string>
     <string name="planner_move_up">Nach oben</string>
     <string name="planner_move_down">Nach unten</string>

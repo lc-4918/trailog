@@ -536,8 +536,10 @@ class TrailogRepository(private val ctx: Context) {
         // Le pont emprunte les mêmes préférences que les mesures de la carte : c'est un bout de trajet
         // réel, qui rejoint deux traces sur le terrain, pas une ligne droite de raccord.
         val prefs = s?.routePrefs(profile) ?: RoutingPrefs.defaultFor(profile)
+        // Une panne de reseau et un refus du moteur se valent ici : le pont ne se fait pas, et la jointure
+        // le dit d'une seule facon (cf. RouteOutcome.routeOrNull).
         val route = Router.route(ctx, engine, base, listOf(from.lat to from.lon, to.lat to to.lon),
-            profile, prefs) ?: return null
+            profile, prefs).routeOrNull ?: return null
         // Les deux extrémités sont déjà dans les segments qu'on relie : le pont ne garde que ce qu'il y a
         // entre elles, sans quoi la jointure porterait deux points au même endroit.
         return route.points.drop(1).dropLast(1).ifEmpty { null }

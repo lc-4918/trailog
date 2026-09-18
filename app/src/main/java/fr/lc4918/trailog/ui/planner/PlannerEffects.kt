@@ -13,6 +13,7 @@ import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.routing.RouteOutcome
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.components.MapController
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +148,16 @@ fun PlannerEffects(
                 }
             }
         }
-        val r = Router.route(ctx, routeEngine, routingUrl, pts, state.profile, prefs)
+        // Le moteur injoignable se DIT comme tel, et non "aucun itineraire" : la requete n'est jamais
+        // partie, et chercher la faute du cote des etapes ou de la discipline ne menerait nulle part. Le
+        // message porte de quoi redemander une fois le reseau revenu (cf. RoutePlannerState.retryRoute).
+        val r = when (val issue = Router.route(ctx, routeEngine, routingUrl, pts, state.profile, prefs)) {
+            is RouteOutcome.Done -> issue.result
+            RouteOutcome.Unreachable -> {
+                state.publish(RouteState.NoNetwork); routeFramed = false; return@LaunchedEffect
+            }
+            RouteOutcome.NoRoute -> null
+        }
         if (r == null || r.points.size < 2) {
             state.publish(RouteState.Failed); routeFramed = false; return@LaunchedEffect
         }

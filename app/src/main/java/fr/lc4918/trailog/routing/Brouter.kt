@@ -108,16 +108,20 @@ object Brouter {
      * panne propre à ce moteur : un identifiant que le service a oublié - redémarrage, ménage - pour
      * lequel il répond une erreur nue, indiscernable d'un trajet impossible.
      */
-    private fun profileId(base: String, text: String, force: Boolean): String? {
-        if (!force) ids[text]?.let { return it }
+    private fun profileId(base: String, text: String, force: Boolean): Deposited {
+        if (!force) ids[text]?.let { return Deposited(it, transportFailed = false) }
         val resp = TileHttp.post(
             profileUrl(base), text.toByteArray(), "text/plain", DEPOSIT_TIMEOUT_MS, DEPOSIT_TIMEOUT_MS)
         val id = resp.body?.let {
             runCatching { json.decodeFromString<Deposit>(it.toString(Charsets.UTF_8)).profileId }.getOrNull()
-        } ?: return null
+        } ?: return Deposited(null, transportFailed = resp.status == 0)
         ids[text] = id
-        return id
+        return Deposited(id, transportFailed = false)
     }
+
+    /** Un depot de profil, et **pourquoi il a echoue** quand il echoue - meme distinction que [Attempt] :
+     *  un service qui refuse le profil n'est pas un service qu'on n'a pas joint. */
+    private class Deposited(val id: String?, val transportFailed: Boolean)
 
     /**
      * Calcule l'itinéraire passant par [points], en (lat, lon), avec le profil [profileText] réglé pour
@@ -143,20 +147,28 @@ object Brouter {
     suspend fun route(
         base: String, points: List<Pair<Double, Double>>, profile: RoutingProfile,
         prefs: RoutingPrefs, profileText: String,
-    ): RouteResult? = withContext(Dispatchers.IO) {
-        if (points.size < 2) return@withContext null
+    ): RouteOutcome = withContext(Dispatchers.IO) {
+        if (points.size < 2) return@withContext RouteOutcome.NoRoute
         val texte = BrouterProfile.tune(profileText, profile, prefs)
         // Le profil etait-il DEJA depose avant cet appel : un identifiant neuf ne peut pas etre perime.
         val depose = ids.containsKey(texte)
         val delai = RouteTimeout.msFor(points)
-        val id = profileId(base, texte, force = false) ?: return@withContext null
+        val depot = profileId(base, texte, force = false)
+        val id = depot.id ?: return@withContext depot.echec()
         val premier = fetch(base, points, id, delai)
-        premier.result?.let { return@withContext it }
+        premier.result?.let { return@withContext RouteOutcome.Done(it) }
         // Le service a REPONDU, sous un identifiant qu'il vient de rendre : sa reponse est un vrai refus.
-        if (!premier.transportFailed && !depose) return@withContext null
-        val neuf = profileId(base, texte, force = true) ?: return@withContext null
-        fetch(base, points, neuf, delai).result
+        if (!premier.transportFailed && !depose) return@withContext RouteOutcome.NoRoute
+        val redepot = profileId(base, texte, force = true)
+        val neuf = redepot.id ?: return@withContext redepot.echec()
+        val second = fetch(base, points, neuf, delai)
+        second.result?.let { return@withContext RouteOutcome.Done(it) }
+        if (second.transportFailed) RouteOutcome.Unreachable else RouteOutcome.NoRoute
     }
+
+    /** Un depot sans identifiant : le reseau, ou un service qui refuse le profil (cf. RouteOutcome). */
+    private fun Deposited.echec(): RouteOutcome =
+        if (transportFailed) RouteOutcome.Unreachable else RouteOutcome.NoRoute
 
     /**
      * Ce qu'une tentative rend, et **pourquoi elle a echoue** quand elle echoue.

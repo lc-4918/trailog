@@ -453,6 +453,15 @@ Les étapes se réordonnent et se suppriment ; le parcours se recalcule à chaqu
 discipline réglée. Le résultat se dessine sur la carte et porte son propre profil altimétrique, avec le
 même zoom et le même curseur que celui d'une trace.
 
+**Trois échecs, trois messages.** Le moteur qui répond qu'il ne sait pas relier ces étapes-là dans cette
+discipline dit « Aucun itinéraire » ; la position du porteur qu'aucun capteur ne rend dit qu'elle est
+introuvable, et propose d'activer la localisation ou de choisir un point de départ ; le moteur qu'on n'a
+pas pu joindre du tout - réseau absent, liaison coupée, délai dépassé - dit **« Problème de connexion
+réseau »**, suivi d'un **« Réessayer »** qui redemande le même trajet tel quel. Les trois partageaient
+naguère le premier message, qui envoie chercher la faute du côté du trajet : on change de discipline, on
+déplace une étape, alors que dans deux cas sur trois la requête n'est jamais partie. Deux causes qui
+appellent des gestes opposés ne peuvent pas partager un mot.
+
 La bande **se réduit** pour rendre la carte entière - c'est le geste attendu quand on veut regarder le tracé
 qu'on vient de calculer -, et se referme sur une feuille vierge : rouvrir le planificateur ne doit pas
 ressortir le trajet précédent.
