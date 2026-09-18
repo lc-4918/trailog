@@ -21,10 +21,10 @@ class PlannerStepsTest {
     private fun lieu(nom: String) = GeocodePlace(nom, 1.0, 43.0)
 
     /**
-     * La position du porteur ne peut etre qu'UNE etape : partir d'ou l'on est pour y revenir ne fait
-     * aucun trajet. Tant qu'elle sert, la bande cesse de la proposer.
+     * La position du porteur sert deja quelque part : les poses AUTOMATIQUES s'en abstiennent alors (cf.
+     * les cas plus bas). L'utilisateur, lui, reste libre de la designer ailleurs.
      */
-    @Test fun `la position actuelle ne sert qu'une fois`() {
+    @Test fun `la position actuelle posee se voit`() {
         val etat = RoutePlannerState()
         assertFalse("rien de pose", etat.usesCurrentPosition)
         etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
@@ -45,6 +45,46 @@ class PlannerStepsTest {
         etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
         etat.choose(etat.steps.last(), StepTarget.Place(lieu("Soreze")))
         assertFalse(etat.usesCurrentPosition)
+    }
+
+    // ---------- La boucle : d'ou l'on est, et retour ----------
+
+    /**
+     * Le depart pose sur la position du porteur, une etape intermediaire posee ailleurs : l'arrivee peut
+     * reprendre la position, et le trajet fait une boucle. C'est le trajet le plus courant a pied comme a
+     * velo, et la bande le refusait.
+     */
+    @Test fun `la position ferme une boucle`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(lieu("Col de Peyresourde")))
+        assertTrue("l'arrivee peut la reprendre", etat.canUseCurrentPosition(etat.steps.last()))
+        etat.choose(etat.steps.last(), StepTarget.CurrentPosition)
+        assertEquals(3, etat.targets.size)
+    }
+
+    /** Deux etapes VOISINES sur la position, en revanche : le troncon entre elles serait de longueur
+     *  nulle, et le moteur refuse la requete entiere. La bande ne le propose donc pas. */
+    @Test fun `la position ne se propose pas a cote d'elle-meme`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        assertFalse("la voisine", etat.canUseCurrentPosition(etat.steps[1]))
+        assertTrue("deux rangs plus loin", etat.canUseCurrentPosition(etat.steps.last()))
+    }
+
+    /** Et si un deplacement de lignes colle malgre tout deux poses identiques, le doublon ne part pas au
+     *  moteur : le trajet garde ses deux bouts. */
+    @Test fun `deux poses collees ne font qu'un point`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(lieu("Col de Peyresourde")))
+        etat.choose(etat.steps.last(), StepTarget.CurrentPosition)
+        etat.moveStep(2, -1)
+        assertEquals(listOf(StepTarget.CurrentPosition, StepTarget.Place(lieu("Col de Peyresourde"))),
+            etat.targets)
     }
 
     // ---------- Le depart part d'ou l'on est ----------

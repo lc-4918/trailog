@@ -247,17 +247,42 @@ class RoutePlannerState {
     private var nextId = 2L
 
     /** Les etapes reellement posees, dans l'ordre. En deca de deux, il n'y a pas de trajet. */
+    /**
+     * Les etapes reellement posees, dans l'ordre, la position du porteur jamais deux fois de suite : le
+     * troncon entre deux poses identiques serait de longueur nulle, et le moteur refuse la requete
+     * entiere. La bande ne propose pas ce doublon (cf. [canUseCurrentPosition]), mais un deplacement de
+     * lignes peut toujours rapprocher deux poses qui ne l'etaient pas.
+     */
     val targets: List<StepTarget> get() = steps.mapNotNull { it.target }
+        .fold(mutableListOf<StepTarget>()) { acc, t ->
+            if (t != StepTarget.CurrentPosition || acc.lastOrNull() != StepTarget.CurrentPosition) acc += t
+            acc
+        }
 
     val canAddStep: Boolean get() = steps.size < MaxPlannerSteps
 
     /**
      * La position du porteur est deja une etape du trajet.
      *
-     * Elle ne peut en etre qu'une : un itineraire qui partirait d'ou l'on est pour y revenir n'a pas de
-     * longueur, et le moteur rendrait un trajet nul. Tant qu'elle sert, on cesse de la proposer.
+     * Ne l'interdit plus ailleurs - une boucle part d'ou l'on est et y revient, et c'est le trajet le plus
+     * courant a pied comme a velo (cf. [canUseCurrentPosition]). Ne sert plus qu'a retenir les poses
+     * AUTOMATIQUES : pre-remplir un second champ avec ce qui est deja pose ne repond a aucune demande.
      */
     val usesCurrentPosition: Boolean get() = steps.any { it.target == StepTarget.CurrentPosition }
+
+    /**
+     * La position du porteur peut se poser sur [step] : elle est proposee la.
+     *
+     * La seule chose qu'on refuse est de la poser DEUX FOIS DE SUITE : le troncon entre les deux serait de
+     * longueur nulle, et le moteur le refuse. Deux etapes plus loin, en revanche, elle ferme une boucle -
+     * d'ou l'on est, jusqu'a un col, et retour - et c'est precisement ce qu'on vient demander.
+     */
+    fun canUseCurrentPosition(step: PlannerStep): Boolean {
+        val i = steps.indexOf(step)
+        if (i < 0) return false
+        fun posee(j: Int) = steps.getOrNull(j)?.target == StepTarget.CurrentPosition
+        return !posee(i - 1) && !posee(i + 1)
+    }
 
     /**
      * L'etape qui attend qu'on lui designe un point sur la carte, ou null hors de ce mode.
@@ -311,8 +336,9 @@ class RoutePlannerState {
      * [step] designe la position du porteur, si elle est encore vierge et si la position ne sert pas
      * deja ailleurs dans le trajet.
      *
-     * La seconde garde importe : partir d'ou l'on est pour y revenir donne un troncon de longueur nulle,
-     * que le moteur refuse. C'est la meme regle que celle de la suggestion, et pour la meme raison.
+     * La seconde garde ne vaut que pour les poses AUTOMATIQUES : l'utilisateur, lui, peut la designer
+     * autant de fois qu'il veut (cf. [canUseCurrentPosition]) - c'est ainsi qu'on ferme une boucle. Mais
+     * pre-remplir tout seul un second champ avec ce qui sert deja ne repond a aucune demande.
      *
      * La premiere garde ne REMPLACE jamais : une etape deja posee, ou seulement touchee, est le fait de
      * l'utilisateur, et un automatisme n'a pas a l'effacer sous ses doigts.

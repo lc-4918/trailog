@@ -469,9 +469,11 @@ private fun StepRow(
         // echouerait sur un "Aucun itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas
         // honorer ne vaut rien. L'AFFICHAGE du repere sur la carte, lui, n'entre pas en compte - la
         // position se demande au capteur le temps du calcul, sans rien poser sur la carte.
-        // Et seulement si elle ne sert pas DEJA ailleurs : partir d'ou l'on est pour y revenir donne un
-        // trajet de longueur nulle, et la proposer une seconde fois invitait a le demander.
-        if (sensorEnabled && vierge && !state.usesCurrentPosition) {
+        // Elle peut servir PLUSIEURS fois dans un meme trajet : partir d'ou l'on est, passer par un col et
+        // y revenir, c'est la boucle, et c'est le trajet le plus courant a pied comme a velo. Seul le
+        // doublon COLLE - deux etapes voisines sur le meme point - reste hors de portee : le troncon entre
+        // les deux serait de longueur nulle, et le moteur refuse la requete entiere.
+        if (sensorEnabled && vierge && state.canUseCurrentPosition(step)) {
             SuggestionRow(
                 label = stringResource(R.string.planner_current_position),
                 icon = true,
@@ -702,7 +704,9 @@ fun defaultRouteName(steps: List<StepTarget>, currentPositionLabel: String): Str
     }
     val a = steps.firstOrNull()?.let(::label) ?: return ""
     val b = steps.lastOrNull()?.let(::label) ?: return a
-    return if (steps.size < 2) a else "$a - $b"
+    // Une boucle revient a son depart : "Position actuelle - Position actuelle" ne dit rien de plus que
+    // "Position actuelle", et fait deux fois plus long dans la bibliotheque.
+    return if (steps.size < 2 || a == b) a else "$a - $b"
 }
 
 /**
