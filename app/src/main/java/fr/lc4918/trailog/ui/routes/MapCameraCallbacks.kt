@@ -56,8 +56,10 @@ internal fun rememberMapCameraCallbacks(
             // font pas -, sans quoi le suivi s'interdirait lui-même à son premier recentrage.
             location.noteUserGesture()
         }
-        // Appui long sur un endroit quelconque : le contrôleur a déjà écarté les traces, les marqueurs et
-        // les modes de saisie exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point.
+        // Appui long sur la carte : le contrôleur a déjà écarté les marqueurs et les modes de saisie
+        // exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point. Les traces ne sont plus
+        // écartées - un appui long dessus ne faisait rien, alors qu'un col ou un croisement de sentiers
+        // est justement un endroit qu'on veut interroger.
         controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
         controller.onCameraIdle = {
             ticks.idle++

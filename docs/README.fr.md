@@ -106,7 +106,8 @@ sans dépendre d'un service en ligne.
   étape - une épingle noire là où vous avez montré, et son adresse renseignée un instant plus tard. Un
   départ de sentier, un col, un croisement de pistes : des endroits qu'aucune recherche ne trouve par leur
   nom.
-- **Appui long sur la carte** : n'importe où hors d'une trace, une infobulle donne l'adresse de
+- **Appui long sur la carte** : n'importe où hors d'un marqueur — une trace ne l'arrête pas —, une
+  infobulle donne l'adresse de
   l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
   ou depuis un second point que vous désignez. Les deux mêmes mesures figurent sur l'infobulle d'un point
   d'intérêt : c'est un endroit de la carte au même titre, et l'on s'y pose la même question.
@@ -200,8 +201,9 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
   en donne l'adresse. Les propositions sont classées par importance du lieu, une ville passant donc
   avant un hameau du même nom.
-- **Interroger un point de la carte** : un appui long n'importe où, hors d'une trace et d'un
-  marqueur, y pose une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet
+- **Interroger un point de la carte** : un appui long n'importe où hors d'un marqueur — y compris sur
+  une trace, un col ou un croisement de sentiers étant justement un endroit qu'on veut interroger — y pose
+  une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet
   endroit, puis propose deux mesures : la distance depuis votre position GPS (si elle est active),
   et la distance depuis un second point, que vous désignez ensuite d'un tap sur la carte.
 - **Distance et durée jusqu'au point** : ce ne sont pas des distances à vol d'oiseau mais celles de

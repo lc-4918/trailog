@@ -301,9 +301,15 @@ planificateur pour y retaper ce qu'on avait sous les yeux.
 
 ## 12. Point quelconque de la carte (appui long)
 
-Un appui long hors d'une trace et d'un marqueur pose une épingle et ouvre une infobulle qui répond à trois
+Un appui long hors d'un marqueur pose une épingle et ouvre une infobulle qui répond à trois
 questions : quelle adresse est là, à quelle distance elle est de la position GPS, et à quelle distance
 elle est d'un second point désigné d'un tap.
+
+**Une trace ne l'arrête pas.** Elle l'écartait, comme un marqueur, alors que rien n'attendait ce geste de
+son côté : l'appui long sur un tracé ne produisait donc rien du tout, et il fallait viser à côté pour
+obtenir l'adresse d'un col ou d'un croisement - c'est-à-dire précisément là où passe un sentier. Le tap,
+lui, ouvre toujours le profil de la trace : les deux gestes ne se disputent rien. Un marqueur, en revanche,
+reste écarté avec la même tolérance que le tap - son infobulle répond déjà de cet endroit-là.
 
 L'adresse vient du **géocodage inverse** de Photon, servi par un chemin frère de la recherche (`/reverse`
 là où celle-ci est `/api`) : même instance, même URL réglée. Ce géocodage-ci ne dépend pas de

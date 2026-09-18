@@ -1118,18 +1118,25 @@ class MapController {
     }
 
     /**
-     * Appui long : ne vaut que sur un endroit quelconque de la carte.
+     * Appui long : designe un endroit de la carte, trace comprise.
      *
      * Un mode de saisie exclusif le neutralise, comme il neutralise la selection : la ou tout tap pose un
      * point, un appui long est un tap qui a dure, et non un second geste a interpreter.
      *
-     * La meme interrogation que le tap ecarte les traces et les marqueurs, avec les memes tolerances : une
-     * epingle qu'un tap selectionne doit se comporter en epingle sous un doigt qui s'attarde.
+     * **Une trace ne l'arrete plus.** Un appui long sur une trace n'etait attache a rien : le geste ne
+     * produisait donc rien du tout, et il fallait viser a cote pour obtenir l'adresse d'un col ou d'un
+     * croisement - c'est-a-dire precisement des endroits ou passe un sentier. Il ouvre desormais le point
+     * qu'on montre, comme partout ailleurs sur la carte. Le TAP sur une trace, lui, ouvre toujours son
+     * profil : les deux gestes ne se disputent plus rien.
+     *
+     * Les marqueurs restent ecartes, avec la meme tolerance que le tap : une epingle qu'un tap selectionne
+     * doit se comporter en epingle sous un doigt qui s'attarde, et son infobulle repond deja de cet
+     * endroit-la.
      */
     fun handleLongPress(latLng: LatLng, screen: PointF) {
         if (onRawTap != null) return
         val cb = onLongPressEmpty ?: return
-        if (markerPickAt(screen) != null || lineKeyAt(screen) != null) return
+        if (markerPickAt(screen) != null) return
         cb(latLng.longitude, latLng.latitude)
     }
 
