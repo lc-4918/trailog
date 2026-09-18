@@ -647,15 +647,16 @@ fun MainScreen(
      * elle est dessinee APRES les infobulles : une bulle qui tombait dans cette zone passait dessous, avec
      * ses boutons d'itineraire - c'est-a-dire precisement ce qu'on venait chercher en designant le point.
      *
-     * Vaut pour l'appui long comme pour le point d'interet : ce sont deux facons de montrer un endroit, et
-     * les trois memes actions les terminent.
+     * Vaut pour les trois : l'appui long, le point d'interet et le lieu trouve par la recherche. Ce sont
+     * trois facons de montrer un endroit, et les trois memes actions les terminent.
      *
      * La bande ne revient que par une des actions d'itineraire (cf. [ouvrePlanificateur]) : refermer la
      * bulle sans rien en faire, c'est avoir regarde ailleurs, et rien ne dit qu'on en a fini avec la carte.
      * Le bouton du coin bas-droit la redeploie a la demande.
      */
-    LaunchedEffect(mapPoint.point, poi.selected?.uuid) {
-        if ((mapPoint.point != null || poi.selected != null) && planner.expanded) planner.collapse(true)
+    LaunchedEffect(mapPoint.point, poi.selected?.uuid, geo.place) {
+        val bulleOuverte = mapPoint.point != null || poi.selected != null || geo.place != null
+        if (bulleOuverte && planner.expanded) planner.collapse(true)
     }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {
