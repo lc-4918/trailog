@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.ui.profile.ProfileZoom
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
@@ -577,19 +578,51 @@ class RoutePlannerState {
     var full by mutableStateOf(false)
 
     /**
-     * Ajoute [place] comme etape. Faux quand le planificateur est plein (cf. [MaxPlannerSteps]) - le
-     * moteur refuse au-dela, et [full] le fait dire plutot que de laisser un tap sans effet.
+     * Ajoute [place] comme etape, DANS SON SEGMENT. Faux quand le planificateur est plein (cf.
+     * [MaxPlannerSteps]) - le moteur refuse au-dela, et [full] le fait dire plutot que de laisser un tap
+     * sans effet.
      *
-     * Une ligne vierge existante d'abord : c'est celle que l'utilisateur voit vide devant lui, et la
-     * remplir est ce qu'il attend. A defaut, l'etape s'insere AVANT l'arrivee - une etape ajoutee est un
-     * point de passage, pas une nouvelle destination.
+     * **La place se calcule, elle ne se prend plus au hasard.** L'etape remplissait la premiere ligne
+     * vierge venue - le depart aussi bien qu'une ligne oubliee au milieu - et se glissait avant l'arrivee
+     * a defaut. Sur un trajet deja compose, la ligne obtenue disait donc l'etat des champs et non
+     * l'endroit qu'on venait de montrer du doigt, et il fallait la remonter a la main.
+     *
+     * La regle : pour chaque couple d'etapes posees CONSECUTIVES A-B, la somme des deux distances au
+     * point ajoute, `d(A,P) + d(P,B)`. Le couple dont la somme est la plus petite recoit l'etape, entre
+     * ses deux bouts. Les lignes vierges restent vierges a leur place - une etape montree sur la carte
+     * n'est pas la reponse a un champ vide.
+     *
+     * @param currentPos derniere position connue, en (lon, lat) : elle donne des coordonnees aux etapes
+     *   posees sur la position du porteur, qui n'en portent aucune (cf. [StepTarget.CurrentPosition]).
+     *   Nulle - capteur eteint, aucun point encore recu -, ces etapes ne bornent aucun segment.
      */
-    fun addWaypoint(place: GeocodePlace): Boolean {
-        val vierge = steps.firstOrNull { it.target == null }
-        if (vierge != null) { choose(vierge, StepTarget.Place(place)); return true }
+    fun addWaypoint(place: GeocodePlace, currentPos: Pair<Double, Double>? = null): Boolean {
+        val bornes = steps.mapNotNull { s ->
+            when (val t = s.target) {
+                is StepTarget.Place -> s to (t.place.lon to t.place.lat)
+                StepTarget.CurrentPosition -> currentPos?.let { s to it }
+                null -> null
+            }
+        }
+        // Moins de deux sommets connus : aucun segment a comparer, et l'ancienne regle reprend la main -
+        // la ligne vierge qu'on a devant soi, l'avant-derniere place sinon.
+        if (bornes.size < 2) {
+            val vierge = steps.firstOrNull { it.target == null }
+            if (vierge != null) { choose(vierge, StepTarget.Place(place)); return true }
+            return insertWaypoint(steps.size - 1, place)
+        }
+        val amont = bornes.zipWithNext().minBy { (a, b) ->
+            TrackMath.haversine(a.second.first, a.second.second, place.lon, place.lat) +
+                TrackMath.haversine(place.lon, place.lat, b.second.first, b.second.second)
+        }.first.first
+        return insertWaypoint(steps.indexOf(amont) + 1, place)
+    }
+
+    /** Une ligne de plus a [index], portant [place] - si le planificateur n'est pas plein. */
+    private fun insertWaypoint(index: Int, place: GeocodePlace): Boolean {
         if (!canAddStep) { full = true; return false }
         val etape = PlannerStep(nextId++)
-        steps.add(steps.size - 1, etape)
+        steps.add(index, etape)
         choose(etape, StepTarget.Place(place))
         return true
     }

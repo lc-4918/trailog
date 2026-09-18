@@ -208,6 +208,93 @@ class PlannerStepsTest {
         assertNull(etat.steps.first().target)
     }
 
+    // ---------- L'etape ajoutee trouve son segment ----------
+
+    /**
+     * Une etape ajoutee depuis une infobulle se glisse dans le segment auquel elle appartient : celui
+     * dont les deux bouts, additionnes, sont les plus proches d'elle.
+     *
+     * Elle remplissait la premiere ligne vierge venue, et se posait avant l'arrivee a defaut : sur un
+     * trajet deja compose, sa place disait l'etat des champs et non l'endroit qu'on venait de montrer du
+     * doigt, et il fallait la remonter a la main.
+     */
+    @Test fun `l'etape ajoutee se pose dans le bon segment`() {
+        val etat = RoutePlannerState()
+        poseTrajet(etat, 0.0, 1.0, 2.0, 3.0)
+        assertTrue(etat.addWaypoint(borne("Tarabel", 2.4)))
+        assertEquals(listOf(0.0, 1.0, 2.0, 2.4, 3.0), longitudes(etat))
+    }
+
+    /** Le meme point pres du PREMIER segment s'y pose : rien ne le pousse plus vers l'arrivee. */
+    @Test fun `l'etape ajoutee pres du depart s'y pose`() {
+        val etat = RoutePlannerState()
+        poseTrajet(etat, 0.0, 1.0, 2.0, 3.0)
+        assertTrue(etat.addWaypoint(borne("Tarabel", 0.4)))
+        assertEquals(listOf(0.0, 0.4, 1.0, 2.0, 3.0), longitudes(etat))
+    }
+
+    /** Une ligne vierge ne capte plus l'etape : elle reste vide a sa place, et l'etape va dans son
+     *  segment. Une etape montree sur la carte n'est pas la reponse a un champ vide. */
+    @Test fun `une ligne vierge ne capte plus l'etape ajoutee`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.Place(borne("Toulouse", 0.0)))
+        etat.choose(etat.steps.last(), StepTarget.Place(borne("Foix", 3.0)))
+        assertTrue(etat.addWaypoint(borne("Saverdun", 1.0)))
+        assertEquals(listOf(0.0, 1.0, 3.0), longitudes(etat))
+        assertTrue("la vierge est restee vierge", etat.steps.any { it.target == null })
+    }
+
+    /** Moins de deux etapes posees : aucun segment a comparer, et la ligne vierge qu'on a devant soi
+     *  reprend la main - c'est elle que l'utilisateur attend de voir se remplir. */
+    @Test fun `sans segment, l'etape ajoutee remplit la ligne vierge`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.first(), StepTarget.Place(borne("Toulouse", 0.0)))
+        assertTrue(etat.addWaypoint(borne("Foix", 3.0)))
+        assertEquals(2, etat.steps.size)
+        assertEquals(listOf(0.0, 3.0), longitudes(etat))
+    }
+
+    /**
+     * Une etape posee sur la position du porteur borne un segment comme une autre - a condition qu'on
+     * sache ou l'on est : elle ne porte aucune coordonnee, et c'est la derniere mesure recue qui lui en
+     * prete le temps du choix.
+     */
+    @Test fun `la position actuelle borne un segment quand on la connait`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(borne("Auterive", 2.0)))
+        etat.choose(etat.steps.last(), StepTarget.Place(borne("Foix", 3.0)))
+        assertTrue(etat.addWaypoint(borne("Saverdun", 0.5), currentPos = 0.0 to 43.0))
+        assertEquals(listOf(0.5, 2.0, 3.0), longitudes(etat))
+    }
+
+    /** Sans position connue, elle ne borne rien : le seul segment qui reste est celui des deux lieux. */
+    @Test fun `la position actuelle inconnue ne borne rien`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(borne("Auterive", 2.0)))
+        etat.choose(etat.steps.last(), StepTarget.Place(borne("Foix", 3.0)))
+        assertTrue(etat.addWaypoint(borne("Saverdun", 0.5)))
+        assertEquals(listOf(2.0, 0.5, 3.0), longitudes(etat))
+    }
+
+    /** Un lieu a sa longitude, sur une meme latitude : les distances se comparent alors comme des
+     *  ecarts de longitude, et le segment attendu se lit dans l'enonce du cas. */
+    private fun borne(nom: String, lon: Double) = GeocodePlace(nom, lon, 43.0)
+
+    /** Un trajet deja compose : autant d'etapes posees que de longitudes donnees, dans l'ordre. */
+    private fun poseTrajet(etat: RoutePlannerState, vararg lons: Double) {
+        repeat(lons.size - 2) { etat.addStep() }
+        lons.forEachIndexed { i, lon -> etat.choose(etat.steps[i], StepTarget.Place(borne("P$i", lon))) }
+    }
+
+    /** Les longitudes des etapes posees, dans l'ordre de la liste : la forme du trajet en une ligne. */
+    private fun longitudes(etat: RoutePlannerState) =
+        etat.steps.mapNotNull { (it.target as? StepTarget.Place)?.place?.lon }
+
     // ---------- Un lieu deja pose ne se repropose pas ----------
 
     /**
