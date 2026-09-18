@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
@@ -60,7 +61,6 @@ import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
-import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.routing.GpxWriter
@@ -841,8 +841,13 @@ internal fun DrawerContent(
                 Column(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(34.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(30.dp).clickable(onClick = onSettings)) {
-                            Avatar(settings.avatarSource, size = 30.dp, contentDescription = stringResource(R.string.settings_title))
+                        // Une roue crantee, pas l'avatar : ici le bouton mene aux reglages, et c'est
+                        // l'action qui doit se lire. L'avatar reste en tete de l'ecran des reglages,
+                        // ou il designe bien quelqu'un plutot qu'un chemin.
+                        Box(Modifier.size(30.dp).clip(CircleShape).clickable(onClick = onSettings),
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Settings, stringResource(R.string.settings_title),
+                                Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.width(8.dp))
                         // Meme taille et meme graisse que le titre "Reglages" (17 sp, semi-gras) : ce sont
