@@ -259,7 +259,7 @@ internal fun BoxScope.PlaceBubblesLayer(
                     },
                     onAddStep = {
                         onOpenPlanner()
-                        if (planner.addWaypoint(placeOfPoi(selPoi, ctx), lastPosition(location))) poi.select(null)
+                        if (planner.addWaypoint(placeOfPoi(selPoi, ctx), location.knownPosition())) poi.select(null)
                     },
                     onClose = { poi.select(null) },
                     fontSp = settings.bubbleFont,
@@ -303,7 +303,7 @@ internal fun BoxScope.PlaceBubblesLayer(
                     onSetEnd = { onOpenPlanner(); planner.setEnd(gPlace, location.sensorEnabled); geo.clear() },
                     onAddStep = {
                         onOpenPlanner()
-                        if (planner.addWaypoint(gPlace, lastPosition(location))) geo.clear()
+                        if (planner.addWaypoint(gPlace, location.knownPosition())) geo.clear()
                     },
                     onClose = { geo.clear() },
                     fontSp = settings.bubbleFont,
@@ -362,7 +362,7 @@ internal fun BoxScope.PlaceBubblesLayer(
                     },
                     onAddStep = {
                         onOpenPlanner()
-                        if (planner.addWaypoint(placeOfPoint(mapPoint), lastPosition(location))) mapPoint.clear()
+                        if (planner.addWaypoint(placeOfPoint(mapPoint), location.knownPosition())) mapPoint.clear()
                     },
                     onClose = { mapPoint.clear() },
                     fontSp = settings.bubbleFont,
@@ -372,19 +372,6 @@ internal fun BoxScope.PlaceBubblesLayer(
         }
     }
 }
-
-/**
- * La derniere position connue, en (lon, lat), pour placer une etape ajoutee.
- *
- * Une etape posee sur la position du porteur ne porte aucune coordonnee - elle n'est resolue qu'au moment
- * du calcul (cf. StepTarget.CurrentPosition) -, et elle ne bornerait donc aucun segment. La derniere
- * mesure recue lui en prete le temps de choisir ou l'etape se glisse (cf. RoutePlannerState.addWaypoint).
- *
- * Une LECTURE, sans rien demander au capteur : le geste ne doit pas attendre un point, et un trajet sans
- * position actuelle s'en passe entierement.
- */
-private fun lastPosition(location: LocationControls): Pair<Double, Double>? =
-    location.lastFix?.let { it.lon to it.lat }
 
 /**
  * Un point d'interet en etape de trajet.

@@ -603,27 +603,38 @@ class RoutePlannerState {
      *
      * @param currentPos derniere position connue, en (lon, lat) : elle donne des coordonnees aux etapes
      *   posees sur la position du porteur, qui n'en portent aucune (cf. [StepTarget.CurrentPosition]).
-     *   Nulle - capteur eteint, aucun point encore recu -, ces etapes ne bornent aucun segment.
+     *   Nulle - capteur eteint, aucun point encore recu -, ces etapes gardent leur rang dans la chaine mais
+     *   ne pesent pas dans la somme : le segment qu'elles bornent se juge sur son autre bout.
      */
     fun addWaypoint(place: GeocodePlace, currentPos: Pair<Double, Double>? = null): Boolean {
-        val bornes = steps.mapNotNull { s ->
+        // La chaine des etapes POSEES, chacune avec sa position quand on la connait. Une etape posee sur la
+        // position du porteur n'en porte aucune tant qu'aucun point n'est arrive du capteur : elle reste
+        // pourtant dans la chaine, et c'est tout le point. La retirer soudait ses deux voisines en un seul
+        // segment, et rendait le premier segment du trajet INATTEIGNABLE - un point tout proche du depart
+        // se posait alors a l'autre bout. C'est le defaut rapporte depuis le terrain : depart sur la
+        // position, une etape au milieu, et l'ajout suivant tombait systematiquement avant l'arrivee.
+        val chaine = steps.mapNotNull { s ->
             when (val t = s.target) {
                 is StepTarget.Place -> s to (t.place.lon to t.place.lat)
-                StepTarget.CurrentPosition -> currentPos?.let { s to it }
+                StepTarget.CurrentPosition -> s to currentPos
                 null -> null
             }
         }
-        // Moins de deux sommets connus : aucun segment a comparer, et l'ancienne regle reprend la main -
-        // la ligne vierge qu'on a devant soi, l'avant-derniere place sinon.
-        if (bornes.size < 2) {
+        // Ce que coute chaque segment : la somme des distances a ses deux bouts. Un bout dont on ignore la
+        // position ne compte pas dans la somme - il ne rapproche ni n'eloigne, faute de savoir ou il est -
+        // et un segment dont les deux bouts sont inconnus n'est pas un candidat.
+        val segments = chaine.zipWithNext().mapNotNull { (amont, aval) ->
+            val d = listOfNotNull(amont.second, aval.second)
+                .map { (lon, lat) -> TrackMath.haversine(lon, lat, place.lon, place.lat) }
+            if (d.isEmpty()) null else amont.first to d.sum()
+        }
+        // Aucun segment mesurable : l'ancienne regle reprend la main - la ligne vierge qu'on a devant soi,
+        // l'avant-derniere place sinon.
+        val amont = segments.minByOrNull { it.second }?.first ?: run {
             val vierge = steps.firstOrNull { it.target == null }
             if (vierge != null) { choose(vierge, StepTarget.Place(place)); return true }
             return insertWaypoint(steps.size - 1, place)
         }
-        val amont = bornes.zipWithNext().minBy { (a, b) ->
-            TrackMath.haversine(a.second.first, a.second.second, place.lon, place.lat) +
-                TrackMath.haversine(place.lon, place.lat, b.second.first, b.second.second)
-        }.first.first
         return insertWaypoint(steps.indexOf(amont) + 1, place)
     }
 

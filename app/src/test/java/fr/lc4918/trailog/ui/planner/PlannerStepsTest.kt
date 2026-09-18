@@ -270,16 +270,60 @@ class PlannerStepsTest {
         assertEquals(listOf(0.5, 2.0, 3.0), longitudes(etat))
     }
 
-    /** Sans position connue, elle ne borne rien : le seul segment qui reste est celui des deux lieux. */
-    @Test fun `la position actuelle inconnue ne borne rien`() {
+    /**
+     * Sans position connue, elle garde son RANG : le segment qu'elle borne reste candidat, juge sur son
+     * autre bout. La retirer de la chaine soudait ses deux voisines, et le premier segment du trajet
+     * devenait inatteignable.
+     */
+    @Test fun `la position actuelle inconnue borne quand meme son segment`() {
         val etat = RoutePlannerState()
         etat.addStep()
         etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
         etat.choose(etat.steps[1], StepTarget.Place(borne("Auterive", 2.0)))
         etat.choose(etat.steps.last(), StepTarget.Place(borne("Foix", 3.0)))
         assertTrue(etat.addWaypoint(borne("Saverdun", 0.5)))
-        assertEquals(listOf(2.0, 0.5, 3.0), longitudes(etat))
+        assertEquals(listOf(0.5, 2.0, 3.0), longitudes(etat))
     }
+
+    /**
+     * Le cas rapporte depuis le terrain, avec ses coordonnees reelles - et le defaut qu'il a revele.
+     *
+     * Depart sur la POSITION DU PORTEUR, une etape a Lagarde, arrivee a Leran : l'ajout de Seignalens
+     * tombait entre Lagarde et Leran, alors qu'il est a trois kilometres du depart. Le depart, sans
+     * coordonnees tant qu'aucun point n'est arrive du capteur, disparaissait de la chaine : ses deux
+     * voisines se soudaient, et le premier segment du trajet devenait inatteignable.
+     *
+     * Il garde desormais son rang, et le segment qu'il borne se juge sur son autre bout.
+     */
+    @Test fun `un depart sans position connue borne quand meme son segment`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(commune("Lagarde", 43.0484, 1.9346)))
+        etat.choose(etat.steps.last(), StepTarget.Place(commune("Leran", 42.9887, 1.9109)))
+        assertTrue(etat.addWaypoint(commune("Seignalens", 43.1004, 1.9705)))
+        assertEquals(listOf("Seignalens", "Lagarde", "Leran"), noms(etat))
+    }
+
+    /** La position connue, elle, pese comme n'importe quel autre bout : le porteur est a Malegoude, et
+     *  Seignalens se pose entre lui et Lagarde - le meme trajet, vu du bon cote. */
+    @Test fun `la position connue pese comme un lieu`() {
+        val etat = RoutePlannerState()
+        etat.addStep()
+        etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
+        etat.choose(etat.steps[1], StepTarget.Place(commune("Lagarde", 43.0484, 1.9346)))
+        etat.choose(etat.steps.last(), StepTarget.Place(commune("Leran", 42.9887, 1.9109)))
+        // Malegoude, ou se tient le porteur.
+        assertTrue(etat.addWaypoint(commune("Seignalens", 43.1004, 1.9705), currentPos = 1.9389 to 43.1128))
+        assertEquals(listOf("Seignalens", "Lagarde", "Leran"), noms(etat))
+    }
+
+    /** Une commune a ses coordonnees reelles, en (lat, lon) comme on les lit sur une carte. */
+    private fun commune(nom: String, lat: Double, lon: Double) = GeocodePlace(nom, lon, lat)
+
+    /** Les lieux poses, dans l'ordre de la liste : la forme du trajet en une ligne. */
+    private fun noms(etat: RoutePlannerState) =
+        etat.steps.mapNotNull { (it.target as? StepTarget.Place)?.place?.label }
 
     /** Un lieu a sa longitude, sur une meme latitude : les distances se comparent alors comme des
      *  ecarts de longitude, et le segment attendu se lit dans l'enonce du cas. */

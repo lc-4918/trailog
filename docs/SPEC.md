@@ -453,6 +453,23 @@ Les étapes se réordonnent et se suppriment ; le parcours se recalcule à chaqu
 discipline réglée. Le résultat se dessine sur la carte et porte son propre profil altimétrique, avec le
 même zoom et le même curseur que celui d'une trace.
 
+**L'étape ajoutée depuis la carte se pose dans son segment.** Les trois infobulles (lieu trouvé, point
+d'intérêt, appui long) portent un bouton « Ajouter l'étape » : la ligne ne s'ajoute pas au bout de la liste
+mais entre les deux étapes consécutives dont la somme des distances au point est la plus courte. Le bouton
+`+` de la bande, lui, insère toujours juste avant l'arrivée - on ajoute une étape pour passer quelque part
+en chemin, pas pour changer de destination.
+
+Une étape posée sur **la position du porteur** compte comme les autres : sa place vient de la dernière
+position connue du système - celle qu'il tient déjà, de nos requêtes comme de celles des autres
+applications -, lue **sans rien demander au capteur**, un geste sous le doigt ne pouvant pas attendre les
+dix secondes d'un point neuf. Un point d'il y a un quart d'heure y suffit : on n'a pas traversé la France
+entre-temps. Cette lecture-là est le pendant instantané de celle du calcul, qui elle peut attendre.
+
+Et quand aucune position n'est connue du tout - autorisation refusée, localisation éteinte -, l'étape
+**garde tout de même son rang** dans la chaîne : le segment qu'elle borne se juge sur son autre bout. La
+retirer soudait ses deux voisines en un seul segment et rendait le premier segment du trajet
+inatteignable : un point à trois kilomètres du départ se posait à l'autre bout du trajet.
+
 **Trois échecs, trois messages.** Le moteur qui répond qu'il ne sait pas relier ces étapes-là dans cette
 discipline dit « Aucun itinéraire » ; la position du porteur qu'aucun capteur ne rend dit qu'elle est
 introuvable, et propose d'activer la localisation ou de choisir un point de départ ; le moteur qu'on n'a

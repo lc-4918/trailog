@@ -327,6 +327,28 @@ class LocationControls internal constructor(
     }
 
     /**
+     * Ou l'on est, SANS RIEN DEMANDER AU CAPTEUR ni faire attendre personne, en (lon, lat).
+     *
+     * **Le pendant instantane de [currentPosition]**, pour ce qui se decide sous le doigt : ou glisser une
+     * etape ajoutee depuis la carte, autour de quoi classer les propositions du geocodeur. Ces reponses-la
+     * ne peuvent pas attendre les dix secondes d'un point neuf, et une position d'il y a un quart d'heure
+     * y suffit largement - on n'a pas traverse la France entre-temps.
+     *
+     * **A ne pas confondre avec [lastFix], qui ne dit que ce que le SUIVI a recu** : suivi eteint, il est
+     * nul, meme quand le telephone sait parfaitement ou il se trouve. C'est le defaut qu'a revele le
+     * terrain - un depart pose sur la position du porteur, sans coordonnees, et une etape ajoutee qui
+     * tombait a l'autre bout du trajet (cf. RoutePlannerState.addWaypoint).
+     *
+     * L'ordre (lon, lat) est celui des lieux et des etapes, non celui du capteur : les appelants sont du
+     * cote de la carte.
+     */
+    fun knownPosition(): Pair<Double, Double>? {
+        lastUserLocation?.let { (lat, lon) -> return lon to lat }
+        if (!hasLocationPermission()) return null
+        return lastKnown(STALE_FIX_MS)?.let { (lat, lon) -> lon to lat }
+    }
+
+    /**
      * La derniere position connue du systeme, si elle a moins de [maxAgeMs], en (lat, lon).
      *
      * Les DEUX fournisseurs sont interroges, et la plus recente l'emporte : le reseau rend souvent un point

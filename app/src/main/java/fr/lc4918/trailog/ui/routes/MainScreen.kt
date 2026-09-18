@@ -590,12 +590,13 @@ fun MainScreen(
      * lieu autour de la ou l'on est, et a defaut autour de ce qu'on regarde - preparer une sortie depuis
      * chez soi commence par amener la carte sur la region.
      *
-     * [LocationControls.lastFix] est une simple lecture, sans rien demander au capteur : une frappe ne doit
-     * pas attendre un point. Le centre de la carte se relit a chaque immobilisation, la ou une mesure prise
-     * a chaque image du geste ne changerait rien au classement.
+     * [LocationControls.knownPosition] repond instantanement, sans rien demander au capteur : une frappe ne
+     * doit pas attendre un point, et le systeme tient deja une derniere position connue - y compris quand
+     * le suivi est eteint. Le centre de la carte se relit a chaque immobilisation, la ou une mesure prise a
+     * chaque image du geste ne changerait rien au classement.
      */
     val vueCentre = remember(idleTick) { controller.cameraState()?.let { (la, lo, _) -> lo to la } }
-    val geocodeCenter = location.lastFix?.let { it.lon to it.lat } ?: vueCentre
+    val geocodeCenter = location.knownPosition() ?: vueCentre
 
     GeocodeSearchEffects(geo = geo, settings = settings, resultLimit = GeocodeResultLimit,
         center = geocodeCenter)
