@@ -640,6 +640,23 @@ fun MainScreen(
     LaunchedEffect(poi.selected?.uuid) {
         poi.selected?.let { vm.rememberPlannerPlace(placeOfPoi(it, ctx)) }
     }
+    /*
+     * Une infobulle de point s'ouvre pendant qu'un trajet se compose : la bande se range d'elle-meme.
+     *
+     * **Elles se disputent le meme bas d'ecran.** La bande deployee occupe jusqu'a 60 % de la hauteur, et
+     * elle est dessinee APRES les infobulles : une bulle qui tombait dans cette zone passait dessous, avec
+     * ses boutons d'itineraire - c'est-a-dire precisement ce qu'on venait chercher en designant le point.
+     *
+     * Vaut pour l'appui long comme pour le point d'interet : ce sont deux facons de montrer un endroit, et
+     * les trois memes actions les terminent.
+     *
+     * La bande ne revient que par une des actions d'itineraire (cf. [ouvrePlanificateur]) : refermer la
+     * bulle sans rien en faire, c'est avoir regarde ailleurs, et rien ne dit qu'on en a fini avec la carte.
+     * Le bouton du coin bas-droit la redeploie a la demande.
+     */
+    LaunchedEffect(mapPoint.point, poi.selected?.uuid) {
+        if ((mapPoint.point != null || poi.selected != null) && planner.expanded) planner.collapse(true)
+    }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {
         // Deja DEPLOYE : il n'y a rien a ouvrir, et rien a ecraser. Reduit, en revanche, il se redeploie -
