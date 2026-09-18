@@ -366,7 +366,7 @@ class MainScreenUiTest {
 
         // EN PLEIN MILIEU du bouton, et c'est le point du test : la bande de 24 dp du bord gauche qui
         // ouvre le menu au glissement recouvrait exactement ce centre-la, et prenait le tap.
-        compose.onNodeWithContentDescription(libelle(R.string.planner_collapse)).performClick()
+        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
         attend { affiche(R.string.planner_title) }
         assertFalse("la bande s'est retiree de l'ecran", texteBrut("Mire"))
 
@@ -391,7 +391,6 @@ class MainScreenUiTest {
         retour()
         attend { affiche(R.string.planner_title) }
         assertFalse("la bande a disparu", texte(R.string.planner_end))
-        assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
 
         // Le bouton rouvre une feuille vierge : rien ne distingue plus ce planificateur de celui
         // qu'on ouvrirait pour la premiere fois.
@@ -400,12 +399,14 @@ class MainScreenUiTest {
     }
 
     /**
-     * Le retour Android replie d'abord, et DEMANDE ensuite - des qu'il y a quelque chose a perdre.
+     * Le retour Android RANGE le calcul, et s'arrete la : le trajet en cours ne se perd plus.
      *
-     * Il quittait le calcul d'un seul appui, emportant un trajet compose etape par etape - et c'est le
-     * meme geste que celui qui quitte l'application, donc celui qu'on fait sans y penser.
+     * Il quittait le calcul d'un seul appui, emportant un trajet compose etape par etape - puis il a pose
+     * une question, qu'il fallait lire et repousser. C'est le meme geste que celui qui quitte
+     * l'application, donc celui qu'on fait sans y penser : il ne detruit plus rien, et le second appui
+     * n'a plus rien a demander.
      */
-    @Test fun `le retour replie le calcul, puis demande avant de le perdre`() {
+    @Test fun `le retour range le calcul sans le perdre`() {
         reglages { calculLocal(it) }
         ecran()
         attend { affiche(R.string.planner_title) }
@@ -416,38 +417,16 @@ class MainScreenUiTest {
 
         retour()
         attend { affiche(R.string.planner_title) }
-        assertFalse("la bande s'est repliee", texteBrut("Mire"))
-        assertFalse("et rien n'est demande au premier appui", texte(R.string.planner_cancel_title))
+        assertFalse("la bande s'est rangee", texteBrut("Mire"))
 
-        retour()
-        attend { texte(R.string.planner_cancel_title) }
-        assertTrue("deux lignes : ce qu'on perd, puis la question",
-            texte(R.string.planner_cancel_question))
-
-        // "Non" : la boite se referme sur un trajet intact, que le bouton redeploie.
-        compose.onNodeWithText(libelle(R.string.action_no)).performClick()
-        attend { !texte(R.string.planner_cancel_title) }
+        // Le bouton de la carte redeploie le MEME trajet : la frappe est toujours la.
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
         attend { texteBrut("Mire") }
     }
 
-    /** La croix de l'en-tete ferme sans rien demander un planificateur VIDE : c'est un geste vise, pose sur
-     *  le bouton qui dit "fermer", et il n'y a rien a perdre. */
-    @Test fun `la croix du calcul vide ferme sans rien demander`() {
-        reglages { calculLocal(it) }
-        ecran()
-        attend { affiche(R.string.planner_title) }
-        ouvreLeCalcul()
-
-        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
-        attend { !texte(R.string.planner_end) }
-        assertFalse("aucune question posee", texte(R.string.planner_cancel_title))
-        assertTrue("le bouton est revenu", affiche(R.string.planner_title))
-    }
-
-    /** Des qu'il y a une saisie en cours, la croix pose la MEME question que le retour Android replie -
-     *  ce n'est plus un geste vise sur une feuille vierge, mais sur un trajet qu'on est en train d'ecrire. */
-    @Test fun `la croix du calcul rempli demande avant de le perdre`() {
+    /** La croix de l'en-tete range elle aussi, sans rien demander ni rien perdre : c'est le meme geste que
+     *  le retour, pose sur un bouton. */
+    @Test fun `la croix range le calcul sans le perdre`() {
         reglages { calculLocal(it) }
         ecran()
         attend { affiche(R.string.planner_title) }
@@ -455,8 +434,24 @@ class MainScreenUiTest {
         compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
 
         compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
-        attend { texte(R.string.planner_cancel_title) }
-        assertTrue("le planificateur reste ouvert derriere la question", texte(R.string.planner_cancel_question))
+        attend { affiche(R.string.planner_title) }
+        assertFalse("la bande s'est rangee", texteBrut("Mire"))
+        compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
+        attend { texteBrut("Mire") }
+    }
+
+    /** "Reinitialiser" est le seul geste qui efface : la feuille redevient vierge, et la bande reste
+     *  sous les yeux pour le trajet suivant. */
+    @Test fun `reinitialiser vide le calcul et garde la bande`() {
+        reglages { calculLocal(it) }
+        ecran()
+        attend { affiche(R.string.planner_title) }
+        ouvreLeCalcul()
+        compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
+
+        compose.onNodeWithContentDescription(libelle(R.string.planner_reset)).performClick()
+        attend { !texteBrut("Mire") }
+        assertTrue("la bande est toujours deployee", texte(R.string.planner_end))
     }
 
     /**

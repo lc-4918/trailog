@@ -158,9 +158,10 @@ bouton, par balayage, ou les deux (réglage). L'avatar en tête ouvre les régla
 y est accessible.
 
 La bande de geste du **balayage** occupe les 24 dp du bord gauche, mais **s'arrête au-dessus de la bande du
-planificateur** : sur toute la hauteur, elle recouvrait le centre du bouton « Réduire » de son en-tête, qui
-est justement collé au bord gauche, et prenait le tap. Le doigt tombant rarement pile au milieu, le bouton
-répondait une fois sur deux - le genre de défaut qu'on met sur le compte de sa propre maladresse.
+planificateur** : sur toute la hauteur, elle recouvrait le centre du bouton que l'en-tête posait alors
+contre le bord gauche, et prenait le tap. Le doigt tombant rarement pile au milieu, le bouton répondait une
+fois sur deux - le genre de défaut qu'on met sur le compte de sa propre maladresse. L'en-tête a depuis
+rassemblé ses boutons à droite, mais l'exclusion reste : la bande porte des champs de saisie jusqu'au bord.
 
 Un **champ de recherche** filtre les couches par leur nom, sans tenir compte de la casse ni des accents, et
 sur un fragment quelconque du nom. Il remplace l'arbre par la liste à plat de ce qu'il trouve, plutôt que de
@@ -440,17 +441,23 @@ de l'écran, sans que rien ne dise lequel faisait quoi. Le bouton passe au bleu 
 cours, comme le suivi de position et la couche des points d'intérêt : il ne dit plus seulement « calculer
 un itinéraire », il dit aussi « il y en a un rangé là-dessous ».
 
-**Le retour Android ne fait pas perdre un trajet d'un seul geste.** Bande déployée, il la replie ; bande
-déjà réduite, il **demande** - « Un itinéraire est en cours de création / Voulez-vous annuler ? », *Non* ou
-*Oui*. C'est le même geste que celui qui quitte l'application, donc celui qu'on fait sans y penser, et un
-trajet composé étape par étape ne se perd pas comme cela. La croix de l'en-tête, elle, ferme sans rien
-demander : c'est un geste visé, posé sur le bouton qui dit « fermer ».
+**Un trajet en cours ne se perd pas par accident.** L'en-tête portait deux boutons voisins et presque
+identiques : un « Réduire » qui gardait tout, une croix qui fermait - donc effaçait - et qu'il fallait
+protéger d'une question. Ils n'en font plus qu'un : la **croix range** la bande, comme le faisait le
+chevron, et le seul geste qui efface est le bouton **« Réinitialiser »**, à sa gauche, qui rend une feuille
+vierge sans fermer la bande - c'est bien pour composer un autre trajet qu'on efface celui-là. Aucune
+confirmation n'a plus lieu d'être : rien ne se perd qu'on n'ait explicitement demandé à perdre.
+
+**Le retour Android** suit la même règle : bande déployée, il la range, et il s'arrête là. C'est le même
+geste que celui qui quitte l'application, donc celui qu'on fait sans y penser. Croix comme retour ferment
+quand même une bande **vide** : il n'y a rien à retrouver en la rangeant, et le bouton de la carte
+s'allumerait pour une feuille que personne n'a écrite.
 
 **Une rotation ne le perd pas non plus.** Le travail en cours de la carte - le trajet composé étape par
 étape, la mesure dont le premier point vient d'être posé, l'emprise hors-ligne à moitié tracée, le mode
 retouche - survit à un quart de tour du poignet. Il partait jusqu'ici avec l'activité, que le système
 recrée à chaque changement d'orientation, et le contraste était devenu gênant : le retour Android
-*demandait* avant de perdre un itinéraire, pendant qu'un mouvement du poignet l'emportait sans un mot.
+protégeait un itinéraire, pendant qu'un mouvement du poignet l'emportait sans un mot.
 
 ## 14 bis. Pendant la sortie
 

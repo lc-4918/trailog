@@ -168,9 +168,7 @@
     <string name="measure_pick_start">Pick the start point on a track</string>
     <string name="measure_pick_end">Pick the measurement end point on track %1$s</string>
     <string name="planner_title">Route</string>
-    <string name="planner_collapse">Collapse</string>
-    <string name="planner_cancel_title">A route is being created</string>
-    <string name="planner_cancel_question">Do you want to cancel?</string>
+    <string name="planner_reset">Reset</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Finish</string>
     <string name="planner_via">Waypoint</string>

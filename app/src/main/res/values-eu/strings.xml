@@ -168,9 +168,7 @@
     <string name="measure_pick_start">Aukeratu hasiera-puntua arrasto batean</string>
     <string name="measure_pick_end">Aukeratu neurketaren amaiera-puntua %1$s arrastoan</string>
     <string name="planner_title">Ibilbidea</string>
-    <string name="planner_collapse">Txikitu</string>
-    <string name="planner_cancel_title">Ibilbide bat sortzen ari da</string>
-    <string name="planner_cancel_question">Bertan behera utzi nahi duzu?</string>
+    <string name="planner_reset">Berrezarri</string>
     <string name="planner_start">Irteera</string>
     <string name="planner_end">Helmuga</string>
     <string name="planner_via">Etapa</string>

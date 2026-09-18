@@ -168,9 +168,7 @@
     <string name="measure_pick_start">Triar el punt d\'inici en una traça</string>
     <string name="measure_pick_end">Triar el punt final del mesurament a la traça %1$s</string>
     <string name="planner_title">Itinerari</string>
-    <string name="planner_collapse">Redueix</string>
-    <string name="planner_cancel_title">S\'està creant un itinerari</string>
-    <string name="planner_cancel_question">Voleu cancel·lar-lo?</string>
+    <string name="planner_reset">Reinicialitza</string>
     <string name="planner_start">Sortida</string>
     <string name="planner_end">Arribada</string>
     <string name="planner_via">Etapa</string>

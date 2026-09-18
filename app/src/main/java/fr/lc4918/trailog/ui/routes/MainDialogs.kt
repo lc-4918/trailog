@@ -355,31 +355,6 @@ internal fun PlannerFullDialog(onDismiss: () -> Unit) {
 }
 
 /**
- * Le retour Android sur un planificateur deja replie : abandonne-t-on le trajet en cours ?
- *
- * **Deux lignes, et non une phrase** : la premiere dit ce qu'on est en train de perdre, la seconde pose la
- * question. Rassemblees, elles se lisaient comme un constat, et l'oeil qui survole une boite de dialogue
- * cherche d'abord ce qu'on lui demande.
- *
- * "Non" en premier, a la place du bouton d'annulation : c'est la reponse qu'on attend de quelqu'un qui n'a
- * pas voulu ouvrir cette boite, et la boite ne s'ouvre justement que sur un geste involontaire.
- */
-@Composable
-internal fun PlannerCancelDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.planner_cancel_title))
-                Text(stringResource(R.string.planner_cancel_question))
-            }
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_yes)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_no)) } },
-    )
-}
-
-/**
  * Un geste demande n'a rien produit : le fichier n'a pas pu s'ecrire, rien ne sait recevoir ce qu'on
  * partage, rien ne sait ouvrir ce lien.
  *
@@ -531,13 +506,6 @@ internal fun MainDialogs(
 
     if (planner.full) {
         PlannerFullDialog(onDismiss = { planner.full = false })
-    }
-
-    if (planner.cancelDialog) {
-        PlannerCancelDialog(
-            onConfirm = { planner.close() },
-            onDismiss = { planner.dismissCancel() },
-        )
     }
 
     if (dialogs.editingFeature) {

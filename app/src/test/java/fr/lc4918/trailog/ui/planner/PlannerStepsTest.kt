@@ -391,44 +391,45 @@ class PlannerStepsTest {
         assertFalse(depart.untouched)
     }
 
-    // ---------- Abandonner un trajet en cours ----------
+    // ---------- Ranger un trajet, ou le remettre a blanc ----------
 
     /**
-     * Le retour Android sur une bande deja repliee DEMANDE : il ne ferme pas.
+     * La croix de l'en-tete RANGE : le trajet en cours ne s'y perd pas.
      *
-     * C'est le meme geste que celui qui quitte l'application, et un trajet compose etape par etape ne se
-     * perd pas sur un geste distrait. La question posee, rien n'est encore perdu.
+     * Elle fermait le planificateur, donc effacait le trajet, et il fallait une question pour l'en
+     * empecher - a cote d'un "reduire" qui, lui, gardait tout. Composer un itineraire demande plusieurs
+     * gestes, avec des allers-retours vers la carte entre deux : aucun de ces gestes ne peut couter le
+     * travail deja fait.
      */
-    @Test fun `la question posee ne ferme rien`() {
+    @Test fun `la croix range sans rien perdre`() {
         val etat = RoutePlannerState()
         etat.openPlanner()
         etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
-        etat.askCancel()
-        assertTrue("la boite est ouverte", etat.cancelDialog)
-        assertTrue("le planificateur aussi", etat.open)
+        etat.collapseOrClose()
+        assertTrue("le planificateur reste ouvert", etat.open)
+        assertTrue("mais range", etat.collapsed)
         assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
     }
 
-    /** "Non" : la boite se referme sur un trajet intact. */
-    @Test fun `renoncer a annuler rend le trajet tel quel`() {
+    /** "Reinitialiser" : la feuille redevient vierge, et la bande reste sous les yeux pour le trajet
+     *  suivant - c'est bien pour en composer un autre qu'on efface celui-la. */
+    @Test fun `reinitialiser vide la feuille et garde la bande`() {
         val etat = RoutePlannerState()
         etat.openPlanner()
         etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
-        etat.askCancel()
-        etat.dismissCancel()
-        assertFalse(etat.cancelDialog)
-        assertTrue(etat.open)
-        assertEquals(StepTarget.Place(lieu("Mirepoix")), etat.steps.first().target)
+        etat.reset()
+        assertTrue("la bande est toujours la", etat.expanded)
+        assertNull("feuille vierge", etat.steps.first().target)
+        assertEquals(2, etat.steps.size)
     }
 
-    /** "Oui" : tout part, la boite comprise - elle ne doit pas ressurgir a la reouverture. */
-    @Test fun `fermer emporte le trajet et la question`() {
+    /** Fermer emporte tout : rouvrir doit donner une feuille vierge, pas le trajet d'hier a moitie
+     *  efface. */
+    @Test fun `fermer emporte le trajet`() {
         val etat = RoutePlannerState()
         etat.openPlanner()
         etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
-        etat.askCancel()
         etat.close()
-        assertFalse(etat.cancelDialog)
         assertFalse(etat.open)
         assertNull("feuille vierge", etat.steps.first().target)
     }
@@ -491,46 +492,14 @@ class PlannerStepsTest {
         assertFalse(etat.isEmpty)
     }
 
-    /**
-     * Reduire un planificateur vide le ferme au lieu de le ranger : il n'y a rien a retrouver plus tard,
-     * et le laisser "ouvert-reduit" allumerait pour rien le bouton de la carte.
-     */
-    @Test fun `reduire un planificateur vide le ferme`() {
+    /** La croix sur un planificateur vide FERME au lieu de ranger : il n'y a rien a retrouver plus tard,
+     *  et le laisser "ouvert-reduit" allumerait pour rien le bouton de la carte. */
+    @Test fun `la croix sur un planificateur vide ferme`() {
         val etat = RoutePlannerState()
         etat.openPlanner()
         etat.collapseOrClose()
-        assertFalse("ferme, pas seulement reduit", etat.open)
+        assertFalse("ferme, pas seulement range", etat.open)
         assertFalse(etat.collapsed)
-    }
-
-    /** Un planificateur qui porte quelque chose se reduit normalement, sans se fermer. */
-    @Test fun `reduire un planificateur rempli le range`() {
-        val etat = RoutePlannerState()
-        etat.openPlanner()
-        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
-        etat.collapseOrClose()
-        assertTrue("range, pas ferme", etat.open)
-        assertTrue(etat.collapsed)
-    }
-
-    /** La croix de l'en-tete ferme sans rien demander quand il n'y a rien a perdre. */
-    @Test fun `la croix sur un planificateur vide ferme sans demander`() {
-        val etat = RoutePlannerState()
-        etat.openPlanner()
-        etat.requestClose()
-        assertFalse(etat.open)
-        assertFalse("aucune question posee", etat.cancelDialog)
-    }
-
-    /** Elle demande des qu'il y a une saisie en cours, un lieu pose, ou un parcours calcule a perdre -
-     *  la meme question que le retour Android sur une bande repliee. */
-    @Test fun `la croix sur un planificateur rempli demande`() {
-        val etat = RoutePlannerState()
-        etat.openPlanner()
-        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Mirepoix")))
-        etat.requestClose()
-        assertTrue("le planificateur reste ouvert", etat.open)
-        assertTrue("la question est posee", etat.cancelDialog)
     }
 
     // ---------- Une etape montree du doigt sur la carte ----------

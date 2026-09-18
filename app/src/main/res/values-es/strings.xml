@@ -168,9 +168,7 @@
     <string name="measure_pick_start">Elegir el punto de inicio en un track</string>
     <string name="measure_pick_end">Elegir el punto final de la medición en el track %1$s</string>
     <string name="planner_title">Itinerario</string>
-    <string name="planner_collapse">Reducir</string>
-    <string name="planner_cancel_title">Se está creando un itinerario</string>
-    <string name="planner_cancel_question">¿Desea cancelarlo?</string>
+    <string name="planner_reset">Restablecer</string>
     <string name="planner_start">Salida</string>
     <string name="planner_end">Llegada</string>
     <string name="planner_via">Punto intermedio</string>

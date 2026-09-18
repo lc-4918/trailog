@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.CircularProgressIndicator
@@ -176,8 +177,8 @@ fun RoutePlannerBand(
         ) {
             BandHeader(
                 recomputing = state.recomputing,
-                onCollapse = { state.collapseOrClose() },
-                onClose = { state.requestClose() },
+                onReset = { state.reset() },
+                onClose = { state.collapseOrClose() },
             )
             RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
             StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
@@ -189,24 +190,33 @@ fun RoutePlannerBand(
     }
 }
 
-/** En-tete : reduire a gauche, fermer a l'oppose. */
+/**
+ * En-tete : le titre, puis les deux gestes de la bande a l'oppose - remettre a blanc, et ranger.
+ *
+ * **Un seul bouton pour ranger, la ou il y en avait deux.** Le chevron "reduire" gardait le trajet, la
+ * croix le detruisait apres une question : deux boutons voisins, presque identiques, dont l'un se
+ * rattrapait et l'autre non. La croix range desormais, comme le chevron qu'elle remplace, et le seul
+ * bouton qui perd quelque chose le dit dans son libelle.
+ */
 @Composable
 private fun BandHeader(
     recomputing: Boolean,
-    onCollapse: () -> Unit,
+    onReset: () -> Unit,
     onClose: () -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onCollapse, modifier = Modifier.size(28.dp)) {
-                Icon(Icons.Filled.ExpandMore, stringResource(R.string.planner_collapse), Modifier.size(20.dp))
-            }
             Text(stringResource(R.string.planner_title), fontSize = BandTitleSp.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 4.dp))
             // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
             // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
             if (recomputing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+            // A gauche de la croix : le geste qui efface se lit AVANT celui qui range, dans l'ordre ou la
+            // main les rencontre en venant du titre.
+            IconButton(onClick = onReset, modifier = Modifier.size(28.dp)) {
+                Icon(Icons.Filled.RestartAlt, stringResource(R.string.planner_reset), Modifier.size(20.dp))
+            }
             IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
             }
