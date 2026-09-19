@@ -13,7 +13,7 @@ import androidx.core.content.edit
 object ThemePrefs {
     private const val PREFS_NAME = "theme_prefs"
     private const val KEY_THEME = "theme"
-    private const val DEFAULT = "system"
+    private const val DEFAULT = "light"
 
     fun get(context: Context): String =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_THEME, DEFAULT) ?: DEFAULT

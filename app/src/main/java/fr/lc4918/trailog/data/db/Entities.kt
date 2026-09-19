@@ -140,7 +140,9 @@ data class SettingsEntity(
     // ecran d'une application de trace doit montrer le terrain.
     val defaultBasemapId: String = "mapbox_outdoors",
     val mbtilesDir: String = "",           // chemin réel ; vide = dossier privé de l'app
-    val theme: String = "system",          // system | light | dark
+    // Clair par defaut, et non celui de l'appareil : la carte se lit sur le terrain, en plein jour, et un
+    // telephone regle en sombre la posait sous des bandeaux noirs.
+    val theme: String = "light",           // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil
     val profileSlope: Boolean = true,      // colorer l'aire par pente
     // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
@@ -357,8 +359,8 @@ data class SettingsEntity(
 const val MinMapButtonSizeDp = 36
 const val MaxMapButtonSizeDp = 48
 
-/** Taille par defaut : entre les deux bornes, assez large pour se voir sans etaler un aplat de 48 dp. */
-const val DefaultMapButtonSizeDp = 42
+/** Taille par defaut : la borne haute, la plus facile a viser d'un doigt en mouvement, ou avec des gants. */
+const val DefaultMapButtonSizeDp = 48
 
 /** Opacite par defaut du fond des boutons de carte (%) : celle, fixe, que l'interrupteur dessinait avant
  *  lui (cf. MIGRATION_59_60). */

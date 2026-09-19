@@ -14,7 +14,7 @@ private val TrailogDark = darkColorScheme(primary = Color(0xFF6FB6E8), secondary
 
 /** themePref : "system" | "light" | "dark". */
 @Composable
-fun TrailogTheme(themePref: String = "system", content: @Composable () -> Unit) {
+fun TrailogTheme(themePref: String = "light", content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (isDarkTheme(themePref)) TrailogDark else TrailogLight, content = content)
 }
 

@@ -102,8 +102,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Les defauts de la premiere image, ou le theme n'est PAS celui de l'entite.
      *
-     * `SettingsEntity()` declare "system", et la carte s'affichait donc un instant dans le theme de
-     * l'appareil - boutons blancs sur un ecran qui allait devenir sombre - avant que Room ne livre le
+     * `SettingsEntity()` declare son propre defaut, et la carte s'affichait donc un instant dans ce theme-la
+     * - boutons blancs sur un ecran qui allait devenir sombre - avant que Room ne livre le
      * theme choisi. MainActivity evitait deja ce clignotement pour MaterialTheme en relisant le cache
      * SharedPreferences (cf. ThemePrefs) ; les ornements de la carte, eux, lisent ces reglages-ci, et
      * partaient sans lui.
