@@ -103,14 +103,37 @@ class PoiStateTest {
         assertNull(poi.selected)
     }
 
-    /** Cocher une categorie est une demande de VOIR : elle leve la mise de cote, sans quoi le geste
-     *  resterait sans effet derriere un oeil ferme qu'on a oublie. */
-    @Test fun `rallumer la couche leve la mise de cote`() {
+    /**
+     * La mise de cote est un REGLAGE, et l'allumage de la couche a lieu a chaque lancement : il ne doit
+     * pas la lever, sans quoi l'oeil ferme se rouvrait tout seul au redemarrage. C'est cocher une categorie
+     * qui la leve, dans le ViewModel qui l'enregistre.
+     */
+    @Test fun `rallumer la couche garde la mise de cote`() {
         val poi = couche()
         poi.toggleMask()
         poi.showLayer(false)
         poi.showLayer(true)
-        assertFalse(poi.masked)
+        assertTrue(poi.masked)
+    }
+
+    /** Le reglage relu au lancement pose la mise de cote, et ferme une infobulle qui n'aurait plus d'epingle. */
+    @Test fun `la mise de cote se restaure depuis le reglage`() {
+        val poi = couche()
+        poi.show(listOf(lieu), pending = false, cache = false, missing = false)
+        poi.selectById(lieu.uuid)
+        poi.restoreMask(true)
+        assertTrue(poi.masked)
+        assertFalse(poi.showingMarkers)
+        assertNull(poi.selected)
+        poi.restoreMask(false)
+        assertTrue(poi.showingMarkers)
+    }
+
+    /** L'oeil rend la nouvelle valeur : c'est elle que l'appelant enregistre. */
+    @Test fun `l'oeil rend la valeur a enregistrer`() {
+        val poi = couche()
+        assertTrue(poi.toggleMask())
+        assertFalse(poi.toggleMask())
     }
 
     /** Decocher une categorie emporte l'infobulle ouverte sur l'un de ses lieux, en meme temps que son

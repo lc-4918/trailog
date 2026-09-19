@@ -649,6 +649,8 @@ fun MainScreen(
     LaunchedEffect(poiFilters, settings.poiEnabled) {
         poi.showLayer(settings.poiEnabled && !poiFilters.nothingShown)
     }
+    // La mise de cote est un reglage : l'ecran la recopie a chaque changement, lancement compris.
+    LaunchedEffect(settings.poiMasked) { poi.restoreMask(settings.poiMasked) }
     // Le reglage qui pose le bouton sur la carte s'eteint : la bulle qu'il ouvrait n'a plus de bouton pour
     // la refermer.
     LaunchedEffect(settings.poiEnabled) { if (!settings.poiEnabled) poi.closeBubble() }
@@ -922,6 +924,7 @@ fun MainScreen(
                     followedTrack = followed != null,
                     poiFilters = poiFilters,
                     onPoiFilters = { vm.savePoiFilters(it) },
+                    onPoiMasked = { vm.savePoiMasked(it) },
                     moveTick = moveTick,
                     idleTick = idleTick,
                     maxWidthPx = constraints.maxWidth,

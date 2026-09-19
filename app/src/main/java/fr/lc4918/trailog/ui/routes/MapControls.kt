@@ -311,6 +311,8 @@ internal fun BoxScope.MapBottomRightControls(
     /** Les categories de points d'interet retenues, et de quoi les changer : la bulle du bouton POI. */
     poiFilters: PoiFilters,
     onPoiFilters: (PoiFilters) -> Unit,
+    /** La mise de cote de la couche, a enregistrer (cf. MainViewModel.savePoiMasked). */
+    onPoiMasked: (Boolean) -> Unit,
     moveTick: Int,
     idleTick: Int,
     maxWidthPx: Int,
@@ -615,7 +617,7 @@ internal fun BoxScope.MapBottomRightControls(
                 onFilters = onPoiFilters,
                 onClose = { poi.closeBubble() },
                 masked = poi.masked,
-                onToggleMask = { poi.toggleMask() },
+                onToggleMask = { onPoiMasked(poi.toggleMask()) },
                 // Le centre du bouton, mesure depuis son bas : la pointe le vise.
                 tailFromBottom = PoiBubbleAnchorWidth / 2,
             )

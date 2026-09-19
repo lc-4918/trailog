@@ -280,6 +280,10 @@ data class SettingsEntity(
     // 504, deux fois sur cinq sur un releve de cinq tentatives. Pouvoir en changer sans attendre une
     // nouvelle version est la seule parade a la disposition de l'utilisateur.
     val poiOsmUrl: String = "",
+    // La couche des points d'interet MISE DE COTE par l'oeil de sa bulle : ses marqueurs quittent la
+    // carte, son filtre reste entier (cf. PoiState.masked). Enregistree : qui a range les epingles pour
+    // regarder le relief les retrouvait toutes au lancement suivant.
+    val poiMasked: Boolean = false,
     // Recentrer la carte sur la position a l'allumage de la localisation. ETEINT par defaut : "ou suis-je"
     // et "emmene-moi" sont deux questions distinctes, et l'allumage sautait a la position en emportant la
     // zone qu'on etudiait. Le zoom, lui, ne bouge JAMAIS - meme recentrage demande (cf. startGps).

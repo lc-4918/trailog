@@ -869,6 +869,14 @@ class MigrationsTest {
         db.close()
     }
 
+    /** La mise de cote arrive eteinte : une base en place montrait ses points, et continue. */
+    @Test fun `66 vers 67 laisse les points d'interet affiches`() {
+        val db = freshDb("m6667"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_POI_MASKED)
+        assertEquals(0, scalar(db, "SELECT poiMasked FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -1068,7 +1076,7 @@ class MigrationsTest {
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
-            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart")
+            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart", "poiMasked")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

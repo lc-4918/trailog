@@ -55,9 +55,11 @@ class PoiState {
      * Rien n'est charge tant que la couche est de cote, et rien n'est OUBLIE non plus : les lieux deja
      * recus restent en memoire, et les remontrer ne coute donc pas une requete.
      *
-     * Volontairement NON enregistre : c'est un geste de l'instant, pas un reglage. Il traverse une rotation
-     * - l'etat vit dans un `ViewModel` - et ne survit pas au redemarrage, ou l'on retrouve la couche telle
-     * qu'on l'avait choisie.
+     * **Enregistre**, et c'est une correction : ce n'etait qu'un etat de l'ecran, et qui avait range les
+     * epingles les retrouvait toutes au lancement suivant. Le reglage fait foi (cf.
+     * `SettingsEntity.poiMasked`), et cet etat n'en est que le reflet : l'ecran le lui recopie
+     * ([restoreMask]), et l'oeil le demande au ViewModel en meme temps qu'il le pose ici, pour que la carte
+     * reponde sans attendre l'ecriture.
      */
     var masked by mutableStateOf(false)
         private set
@@ -65,10 +67,17 @@ class PoiState {
     /** Les marqueurs sont-ils reellement poses sur la carte. */
     val showingMarkers: Boolean get() = visible && !masked
 
-    fun toggleMask() {
-        masked = !masked
+    /** Bascule la mise de cote, et rend la nouvelle valeur - a enregistrer par l'appelant. */
+    fun toggleMask(): Boolean {
+        restoreMask(!masked)
+        return masked
+    }
+
+    /** Pose la mise de cote telle que le reglage la porte. */
+    fun restoreMask(m: Boolean) {
+        masked = m
         // L'infobulle decrirait un marqueur qui n'est plus la : elle se ferme avec la couche.
-        if (masked) selected = null
+        if (m) selected = null
     }
 
     var pois by mutableStateOf<List<Poi>>(emptyList())
@@ -113,14 +122,13 @@ class PoiState {
         if (on == visible) return
         visible = on
         // Allumer la couche ARME l'avertissement de zoom : c'est le seul moment ou il a lieu d'etre dit.
-        // Et leve la mise de cote : cocher une categorie est une demande de VOIR, et la laisser sans effet
-        // derriere un oeil ferme qu'on a oublie serait une carte vide qu'aucun reglage n'explique.
-        if (on) { armed = true; masked = false } else clear()
+        // La mise de cote, elle, n'est pas touchee : elle est enregistree, et l'allumage a lieu a chaque
+        // lancement. C'est cocher une categorie qui la leve (cf. MainViewModel.savePoiFilters).
+        if (on) armed = true else clear()
     }
 
     fun hide() {
         visible = false
-        masked = false
         clear()
     }
 

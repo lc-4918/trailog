@@ -697,7 +697,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val s = settings.value
         val csv = filters.hiddenCsv()
         if (s.poiHiddenCategories == csv) return@launch
-        repo.settings.upsert(s.copy(poiHiddenCategories = csv))
+        // Rallumer la couche - une categorie cochee apres tout decoche - leve la mise de cote : c'est une
+        // demande de VOIR, et la laisser sans effet derriere un oeil ferme qu'on a oublie serait une carte
+        // vide qu'aucun reglage n'explique.
+        val rallume = PoiFilters.of(s.poiHiddenCategories).nothingShown && !filters.nothingShown
+        repo.settings.upsert(s.copy(poiHiddenCategories = csv, poiMasked = s.poiMasked && !rallume))
+    }
+
+    /** La couche des points d'interet mise de cote, ou remise, par l'oeil de sa bulle. */
+    fun savePoiMasked(masked: Boolean) = viewModelScope.launch {
+        val s = settings.value
+        if (s.poiMasked != masked) repo.settings.upsert(s.copy(poiMasked = masked))
     }
 
     // ---------- import (avec dossier de destination) ----------
