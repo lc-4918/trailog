@@ -603,7 +603,7 @@
     <string name="settings_poi_cache_pinned">%1$d venues taken along with an offline area are kept</string>
     <string name="settings_poi_cache_hint">Venues seen once stay available offline for a week. Clearing them forces Trailog to ask again, for instance when an entry is wrong.</string>
     <string name="poi_from_cache">Last known points (offline)</string>
-    <string name="poi_partial">Too many venues here: not all are shown</string>
+    <string name="poi_partial">View too wide: only places near the centre are shown</string>
     <string name="poi_away_from_tracks">No track nearby (distance setting)</string>
     <string name="poi_needs_network">Connection required to load points of interest for this area</string>
 </resources>

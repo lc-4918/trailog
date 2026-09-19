@@ -56,24 +56,38 @@ import fr.lc4918.trailog.map.offline.Bbox
  * passer : le réglage "Compléter avec OpenStreetMap" rend alors la France à DATAtourisme seul. Il ne
  * touche que le complément - hors de France, OpenStreetMap répond quoi qu'il arrive, faute de quoi la
  * couche serait vide sans explication.
- *
- * **Un groupe limité au thème vélo reste à DATAtourisme**, où qu'on soit : OSM ne porte pas l'équivalent
- * de ce thème, et rendre des hébergements quelconques sous un filtre "vélo" serait promettre ce qu'on ne
- * sait pas. Une catégorie vide dit la vérité ; un marqueur qui ment ne se rattrape pas.
  */
 object PoiSources {
 
     /**
-     * Les emprises que DATAtourisme couvre : la France métropolitaine et les départements d'outre-mer,
-     * qui publient dans la même base.
+     * Le contour de la France metropolitaine continentale, en (lon, lat), a une dizaine de kilometres
+     * pres. Du cote de la mer il passe au large : il n'y a rien a y trouver, et la cote se suit mal.
      *
-     * Des rectangles larges, et volontairement : la question posée est "cette source a-t-elle une chance
-     * de répondre ici", pas "sommes-nous en France". Un rectangle trop juste priverait de sa source une
-     * carte cadrée sur une frontière, alors qu'un rectangle trop large ne coûte qu'une requête qui rendra
-     * zéro lieu - et OSM aura de toute façon repondu à côté.
+     * **Un contour et non plus un rectangle, et c'est une correction.** Le rectangle d'avant (41,2 a 51,3 N,
+     * -5,5 a 9,8 E) englobait le nord de l'Espagne - Logrono, Pampelune, Barcelone -, la Belgique, le
+     * Luxembourg, la Suisse romande et le Piemont. L'hebergement et les loisirs y etaient confies a
+     * DATAtourisme seul, qui n'en connait rien : ces deux groupes restaient vides a Logrono sans que rien
+     * ne l'explique.
      */
-    private val COUVERTURE = listOf(
-        Bbox(west = -5.5, south = 41.2, east = 9.8, north = 51.3),      // métropole et Corse
+    private val METROPOLE = listOf(
+        2.55 to 51.09, 2.60 to 50.82, 3.10 to 50.78, 3.28 to 50.52, 3.67 to 50.35, 4.02 to 50.35,
+        4.15 to 49.98, 4.45 to 49.94, 4.68 to 49.99, 4.80 to 50.17, 4.90 to 50.15, 4.87 to 49.80,
+        5.47 to 49.50, 5.82 to 49.54, 6.37 to 49.46, 6.72 to 49.16, 7.05 to 49.11, 7.44 to 49.17,
+        7.94 to 49.06, 8.23 to 48.97, 7.80 to 48.50, 7.58 to 48.12, 7.59 to 47.58, 7.40 to 47.43,
+        6.94 to 47.30, 6.45 to 46.97, 6.11 to 46.59, 6.08 to 46.25, 5.97 to 46.14, 6.30 to 46.25,
+        6.25 to 46.44, 6.79 to 46.44, 6.80 to 46.13, 7.04 to 45.93, 6.80 to 45.72, 7.15 to 45.40,
+        6.64 to 45.12, 7.07 to 44.85, 6.86 to 44.53, 6.97 to 44.24, 7.67 to 44.15, 7.53 to 43.79,
+        7.80 to 43.40, 6.60 to 42.80, 4.50 to 43.10, 3.40 to 42.40, 3.17 to 42.43, 2.67 to 42.34,
+        1.97 to 42.37, 1.73 to 42.50, 1.44 to 42.60, 0.95 to 42.80, 0.72 to 42.86, 0.66 to 42.70,
+        0.40 to 42.69, 0.00 to 42.69, -0.74 to 42.91, -1.44 to 43.05, -1.47 to 43.27, -1.79 to 43.37,
+        -2.20 to 43.60, -1.70 to 46.00, -3.00 to 47.10, -5.40 to 48.00, -5.40 to 48.70, -3.60 to 48.95,
+        -2.30 to 48.72, -1.66 to 48.75, -1.72 to 49.30, -2.05 to 49.75, -1.90 to 49.90, 0.00 to 49.75,
+        1.40 to 50.40, 1.50 to 51.10,
+    )
+
+    /** La Corse, et les departements d'outre-mer : des iles, qu'un rectangle decrit sans rien deborder. */
+    private val ILES = listOf(
+        Bbox(west = 8.4, south = 41.33, east = 9.7, north = 43.1),      // Corse
         Bbox(west = -61.9, south = 15.7, east = -60.7, north = 16.6),   // Guadeloupe
         Bbox(west = -61.3, south = 14.3, east = -60.7, north = 14.9),   // Martinique
         Bbox(west = -54.7, south = 2.0, east = -51.5, north = 5.9),     // Guyane
@@ -81,12 +95,42 @@ object PoiSources {
         Bbox(west = 45.0, south = -13.1, east = 45.4, north = -12.6),   // Mayotte
     )
 
-    /** Deux emprises se touchent-elles. Sans franchissement de l'antiméridien, comme partout ailleurs. */
-    private fun croise(a: Bbox, b: Bbox): Boolean =
-        a.west <= b.east && a.east >= b.west && a.south <= b.north && a.north >= b.south
+    /** Ce point est-il dans ce que DATAtourisme couvre. */
+    fun datatourismeCovers(lon: Double, lat: Double): Boolean =
+        ILES.any { lon >= it.west && lon <= it.east && lat >= it.south && lat <= it.north } ||
+            dansPolygone(lon, lat, METROPOLE)
 
-    /** L'emprise visible est-elle, même en partie, dans ce que DATAtourisme couvre. */
-    fun datatourismeCovers(box: Bbox): Boolean = COUVERTURE.any { croise(it, box) }
+    /** Test du rayon : le nombre de bords que croise une demi-droite partie du point vers l'est. */
+    private fun dansPolygone(lon: Double, lat: Double, poly: List<Pair<Double, Double>>): Boolean {
+        var dedans = false
+        var j = poly.size - 1
+        for (i in poly.indices) {
+            val (xi, yi) = poly[i]
+            val (xj, yj) = poly[j]
+            if ((yi > lat) != (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) dedans = !dedans
+            j = i
+        }
+        return dedans
+    }
+
+    /**
+     * Ce que DATAtourisme couvre de l'emprise : toute, rien, ou une partie.
+     *
+     * Lu sur neuf points - les coins, les milieux des bords et le centre -, ce qui suffit a l'echelle
+     * d'une cellule de la grille (cf. [PoiCells]) devant un contour precis a dix kilometres.
+     */
+    fun coverage(box: Bbox): Coverage {
+        val lons = listOf(box.west, (box.west + box.east) / 2, box.east)
+        val lats = listOf(box.south, (box.south + box.north) / 2, box.north)
+        val dedans = lons.sumOf { lon -> lats.count { lat -> datatourismeCovers(lon, lat) } }
+        return when (dedans) {
+            0 -> Coverage.NONE
+            9 -> Coverage.FULL
+            else -> Coverage.PARTIAL
+        }
+    }
+
+    enum class Coverage { NONE, PARTIAL, FULL }
 
     /**
      * Les groupes qu'OpenStreetMap sert **même là où DATAtourisme répond** (cf. la note de tête).
@@ -97,80 +141,44 @@ object PoiSources {
     private val COMPLETES_PAR_OSM = setOf(PoiGroup.PRACTICAL, PoiGroup.FOOD)
 
     /**
-     * Les categories a demander a DATAtourisme pour cette emprise.
+     * Les sources qui servent le groupe [group] sur l'emprise [box] - une cellule de la grille.
      *
-     * **Il les recevait TOUTES, y compris celles qu'il ne sait pas decrire**, et ce fichier documentait
-     * pourtant depuis longtemps pourquoi elles reviennent a OpenStreetMap : sur le centre d'Albi, six
-     * restaurants contre cent cinquante - et les six sont des hotels ; sur Grenoble, zero point d'eau,
-     * zero toilettes, zero borne de recharge contre 129, 46 et 165. La regle de partage n'etait ecrite
-     * que d'un cote.
-     *
-     * Le prix se payait deux fois. En DATA d'abord : la reponse de Toulouse pese 258 ko pour toutes les
-     * categories, sans compression - ce service n'en offre pas - et une bonne part decrit des lieux qu'on
-     * n'affichera pas. En LIEUX ensuite : les classes de restauration mangeaient le plafond de 250 objets
-     * au detriment des hebergements et des loisirs, que DATAtourisme est justement le seul a bien decrire -
-     * jusqu'a 729 objets de restauration sur Marseille, la ou la ville compte quatorze hotels.
-     *
-     * Hors de France il ne rend rien du tout, et l'on ne l'interroge donc pas (cf. [datatourismeCovers]).
-     *
-     * **[complement] coupe, il les REPREND toutes** : le reglage "Completer avec OpenStreetMap" eteint,
-     * OSM ne repond plus rien en France, et lui retirer en plus la restauration et le pratique viderait
-     * ces deux groupes sans que rien sur la carte ne l'explique. Six restaurants valent mieux que zero,
-     * meme si ce sont six hotels.
+     * La règle de partage s'y lit entière :
+     * - hors de ce que DATAtourisme couvre, OpenStreetMap, pour tout ;
+     * - en France, OpenStreetMap pour la restauration et le pratique, DATAtourisme pour le reste ;
+     * - le complément coupé (le réglage "Compléter avec OpenStreetMap"), DATAtourisme pour tout en
+     *   France. Six restaurants valent mieux que zéro, même si ce sont six hôtels. Hors de France, le
+     *   réglage est ignoré : OpenStreetMap y est la seule source, et l'écouter viderait la couche sans que
+     *   rien sur la carte ne l'explique ;
+     * - **à cheval sur la frontière, les deux règles à la fois** : la part française de la cellule a
+     *   besoin de DATAtourisme, l'autre d'OpenStreetMap. Les doublons se fondent à l'affichage
+     *   (cf. [merge]).
      */
-    fun datatourismeCategories(
-        box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true,
-    ): Set<PoiCategory> = when {
-        !datatourismeCovers(box) -> emptySet()
-        !complement -> libres
-        else -> libres.filterNotTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
+    fun sources(box: Bbox, group: PoiGroup, complement: Boolean = true): Set<PoiSource> {
+        val enFrance = if (!complement) PoiSource.DATATOURISME
+            else if (group in COMPLETES_PAR_OSM) PoiSource.OSM else PoiSource.DATATOURISME
+        return when (coverage(box)) {
+            Coverage.NONE -> setOf(PoiSource.OSM)
+            Coverage.FULL -> setOf(enFrance)
+            Coverage.PARTIAL -> setOf(enFrance, PoiSource.OSM)
+        }
     }
 
     /**
-     * Les catégories à demander à OpenStreetMap pour cette emprise.
+     * Les catégories à demander à [source] pour ces groupes : TOUTES celles du groupe que la source sait
+     * décrire, cochées ou non.
      *
-     * [libres] est le jeu des catégories cochées **hors** thème vélo : celles limitées au vélo ne passent
-     * jamais par ici (cf. la note de tête).
-     *
-     * [complement] est le réglage "Compléter avec OpenStreetMap". Il ne gouverne que le COMPLÉMENT, et
-     * n'a donc d'effet que là où DATAtourisme répond : une requête Overpass est longue - une trentaine de
-     * secondes sur une ville dense - et qui n'en veut pas doit pouvoir s'en passer. Hors de France il est
-     * ignoré, et volontairement : OpenStreetMap y est la seule source, et l'écouter viderait la couche
-     * sans que rien sur la carte ne l'explique.
+     * Toutes, et non les seules cochées : ce que la réponse porte se garde par cellule et par groupe, et
+     * le filtre s'applique ensuite à ce qu'on a. Cocher une catégorie de plus ne coûte donc plus aucune
+     * requête, et la décocher puis la recocher ne redemande rien.
      */
-    fun osmCategories(box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true): Set<PoiCategory> =
-        if (!datatourismeCovers(box)) libres
-        else if (!complement) emptySet()
-        else libres.filterTo(mutableSetOf()) { it.group in COMPLETES_PAR_OSM }
-
-    /**
-     * Les catégories à demander à OpenStreetMap, **découpées par groupe** : une requête par groupe, plutôt
-     * qu'une seule qui les porte toutes.
-     *
-     * **Pourquoi découper**, mesuré sur un écran de carte à Berlin, la requête unique servant d'étalon :
-     *
-     * | Requête | Temps |
-     * |---|---|
-     * | toutes catégories (avant) | 30 s, et rien à l'écran avant la fin |
-     * | hébergements | 3,1 s |
-     * | restauration | 2,9 s |
-     * | loisirs | 15,9 s |
-     * | pratique | 23,3 s |
-     *
-     * Ce ne sont pas les 30 secondes qui gênaient, c'est de n'avoir **rien** pendant 30 secondes. Découpé,
-     * l'écran se peuple au bout de trois : les hôtels et les restaurants d'abord, les musées ensuite, les
-     * services en dernier - **chaque groupe s'affiche dès qu'il répond** (cf. `poiStream`).
-     *
-     * Les groupes vides ne comptent pas : rien de coché, rien à demander.
-     *
-     * En France, ce découpage rend deux requêtes au plus - la restauration et le pratique - et le premier
-     * des deux à répondre s'affiche sans attendre l'autre.
-     */
-    fun osmGroups(box: Bbox, libres: Set<PoiCategory>, complement: Boolean = true): List<Set<PoiCategory>> =
-        osmCategories(box, libres, complement)
-            .groupBy { it.group }
-            .toSortedMap(compareBy { it.ordinal })
-            .values.map { it.toSet() }
+    fun categories(source: PoiSource, groups: Set<PoiGroup>): Set<PoiCategory> =
+        PoiCategory.entries.filterTo(mutableSetOf()) { c ->
+            c.group in groups && when (source) {
+                PoiSource.DATATOURISME -> c.classes.isNotEmpty()
+                PoiSource.OSM -> c.osm.isNotEmpty()
+            }
+        }
 
     /**
      * Distance en deçà de laquelle deux lieux de même catégorie sont tenus pour le même endroit.
@@ -191,10 +199,13 @@ object PoiSources {
      */
     fun merge(datatourisme: List<Poi>, osm: List<Poi>): List<Poi> {
         if (datatourisme.isEmpty() || osm.isEmpty()) return datatourisme + osm
+        // Par categorie : seules deux fiches de meme categorie peuvent designer le meme lieu, et la regle
+        // de partage fait que les deux sources ne servent presque jamais les memes. Sans ce classement, le
+        // cout croissait avec le produit des deux listes - des millions de distances sur une ville dense.
+        val connus = datatourisme.groupBy { it.category }
         val gardes = osm.filter { candidat ->
-            datatourisme.none { connu ->
-                connu.category == candidat.category &&
-                    TrackMath.haversine(connu.lon, connu.lat, candidat.lon, candidat.lat) < DOUBLON_M
+            connus[candidat.category].orEmpty().none { connu ->
+                TrackMath.haversine(connu.lon, connu.lat, candidat.lon, candidat.lat) < DOUBLON_M
             }
         }
         return datatourisme + gardes
@@ -202,15 +213,14 @@ object PoiSources {
 }
 
 /**
- * Le même objet rendu par deux requêtes de groupes différents : lequel garder.
- *
- * Le cas naît du découpage (cf. [PoiSources.osmGroups]) : un hôtel-restaurant d'OpenStreetMap répond à la
- * requête des hébergements ET à celle de la restauration, sous deux catégories différentes, avec le même
- * identifiant. Deux marqueurs se poseraient alors l'un sur l'autre, et un tap ne saurait plus lequel ouvrir.
- *
- * On tranche par l'ordre de résolution des catégories, celui-là même qui tranche quand un seul appel rend un
- * lieu à plusieurs classes : le résultat ne dépend donc pas de l'ordre d'arrivée des réponses, qui, lui, ne
- * se reproduit jamais deux fois pareil.
+ * Les deux sources de points d'intérêt. [key] s'écrit en base (cf. `PoiCellEntity`), et le préfixe `osm:`
+ * des identifiants distingue leurs fiches une fois réunies (cf. `Overpass.parse`).
  */
-internal fun mieuxClasse(a: Poi, b: Poi): Poi =
-    if (PoiCategory.resolutionRank(a.category) <= PoiCategory.resolutionRank(b.category)) a else b
+enum class PoiSource(val key: String) {
+    DATATOURISME("dt"),
+    OSM("osm");
+
+    companion object {
+        fun ofUuid(uuid: String): PoiSource = if (uuid.startsWith("osm:")) OSM else DATATOURISME
+    }
+}

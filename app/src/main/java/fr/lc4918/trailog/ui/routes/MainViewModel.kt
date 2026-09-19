@@ -24,7 +24,7 @@ import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.domain.model.PlannerHistory
-import fr.lc4918.trailog.poi.Datatourisme
+import fr.lc4918.trailog.poi.Overpass
 import fr.lc4918.trailog.poi.PoiRepository
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.map.BasemapKeyProbe
@@ -979,7 +979,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val lieux = if (req.withPois && result is OfflineDownloadResult.Success) {
                     val filtres = PoiFilters.of(s.poiHiddenCategories)
                     runCatching {
-                        poiRepository.pinArea(Datatourisme.DEFAULT_URL, req.bbox, filtres.shown)
+                        poiRepository.pinArea(
+                            req.bbox, filtres.shown.mapTo(mutableSetOf()) { it.group },
+                            osmBase = s.poiOsmUrl.ifBlank { Overpass.DEFAULT_URL },
+                            complement = s.poiOsmComplement,
+                        )
                     }.getOrNull()
                 } else null
                 _offlineDownload.update { st ->

@@ -506,6 +506,35 @@ internal object MigrationSql {
         )
     """.trimIndent()
 
+    /**
+     * Les points d'interet se chargent par cellule de la grille (cf. `PoiCells`) : chaque lieu garde la
+     * sienne, et une table retient les cellules deja chargees.
+     *
+     * La cellule des lieux deja en base se calcule ici, avec la meme regle que `PoiCells.of` - le plancher
+     * de la coordonnee fois dix. SQLite n'a pas de plancher : on tronque, et l'on retire un aux valeurs
+     * negatives non entieres, qui tomberaient sinon dans la cellule voisine.
+     *
+     * AUCUNE cellule n'est marquee chargee : ces lieux ont ete rendus par des requetes sur l'emprise de
+     * l'ecran, tronquees souvent, et rien ne dit qu'une cellule soit complete. Ils servent de repli sans
+     * reseau, et se remplacent au premier passage connecte.
+     */
+    const val ADD_POI_CELL = "ALTER TABLE poi_cache ADD COLUMN cell TEXT NOT NULL DEFAULT ''"
+    const val SET_POI_CELL =
+        "UPDATE poi_cache SET cell = " +
+            "(CAST(lon * 10 AS INTEGER) - (lon * 10 < CAST(lon * 10 AS INTEGER))) || '_' || " +
+            "(CAST(lat * 10 AS INTEGER) - (lat * 10 < CAST(lat * 10 AS INTEGER)))"
+    const val CREATE_POI_CACHE_CELL_INDEX = "CREATE INDEX IF NOT EXISTS index_poi_cache_cell ON poi_cache (cell)"
+    val CREATE_POI_CELLS = """
+        CREATE TABLE IF NOT EXISTS poi_cells (
+            cell TEXT NOT NULL,
+            groupKey TEXT NOT NULL,
+            source TEXT NOT NULL,
+            fetchedAt INTEGER NOT NULL,
+            pinned INTEGER NOT NULL,
+            PRIMARY KEY(cell, groupKey, source)
+        )
+    """.trimIndent()
+
     val INSERT_AF3V = """
         INSERT OR IGNORE INTO providers
           (id, name, groupName, type, urlTemplate, apiKey, subdomains, minZoom, maxZoom,
@@ -527,12 +556,12 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 65
+internal const val DB_VERSION = 66
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
         CompositeEntity::class, SettingsEntity::class, BasemapFolderEntity::class,
-        PoiCacheEntity::class],
+        PoiCacheEntity::class, PoiCellEntity::class],
     version = DB_VERSION,
     exportSchema = false,
 )
@@ -912,6 +941,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Les points d'interet par cellule de la grille : une colonne, un index, une table.
+        private val MIGRATION_65_66 = object : Migration(65, 66) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(MigrationSql.ADD_POI_CELL)
+                db.execSQL(MigrationSql.SET_POI_CELL)
+                db.execSQL(MigrationSql.CREATE_POI_CACHE_CELL_INDEX)
+                db.execSQL(MigrationSql.CREATE_POI_CELLS)
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -922,7 +961,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65, MIGRATION_65_66)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

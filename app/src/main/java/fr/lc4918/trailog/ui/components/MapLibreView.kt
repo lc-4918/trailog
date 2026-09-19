@@ -1,5 +1,7 @@
 package fr.lc4918.trailog.ui.components
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas as AndroidCanvas
@@ -441,19 +443,32 @@ class MapController {
      * grammaire de marqueur, et un point d'interet se distingue par sa couleur, non par une forme etrangere
      * au reste de l'application.
      */
-    fun setPoiMarkers(markers: List<PoiMarker>, heightPx: Float) {
-        val s = style ?: return
+    suspend fun setPoiMarkers(markers: List<PoiMarker>, heightPx: Float) {
+        if (style == null) return
         if (markers.isEmpty()) {
+            val s = style ?: return
             s.getLayer(POI_LAYER)?.let { s.removeLayer(it) }
             s.getSource(POI_SRC)?.let { s.removeSource(it) }
             return
         }
-        val features = markers.joinToString(",") { m ->
-            val icon = ensurePoiBubble(s, appContext, m.colorHex, m.iconRes, heightPx)
-            """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lon},${m.lat}]},""" +
-                """"properties":{"__id":"${m.id}","__icon":"$icon"}}"""
+        // Les images d'abord, sur le fil de la carte : il n'y en a qu'une par couleur et par pictogramme.
+        val icones = markers.mapTo(HashSet()) { it.colorHex to it.iconRes }.associateWith { (c, r) ->
+            ensurePoiBubble(style ?: return, appContext, c, r, heightPx)
         }
-        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        // Le texte, a cote : une ville dense en porte des milliers - quatre mille restaurants sur une seule
+        // cellule de Madrid -, et l'assembler sur le fil de l'interface figeait la carte le temps de le faire.
+        val geojson = withContext(Dispatchers.Default) {
+            val features = markers.joinToString(",") { m ->
+                val icon = icones.getValue(m.colorHex to m.iconRes)
+                """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lon},${m.lat}]},""" +
+                    """"properties":{"__id":"${m.id}","__icon":"$icon"}}"""
+            }
+            """{"type":"FeatureCollection","features":[$features]}"""
+        }
+        // Le style a pu changer pendant l'assemblage - un fond de carte recharge : on repart du courant, et
+        // ses images sont a reposer.
+        val s = style ?: return
+        icones.keys.forEach { (c, r) -> ensurePoiBubble(s, appContext, c, r, heightPx) }
         val existing = s.getSourceAs<GeoJsonSource>(POI_SRC)
         if (existing == null) s.addSource(GeoJsonSource(POI_SRC, geojson)) else existing.setGeoJson(geojson)
         if (s.getLayer(POI_LAYER) == null) {

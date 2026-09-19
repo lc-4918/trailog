@@ -3,6 +3,7 @@ package fr.lc4918.trailog.poi
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.map.offline.Bbox
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -68,7 +69,7 @@ class OverpassTest {
         val q = Overpass.query(grenoble, setOf(PoiCategory.CAMPINGS))!!
         assertTrue(q, q.startsWith("[out:json][timeout:"))
         assertTrue(q, "nwr[" in q)
-        assertTrue(q, q.endsWith("out tags center ${Overpass.LIMIT};"))
+        assertTrue(q, q.endsWith("out tags center;"))
     }
 
     /** La geometrie complete des chemins n'est jamais demandee : elle pese sans rien apprendre. */
@@ -77,7 +78,47 @@ class OverpassTest {
         assertTrue(q, "geom" !in q)
     }
 
-    // ---------- le decoupage d'une tuile trop dense ----------
+    /**
+     * **Aucun plafond d'objets**, et c'est une correction : Overpass trie par type puis par identifiant et
+     * coupe a la fin, si bien qu'une reponse tronquee rendait les seuls noeuds, et jamais un restaurant
+     * dessine en batiment. La requete porte sur une cellule, assez petite pour tenir entiere.
+     */
+    @Test fun `la requete ne tronque pas la reponse`() {
+        val q = Overpass.query(grenoble, PoiCategory.entries.toSet())!!
+        assertFalse(q, Regex("out tags center \\d").containsMatchIn(q))
+    }
+
+    // ---------- Les instances ----------
+
+    /** L'instance par defaut est celle d'OSM France, puis les secours : l'ancienne n'est plus joignable. */
+    @Test fun `l'instance par defaut passe en tete, les secours ensuite`() {
+        val c = Overpass.cascade("", derniere = null)
+        assertEquals(Overpass.DEFAULT_URL, c.first())
+        assertTrue(c.size > 1)
+        assertEquals(c.size, c.toSet().size)
+    }
+
+    /** Un reglage ecrit du temps de l'ancien defaut n'est pas un choix : il suit le nouveau. */
+    @Test fun `l'ancien defaut suit le nouveau`() {
+        assertEquals(Overpass.cascade("", null), Overpass.cascade("https://overpass-api.de/api/interpreter", null))
+    }
+
+    /** Qui vise sa propre instance n'est jamais envoye chez des tiers. */
+    @Test fun `une instance choisie n'a pas de secours`() {
+        assertEquals(listOf("https://ma.base/api/interpreter"),
+            Overpass.cascade(" https://ma.base/api/interpreter ", derniere = Overpass.DEFAULT_URL))
+    }
+
+    /** La derniere qui a repondu passe devant, sans que la cascade perde personne. */
+    @Test fun `la derniere qui a repondu passe devant`() {
+        val secours = Overpass.cascade("", null).last()
+        val c = Overpass.cascade("", derniere = secours)
+        assertEquals(secours, c.first())
+        assertEquals(Overpass.cascade("", null).toSet(), c.toSet())
+        assertEquals(c.size, c.toSet().size)
+    }
+
+    // ---------- le decoupage d'une emprise que DATAtourisme ne rend pas en une page ----------
 
     /**
      * Les quatre quadrants pavent l'emprise sans trou ni recouvrement.
@@ -86,7 +127,7 @@ class OverpassTest {
      * recouvrement rendrait deux fois les memes lieux - sans dommage, mais pour rien.
      */
     @Test fun `les quadrants pavent l'emprise`() {
-        val q = Overpass.quadrants(grenoble)
+        val q = quadrants(grenoble)
         assertEquals(4, q.size)
         assertEquals(grenoble.west, q.minOf { it.west }, 1e-9)
         assertEquals(grenoble.east, q.maxOf { it.east }, 1e-9)
@@ -100,12 +141,7 @@ class OverpassTest {
         })
         assertEquals("chacun fait le quart de la surface",
             aire(grenoble) / 4, aire(q.first()), 1e-9)
-    }
-
-    /** Les quatre quadrants sont distincts : un decoupage qui rendrait deux fois la meme tuile tournerait
-     *  en rond sans jamais resserrer. */
-    @Test fun `les quatre quadrants sont distincts`() {
-        assertEquals(4, Overpass.quadrants(grenoble).toSet().size)
+        assertEquals("et ils sont distincts", 4, q.toSet().size)
     }
 
     private fun aire(b: Bbox) = (b.east - b.west) * (b.north - b.south)

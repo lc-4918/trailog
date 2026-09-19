@@ -603,7 +603,7 @@
     <string name="settings_poi_cache_pinned">%1$d locais levados com uma zona sem ligação são conservados</string>
     <string name="settings_poi_cache_hint">Os locais vistos uma vez continuam disponíveis sem rede durante uma semana. Esvaziá-los obriga o Trailog a pedi-los de novo, por exemplo se uma ficha estiver errada.</string>
     <string name="poi_from_cache">Últimos pontos conhecidos (offline)</string>
-    <string name="poi_partial">Demasiados locais aqui: não são todos mostrados</string>
+    <string name="poi_partial">Vista demasiado ampla: só são mostrados os locais perto do centro</string>
     <string name="poi_away_from_tracks">Nenhum trajeto por perto (definição de distância)</string>
     <string name="poi_needs_network">Ligação necessária para carregar os pontos de interesse desta zona</string>
 </resources>

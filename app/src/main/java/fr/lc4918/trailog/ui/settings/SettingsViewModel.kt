@@ -86,7 +86,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      * "etes-vous sur" pour une donnee qui repousse seule serait du ceremonial. Ce qui ne repousse pas -
      * les lieux emportes - n'est justement pas touche.
      */
-    fun clearPoiCache() = viewModelScope.launch { repo.pois.clearUnpinned() }
+    fun clearPoiCache() = viewModelScope.launch { repo.pois.clearUnpinned(); repo.pois.clearUnpinnedCells() }
 
     // ---------- sauvegarde et restauration ----------
 

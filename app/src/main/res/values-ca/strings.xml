@@ -603,7 +603,7 @@
     <string name="settings_poi_cache_pinned">Es conserven %1$d llocs emportats amb una zona fora de línia</string>
     <string name="settings_poi_cache_hint">Els llocs vistos un cop resten consultables sense xarxa durant una setmana. Buidar-los obliga Trailog a demanar-los de nou, per exemple si una fitxa és errònia.</string>
     <string name="poi_from_cache">Últims punts coneguts (fora de línia)</string>
-    <string name="poi_partial">Massa llocs aquí: no es mostren tots</string>
+    <string name="poi_partial">Vista massa àmplia: només es mostren els llocs propers al centre</string>
     <string name="poi_away_from_tracks">Cap traça a prop (ajust de distància)</string>
     <string name="poi_needs_network">Cal connexió per carregar els punts d\'interès d\'aquesta zona</string>
 </resources>

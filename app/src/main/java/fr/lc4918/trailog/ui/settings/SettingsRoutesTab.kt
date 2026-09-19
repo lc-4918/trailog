@@ -158,19 +158,9 @@ import kotlinx.coroutines.launch
                 stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
                 sub = stringResource(R.string.settings_sw_poi_osm_sub),
             ) {
+                // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
+                // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
                 vm.save(cur.copy(poiOsmComplement = it))
-                /*
-                 * Le cache est VIDE au passage, dans les deux sens.
-                 *
-                 * Il garde ce que les sources ont rendu, sans se souvenir desquelles : les lieux d'une
-                 * zone survolee sans le complement y restent, et la carte les reposerait tels quels si le
-                 * service ne repondait pas - c'est-a-dire sans les lieux qu'on vient justement de
-                 * demander. L'effacer force une recherche entiere au retour sur la carte.
-                 *
-                 * Les lieux EMPORTES pour le hors-ligne sont epargnes (cf. clearPoiCache) : une zone
-                 * telechargee pour partir ne doit pas se vider parce qu'on a touche a un reglage.
-                 */
-                vm.clearPoiCache()
             }
             RowDivider()
             /*

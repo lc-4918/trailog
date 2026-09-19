@@ -603,7 +603,7 @@
     <string name="settings_poi_cache_pinned">Lineaz kanpoko eremu batekin eramandako %1$d leku gordeta geratzen dira</string>
     <string name="settings_poi_cache_hint">Behin ikusitako lekuak astebetez daude eskuragarri sarerik gabe. Hustean, Trailogek berriro eskatuko ditu, adibidez fitxa bat okerra bada.</string>
     <string name="poi_from_cache">Azken puntu ezagunak (lineaz kanpo)</string>
-    <string name="poi_partial">Leku gehiegi hemen: ez dira guztiak erakusten</string>
+    <string name="poi_partial">Ikuspegi zabalegia: erdigunetik gertu dauden lekuak soilik erakusten dira</string>
     <string name="poi_away_from_tracks">Ez dago aztarnarik gertu (distantzia-ezarpena)</string>
     <string name="poi_needs_network">Konexioa behar da eremu honetako interesguneak kargatzeko</string>
 </resources>

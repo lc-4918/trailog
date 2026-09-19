@@ -605,7 +605,7 @@
     <string name="settings_poi_cache_pinned">%1$d lieux emportés avec une zone hors ligne sont conservés</string>
     <string name="settings_poi_cache_hint">Les lieux vus une fois restent consultables sans réseau pendant une semaine. Les vider force Trailog à les redemander, par exemple si une fiche est erronée.</string>
     <string name="poi_from_cache">Derniers points connus (hors ligne)</string>
-    <string name="poi_partial">Trop de lieux ici : tous ne sont pas affichés</string>
+    <string name="poi_partial">Vue trop large : seuls les lieux proches du centre sont affichés</string>
     <string name="poi_away_from_tracks">Aucune trace à proximité (réglage de distance)</string>
     <string name="poi_needs_network">Connexion requise pour charger les points d\'intérêt de cette zone</string>
 </resources>

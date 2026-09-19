@@ -99,18 +99,25 @@ enum class PoiCategory(
 
     // ---------- Loisirs ----------
 
+    /**
+     * `leisure=garden` en est SORTI, comme `leisure=swimming_pool` de la baignade, et pour la meme raison :
+     * OSM y range surtout des jardins et des piscines PRIVES. Releve sur une cellule de Logrono, 2 064
+     * jardins dont 1 933 sans type ni acces ; sur une cellule de Toulouse, 2 518 piscines dont 2 265
+     * privees. Hors de France, ou OSM sert les loisirs, ils noyaient le groupe sous des milliers de
+     * marqueurs de jardins particuliers. Trailmap les a retires de la meme facon.
+     */
     CULTURAL_SITES("sites-culturels-touristiques", PoiGroup.LEISURE,
         setOf("CulturalSite", "Museum", "Castle", "CastleAndPrestigeMansion", "ReligiousSite",
             "ArcheologicalSite", "ParkAndGarden", "RemarkableBuilding", "InterpretationCentre"),
         setOf("tourism=museum", "historic=castle", "historic=monument", "historic=archaeological_site",
-            "historic=ruins", "leisure=garden")),
+            "historic=ruins")),
     ACTIVITIES("activites", PoiGroup.LEISURE,
         setOf("SportsAndLeisurePlace", "LeisureSportActivityProvider", "ActivityProvider",
             "LeisureComplex", "ThemePark", "AdventurePark", "ZooAnimalPark"),
         setOf("tourism=theme_park", "tourism=zoo", "leisure=sports_centre", "leisure=water_park")),
     SWIMMING("lieu-baignade", PoiGroup.LEISURE,
         setOf("Beach", "SwimmingPool", "BeachClub"),
-        setOf("natural=beach", "leisure=swimming_area", "leisure=swimming_pool")),
+        setOf("natural=beach", "leisure=swimming_area")),
     HERITAGE_VILLAGES("village-caractere", PoiGroup.LEISURE,
         setOf("CityHeritage")),
     MARKETS("marches", PoiGroup.LEISURE,
@@ -217,15 +224,6 @@ enum class PoiCategory(
             entries.filter { it.group == PoiGroup.PRACTICAL } +
                 entries.filterNot { it.group == PoiGroup.PRACTICAL }
         }
-
-        /**
-         * Rang d'une catégorie dans [ORDRE_DE_RESOLUTION].
-         *
-         * Sert là où deux réponses désignent le même lieu sous deux catégories - un hôtel-restaurant rendu
-         * par la requête des hébergements et par celle de la restauration : on tranche par le même ordre
-         * que partout ailleurs, plutôt que par l'ordre d'arrivée, qui ne se reproduit jamais deux fois.
-         */
-        fun resolutionRank(category: PoiCategory): Int = ORDRE_DE_RESOLUTION.indexOf(category)
 
         /**
          * La catégorie d'un POI d'après les classes qu'il porte, ou null si aucune ne nous parle.

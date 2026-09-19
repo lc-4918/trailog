@@ -6,7 +6,6 @@ import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 import kotlinx.serialization.json.Json
@@ -20,154 +19,100 @@ import java.net.URLEncoder
  * Client **Overpass**, l'interrogateur d'OpenStreetMap, la seconde source de points d'intérêt.
  *
  * **Pourquoi une seconde source.** DATAtourisme est la base publique du tourisme *français* : hors de
- * France elle ne rend rien, et la couche restait vide sans que rien ne l'explique. En France même, elle
- * ignore largement ce qui sert sur le terrain - mesuré autour de Grenoble, à l'échelle d'un écran de
- * carte : **zéro** point d'eau, zéro toilettes publiques, zéro aire de pique-nique, zéro borne de
- * recharge, quatre loueurs de vélos ; OSM y porte respectivement 129, 46, 25, 165 et 50 objets.
+ * France elle ne rend rien. En France même, elle ignore largement ce qui sert sur le terrain - mesuré
+ * autour de Grenoble, à l'échelle d'un écran de carte : **zéro** point d'eau, zéro toilettes publiques,
+ * zéro aire de pique-nique, zéro borne de recharge, quatre loueurs de vélos ; OSM y porte respectivement
+ * 129, 46, 25, 165 et 50 objets. Sur le centre d'Albi, 6 restaurants contre 150 (cf. [PoiSources]).
  *
- * Les **hébergements** sont comparables (49 hôtels contre 38), et c'est pour cela que DATAtourisme les
- * garde - avec ses photos, que l'infobulle montre. Cette mesure-là a longtemps servi à conclure que la
- * **restauration** l'était aussi : elle ne l'est pas, et personne ne l'avait mesurée. Sur le centre
- * d'Albi, 6 restaurants contre 150, et les 6 sont des hôtels (cf. [PoiSources]).
+ * **On l'interroge par cellule de la grille** (cf. [PoiCells]), jamais sur l'emprise de l'écran : une
+ * petite emprise fixe tient toujours sous les limites du service, se garde, et se rend à l'identique à
+ * chaque passage. La requête ne porte donc **aucun plafond** d'objets. Le plafond d'avant ne protégeait de
+ * rien : Overpass trie par type puis par identifiant et coupe à la fin, si bien qu'une réponse tronquée
+ * n'était pas un échantillon mais le début de la liste - relevé sur Toulouse, 600 noeuds rendus et pas un
+ * seul des restaurants dessinés en bâtiment.
  *
- * **Le partage est donc géographique, et par groupe** (cf. [PoiRepository]) : hors de France, OSM répond
- * seul ; en France, il complète le groupe *pratique* - celui des services - et la *restauration*.
+ * **Deux choix de forme** :
+ * - les sélecteurs sont regroupés par clé en une expression régulière (`amenity~"^(bar|cafe|pub)$"`),
+ *   ce qui tient la requête en une dizaine d'instructions au lieu d'une soixantaine ;
+ * - `nwr` interroge d'un coup noeuds, chemins et relations, et `out tags center` rend le centre d'une
+ *   surface : un camping ou un musée est souvent dessiné comme un contour.
  *
- * **Ce que la requête a d'inhabituel.** Overpass parle son propre langage, pas une URL de paramètres. Deux
- * choix comptent :
- * - les sélecteurs sont **regroupés par clé en une expression régulière** (`amenity~"^(bar|cafe|pub)$"`),
- *   ce qui tient la requête en une dizaine d'instructions au lieu d'une soixantaine. Les deux formes ont
- *   été chronométrées côte à côte sans qu'aucune se détache : c'est la **densité de la zone** qui décide,
- *   pas la forme de la requête ;
- * - `nwr` interroge d'un coup noeuds, chemins et relations, et `out center` rend le centre d'une surface :
- *   un camping ou un musée est souvent dessiné comme un contour, et se demander seulement les noeuds
- *   revenait à ignorer les lieux les mieux cartographiés.
- *
- * **Ce que l'instance publique impose**, mesuré sur `overpass-api.de` :
- * - une requête de toutes les catégories sur une ville dense met **une trentaine de secondes**. D'où les
- *   délais généreux plus bas - trop courts, ils faisaient avorter la requête au moment précis où elle
- *   allait aboutir, et la couche restait vide hors de France ;
- * - **une requête sur deux** repart en 504 aux heures chargées, et ce refus arrive vite (8 à 13 secondes),
- *   sans rapport avec le poids de la requête. D'où la seconde tentative.
- *
- * Un échec ne se distingue toujours pas d'une zone vide : il rend une liste vide, et le dépôt se rabat sur
- * le cache, exactement comme pour l'autre source.
+ * Un échec se distingue d'une zone vide ([Fetched.failed]) : une cellule en échec n'est pas retenue, et
+ * sera redemandée.
  */
 object Overpass {
 
-    const val DEFAULT_URL = "https://overpass-api.de/api/interpreter"
+    /**
+     * L'instance par defaut : celle d'OpenStreetMap France, et c'est une correction.
+     *
+     * L'instance historique, `overpass-api.de`, etait la seule interrogee, et elle etait devenue
+     * injoignable - depuis le telephone comme depuis un poste fixe, la liaison ne s'ouvrait meme pas. Les
+     * instances de secours prenaient le relais au bout de la cascade, et mettaient chacune de douze
+     * secondes a plus d'une minute pour une seule requete, quand elles repondaient. Le groupe "Manger"
+     * n'arrivait jamais, et hors de France - ou OSM sert tout - la couche restait vide.
+     *
+     * Mesure le meme jour, meme requete (la restauration du centre de Logrono) :
+     *
+     * | Instance | Temps |
+     * |---|---|
+     * | overpass.openstreetmap.fr | 0,6 s |
+     * | maps.mail.ru | 11,8 s |
+     * | overpass.private.coffee | 48 a 56 s |
+     * | overpass.kumi.systems | rien en 60 s |
+     * | overpass-api.de | liaison refusee |
+     *
+     * L'instance francaise couvre le monde entier, et non la seule France : la meme requete sur Logrono,
+     * Madrid ou Berlin y repond en une a sept secondes pour les cellules les plus denses.
+     */
+    const val DEFAULT_URL = "https://overpass.openstreetmap.fr/api/interpreter"
+
+    /**
+     * L'ancienne instance par defaut. Un reglage qui la nomme a ete ecrit par l'ecran quand elle etait le
+     * defaut, et non par un choix : il suit le nouveau defaut, repli compris.
+     */
+    private const val LEGACY_DEFAULT_URL = "https://overpass-api.de/api/interpreter"
 
     /**
      * Les instances de SECOURS, essayees dans l'ordre quand celle d'origine n'a pas repondu.
      *
-     * **Deux tentatives sur la meme instance ne suffisent pas.** Le refus d'`overpass-api.de` n'est pas un
-     * hoquet : aux heures chargees, la passerelle rend des 504 en rafale pendant plusieurs minutes, et il
-     * arrive qu'elle refuse la liaison tout court. Le groupe "Manger" - que la base touristique ne connait
-     * pas et qui ne vient donc que d'OpenStreetMap - disparaissait alors de la carte sans explication, la
-     * ou l'hebergement, servi par l'autre source, restait la. Un autre serveur repond, lui, tout de suite :
-     * ces instances servent la MEME base, et la question posee est la meme.
-     *
-     * Elles ne sont essayees que si l'on interroge l'instance PAR DEFAUT - URL vide, ou egale a
-     * [DEFAULT_URL], les deux formes arrivant ici selon le chemin emprunte. Qui vise sa propre instance a
+     * Elles ne sont essayees que si l'on interroge l'instance PAR DEFAUT. Qui vise sa propre instance a
      * une raison de le faire - un reseau ferme, une base a soi -, et l'envoyer en cachette chez des tiers
-     * trahirait ce choix. Le repli n'appartient qu'au defaut.
+     * trahirait ce choix.
      */
     private val MIRRORS = listOf(
-        "https://overpass.private.coffee/api/interpreter",
+        LEGACY_DEFAULT_URL,
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
     )
 
+    /** Délai annoncé au serveur, en secondes : c'est lui qui abandonne, plutôt que nous. Une cellule de
+     *  centre-ville, la plus lourde, met sept secondes sur l'instance par défaut. */
+    private const val QUERY_TIMEOUT_S = 40
+
+    /** Délai de LECTURE : celui du serveur, plus de quoi rendre son propre abandon. */
+    private const val READ_TIMEOUT_MS = 45_000
+
     /**
-     * Délai annoncé au serveur, en secondes : c'est lui qui abandonne, plutôt que nous.
-     *
-     * Cinquante et non vingt-cinq, et c'est une correction : mesurée sur `overpass-api.de`, une requête de
-     * toutes les catégories sur une ville dense met **une trentaine de secondes** à s'exécuter. Le délai
-     * précédent la faisait donc avorter par le serveur lui-même - `"Query timed out after 26 seconds"` -,
-     * et la couche restait vide hors de France, là où l'on demande toutes les catégories à la fois.
+     * Délai d'ÉTABLISSEMENT de la liaison, court : une instance injoignable ne se distingue autrement
+     * d'une instance lente qu'au bout du délai de lecture. Une liaison qui ne s'ouvre pas en six secondes
+     * ne s'ouvrira pas.
      */
-    private const val QUERY_TIMEOUT_S = 50
-
-    /** Délai de LECTURE, plus large que celui de la requête : le serveur doit avoir le temps de rendre
-     *  son propre abandon, qui vaut mieux qu'une coupure sans réponse. */
-    private const val TIMEOUT_MS = 60_000
+    private const val CONNECT_TIMEOUT_MS = 6_000
 
     /**
-     * Délai d'ÉTABLISSEMENT de la liaison, court et volontairement distinct du précédent.
-     *
-     * Une instance qui ne répond plus du tout - hôte injoignable, port fermé - ne se distingue autrement
-     * d'une instance lente qu'au bout d'une minute entière ; avec plusieurs instances de secours à essayer
-     * (cf. [MIRRORS]), la carte attendait alors des minutes avant de montrer quoi que ce soit. Une liaison
-     * qui ne s'ouvre pas en huit secondes ne s'ouvrira pas : c'est la poignée de main, pas le travail du
-     * serveur, et celui-ci garde sa minute une fois la liaison établie.
-     */
-    private const val CONNECT_TIMEOUT_MS = 8_000
-
-    /**
-     * Délai de lecture des instances de SECOURS, plus court que celui de l'instance d'origine.
-     *
-     * Une minute par instance, essayées l'une après l'autre, faisait attendre la carte trois minutes avant
-     * de renoncer - et le groupe *Manger* n'arrivait jamais. Ces instances-là sont un repli : si l'une
-     * d'elles n'a rien rendu en vingt-cinq secondes, la suivante a plus de chances d'aboutir vite que
-     * celle-ci d'aboutir enfin.
-     */
-    private const val MIRROR_TIMEOUT_MS = 25_000
-
-    /**
-     * La dernière instance qui a RÉPONDU, essayée en tête la fois suivante.
-     *
-     * Une mémoire de session, et c'est assez : quand l'instance par défaut est injoignable depuis un réseau
-     * donné - ce qui arrive, et pas seulement aux heures chargées -, chaque tuile repayait sinon la cascade
-     * entière, deux échecs et leurs délais compris, pour finir au même endroit. La carte se charge par
-     * groupes et par quadrants : la première tuile paie la recherche, les autres partent droit au but.
+     * La dernière instance qui a RÉPONDU, essayée en tête la fois suivante : quand l'instance par défaut
+     * flanche, chaque cellule repayait sinon la cascade entière pour finir au même endroit.
      */
     @Volatile private var derniereQuiRepond: String? = null
 
-    /**
-     * Attente avant la seconde tentative.
-     *
-     * L'instance publique refuse **une requête sur deux** aux heures chargées, et son refus arrive vite
-     * (8 à 13 secondes, un 504 de passerelle, sans rapport avec le poids de la requête). Réessayer coûte
-     * donc peu et change tout : deux échecs d'affilée sont bien plus rares qu'un seul.
-     */
-    private const val RETRY_DELAY_MS = 1_500L
-
-    /**
-     * Le plafond d'une TUILE, au-delà duquel on la découpe plutôt que de rendre un échantillon.
-     *
-     * **Ce plafond ne protégeait de rien, il mutilait.** Relevé sur le centre de Toulouse, groupe
-     * restauration : 1781 objets correspondent, on en demandait 250. Et le tri d'Overpass est par type puis
-     * par identifiant - les 250 rendus étaient donc **tous des noeuds**, aucun des 114 chemins n'était
-     * jamais atteint. Un restaurant cartographié comme bâtiment était structurellement invisible, et parmi
-     * les noeuds seuls les plus anciens passaient.
-     *
-     * Le relever ne suffit pas : à 600, la même requête rend 600 noeuds et toujours **zéro chemin**. Il
-     * faut passer SOUS le plafond pour que le tri cesse de couper, et c'est le découpage qui y mène
-     * (cf. [around]). Mesuré sur les quatre quadrants de la même emprise : 173, 461, 167 objets - complets,
-     * chemins compris - et un seul encore tronqué, celui du centre-ville.
-     *
-     * 600 plutôt que 250 pour que le découpage s'arrête vite : trois quadrants sur quatre y tiennent.
-     */
-    const val LIMIT = 600
-
-    /**
-     * Profondeur maximale du découpage : la tuile de départ, puis deux subdivisions.
-     *
-     * Au-delà, on rend ce qu'on a et l'on annonce un affichage incomplet : mieux vaut le dire que d'ouvrir
-     * une descente sans fond sur un centre-ville, où chaque niveau quadruple le nombre de requêtes.
-     */
-    const val MAX_DEPTH = 2
-
-    /**
-     * Nombre maximal de requêtes par groupe et par chargement.
-     *
-     * Le découpage est adaptatif - une tuile n'est divisée que si elle déborde - mais un centre-ville dense
-     * pourrait en demander vingt et une. Ce plafond-là borne la dépense envers un service public qui
-     * n'accorde que deux créneaux par adresse ; ce qu'il coupe est annoncé comme incomplet.
-     */
-    const val MAX_TILES = 12
-
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** La marque d'un abandon du serveur dans une reponse 200 (cf. [fetch]). */
+    private val ABANDON = Regex("\"remark\"\\s*:\\s*\"runtime error")
+
+    /** La cible est-elle l'instance par defaut - et donc le repli permis (cf. [MIRRORS]). */
+    internal fun isDefault(base: String): Boolean =
+        base.isBlank() || base.trim() == DEFAULT_URL || base.trim() == LEGACY_DEFAULT_URL
 
     /**
      * La requête Overpass QL pour une emprise et un jeu de catégories, ou null si aucune catégorie retenue
@@ -196,10 +141,9 @@ object Overpass {
                 add("nwr$paires$emprise;")
             }
         }
-        // `out tags center` et non `out center` : le second est un `out body`, qui joint a chaque chemin la
-        // LISTE DE SES NOEUDS - une donnee dont on ne fait rien, le centre suffisant a poser un marqueur.
-        // Mesure a nombre d'elements egal sur une requete qui rend des chemins : 7 501 contre 6 279 octets.
-        return "[out:json][timeout:$QUERY_TIMEOUT_S];(${corps.joinToString("")});out tags center $LIMIT;"
+        // `out tags center` et non `out center` : le second joint a chaque chemin la LISTE DE SES NOEUDS,
+        // une donnee dont on ne fait rien. Et aucun plafond : la cellule est assez petite pour tenir.
+        return "[out:json][timeout:$QUERY_TIMEOUT_S];(${corps.joinToString("")});out tags center;"
     }
 
     /**
@@ -221,8 +165,7 @@ object Overpass {
 
     private fun poiOf(o: JsonObject, retenues: Set<PoiCategory>): Poi? = runCatching {
         val etiquettes = o["tags"]?.jsonObject?.mapValues { (_, v) -> v.texte().orEmpty() } ?: return null
-        // Meme regle que pour l'autre source : la categorie est intrinseque, le filtre ne fait
-        // qu'ecarter (cf. PoiCategory.ofOsm).
+        // La categorie est intrinseque, le filtre ne fait qu'ecarter (cf. PoiCategory.ofOsm).
         val categorie = PoiCategory.visibleDans(PoiCategory.ofOsm(etiquettes), retenues) ?: return null
         // Un noeud porte ses coordonnees ; une surface ou une relation rend le centre demande par
         // "out center". Sans ce repli, tout ce qui est dessine en contour serait perdu.
@@ -252,139 +195,57 @@ object Overpass {
     private fun kotlinx.serialization.json.JsonElement.nombre(): Double? =
         runCatching { jsonPrimitive.content.toDouble() }.getOrNull()
 
-    /**
-     * Ce qu'une tuile a rendu, et **pourquoi elle s'est arrêtée** quand elle s'arrête.
-     *
-     * [tronque] se lit sur le nombre d'éléments **bruts** de la réponse, et non sur les POI retenus après
-     * filtrage : un objet écarté faute de catégorie connue compte tout autant dans ce que le plafond a
-     * coupé. Le compter après filtrage faisait passer pour complète une réponse qui ne l'était pas, et
-     * l'emprise était alors retenue avec ses lieux manquants.
-     */
-    internal data class Tuile(val pois: List<Poi>, val tronque: Boolean, val echec: Boolean)
+    /** Ce qu'une requete a rendu, ou le constat qu'aucune instance n'a repondu. */
+    data class Fetched(val pois: List<Poi>, val failed: Boolean)
 
     /**
-     * Charge les points d'intérêt d'une emprise, **en la découpant tant qu'elle déborde**.
-     *
-     * **Pourquoi découper plutôt que relever le plafond.** Overpass rend ses résultats triés par type puis
-     * par identifiant, et coupe à la fin : une réponse tronquée n'est donc pas un échantillon, c'est le
-     * début de la liste. Relevé sur le centre de Toulouse, groupe restauration - 1781 objets présents,
-     * plafond à 250 : les 250 rendus sont **tous des noeuds**, et pas un des 114 chemins. Porter le plafond
-     * à 600 rend 600 noeuds et toujours aucun chemin. Seule une tuile qui tient **sous** le plafond rend
-     * ce qu'elle contient vraiment.
-     *
-     * Le découpage est **adaptatif** : on ne divise que ce qui déborde. Sur la même emprise, trois
-     * quadrants sur quatre tiennent d'un coup (173, 461 et 167 objets, chemins compris) et seul celui du
-     * centre-ville demande un niveau de plus. Une zone rurale reste donc à une requête, comme avant.
-     *
-     * Borné par [MAX_DEPTH] et [MAX_TILES] : ce qui n'a pas pu être découpé assez finement est rendu quand
-     * même, et signalé tronqué - la carte le dit alors, plutôt que de laisser croire qu'elle montre tout.
+     * Les instances a essayer, dans l'ordre : celle reglee seule si l'utilisateur en a choisi une ; sinon
+     * la derniere qui a repondu, l'instance par defaut, puis les secours.
      */
-    internal suspend fun tiles(
-        base: String, box: Bbox, categories: Set<PoiCategory>,
-    ): Tuile = withContext(Dispatchers.IO) {
-        var restant = MAX_TILES
-        val trouves = LinkedHashMap<String, Poi>()
-        var tronqueFinal = false
-        var echecFinal = false
-        // Largeur d'abord : on épuise un niveau avant de descendre, de sorte qu'un budget serré rende une
-        // couverture homogène plutôt qu'un seul coin très détaillé.
-        var niveau = listOf(box)
-        var profondeur = 0
-        while (niveau.isNotEmpty() && restant > 0) {
-            val aDecouper = mutableListOf<Bbox>()
-            for (tuile in niveau) {
-                if (restant <= 0) { tronqueFinal = true; break }
-                coroutineContext.ensureActive()
-                restant--
-                val r = fetchTile(base, tuile, categories)
-                r.pois.forEach { p -> trouves.merge(p.uuid, p) { a, b -> mieuxClasse(a, b) } }
-                if (r.echec) echecFinal = true
-                if (!r.tronque) continue
-                // Trop dense pour cette tuile : on la coupe en quatre, sauf si l'on est au bout.
-                if (profondeur < MAX_DEPTH) aDecouper += quadrants(tuile) else tronqueFinal = true
-            }
-            niveau = aDecouper
-            profondeur++
-        }
-        if (niveau.isNotEmpty()) tronqueFinal = true
-        Tuile(trouves.values.toList(), tronqueFinal, echecFinal)
-    }
-
-    /** Les quatre quadrants d'une emprise, dans l'ordre sud-ouest, sud-est, nord-ouest, nord-est. */
-    internal fun quadrants(box: Bbox): List<Bbox> {
-        val midLon = (box.west + box.east) / 2
-        val midLat = (box.south + box.north) / 2
-        return listOf(
-            Bbox(west = box.west, south = box.south, east = midLon, north = midLat),
-            Bbox(west = midLon, south = box.south, east = box.east, north = midLat),
-            Bbox(west = box.west, south = midLat, east = midLon, north = box.north),
-            Bbox(west = midLon, south = midLat, east = box.east, north = box.north),
-        )
+    internal fun cascade(base: String, derniere: String? = derniereQuiRepond): List<String> {
+        if (!isDefault(base)) return listOf(base.trim())
+        val ordre = listOf(DEFAULT_URL) + MIRRORS
+        return if (derniere != null && derniere in ordre) listOf(derniere) + (ordre - derniere) else ordre
     }
 
     /**
-     * Une requête, et une seule tuile.
+     * Charge les points d'intérêt d'une emprise - une cellule de la grille.
      *
      * En POST et non en GET : la requête dépasse couramment le millier de caractères, et une URL de cette
      * longueur se fait tronquer par les intermédiaires.
      *
-     * **Deux tentatives, puis les instances de secours** (cf. [MIRRORS]) : l'instance publique refuse une
-     * requête sur deux aux heures chargées, et son refus arrive bien avant qu'elle n'ait travaillé - mais
-     * il lui arrive aussi de refuser pendant plusieurs minutes d'affilée, et insister ne mène alors nulle
-     * part. Une URL réglée par l'utilisateur ne connaît pas ce repli : elle est essayée deux fois, et c'est
-     * tout.
+     * Une tentative par instance, sans pause : un refus d'une instance ne dit rien de la suivante, et
+     * attendre avant de s'adresser ailleurs ne ferait que retarder la carte.
      */
-    private suspend fun fetchTile(base: String, box: Bbox, categories: Set<PoiCategory>): Tuile {
-        // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
-        val ql = query(box, categories) ?: return Tuile(emptyList(), tronque = false, echec = false)
-        val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
-        // L'instance reglee d'abord, deux fois ; puis les instances de secours, une fois chacune - mais
-        // seulement quand rien n'a ete regle (cf. MIRRORS).
-        val defaut = base.isBlank() || base.trim() == DEFAULT_URL
-        val cascade = if (defaut) listOf(DEFAULT_URL, DEFAULT_URL) + MIRRORS else listOf(base, base)
-        // Celle qui a repondu la derniere fois passe devant, sans disparaitre de la suite : si elle flanche
-        // a son tour, la cascade ordinaire reprend derriere elle.
-        val cibles = derniereQuiRepond
-            ?.takeIf { defaut && it != cascade.first() }
-            ?.let { listOf(it) + cascade } ?: cascade
-        cibles.forEachIndexed { essai, cible ->
-            if (essai > 0) delay(RETRY_DELAY_MS)
-            /*
-             * `runInterruptible` et non un appel direct : un geste de carte de plus annule ce chargement,
-             * mais `HttpURLConnection` bloque dans un thread d'E/S ne s'en apercoit pas. Les requetes
-             * abandonnees continuaient donc de courir et de consommer les creneaux du service, au point de
-             * faire refuser l'appelant - releve a Albi, quatre requetes en cours pour un seul geste utile.
-             *
-             * Ici, l'annulation interrompt le thread, la lecture leve, et la requete s'arrete pour de bon.
-             * `ensureActive` evite en plus d'en lancer une seconde apres coup.
-             */
-            coroutineContext.ensureActive()
-            val resp = runInterruptible {
-                TileHttp.post(
-                    cible, corps,
-                    contentType = "application/x-www-form-urlencoded; charset=utf-8",
-                    connectTimeoutMs = CONNECT_TIMEOUT_MS,
-                    readTimeoutMs = if (cible == DEFAULT_URL || !defaut) TIMEOUT_MS else MIRROR_TIMEOUT_MS,
-                )
+    suspend fun fetch(base: String, box: Bbox, categories: Set<PoiCategory>): Fetched =
+        withContext(Dispatchers.IO) {
+            // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
+            val ql = query(box, categories) ?: return@withContext Fetched(emptyList(), failed = false)
+            val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
+            for (cible in cascade(base)) {
+                /*
+                 * `runInterruptible` et non un appel direct : `HttpURLConnection` bloque dans un thread
+                 * d'E/S ne s'apercoit pas d'une annulation. Ici, l'annulation interrompt le thread, la
+                 * lecture leve, et la requete s'arrete pour de bon.
+                 */
+                coroutineContext.ensureActive()
+                val resp = runInterruptible {
+                    TileHttp.post(
+                        cible, corps,
+                        contentType = "application/x-www-form-urlencoded; charset=utf-8",
+                        connectTimeoutMs = CONNECT_TIMEOUT_MS,
+                        readTimeoutMs = READ_TIMEOUT_MS,
+                    )
+                }
+                val texte = resp.body?.toString(Charsets.UTF_8) ?: continue
+                // Un 200 peut porter un abandon du serveur - "runtime error: Query timed out" - dans un
+                // corps sans liste d'elements : ce n'est pas une zone vide, c'est un echec.
+                if (!texte.contains("\"elements\"") || ABANDON.containsMatchIn(texte)) continue
+                derniereQuiRepond = cible
+                return@withContext Fetched(parse(texte, categories), failed = false)
             }
-            val corpsRecu = resp.body ?: return@forEachIndexed
-            derniereQuiRepond = cible
-            val brut = count(corpsRecu.toString(Charsets.UTF_8))
-            return Tuile(
-                parse(corpsRecu.toString(Charsets.UTF_8), categories),
-                tronque = brut >= LIMIT,
-                echec = false,
-            )
+            // Aucune instance n'a repondu. La zone peut etre reellement vide, mais on n'en sait rien, et
+            // la cellule ne doit pas etre retenue comme chargee.
+            Fetched(emptyList(), failed = true)
         }
-        // Aucune instance n'a repondu - des 504, une coupure, un delai depasse. La zone peut etre reellement
-        // vide, mais on n'en sait rien, et l'appelant ne doit pas retenir cette emprise comme chargee : le
-        // groupe manquant ne serait plus jamais redemande (cf. PoiLoad.complete).
-        return Tuile(emptyList(), tronque = false, echec = true)
-    }
-
-    /** Le nombre d'elements BRUTS de la reponse, avant tout filtrage : c'est lui que le plafond a coupe. */
-    private fun count(body: String): Int = runCatching {
-        json.parseToJsonElement(body).jsonObject["elements"]?.jsonArray?.size ?: 0
-    }.getOrDefault(0)
-
 }

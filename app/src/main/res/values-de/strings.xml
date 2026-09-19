@@ -603,7 +603,7 @@
     <string name="settings_poi_cache_pinned">%1$d mit einem Offline-Gebiet mitgenommene Orte bleiben erhalten</string>
     <string name="settings_poi_cache_hint">Einmal gesehene Orte bleiben eine Woche lang ohne Netz verfügbar. Das Leeren zwingt Trailog, sie erneut abzufragen, etwa wenn ein Eintrag falsch ist.</string>
     <string name="poi_from_cache">Zuletzt bekannte Punkte (offline)</string>
-    <string name="poi_partial">Zu viele Orte hier: nicht alle werden angezeigt</string>
+    <string name="poi_partial">Ansicht zu groß: nur Orte nahe der Mitte werden angezeigt</string>
     <string name="poi_away_from_tracks">Keine Spur in der Nähe (Abstandseinstellung)</string>
     <string name="poi_needs_network">Verbindung erforderlich, um Sehenswürdigkeiten dieses Gebiets zu laden</string>
 </resources>

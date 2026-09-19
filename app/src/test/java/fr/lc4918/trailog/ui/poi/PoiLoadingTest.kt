@@ -1,10 +1,11 @@
 package fr.lc4918.trailog.ui.poi
 
 import fr.lc4918.trailog.domain.model.PoiCategory
-import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.poi.Poi
+import fr.lc4918.trailog.poi.PoiCells
+import fr.lc4918.trailog.poi.PoiSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -12,43 +13,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Les regles qui decident QUAND redemander des points d'interet au service.
+ * Les regles qui decident QUOI demander pour une vue : les cellules, leur ordre, et ce qu'on ecarte.
  *
- * Ce sont elles, et non le delai d'attente, qui tiennent les appels loin du quota : un deplacement de
- * carte emet des dizaines d'evenements, et la carte bouge sans arret. Une regle relachee ici ne casse
- * rien - elle epuise le quota horaire en silence, et les points d'interet cessent d'arriver.
+ * Ce sont elles qui fixent le nombre de requetes envoyees aux services. Une regle relachee ici ne casse
+ * rien - elle multiplie les appels en silence, et le service finit par refuser.
  */
 class PoiLoadingTest {
 
-    private val tousFiltres = PoiFilters()
-
     private fun box(w: Double, s: Double, e: Double, n: Double) = Bbox.of(w, s, e, n)
+    private val tous = PoiGroup.entries.toSet()
 
-    /**
-     * L'emprise demandee deborde l'ecran : c'est ce qui rend gratuits les petits deplacements.
-     *
-     * Mais d'un CHEVEU : la marge a ete ramenee de 0,25 a 0,05. A 0,25, l'emprise faisait une fois et
-     * demie l'ecran dans chaque dimension, soit 2,25 fois sa surface - donc deux fois plus de lieux a
-     * faire tenir sous le plafond d'une requete, pour une marge dont on ne profitait qu'en se deplacant
-     * de peu.
-     */
-    @Test fun `l'emprise demandee est plus large que l'ecran`() {
+    /** L'emprise demandee deborde l'ecran d'un cheveu : les marqueurs juste au bord sont deja la. */
+    @Test fun `l'emprise demandee est a peine plus large que l'ecran`() {
         val vue = box(5.0, 45.0, 6.0, 46.0)
         val large = PoiLoading.grow(vue)
-        assertTrue(large.west < vue.west && large.east > vue.east)
-        assertTrue(large.south < vue.south && large.north > vue.north)
         assertEquals(4.95, large.west, 1e-9)
         assertEquals(6.05, large.east, 1e-9)
-    }
-
-    /** La surface demandee ne doit pas depasser d'un tiers celle de l'ecran : au-dela, on fait travailler
-     *  le service pour des lieux qu'on ne montrera pas. */
-    @Test fun `l'emprise demandee reste proche de la surface de l'ecran`() {
-        val vue = box(5.0, 45.0, 6.0, 46.0)
-        val large = PoiLoading.grow(vue)
-        val rapport = ((large.east - large.west) * (large.north - large.south)) /
-            ((vue.east - vue.west) * (vue.north - vue.south))
-        assertTrue("surface demandee : ${rapport}x l'ecran", rapport < 1.33)
     }
 
     /** Un elargissement pres des poles ou de l'antimeridien ne doit pas sortir du monde. */
@@ -58,159 +38,116 @@ class PoiLoadingTest {
         assertTrue(large.south >= -85.0 && large.north <= 85.0)
     }
 
-    /** Rien de charge : il faut demander. */
-    @Test fun `le premier affichage demande toujours`() {
-        assertTrue(PoiState().needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
+    /** Un ecran de ville : quelques cellules, et chaque groupe coche aupres de sa source. */
+    @Test fun `une vue demande les cellules qu'elle touche`() {
+        val vue = box(-2.48, 42.44, -2.42, 42.48)   // Logrono
+        val plan = PoiLoading.plan(vue, setOf(PoiGroup.FOOD), true, emptyList(), 0)
+        assertFalse(plan.capped)
+        assertFalse(plan.away)
+        assertTrue(plan.units.isNotEmpty())
+        assertTrue(plan.units.all { it.group == PoiGroup.FOOD && it.source == PoiSource.OSM })
+        assertEquals(PoiCells.covering(PoiLoading.grow(vue)).toSet(), plan.units.map { it.cell }.toSet())
     }
 
-    /**
-     * Le coeur de l'economie de requetes : tant que la vue reste DANS ce qui a ete charge, on ne redemande
-     * rien. Un frisson de la carte ne coute alors pas un appel.
-     */
-    @Test fun `une vue contenue dans le charge ne redemande rien`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
-        assertFalse(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
-        assertFalse("la meme vue exactement", etat.needsLoad(box(4.0, 44.0, 7.0, 47.0), tousFiltres, osm = true, now = 0L))
+    /** Du centre vers les bords : ce qu'on regarde se remplit d'abord. */
+    @Test fun `la cellule du centre passe en premier`() {
+        val vue = box(1.30, 43.50, 1.60, 43.70)
+        val plan = PoiLoading.plan(vue, setOf(PoiGroup.FOOD), true, emptyList(), 0)
+        assertEquals(PoiCells.of(1.45, 43.60), plan.units.first().cell)
     }
 
-    /** Des que la vue deborde, ne serait-ce que d'un cote, il manque des points d'interet a l'ecran. */
-    @Test fun `une vue qui deborde redemande`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
-        assertTrue("vers l'ouest", etat.needsLoad(box(3.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
-        assertTrue("vers le nord", etat.needsLoad(box(5.0, 45.0, 6.0, 48.0), tousFiltres, osm = true, now = 0L))
-        assertTrue("dezoome", etat.needsLoad(box(0.0, 40.0, 10.0, 50.0), tousFiltres, osm = true, now = 0L))
+    /** Une vue trop large s'arrete aux cellules les plus proches du centre, et le dit. */
+    @Test fun `une vue trop large est bornee`() {
+        val vue = box(0.0, 43.0, 2.0, 45.0)
+        val plan = PoiLoading.plan(vue, setOf(PoiGroup.FOOD), true, emptyList(), 0)
+        assertTrue(plan.capped)
+        assertEquals(PoiLoading.MAX_CELLS, plan.units.map { it.cell }.distinct().size)
     }
 
-    /** Eteindre la couche jette tout : garder des marqueurs invisibles n'apporte rien, et le geste qui la
-     *  rallume justifie sa requete. */
-    @Test fun `eteindre la couche oublie ce qui etait charge`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
-        etat.select(poi("a"))
-        etat.hide()
-        assertTrue(etat.pois.isEmpty())
-        assertNull(etat.selected)
-        assertTrue("le charge doit etre oublie aussi", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
+    /** Loin de toute trace, rien n'est demande - et la carte peut le dire. */
+    @Test fun `loin des traces, rien n'est demande`() {
+        val traces = listOf(listOf(-1.5 to 46.0, -1.4 to 46.1))
+        val plan = PoiLoading.plan(box(5.0, 45.0, 5.2, 45.2), tous, true, traces, 2000)
+        assertTrue(plan.units.isEmpty())
+        assertTrue(plan.away)
     }
 
-    /** Un point d'interet disparu du dernier chargement ne doit pas laisser son infobulle ouverte : elle
-     *  decrirait un marqueur qui n'est plus sur la carte. */
+    /** Le couloir borne les cellules : un long trajet vu de haut ne demande que celles qu'il traverse. */
+    @Test fun `le couloir ne garde que les cellules que la trace traverse`() {
+        val trace = listOf(1.05 to 43.55, 1.95 to 43.55)   // plein est, sur une rangee de cellules
+        val vue = box(1.0, 43.0, 2.0, 44.0)
+        val sans = PoiLoading.plan(vue, setOf(PoiGroup.FOOD), true, emptyList(), 0, maxCells = 1000)
+        val avec = PoiLoading.plan(vue, setOf(PoiGroup.FOOD), true, listOf(trace), 1000, maxCells = 1000)
+        assertTrue(avec.units.size < sans.units.size / 3)
+        assertTrue(avec.units.all { it.cell.iy in 434..436 })
+    }
+
+    /** Rien de coche, rien a demander. */
+    @Test fun `sans groupe, aucune unite`() {
+        assertTrue(PoiLoading.plan(box(5.0, 45.0, 5.1, 45.1), emptySet(), true, emptyList(), 0).units.isEmpty())
+    }
+
+    // ---------- Ce que l'ecran montre ----------
+
+    /** Un point d'interet disparu ne doit pas laisser son infobulle ouverte sur un marqueur absent. */
     @Test fun `l'infobulle se ferme si son point d'interet a disparu`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a"), poi("b")), complete = true)
+        etat.show(listOf(poi("a"), poi("b")), pending = false, cache = false, missing = false)
         etat.selectById("a")
         assertEquals("a", etat.selected?.uuid)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("b")), complete = true)
-        etat.dropSelectionIfGone()
+        etat.show(listOf(poi("b")), pending = false, cache = false, missing = false)
         assertNull(etat.selected)
     }
 
     /** ... mais elle reste ouverte tant que son point est encore la. */
-    @Test fun `l'infobulle survit a un rechargement qui garde son point`() {
+    @Test fun `l'infobulle survit a une arrivee qui garde son point`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
+        etat.show(listOf(poi("a")), pending = true, cache = false, missing = false)
         etat.selectById("a")
-        etat.publish(box(4.0, 44.0, 8.0, 47.0), tousFiltres, listOf(poi("a"), poi("c")), complete = true)
-        etat.dropSelectionIfGone()
+        etat.show(listOf(poi("a"), poi("c")), pending = false, cache = false, missing = false)
         assertEquals("a", etat.selected?.uuid)
     }
 
-    /** Une couleur par groupe, et quatre distinctes : c'est le groupe qui se lit d'un coup d'oeil sur la
-     *  carte, la categorie s'annonce dans l'infobulle. */
+    /** Eteindre la couche vide l'ecran. */
+    @Test fun `eteindre la couche oublie ce qui etait montre`() {
+        val etat = PoiState().apply { showLayer(true) }
+        etat.show(listOf(poi("a")), pending = true, cache = true, missing = false)
+        etat.select(poi("a"))
+        etat.hide()
+        assertTrue(etat.pois.isEmpty())
+        assertNull(etat.selected)
+        assertFalse(etat.loading)
+        assertFalse(etat.fromCache)
+    }
+
+    /** Une couleur par groupe, et quatre distinctes : c'est le groupe qui se lit d'un coup d'oeil. */
     @Test fun `chaque groupe a sa couleur, et elles different`() {
         val couleurs = PoiGroup.entries.map { poiGroupColor(it) }
         assertEquals(PoiGroup.entries.size, couleurs.distinct().size)
         couleurs.forEach { assertTrue(it, Regex("^#[0-9A-Fa-f]{6}$").matches(it)) }
     }
 
-    /**
-     * Changer les filtres invalide le charge, meme si la vue n'a pas bouge : la reponse precedente ne
-     * portait pas les memes lieux. Sans cela, decocher une categorie n'aurait aucun effet visible tant
-     * qu'on ne deplace pas la carte.
-     */
-    @Test fun `changer les filtres force un rechargement`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
-        val autres = tousFiltres.toggle(PoiCategory.BARS)
-        assertTrue(etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), autres, osm = true, now = 0L))
-        assertFalse("les memes filtres ne forcent rien", etat.needsLoad(box(5.0, 45.0, 6.0, 46.0), tousFiltres, osm = true, now = 0L))
-    }
-
-    /**
-     * **Basculer "Completer avec OpenStreetMap" force un rechargement**, et ce cas vient du terrain.
-     *
-     * Le reglage ajoute une source entiere a la requete, mais il n'entrait ni dans la cle de l'effet ni
-     * dans cette decision : la vue etait deja tenue pour chargee, et l'allumer ne changeait donc rien
-     * a l'ecran tant qu'on ne deplacait pas la carte. On restait devant une carte inchangee en croyant
-     * le reglage sans effet - c'est exactement ce qui a ete rapporte.
-     */
-    @Test fun `basculer le complement OSM force un rechargement`() {
-        val etat = PoiState()
-        val vue = box(5.0, 45.0, 6.0, 46.0)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), osmComplement = false,
-            complete = true)
-        assertFalse("meme reglage, rien a refaire", etat.needsLoad(vue, tousFiltres, osm = false, now = 0L))
-        assertTrue("l'allumer redemande tout", etat.needsLoad(vue, tousFiltres, osm = true, now = 0L))
-    }
-
-    /** Et dans l'autre sens : l'eteindre aussi, la reponse portait des lieux qu'on ne veut plus. */
-    @Test fun `eteindre le complement OSM force aussi un rechargement`() {
-        val etat = PoiState()
-        val vue = box(5.0, 45.0, 6.0, 46.0)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), osmComplement = true,
-            complete = true)
-        assertTrue(etat.needsLoad(vue, tousFiltres, osm = false, now = 0L))
-    }
-
-    /** Trop dezoome : on ne charge pas, et l'ecran le dit plutot que de laisser une carte vide.
-     *
-     *  La couche allumee, et c'est indispensable : l'avertissement n'est du qu'a celui qui vient de la
-     *  demander (cf. PoiStateTest, "le message de zoom ne revient pas au dezoom suivant"). */
-    @Test fun `trop dezoome se signale et n'efface pas la marque de chargement`() {
+    /** Trop dezoome : on ne charge pas, l'ecran le dit, et ce qui etait montre reste. */
+    @Test fun `trop dezoome se signale sans vider la carte`() {
         val etat = PoiState().apply { showLayer(true) }
-        etat.beginLoad()
+        etat.show(listOf(poi("a")), pending = false, cache = false, missing = false)
+        etat.viewed(capped = true, away = false)
         etat.tooFar()
         assertTrue(etat.tooFar)
-        assertFalse(etat.loading)
+        assertFalse(etat.partial)
+        assertEquals(1, etat.pois.size)
     }
 
-    /** Des points venus du cache se signalent : une liste incomplete ne doit pas passer pour une reponse
-     *  fraiche du service. */
-    @Test fun `les points du cache se declarent comme tels`() {
+    /** Ce que le chargeur sait se lit tel quel : attente, cache, manque. */
+    @Test fun `les constats du chargeur se lisent tels quels`() {
         val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), cache = true, complete = true)
-        assertTrue(etat.fromCache)
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, listOf(poi("a")), complete = true)
-        assertFalse(etat.fromCache)
-    }
-
-    /**
-     * Rien a montrer ET pas de reseau : la zone n'a peut-etre aucun point d'interet, mais on n'en sait
-     * rien. Le dire vaut mieux que de laisser croire a une region sans un seul cafe.
-     */
-    @Test fun `sans reseau et sans rien a montrer, la connexion se reclame`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true, complete = true)
+        etat.show(emptyList(), pending = true, cache = false, missing = true)
+        assertTrue(etat.loading)
         assertTrue(etat.needsNetwork)
-        assertFalse("ce n'est pas le cas du cache", etat.fromCache)
-    }
-
-    /** Une zone reellement vide, avec du reseau, ne reclame rien : c'est une reponse, pas une panne. */
-    @Test fun `une zone vide avec du reseau ne reclame rien`() {
-        val etat = PoiState()
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), complete = true)
-        assertFalse(etat.needsNetwork)
-    }
-
-    /** Les trois messages s'excluent : trop dezoome l'emporte, on ne saurait pas encore s'il y a du
-     *  reseau puisqu'on n'a rien demande. */
-    @Test fun `trop dezoome efface la reclamation de connexion`() {
-        val etat = PoiState().apply { showLayer(true) }
-        etat.publish(box(4.0, 44.0, 7.0, 47.0), tousFiltres, emptyList(), offline = true, complete = true)
-        etat.tooFar()
-        assertTrue(etat.tooFar)
+        assertFalse(etat.fromCache)
+        etat.show(listOf(poi("a")), pending = false, cache = true, missing = false)
+        assertFalse(etat.loading)
+        assertTrue(etat.fromCache)
         assertFalse(etat.needsNetwork)
     }
 

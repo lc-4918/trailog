@@ -1,32 +1,26 @@
 package fr.lc4918.trailog.ui.poi
 
+import fr.lc4918.trailog.domain.model.PoiGroup
 import fr.lc4918.trailog.map.offline.Bbox
+import fr.lc4918.trailog.poi.PoiCell
+import fr.lc4918.trailog.poi.PoiCells
+import fr.lc4918.trailog.poi.PoiUnit
 
 /**
  * Les règles de chargement des points d'intérêt : quand demander, et quoi demander.
  *
- * Hors de l'écran et sans Android, parce que ce sont elles qui décident du nombre de requêtes envoyées au
- * service - la seule chose qui puisse faire dépasser son quota - et qu'une règle qui ne se teste pas
- * finit par ne plus se vérifier.
+ * Hors de l'écran et sans Android, parce que ce sont elles qui décident du nombre de requêtes envoyées aux
+ * services, et qu'une règle qui ne se teste pas finit par ne plus se vérifier.
  */
 object PoiLoading {
 
     /**
      * Zoom en deçà duquel on ne charge rien.
      *
-     * À l'échelle d'une région, l'écran porterait des milliers de lieux dont l'API n'en rendrait que les
-     * cent premiers - un échantillon arbitraire, pris là où le service a commencé à lire. Mieux vaut ne
-     * rien montrer que montrer au hasard, et la carte le dit (cf. le message de l'écran).
-     *
-     * **Descendu de 11 à 9**, soit seize fois la surface. 11 correspondait à une ville et ses abords, et
-     * c'était trop près pour le geste qui compte : on prépare une étape en regardant le trajet entier, pas
-     * un quartier. Le testeur l'a dit ainsi - "ça permettrait de zoomer moins, là ce n'est pas très
-     * pratique".
-     *
-     * Ce qui rend la descente tenable est le **couloir des traces** (cf. [PoiCorridor]) : à 9, la vue porte
-     * une région, mais on n'en affiche que ce qui borde le trajet affiché. Sans trace ouverte, la réponse
-     * sera souvent tronquée à cette échelle - et la carte le dit déjà (cf. le bandeau "affichage
-     * incomplet"), ce qui vaut mieux que de refuser de montrer quoi que ce soit.
+     * **Descendu de 11 à 9** : on prépare une étape en regardant le trajet entier, pas un quartier. Ce qui
+     * rend ce zoom tenable est le **couloir des traces** (cf. [PoiCorridor]) : à 9, la vue porte une
+     * région, mais on ne demande que les cellules que le trajet affiché traverse. Sans trace ouverte, on
+     * s'arrête à [MAX_CELLS] cellules autour du centre, et la carte le dit.
      */
     const val MIN_ZOOM = 9.0
 
@@ -34,58 +28,22 @@ object PoiLoading {
      * Délai après le dernier geste, en millisecondes.
      *
      * Un déplacement de carte émet des dizaines d'événements ; sans attente, chacun partirait en requête.
-     * 500 ms est le temps qu'il faut pour distinguer "j'ai fini de déplacer" de "je continue", sans que
-     * l'attente se remarque une fois le doigt levé.
+     * 500 ms est le temps qu'il faut pour distinguer "j'ai fini de déplacer" de "je continue".
      */
     const val DEBOUNCE_MS = 500L
 
     /**
-     * Delai avant de redemander une zone dont le chargement a **echoue**.
+     * Cellules demandées au plus pour une vue (cf. [PoiCells]), les plus proches du centre d'abord.
      *
-     * Une minute, et ce n'est pas une precaution : c'est ce qui separe un service qui hoquette d'un service
-     * qui nous bannit. Une emprise en echec n'est pas retenue comme chargee - sans quoi le manque se
-     * figerait -, mais sans ce frein chaque geste de carte la redemandait aussitot. Releve a Albi : huit
-     * gestes, vingt-cinq requetes Overpass, vingt-cinq refus de connexion. L'instance publique n'accorde
-     * que deux creneaux par adresse, et l'application se faisait refuser d'autant plus fort qu'elle
-     * insistait.
-     *
-     * Ne s'applique qu'a l'echec. Une reponse simplement **tronquee** se redemande, elle, a chaque geste :
-     * le service a repondu, et resserrer la vue est precisement ce qui rendra la reponse complete.
+     * Quarante cellules de 0,1 degré, c'est un écran au zoom 11, ou un trajet de deux cents kilomètres au
+     * zoom 9 avec le couloir des traces. Au-delà, la vue est trop large pour qu'on y cherche un restaurant,
+     * et les requêtes s'accumuleraient pour des lieux qu'on ne distinguerait pas.
      */
-    const val RETRY_AFTER_FAIL_MS = 60_000L
+    const val MAX_CELLS = 40
 
     /**
-     * Ce qu'il faut resserrer la vue pour qu'une emprise TRONQUEE se redemande : la moitié de sa surface.
-     *
-     * Resserrer est le seul geste qui ait une chance de rendre la réponse complète - moins de lieux tiennent
-     * dans une vue plus étroite. Un simple déplacement dans la zone déjà chargée n'en a aucune, et c'est
-     * pour cela qu'il ne redemande plus rien.
-     *
-     * La moitié, et non un dixième : au pixel près, tout geste de zoom relancerait, et l'on retomberait sur
-     * ce qu'on corrige.
-     */
-    const val ZOOM_RETRY_RATIO = 0.5
-
-    /**
-     * Au bout de combien de temps une emprise tronquée vaut la peine d'être redemandée, sans qu'on ait
-     * resserré : cinq minutes.
-     *
-     * Assez long pour qu'une carte qu'on consulte ne relance rien, assez court pour qu'une pause déjeuner
-     * reparte sur des données fraîches - et pour que le découpage retombe peut-être mieux.
-     */
-    const val PARTIAL_TTL_MS = 5 * 60_000L
-
-    /**
-     * L'emprise à demander pour un écran donné : la même, élargie de [MARGIN] de part et d'autre.
-     *
-     * Charger un peu plus large que l'écran rend gratuits les petits déplacements : tant que la vue reste
-     * dans ce qu'on a chargé, il n'y a rien à redemander (cf. `PoiState.needsLoad`).
-     *
-     * **Descendue de 0,25 à 0,05**, et c'est une correction. À 0,25, l'emprise demandée faisait une fois et
-     * demie l'écran dans chaque dimension, soit **2,25 fois sa surface** - donc deux fois plus de lieux à
-     * faire tenir sous le plafond d'une requête, et deux fois plus de travail demandé au service, pour une
-     * marge dont on ne profitait qu'en se déplaçant de peu. À 0,05 la marge reste utile aux petits
-     * déplacements et ne coûte plus que 10 % de surface.
+     * L'emprise à demander pour un écran donné : la même, élargie de [MARGIN] de part et d'autre, pour
+     * que les marqueurs juste hors de l'écran soient déjà là au premier déplacement.
      */
     const val MARGIN = 0.05
 
@@ -95,6 +53,42 @@ object PoiLoading {
         return Bbox.of(
             (box.west - dLon).coerceAtLeast(-180.0), (box.south - dLat).coerceAtLeast(-85.0),
             (box.east + dLon).coerceAtMost(180.0), (box.north + dLat).coerceAtMost(85.0),
+        )
+    }
+
+    /**
+     * Ce qu'une vue demande : ses unités, dans l'ordre où les charger, et ce qui a été écarté.
+     *
+     * [capped] : la vue portait plus de [MAX_CELLS] cellules, et seules les plus proches du centre sont
+     * demandées. [away] : le couloir des traces a tout écarté - aucune trace affichée ne passe par ici.
+     */
+    data class Plan(val units: List<PoiUnit>, val capped: Boolean, val away: Boolean)
+
+    /**
+     * Les unités à charger pour la vue [view] : les cellules qu'elle touche, que le couloir des traces
+     * laisse passer, triées du centre vers les bords, et bornées à [MAX_CELLS].
+     *
+     * Le couloir gouverne la REQUÊTE et non le seul affichage : à plusieurs centaines de kilomètres de
+     * toute trace, on interrogeait les deux services pour tout jeter. Il s'applique ici cellule par cellule,
+     * et un long trajet vu de haut ne demande donc que les cellules qu'il traverse.
+     */
+    fun plan(
+        view: Bbox, groups: Set<PoiGroup>, complement: Boolean,
+        tracks: List<List<Pair<Double, Double>>>, corridorM: Int,
+        maxCells: Int = MAX_CELLS,
+    ): Plan {
+        val box = grow(view)
+        val touchees = PoiCells.covering(box)
+        val bordees = touchees.filter { PoiCorridor.crosses(it.bbox, tracks, corridorM.toDouble()) }
+        if (bordees.isEmpty()) return Plan(emptyList(), capped = false, away = touchees.isNotEmpty())
+        val triees: List<PoiCell> = PoiCells.byDistance(
+            bordees, (view.west + view.east) / 2, (view.south + view.north) / 2,
+        )
+        val retenues = triees.take(maxCells)
+        return Plan(
+            PoiCells.units(retenues, groups, complement),
+            capped = triees.size > maxCells,
+            away = false,
         )
     }
 }

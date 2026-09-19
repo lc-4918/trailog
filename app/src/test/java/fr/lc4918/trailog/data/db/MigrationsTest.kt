@@ -841,6 +841,34 @@ class MigrationsTest {
         db.close()
     }
 
+    /**
+     * Les lieux deja en cache recoivent leur cellule de la grille, calculee comme `PoiCells.of` : le
+     * plancher de la coordonnee fois dix, y compris a l'ouest de Greenwich ou tronquer se tromperait.
+     */
+    @Test fun `65 vers 66 range chaque lieu dans sa cellule`() {
+        val db = freshDb("m6566")
+        db.execSQL(MigrationSql.CREATE_POI_CACHE)
+        db.execSQL("INSERT INTO poi_cache VALUES ('logrono', 'Bar', 42.46, -2.45, 'bars', " +
+            "null, null, null, 0, 1000, 0)")
+        db.execSQL("INSERT INTO poi_cache VALUES ('toulouse', 'Resto', 43.604, 1.444, 'restaurants', " +
+            "null, null, null, 0, 1000, 1)")
+        db.execSQL("INSERT INTO poi_cache VALUES ('rond', 'Pile', 43.0, -1.0, 'bars', " +
+            "null, null, null, 0, 1000, 0)")
+        db.execSQL(MigrationSql.ADD_POI_CELL)
+        db.execSQL(MigrationSql.SET_POI_CELL)
+        db.execSQL(MigrationSql.CREATE_POI_CACHE_CELL_INDEX)
+        db.execSQL(MigrationSql.CREATE_POI_CELLS)
+        val cellule = { uuid: String ->
+            scalar(db, "SELECT cell FROM poi_cache WHERE uuid = '$uuid'") { it.getString(0) }
+        }
+        assertEquals(fr.lc4918.trailog.poi.PoiCells.of(-2.45, 42.46).key, cellule("logrono"))
+        assertEquals(fr.lc4918.trailog.poi.PoiCells.of(1.444, 43.604).key, cellule("toulouse"))
+        assertEquals(fr.lc4918.trailog.poi.PoiCells.of(-1.0, 43.0).key, cellule("rond"))
+        assertEquals("aucune cellule n'est tenue pour chargee", 0,
+            scalar(db, "SELECT COUNT(*) FROM poi_cells") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
