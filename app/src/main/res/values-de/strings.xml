@@ -83,12 +83,6 @@
     <string name="offline_config_width_label">Breite je Seite</string>
     <string name="offline_config_width_value">%1$s</string>
     <string name="offline_config_width_hint">Es werden nur die Kacheln entlang der Spur geladen. Eine Spur, die sich selbst kreuzt, lädt dieselben Kacheln nicht zweimal.</string>
-    <string name="offline_extent_title">Was herunterladen?</string>
-    <string name="offline_extent_area">Ein rechteckiges Gebiet</string>
-    <string name="offline_extent_area_hint">Man zeichnet ein Rechteck auf die Karte. Für ein Massiv, ein Tal, ein Gebiet, das man noch nicht kennt und frei durchstreift.</string>
-    <string name="offline_extent_track">Entlang einer Spur</string>
-    <string name="offline_extent_track_hint">Nur die Kacheln entlang der Route, in einstellbarer Breite. Für eine bereits geplante Tour: weit weniger Kacheln als ein Rechteck, das den Großteil umsonst mitnimmt, sobald die Spur diagonal verläuft.</string>
-    <string name="offline_extent_no_track">Keine Spur zum Säumen. Importiere eine oder wähle ein rechteckiges Gebiet.</string>
     <string name="action_delete">Löschen</string>
     <string name="action_drag_to_move">Ziehen zum Verschieben</string>
     <string name="action_edit">Bearbeiten</string>
@@ -647,4 +641,6 @@
     <string name="action_next">Weiter</string>
     <string name="planner_reset_confirm_title">Route zurücksetzen?</string>
     <string name="planner_reset_confirm_text">Die Etappen und die berechnete Route werden gelöscht.</string>
+    <string name="action_download_map">Karte herunterladen</string>
+    <string name="offline_unavailable">Diese Basiskarte lässt sich nicht herunterladen: Wähle eine Online-Karte (kein Komposit, kein MBTiles, nicht OpenStreetMap).</string>
 </resources>

@@ -83,12 +83,6 @@
     <string name="offline_config_width_label">Amplada a cada costat</string>
     <string name="offline_config_width_value">%1$s</string>
     <string name="offline_config_width_hint">Només es baixen les tessel·les que voregen la traça. Una traça que torna sobre ella mateixa no baixa dues vegades les mateixes tessel·les.</string>
-    <string name="offline_extent_title">Què baixar?</string>
-    <string name="offline_extent_area">Una zona rectangular</string>
-    <string name="offline_extent_area_hint">Es dibuixa un rectangle al mapa. Per a un massís, una vall, una zona que encara no coneixes i on aniràs a l\'atzar.</string>
-    <string name="offline_extent_track">Al llarg d\'una traça</string>
-    <string name="offline_extent_track_hint">Només les tessel·les que voregen el recorregut, amb una amplada ajustable. Per a una sortida ja traçada: moltes menys tessel·les que un rectangle, que se n\'emporta la major part per res tan bon punt la traça va en diagonal.</string>
-    <string name="offline_extent_no_track">Cap traça per vorejar. Importa\'n una o tria una zona rectangular.</string>
     <string name="action_delete">Suprimeix</string>
     <string name="action_drag_to_move">Arrossega per moure</string>
     <string name="action_edit">Edita</string>
@@ -647,4 +641,6 @@
     <string name="action_next">Següent</string>
     <string name="planner_reset_confirm_title">Voleu restablir la ruta?</string>
     <string name="planner_reset_confirm_text">S\'esborraran les etapes i la ruta calculada.</string>
+    <string name="action_download_map">Baixa el mapa</string>
+    <string name="offline_unavailable">Aquest mapa base no es pot baixar: trieu un mapa en línia (ni compost, ni MBTiles, ni OpenStreetMap).</string>
 </resources>

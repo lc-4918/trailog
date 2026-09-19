@@ -70,7 +70,12 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    /** Ferme les reglages et ouvre le cadrage d'une zone a telecharger sur la carte. */
+    onDownloadArea: () -> Unit = {},
+    vm: SettingsViewModel = viewModel(),
+) {
     val s by vm.settings.collectAsState()
     val providers by vm.providers.collectAsState()
     val composites by vm.composites.collectAsState()
@@ -244,7 +249,8 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                 ) {
                     when (currentTab) {
                         0 -> MapTab(cur, vm)
-                        1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") })
+                        1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") },
+                            onDownloadArea = onDownloadArea)
                         2 -> RoutesTab(cur, vm)
                         else -> SystemTab(cur, vm,
                             onPickImportDir = { importDirPicker.launch(null) },

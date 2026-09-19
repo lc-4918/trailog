@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
 import android.annotation.SuppressLint
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -112,6 +113,8 @@ import kotlinx.coroutines.launch
 fun MainScreen(
     onSettings: () -> Unit,
     settingsOpen: Boolean = false,
+    /** Compteur des demandes de telechargement d'une zone, venues des reglages (cf. AppRoot). */
+    downloadAreaRequest: Int = 0,
     vm: MainViewModel = viewModel(),
     // La carte, en parametre pour qu'un test puisse composer l'ecran sans les natifs de MapLibre (cf.
     // MapSurface). En production, c'est la vraie : l'appel de AppRoot ne la nomme pas.
@@ -138,13 +141,16 @@ fun MainScreen(
     // Ce que les bandes de l'ecran recouvrent, mesure a l'affichage : la colonne de boutons du haut, le
     // panneau de profil, la bande du planificateur, la barre de consigne du moment (cf. MapInsetsState).
     val insets = remember { MapInsetsState() }
-    // Visible seulement pour un fond online standard (ni composite, ni MBTiles, ni relief) : cf. SPEC section 1.
-    // Masqué aussi pour OSM (tile.openstreetmap.org), dont la politique d'usage interdit le
-    // téléchargement en masse et renvoie des tuiles "access blocked".
-    val offlineButtonVisible = compositeIdFromBasemapId(settings.defaultBasemapId) == null &&
-        providers.firstOrNull { it.id == settings.defaultBasemapId }?.let {
-            it.type != "MBTILES" && it.type != "DEM" && !it.urlTemplate.contains("tile.openstreetmap.org", ignoreCase = true)
-        } == true
+    // Le telechargement pour le hors-ligne n'est propose que pour un fond qui s'y prete (cf.
+    // offlineDownloadAvailable) : le menu d'une trace n'offre "Telecharger la carte" qu'a cette condition.
+    val offlineButtonVisible = offlineDownloadAvailable(settings.defaultBasemapId, providers)
+    // Une zone a telecharger, demandee depuis les reglages : le cadrage s'ouvre sur la carte.
+    LaunchedEffect(downloadAreaRequest) {
+        if (downloadAreaRequest > 0) {
+            offline.closeFlow()
+            offline.drawingActive = true
+        }
+    }
 
     val renderLayers by vm.renderLayers.collectAsState()
     val importInProgress by vm.importing.collectAsState()
@@ -793,11 +799,20 @@ fun MainScreen(
                     onSettings = { scope.launch { drawerState.snapTo(DrawerValue.Closed) }; onSettings() },
                     onClose = { scope.launch { drawerState.close() } },
                     onImport = { importFlow.askFolder() },
-                    showOfflineButton = offlineButtonVisible,
-                    onDownloadOffline = {
+                    // Le long d'une trace, depuis son menu : on part directement sur la configuration, la trace
+                    // choisie - masquee ou non, sa geometrie se relit sur le disque.
+                    onDownloadMap = if (!offlineButtonVisible) null else ({ l ->
                         scope.launch { drawerState.close() }
-                        offline.extentChoice = true
-                    },
+                        vm.trackPointsOf(l) { pts ->
+                            if (pts.isNotEmpty()) {
+                                offline.corridor = l to pts
+                                offline.configBbox = Bbox.of(
+                                    pts.minOf { it.first }, pts.minOf { it.second },
+                                    pts.maxOf { it.first }, pts.maxOf { it.second },
+                                )
+                            }
+                        }
+                    }),
                     onFailure = { message -> dialogs.failed(message) },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
@@ -1190,8 +1205,6 @@ fun MainScreen(
                 download = offlineDownload,
                 chrome = chrome,
                 vm = vm,
-                folders = folders,
-                layers = layers,
                 currentProvider = providers.firstOrNull { it.id == settings.defaultBasemapId },
                 styleJson = style?.styleJson,
                 styleUrl = style?.styleUrl,

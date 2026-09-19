@@ -83,12 +83,6 @@
     <string name="offline_config_width_label">Width on each side</string>
     <string name="offline_config_width_value">%1$s</string>
     <string name="offline_config_width_hint">Only the tiles bordering the track are downloaded. A track that folds back on itself does not download the same tiles twice.</string>
-    <string name="offline_extent_title">What to download?</string>
-    <string name="offline_extent_area">A rectangular area</string>
-    <string name="offline_extent_area_hint">You draw a rectangle on the map. For a massif, a valley, an area you do not know yet and will roam freely.</string>
-    <string name="offline_extent_track">Along a track</string>
-    <string name="offline_extent_track_hint">Only the tiles bordering the route, over an adjustable width. For an outing already traced: far fewer tiles than a rectangle, which carries most of them for nothing as soon as the track runs diagonally.</string>
-    <string name="offline_extent_no_track">No track to border. Import one, or choose a rectangular area.</string>
     <string name="action_delete">Delete</string>
     <string name="action_drag_to_move">Drag to move</string>
     <string name="action_edit">Edit</string>
@@ -647,4 +641,6 @@
     <string name="action_next">Next</string>
     <string name="planner_reset_confirm_title">Reset the route?</string>
     <string name="planner_reset_confirm_text">The stops and the computed route will be cleared.</string>
+    <string name="action_download_map">Download the map</string>
+    <string name="offline_unavailable">This basemap cannot be downloaded: choose an online basemap (not a composite, MBTiles or OpenStreetMap).</string>
 </resources>

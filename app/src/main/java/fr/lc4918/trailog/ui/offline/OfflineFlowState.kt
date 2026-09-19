@@ -8,24 +8,15 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.map.offline.Bbox
 
 /**
- * Ou en est la demande de carte hors-ligne, du bouton jusqu'a l'ecran de configuration.
+ * Ou en est la demande de carte hors-ligne, de son entree jusqu'a l'ecran de configuration.
  *
- * Le parcours a deux entrees et un seul aboutissement. On dit d'abord CE QU'ON TELECHARGE ([extentChoice])
- * : un rectangle cadre sur la carte, ou le couloir qui borde une trace. Le rectangle passe par
- * [drawingActive], ou l'on regle un cadre a ses poignees ; la trace passe par [pickTrack] et remplit
- * [corridor]. Les deux finissent sur [configBbox], qui ouvre l'ecran de configuration.
- *
- * Six drapeaux qui ne se comprennent qu'ensemble, et deux facons de tout refermer qui ne se distinguent
- * que par un detail - c'est ce qui les met ici plutot qu'en variables eparses dans l'ecran de carte.
+ * Deux entrees, un seul aboutissement. Une ZONE se demande depuis les reglages (onglet Tuiles) : la carte
+ * ouvre son cadrage ([drawingActive]), un cadre qu'on regle a ses poignees. Une TRACE se demande depuis son
+ * menu dans le menu lateral, et remplit [corridor]. Les deux finissent sur [configBbox], qui ouvre l'ecran
+ * de configuration.
  */
 @Stable
 class OfflineFlowState {
-    /** Choix de ce qu'on telecharge, propose a l'appui du bouton. */
-    var extentChoice by mutableStateOf(false)
-
-    /** Choix de la trace a border, quand on a repondu "une trace". */
-    var pickTrack by mutableStateOf(false)
-
     /** Trace a border et son parcours, gardes le temps de l'ecran de configuration. */
     var corridor by mutableStateOf<Pair<LayerEntity, List<Pair<Double, Double>>>?>(null)
 

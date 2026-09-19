@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.nav
 
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -24,11 +25,18 @@ import fr.lc4918.trailog.update.UpdateManager
 @Composable
 fun AppRoot(autoCheckUpdates: Boolean) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    // Chaque demande de telechargement d'une zone, depuis les reglages : un compteur, que la carte suit.
+    // Les reglages se referment, et c'est la carte qui ouvre son cadrage - elle seule sait ou elle en est.
+    var downloadArea by rememberSaveable { mutableIntStateOf(0) }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-        MainScreen(onSettings = { showSettings = true }, settingsOpen = showSettings)
+        MainScreen(onSettings = { showSettings = true }, settingsOpen = showSettings,
+            downloadAreaRequest = downloadArea)
         if (showSettings) {
             BackHandler { showSettings = false }
-            SettingsScreen(onBack = { showSettings = false })
+            SettingsScreen(
+                onBack = { showSettings = false },
+                onDownloadArea = { showSettings = false; downloadArea++ },
+            )
         }
     }
 

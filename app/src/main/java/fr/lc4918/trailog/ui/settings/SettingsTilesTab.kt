@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -93,6 +96,8 @@ import kotlinx.coroutines.launch
 @Composable internal fun TilesTab(
     cur: SettingsEntity, providers: List<ProviderEntity>, composites: List<CompositeEntity>, vm: SettingsViewModel,
     onPickMbtiles: () -> Unit,
+    /** Ouvre le cadrage d'une zone a telecharger, sur la carte (cf. AppRoot). */
+    onDownloadArea: () -> Unit = {},
 ) {
     val mapProviders = providers.filter { it.type != "DEM" && !it.transparent && it.enabled }
     val mapComposites = composites.filter { it.enabled }
@@ -157,16 +162,27 @@ import kotlinx.coroutines.launch
      */
     SectionTitle(stringResource(R.string.settings_section_custom_basemaps))
     SettingsCard {
+        // Les deux facons d'apporter un fond : l'importer, ou le telecharger depuis celui qu'on affiche -
+        // une zone qu'on cadre sur la carte. Composer vient en dessous : il assemble ce qu'on a deja.
+        val telechargeable = offlineDownloadAvailable(cur.defaultBasemapId, providers)
         Row(Modifier.fillMaxWidth()) {
             CardButton(
                 stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_import),
                 modifier = Modifier.weight(1f), onClick = onPickMbtiles,
             )
             CardButton(
-                stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers),
+                stringResource(R.string.offline_action_download),
+                rememberVectorPainter(Icons.Outlined.FileDownload),
                 modifier = Modifier.weight(1f),
-            ) { creatingComposite = true }
+            ) {
+                // Un fond qu'on ne peut pas telecharger le dit, plutot que d'ouvrir un cadrage qui n'aboutira
+                // a rien.
+                if (telechargeable) onDownloadArea() else vm.showStatus(R.string.offline_unavailable)
+            }
         }
+        CardButton(
+            stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers),
+        ) { creatingComposite = true }
         if (basemapEntries.isNotEmpty() || composites.isNotEmpty()) {
             RowDivider()
             basemapEntries.forEachIndexed { i, p ->

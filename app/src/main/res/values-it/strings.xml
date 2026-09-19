@@ -83,12 +83,6 @@
     <string name="offline_config_width_label">Larghezza per lato</string>
     <string name="offline_config_width_value">%1$s</string>
     <string name="offline_config_width_hint">Si scaricano solo le tessere che costeggiano la traccia. Una traccia che ripassa su se stessa non scarica due volte le stesse tessere.</string>
-    <string name="offline_extent_title">Che cosa scaricare?</string>
-    <string name="offline_extent_area">Un\'area rettangolare</string>
-    <string name="offline_extent_area_hint">Si traccia un rettangolo sulla mappa. Per un massiccio, una valle, una zona che non conosci ancora e dove andrai a caso.</string>
-    <string name="offline_extent_track">Lungo una traccia</string>
-    <string name="offline_extent_track_hint">Solo le tessere che costeggiano il percorso, su una larghezza regolabile. Per un\'uscita già tracciata: molte meno tessere di un rettangolo, che ne porta la maggior parte per nulla appena la traccia va in diagonale.</string>
-    <string name="offline_extent_no_track">Nessuna traccia da costeggiare. Importane una o scegli un\'area rettangolare.</string>
     <string name="action_delete">Elimina</string>
     <string name="action_drag_to_move">Trascina per spostare</string>
     <string name="action_edit">Modifica</string>
@@ -647,4 +641,6 @@
     <string name="action_next">Avanti</string>
     <string name="planner_reset_confirm_title">Reimpostare il percorso?</string>
     <string name="planner_reset_confirm_text">Le tappe e il percorso calcolato saranno cancellati.</string>
+    <string name="action_download_map">Scarica la mappa</string>
+    <string name="offline_unavailable">Questa mappa di base non si può scaricare: scegli una mappa online (né composita, né MBTiles, né OpenStreetMap).</string>
 </resources>

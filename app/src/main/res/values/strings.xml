@@ -83,12 +83,6 @@
     <string name="offline_config_width_label">Largeur de chaque côté</string>
     <string name="offline_config_width_value">%1$s</string>
     <string name="offline_config_width_hint">Seules les tuiles qui bordent la trace sont téléchargées. Une trace qui revient sur elle-même ne fait pas retélécharger les mêmes tuiles.</string>
-    <string name="offline_extent_title">Que télécharger ?</string>
-    <string name="offline_extent_area">Une zone rectangulaire</string>
-    <string name="offline_extent_area_hint">On trace un rectangle sur la carte. Pour un massif, une vallée, un secteur qu\'on ne connaît pas encore et où l\'on ira au hasard.</string>
-    <string name="offline_extent_track">Le long d\'une trace</string>
-    <string name="offline_extent_track_hint">Seules les tuiles qui bordent le parcours, sur une largeur réglable. Pour une sortie déjà tracée : bien moins de tuiles qu\'un rectangle, qui en emporte l\'essentiel pour rien dès que la trace est en diagonale.</string>
-    <string name="offline_extent_no_track">Aucune trace à border. Importez-en une, ou choisissez une zone rectangulaire.</string>
     <string name="action_delete">Supprimer</string>
     <string name="action_drag_to_move">Glisser pour déplacer</string>
     <string name="action_edit">Éditer</string>
@@ -649,4 +643,6 @@
     <string name="action_next">Suivant</string>
     <string name="planner_reset_confirm_title">Réinitialiser l\'itinéraire ?</string>
     <string name="planner_reset_confirm_text">Les étapes et le trajet calculé seront effacés.</string>
+    <string name="action_download_map">Télécharger la carte</string>
+    <string name="offline_unavailable">Ce fond de plan ne se télécharge pas : choisissez un fond en ligne (ni composite, ni MBTiles, ni OpenStreetMap).</string>
 </resources>

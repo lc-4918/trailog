@@ -56,6 +56,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _status = MutableStateFlow<String?>(null)
     val status = _status.asStateFlow()
     fun clearStatus() { _status.value = null }
+    fun showStatus(res: Int) { _status.value = getApplication<Application>().getString(res) }
 
     /** Import de fournisseurs en attente de confirmation utilisateur (SPEC section 4.2 : demander
      *  confirmation avant d'écraser des fournisseurs existants). Null = aucun import en attente. */

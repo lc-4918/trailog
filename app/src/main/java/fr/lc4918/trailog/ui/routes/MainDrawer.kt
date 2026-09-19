@@ -719,6 +719,12 @@ internal fun RowMenu(
             if (layer != null && layerActions != null && layer.hasLine) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
                     onClick = { open = false; layerActions.onStats(layer) })
+                // La carte le long de la trace, pour le hors-ligne : ici, sur la trace elle-meme, plutot que
+                // dans un parcours qui demandait d'abord ce qu'on telecharge, puis quelle trace.
+                layerActions.onDownloadMap?.let { telecharger ->
+                    DropdownMenuItem(text = { Text(stringResource(R.string.action_download_map)) },
+                        onClick = { open = false; telecharger(layer) })
+                }
             }
             if (onColor != null) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
@@ -752,6 +758,8 @@ class LayerActions(
     val onExport: (LayerEntity) -> Unit,
     val onShare: (LayerEntity) -> Unit,
     val onStats: (LayerEntity) -> Unit = {},
+    /** Telecharger la carte le long de la trace ; null si le fond affiche ne s'y prete pas. */
+    val onDownloadMap: ((LayerEntity) -> Unit)? = null,
 )
 
 /** Les couches que porte un dossier, sous-dossiers compris : ce sur quoi portent ses actions (oeil,
@@ -779,7 +787,9 @@ internal fun DrawerContent(
     // qu'il a disparu de l'ecran, et garde l'etat dans lequel on l'a laisse.
     open: Boolean,
     onSettings: () -> Unit, onClose: () -> Unit, onImport: () -> Unit,
-    showOfflineButton: Boolean, onDownloadOffline: () -> Unit,
+    /** "Telecharger la carte" le long d'une trace, depuis son menu ; null quand le fond affiche ne se
+     *  telecharge pas (cf. offlineDownloadAvailable) - l'entree n'apparait pas. */
+    onDownloadMap: ((LayerEntity) -> Unit)?,
     onZoom: (String, Long) -> Unit,
     // Un geste du tiroir n'a rien produit : l'ecran le dit. Un rappel etroit plutot que le porteur des
     // boites, dont le tiroir n'a aucune raison de lire le reste (cf. MainDialogState.failure).
@@ -903,7 +913,7 @@ internal fun DrawerContent(
     }
     var layerStatsTarget by remember { mutableStateOf<LayerEntity?>(null) }
     val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer,
-        onStats = { layerStatsTarget = it })
+        onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap)
     var searchQuery by remember { mutableStateOf("") }
     var searchOpen by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
@@ -953,10 +963,10 @@ internal fun DrawerContent(
                     // Les actions du header, sur la seule bande grise de l'en-tete : c'est elle qui les
                     // rassemble, et le titre au-dessus s'en trouve rendu au fond du tiroir.
                     //
-                    // "Importer" et "Telecharger" portent leur libelle, et tout le bouton - icone comme
-                    // texte - declenche l'action : ce sont les deux gestes qu'on vient chercher ici, et
-                    // une icone seule ne dit pas ce qu'elle importe ni ce qu'elle telecharge. "Nouveau
-                    // dossier" garde l'icone seule, universelle, et laisse la place aux deux autres.
+                    // "Importer" porte son libelle, et tout le bouton - icone comme texte - declenche
+                    // l'action : c'est le geste qu'on vient chercher ici. "Nouveau dossier" garde l'icone
+                    // seule, universelle. Le telechargement de carte a quitte cette bande : une zone se
+                    // telecharge depuis les reglages (onglet Tuiles), une trace depuis son propre menu.
                     Row(
                         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -966,10 +976,6 @@ internal fun DrawerContent(
                         HeaderAction(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder)) { openNewFolder(null) }
                         HeaderAction(Icons.Outlined.FileUpload, stringResource(R.string.action_import),
                             showLabel = true, onClick = onImport)
-                        if (showOfflineButton) {
-                            HeaderAction(Icons.Outlined.FileDownload, stringResource(R.string.offline_action_download),
-                                showLabel = true, onClick = onDownloadOffline)
-                        }
                         // La recherche est a l'oppose des trois autres : elle ne cree ni n'importe rien,
                         // elle change la facon de LIRE ce qui est en dessous. Le vide entre elle et les
                         // autres dit cette difference mieux qu'un filet.

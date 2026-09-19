@@ -14,26 +14,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import fr.lc4918.trailog.data.db.FolderEntity
-import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
-import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.ui.routes.MainViewModel
 import fr.lc4918.trailog.ui.routes.MapChrome
-import fr.lc4918.trailog.ui.routes.OfflineExtentDialog
-import fr.lc4918.trailog.ui.routes.OfflineTrackPickDialog
 
 /**
- * Le chemin complet du telechargement hors-ligne, de la question a la barre de progression.
+ * La fin du chemin du telechargement hors-ligne : la configuration - zooms, nom, points d'interet - puis
+ * l'avancement.
  *
- * Quatre ecrans qui se suivent et ne s'affichent jamais ensemble : ce qu'on telecharge (un rectangle ou le
- * couloir d'une trace), la trace a border le cas echeant, la configuration - zooms, nom, points d'interet -
- * puis l'avancement. Le trace du rectangle, lui, se fait SUR la carte et reste dans l'ecran : c'est le seul
- * moment ou l'utilisateur regarde le fond de carte plutot qu'un formulaire.
- *
- * Poses par-dessus tout le reste, en plein ecran : ces trois premiers ne sont pas des ornements de carte
- * mais des etapes, et rien de la carte n'a a rester touchable pendant qu'on y repond.
+ * Le chemin commence ailleurs, a l'une de ses deux entrees : le cadrage d'une zone, ouvert depuis les
+ * reglages, qui se fait SUR la carte (cf. BboxEditorOverlay) ; ou le menu d'une trace, dans le menu lateral.
+ * Les deux aboutissent ici.
  *
  * @param currentProvider le fond affiche : ses zooms bornent ceux qu'on peut demander.
  * @param poiAvailable la couche des points d'interet est allumee - proposer d'emporter ce qu'on ne peut
@@ -45,47 +37,11 @@ internal fun BoxScope.OfflineFlowUi(
     download: OfflineDownloadState?,
     chrome: MapChrome,
     vm: MainViewModel,
-    folders: List<FolderEntity>,
-    layers: List<LayerEntity>,
     currentProvider: ProviderEntity?,
     styleJson: String?,
     styleUrl: String?,
     poiAvailable: Boolean,
 ) {
-    // Configuration du téléchargement hors-ligne (SPEC section 3), plein écran par-dessus tout le reste.
-    if (offline.extentChoice) {
-        OfflineExtentDialog(
-            dark = chrome.dark,
-            onDismiss = { offline.extentChoice = false },
-            onArea = {
-                offline.extentChoice = false
-                offline.corridor = null
-                offline.drawingActive = true
-            },
-            onTrack = { offline.extentChoice = false; offline.pickTrack = true },
-        )
-    }
-    if (offline.pickTrack) {
-        OfflineTrackPickDialog(
-            folders = folders,
-            layers = layers,
-            onDismiss = { offline.pickTrack = false },
-            onPick = { l ->
-                offline.pickTrack = false
-                // La geometrie est relue ICI et non a l'affichage de l'ecran suivant : le couloir se
-                // calcule sur les points reels, et l'estimation doit etre juste des la premiere image.
-                vm.trackPointsOf(l) { pts ->
-                    if (pts.isNotEmpty()) {
-                        offline.corridor = l to pts
-                        offline.configBbox = Bbox.of(
-                            pts.minOf { it.first }, pts.minOf { it.second },
-                            pts.maxOf { it.first }, pts.maxOf { it.second },
-                        )
-                    }
-                }
-            },
-        )
-    }
     offline.configBbox?.let { bbox ->
         OfflineDownloadConfigScreen(
             bbox = bbox,
