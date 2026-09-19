@@ -187,16 +187,23 @@ internal fun BoxScope.MapTopLeftControls(
         }
         // Sous la recherche, et à sa place quand elle est masquée : la colonne se resserre
         // d'elle-même, aucun des deux boutons ne réserve son rang.
-        // Masqué pendant le choix des points, que sa bande porte déjà entièrement.
-        if (settings.trackMeasureEnabled && !measure.picking) {
+        // Reste a sa place pendant le choix des points, et s'y allume en bleu comme le GPS : il disparaissait,
+        // et l'on ne savait plus ni que la mesure etait en cours, ni comment l'arreter autrement que par la
+        // croix de la bande. Un second appui l'arrete, comme cette croix.
+        if (settings.trackMeasureEnabled) {
             IconButton(onClick = {
-                // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
-                // planificateur se replie dans son coin (son trajet, lui, est conservé).
-                vm.closeProfile()
-                if (planner.open) planner.collapseOrClose()
-                measure.open()
+                if (measure.picking) {
+                    measure.closeBand()
+                } else {
+                    // Le bas de l'écran revient à la bande de consigne : le profil se ferme, le
+                    // planificateur se replie dans son coin (son trajet, lui, est conservé).
+                    vm.closeProfile()
+                    if (planner.open) planner.collapseOrClose()
+                    measure.open()
+                }
             }, modifier = chrome.buttonBackground) {
-                Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title), tint = chrome.fg)
+                Icon(Icons.Filled.Straighten, stringResource(R.string.measure_title),
+                    tint = if (measure.picking) MapChromeActive else chrome.fg)
             }
         }
         // Retouche des traces : un bouton, et non une barre permanente. Ouvrir le mode est un

@@ -215,7 +215,7 @@ class MainScreenUiTest {
      * C'est la regle des modes exclusifs, et elle ne s'ecrit qu'ici. Un tap qui ouvrirait une infobulle
      * pendant qu'une bande demande un point de depart repondrait a cote de la question posee.
      */
-    @Test fun `la mesure detourne tous les taps et rend la regle a sa bande`() {
+    @Test fun `la mesure detourne tous les taps et la regle reste a sa place`() {
         reglages { it.copy(trackMeasureEnabled = true) }
         ecran()
         attend { affiche(R.string.measure_title) }
@@ -224,7 +224,7 @@ class MainScreenUiTest {
         attend { texte(R.string.measure_pick_start) }
 
         assertNotNull("les taps reviennent au mode", carte.onRawTap)
-        assertFalse("la regle s'efface, sa bande porte la consigne", affiche(R.string.measure_title))
+        assertTrue("la regle reste affichee, allumee", affiche(R.string.measure_title))
 
         // La croix de la bande rend les taps a la selection : le mode se referme entierement.
         compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
