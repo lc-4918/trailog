@@ -649,4 +649,5 @@
     <string name="brouter_folder_busy">È in corso un download di dati di percorso: riprova quando è terminato.</string>
     <string name="brouter_folder_not_writable">Impossibile scrivere in questa cartella. Non è stato spostato nulla.</string>
     <string name="brouter_folder_moved">Dati di percorso spostati nella nuova cartella</string>
+    <string name="planner_computed_offline">calcolato offline</string>
 </resources>

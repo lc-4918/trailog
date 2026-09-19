@@ -649,4 +649,5 @@
     <string name="brouter_folder_busy">Está em curso uma transferência de dados de rota: tente de novo quando terminar.</string>
     <string name="brouter_folder_not_writable">Não é possível escrever nesta pasta. Nada foi movido.</string>
     <string name="brouter_folder_moved">Dados de rota movidos para a nova pasta</string>
+    <string name="planner_computed_offline">calculada offline</string>
 </resources>

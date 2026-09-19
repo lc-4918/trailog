@@ -649,4 +649,5 @@
     <string name="brouter_folder_busy">Hi ha una baixada de dades de ruta en curs: torneu-ho a provar quan acabi.</string>
     <string name="brouter_folder_not_writable">No es pot escriure en aquesta carpeta. No s\'ha mogut res.</string>
     <string name="brouter_folder_moved">Dades de ruta mogudes a la carpeta nova</string>
+    <string name="planner_computed_offline">calculada sense connexió</string>
 </resources>

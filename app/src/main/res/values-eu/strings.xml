@@ -649,4 +649,5 @@
     <string name="brouter_folder_busy">Ibilbide datuen deskarga bat abian da: saiatu berriro amaitzean.</string>
     <string name="brouter_folder_not_writable">Ezin da karpeta honetan idatzi. Ez da ezer mugitu.</string>
     <string name="brouter_folder_moved">Ibilbide datuak karpeta berrira mugitu dira</string>
+    <string name="planner_computed_offline">konexiorik gabe kalkulatua</string>
 </resources>

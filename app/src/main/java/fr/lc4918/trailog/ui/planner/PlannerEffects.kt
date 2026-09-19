@@ -151,7 +151,8 @@ fun PlannerEffects(
         // Le moteur injoignable se DIT comme tel, et non "aucun itineraire" : la requete n'est jamais
         // partie, et chercher la faute du cote des etapes ou de la discipline ne menerait nulle part. Le
         // message porte de quoi redemander une fois le reseau revenu (cf. RoutePlannerState.retryRoute).
-        val r = when (val issue = Router.route(ctx, routeEngine, routingUrl, pts, state.profile, prefs)) {
+        val issue = Router.route(ctx, routeEngine, routingUrl, pts, state.profile, prefs)
+        val r = when (issue) {
             is RouteOutcome.Done -> issue.result
             RouteOutcome.Unreachable -> {
                 state.publish(RouteState.NoNetwork); routeFramed = false; return@LaunchedEffect
@@ -164,7 +165,8 @@ fun PlannerEffects(
         val track = withContext(Dispatchers.Default) {
             TrackMath.compute(r.points, smoothingM = smoothingM, maxPoints = 0, ignoreStops = false)
         }
-        state.publish(RouteState.Done(r.meters, r.seconds, track), inputs)
+        state.publish(RouteState.Done(r.meters, r.seconds, track,
+            offline = (issue as? RouteOutcome.Done)?.offline == true), inputs)
         if (!routeFramed) framePending = true
     }
     /*

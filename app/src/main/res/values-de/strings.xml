@@ -649,4 +649,5 @@
     <string name="brouter_folder_busy">Ein Download von Routing-Daten läuft: nach Abschluss erneut versuchen.</string>
     <string name="brouter_folder_not_writable">In diesen Ordner kann nicht geschrieben werden. Nichts wurde verschoben.</string>
     <string name="brouter_folder_moved">Routing-Daten in den neuen Ordner verschoben</string>
+    <string name="planner_computed_offline">offline berechnet</string>
 </resources>

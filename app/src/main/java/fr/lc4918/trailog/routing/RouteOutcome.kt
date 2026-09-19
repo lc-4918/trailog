@@ -15,7 +15,8 @@ package fr.lc4918.trailog.routing
  * appellent deux gestes opposes ne peuvent pas partager un message.
  */
 sealed interface RouteOutcome {
-    data class Done(val result: RouteResult) : RouteOutcome
+    /** [offline] : calcule sur le telephone, avec les donnees des zones telechargees (cf. BrouterLocal). */
+    data class Done(val result: RouteResult, val offline: Boolean = false) : RouteOutcome
 
     /** Le service a REPONDU : ces etapes ne se relient pas dans cette discipline, ou il refuse le profil. */
     data object NoRoute : RouteOutcome

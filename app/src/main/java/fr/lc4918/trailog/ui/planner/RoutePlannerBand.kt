@@ -720,6 +720,13 @@ private fun ResultsZone(
                     ),
                     fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
                 )
+                // Calcule sur le telephone : dit en passant, sans en faire un evenement. C'est ce qui
+                // explique un calcul plus lent qu'a l'habitude, ou un trajet trouve sans reseau.
+                if (r.offline) {
+                    Text(stringResource(R.string.planner_computed_offline), fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(8.dp))
+                }
                 // Retour a la vue complete : sur cette ligne parce qu'il concerne le profil, et non le
                 // parcours. Bouton a part DANS une ligne cliquable : son propre clic l'emporte sur celui
                 // de la ligne, qui continue d'ouvrir et de fermer le profil partout ailleurs.

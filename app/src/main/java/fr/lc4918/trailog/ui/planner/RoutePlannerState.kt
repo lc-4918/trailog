@@ -73,7 +73,10 @@ sealed interface RouteState {
      * redemander une fois le reseau revenu, et le message porte donc de quoi le faire.
      */
     data object NoNetwork : RouteState
-    data class Done(val meters: Double, val seconds: Double, val track: ComputedTrack) : RouteState
+    /** [offline] : calcule sur le telephone, sans le reseau - la bande le dit (cf. Router.route). */
+    data class Done(
+        val meters: Double, val seconds: Double, val track: ComputedTrack, val offline: Boolean = false,
+    ) : RouteState
 }
 
 /**
