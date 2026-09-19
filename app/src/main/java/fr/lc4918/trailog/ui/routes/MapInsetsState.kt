@@ -52,9 +52,10 @@ class MapInsetsState {
     /**
      * La barre de consigne affichee, ou 0 s'il n'y en a aucune.
      *
-     * Se lit sur la hauteur relevee et non sur le mode en cours : une barre qui se retire rend sa hauteur
-     * a zero de toute facon, et lire l'etat des trois modes ici obligerait ce porteur a connaitre trois
-     * autres porteurs pour repondre a une question de geometrie.
+     * Se lit sur la hauteur relevee et non sur le mode en cours : lire l'etat des trois modes ici obligerait
+     * ce porteur a connaitre trois autres porteurs pour repondre a une question de geometrie. Chaque barre
+     * remet donc sa hauteur a zero en quittant l'ecran - ce qu'elle ne faisait pas, et l'echelle de la
+     * carte restait alors calee au-dessus d'une barre disparue, au milieu de l'ecran.
      */
     val promptBarPx: Int get() = maxOf(offlineBarPx, measureBarPx, pointBarPx)
 

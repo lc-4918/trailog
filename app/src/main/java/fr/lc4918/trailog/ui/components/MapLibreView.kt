@@ -1094,6 +1094,10 @@ class MapController {
 
     fun screenOf(lon: Double, lat: Double): PointF? = map?.projection?.toScreenLocation(LatLng(lat, lon))
 
+    /** Le point de la carte sous ce point de l'ecran, en (lon, lat) : l'inverse de [screenOf]. */
+    fun lonLatAt(x: Float, y: Float): Pair<Double, Double>? =
+        map?.projection?.fromScreenLocation(PointF(x, y))?.let { it.longitude to it.latitude }
+
     /**
      * Le point est-il dans la vue, avec une marge de confort ?
      *

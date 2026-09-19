@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -645,3 +646,16 @@ fun ColumnScopeMarker.SegChips(options: List<Pair<String, String>>, current: Str
 
 /** Taille des icones posees dans une ligne de reglage. */
 val SettingsRowIconSize: Dp = 16.dp
+
+/**
+ * Un choix explique : son libelle, la fleche qui dit qu'on y va, et le texte qui le decrit - le tout
+ * cliquable, et pas seulement la ligne du titre. On lit le texte avant de choisir, et le doigt tombe sur le
+ * texte : un appui la ne faisait rien.
+ */
+@Composable
+fun ColumnScopeMarker.ChoiceBlock(label: String, hint: String, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick)) {
+        SetRow(label) { RowIcon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) }
+        Hint(hint)
+    }
+}

@@ -122,19 +122,12 @@
     <string name="action_load_image_from_phone">Bild laden</string>
     <string name="action_manage_providers">Anbieter verwalten</string>
     <string name="action_offline_download">Offlinekarte</string>
-    <string name="offline_bbox_step_label">Bereich zum Herunterladen auswählen</string>
-    <string name="offline_bbox_points_count">%1$d/2 Punkte</string>
-    <string name="offline_action_cancel_point">Punkt rückgängig</string>
     <string name="offline_action_back">Zurück</string>
-    <string name="offline_action_validate">Bestätigen</string>
     <string name="offline_config_title">Kachel-Download</string>
     <string name="offline_config_zoom_label">Zoomstufen</string>
-    <string name="offline_config_label_tiles">Anzahl Kacheln</string>
     <string name="offline_config_label_size">Geschätzte Größe</string>
     <string name="offline_config_name_label">Name der Ebene</string>
     <string name="offline_config_name_placeholder">z. B. Meine Wanderung Juli 2026</string>
-    <string name="offline_config_continue_on_error_label">Bei Fehler fortfahren</string>
-    <string name="offline_config_continue_on_error_desc">Wenn aktiviert, wird der Download fortgesetzt, auch wenn eine Kachel nicht heruntergeladen werden konnte</string>
     <string name="offline_config_pois_label">Sehenswürdigkeiten mitnehmen</string>
     <string name="offline_config_pois_desc">Die touristischen Orte des Gebiets sind ohne Netz verfügbar</string>
     <string name="offline_progress_pois">%1$d Sehenswürdigkeit(en) mitgenommen</string>
@@ -650,4 +643,6 @@
     <string name="brouter_folder_not_writable">In diesen Ordner kann nicht geschrieben werden. Nichts wurde verschoben.</string>
     <string name="brouter_folder_moved">Routing-Daten in den neuen Ordner verschoben</string>
     <string name="planner_computed_offline">offline berechnet</string>
+    <string name="offline_bbox_adjust">Karte anpassen und Bereich in der Größe ändern</string>
+    <string name="action_next">Weiter</string>
 </resources>

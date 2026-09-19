@@ -37,6 +37,7 @@ import fr.lc4918.trailog.ui.settings.SetRow
 import fr.lc4918.trailog.ui.settings.RowDivider
 import fr.lc4918.trailog.ui.settings.Hint
 import fr.lc4918.trailog.ui.settings.RowIcon
+import fr.lc4918.trailog.ui.settings.ChoiceBlock
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 
 /**
@@ -73,15 +74,12 @@ internal fun OfflineExtentDialog(
             title = { Text(stringResource(R.string.offline_extent_title), color = p.label) },
             text = {
                 SettingsCard {
-                    SetRow(stringResource(R.string.offline_extent_area), onClick = onArea) {
-                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
-                    }
-                    Hint(stringResource(R.string.offline_extent_area_hint))
+                    // Toute la partie est cliquable, texte d'aide compris (cf. ChoiceBlock).
+                    ChoiceBlock(stringResource(R.string.offline_extent_area),
+                        stringResource(R.string.offline_extent_area_hint), onArea)
                     RowDivider()
-                    SetRow(stringResource(R.string.offline_extent_track), onClick = onTrack) {
-                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
-                    }
-                    Hint(stringResource(R.string.offline_extent_track_hint))
+                    ChoiceBlock(stringResource(R.string.offline_extent_track),
+                        stringResource(R.string.offline_extent_track_hint), onTrack)
                 }
             },
             confirmButton = {
@@ -112,15 +110,11 @@ internal fun ExportFormatDialog(dark: Boolean, onDismiss: () -> Unit, onPick: (g
             title = { Text(stringResource(R.string.action_export_layer), color = p.label) },
             text = {
                 SettingsCard {
-                    SetRow(stringResource(R.string.export_format_gpx), onClick = { onPick(false) }) {
-                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
-                    }
-                    Hint(stringResource(R.string.export_format_gpx_hint))
+                    ChoiceBlock(stringResource(R.string.export_format_gpx),
+                        stringResource(R.string.export_format_gpx_hint)) { onPick(false) }
                     RowDivider()
-                    SetRow(stringResource(R.string.export_format_geojson), onClick = { onPick(true) }) {
-                        RowIcon(Icons.Filled.KeyboardArrowRight, null)
-                    }
-                    Hint(stringResource(R.string.export_format_geojson_hint))
+                    ChoiceBlock(stringResource(R.string.export_format_geojson),
+                        stringResource(R.string.export_format_geojson_hint)) { onPick(true) }
                 }
             },
             confirmButton = {

@@ -112,10 +112,9 @@ fun OfflineDownloadConfigScreen(
         mutableStateOf(providerMinZoom.toFloat()..(providerMinZoom + 6).coerceAtMost(providerMaxZoom).toFloat())
     }
     var name by remember { mutableStateOf(corridorName) }
-    var continueOnError by remember { mutableStateOf(false) }
-    // Coche d'office quand la couche est allumee : qui l'a allumee s'en sert, et une zone emportee sans
-    // ses lieux se decouvre trop tard - sur le terrain, sans reseau pour la completer.
-    var withPois by remember { mutableStateOf(poiAvailable) }
+    // Decochee d'office : c'est une requete de plus a des services tiers, et la carte se telecharge tres
+    // souvent sans qu'on ait besoin de ses lieux. Qui les veut coche la case.
+    var withPois by remember { mutableStateOf(false) }
     // Largeur telechargee de chaque cote du parcours. En kilometres parce que c'est l'unite dans laquelle
     // on se represente un ecart de route : "500 m autour" ne dit pas grand-chose, "un kilometre de chaque
     // cote" se voit.
@@ -130,9 +129,6 @@ fun OfflineDownloadConfigScreen(
         else TileMath.totalTileCount(bbox, minZ, maxZ)
     }
     val sizeLabel = remember(tileCount) { TileMath.formatSize(TileMath.estimateSizeBytes(tileCount)) }
-    val tileCountLabel = remember(tileCount) {
-        String.format(java.util.Locale.ROOT, "%,d", tileCount).replace(',', ' ')
-    }
 
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
@@ -186,10 +182,9 @@ fun OfflineDownloadConfigScreen(
                             Hint(stringResource(R.string.offline_config_width_hint))
                         }
                         RowDivider()
-                        // Les deux estimations suivent le curseur dans la même carte : ce sont ses
-                        // conséquences, pas une rubrique de plus.
-                        SetRow(stringResource(R.string.offline_config_label_tiles)) { ValueText(tileCountLabel) }
-                        RowDivider()
+                        // L'estimation suit le curseur dans la même carte : c'est sa conséquence, pas
+                        // une rubrique de plus. Le nombre de tuiles n'est plus affiché : le poids seul dit
+                        // ce que ça coûte.
                         SetRow(stringResource(R.string.offline_config_label_size)) { ValueText(sizeLabel) }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -198,13 +193,6 @@ fun OfflineDownloadConfigScreen(
                             SettingsTextField(name, stringResource(R.string.offline_config_name_placeholder)) {
                                 name = it
                             }
-                        }
-                        RowDivider()
-                        SetRow(
-                            stringResource(R.string.offline_config_continue_on_error_label),
-                            sub = stringResource(R.string.offline_config_continue_on_error_desc),
-                        ) {
-                            SettingsSwitch(continueOnError) { continueOnError = it }
                         }
                         // Les tuiles seules laissent la couche vide precisement la ou l'on va : le cache
                         // ne retient que ce qu'on a survole CONNECTE (cf. PoiRepository.pinArea).
@@ -232,7 +220,9 @@ fun OfflineDownloadConfigScreen(
                         // 'enabled' garantit déjà name.isNotBlank() : pas de repli nécessaire ici.
                         .clickable(enabled = enabled) {
                             onDownload(OfflineDownloadRequest(
-                                bbox, minZ, maxZ, name, continueOnError,
+                                // Toujours : une tuile manquante laisse un trou dans la carte, quand
+                                // l'arret jetait tout ce qui avait ete telecharge. Ce n'est plus un choix.
+                                bbox, minZ, maxZ, name, continueOnError = true,
                                 corridor = corridorPoints?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
                                 withPois = poiAvailable && withPois,
                             ))

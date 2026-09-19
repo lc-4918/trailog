@@ -48,7 +48,6 @@ internal fun MapOverlayEffects(
     /** Hauteur d'une epingle a l'ecran, telle que les reglages la veulent. */
     markerPx: Float,
     renderLayers: List<RenderLayer>,
-    bboxPoints: List<Pair<Double, Double>>,
     geo: GeocodeSearchState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
@@ -60,11 +59,6 @@ internal fun MapOverlayEffects(
     // les couches importees
     LaunchedEffect(renderLayers, styleTick, markerPx) {
         if (controller.style != null) controller.setLayers(renderLayers, markerPx)
-    }
-    // Coins/rectangle du tracé bbox hors-ligne (SPEC section 2) : source/couches dédiées (croix "viseur"),
-    // indépendantes du système de couches importées ci-dessus.
-    LaunchedEffect(bboxPoints, styleTick) {
-        if (controller.style != null) controller.setBboxDraw(bboxPoints)
     }
     // Marqueur noir du géocodage : le lieu trouvé. Calque carte (comme le marqueur sélectionné) : il suit
     // seul le pan et le zoom.

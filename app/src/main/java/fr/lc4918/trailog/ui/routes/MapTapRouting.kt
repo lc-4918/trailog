@@ -62,9 +62,9 @@ internal fun MapTapRouting(
     LaunchedEffect(controller, offline.drawingActive, measure.picking, measures.map { it.pickingPoint },
         planner.pickingOnMap, edit.awaitingTap) {
         when {
-            offline.drawingActive -> controller.onRawTap = { lon, lat ->
-                if (offline.bboxPoints.size < 2) offline.bboxPoints = offline.bboxPoints + (lon to lat)
-            }
+            // L'emprise se regle a ses poignees, et la carte se deplace dessous : un tap n'a rien a faire, et
+            // ne doit pas ouvrir de profil ni d'infobulle pendant qu'on cadre.
+            offline.drawingActive -> controller.onRawTap = { _, _ -> }
             // Le point retenu n'est pas celui du doigt mais son projeté sur la trace : le calcul passe par
             // le ViewModel, seul à savoir lire les profils des couches (cf. pickMeasureStart).
             measure.picking -> controller.onRawTap = { lon, lat ->

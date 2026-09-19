@@ -29,6 +29,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,7 +90,7 @@ import fr.lc4918.trailog.ui.mappoint.PointMeasureEffects
 import fr.lc4918.trailog.ui.mappoint.PointMeasures
 import fr.lc4918.trailog.ui.measure.MeasureBubbleLayer
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
-import fr.lc4918.trailog.ui.offline.BboxDrawingOverlay
+import fr.lc4918.trailog.ui.offline.BboxEditorOverlay
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.ui.planner.GeocodingParams
@@ -535,7 +536,6 @@ fun MainScreen(
         styleTick = styleTick,
         markerPx = markerPx,
         renderLayers = renderLayers,
-        bboxPoints = offline.bboxPoints,
         geo = geo,
         measure = measure,
         mapPoint = mapPoint,
@@ -796,7 +796,6 @@ fun MainScreen(
                     showOfflineButton = offlineButtonVisible,
                     onDownloadOffline = {
                         scope.launch { drawerState.close() }
-                        offline.bboxPoints = emptyList()
                         offline.extentChoice = true
                     },
                     onFailure = { message -> dialogs.failed(message) },
@@ -1017,6 +1016,9 @@ fun MainScreen(
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { insets.measureBarPx = it.size.height },
                     )
+                    // Sa hauteur retombe a zero quand elle se retire : sans cela, l'echelle restait calee
+                    // au-dessus d'une barre disparue (cf. MapInsetsState.promptBarPx).
+                    DisposableEffect(Unit) { onDispose { insets.measureBarPx = 0 } }
                 }
                 /*
                  * Consigne du choix d'une étape sur la carte, EN HAUT de l'écran - la seule des consignes
@@ -1053,6 +1055,9 @@ fun MainScreen(
                         modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                             .onGloballyPositioned { insets.pointBarPx = it.size.height },
                     )
+                    // Sa hauteur retombe a zero quand elle se retire : sans cela, l'echelle restait calee
+                    // au-dessus d'une barre disparue (cf. MapInsetsState.promptBarPx).
+                    DisposableEffect(Unit) { onDispose { insets.pointBarPx = 0 } }
                 }
                 TrackEditPrompts(
                     edit = edit,
@@ -1077,22 +1082,21 @@ fun MainScreen(
                     fontSp = settings.bubbleFont,
                     backgroundAlpha = (settings.bubbleOpacityPct) / 100f,
                 )
-                // tracé de la bounding box hors-ligne (SPEC section 2)
+                // Reglage de l'emprise hors-ligne : un cadre a poignees, la carte dessous.
                 if (offline.drawingActive) {
-                    BboxDrawingOverlay(
-                        pointCount = offline.bboxPoints.size,
+                    BboxEditorOverlay(
+                        controller = controller,
                         dark = darkChrome,
-                        onCancelPoint = { offline.bboxPoints = offline.bboxPoints.dropLast(1) },
-                        onCancelAll = { offline.cancelDrawing() },
-                        onValidate = {
-                            val (lon1, lat1) = offline.bboxPoints[0]
-                            val (lon2, lat2) = offline.bboxPoints[1]
-                            offline.configBbox = Bbox.of(lon1, lat1, lon2, lat2)
+                        topInsetPx = insets.topControlsPx,
+                        onCancel = { offline.cancelDrawing() },
+                        onNext = { bbox ->
+                            offline.configBbox = bbox
                             offline.drawingActive = false
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                            .onGloballyPositioned { insets.offlineBarPx = it.size.height },
+                        onBarHeight = { insets.offlineBarPx = it },
                     )
+                    // La barre partie, l'echelle redescend (cf. MapInsetsState.promptBarPx).
+                    DisposableEffect(Unit) { onDispose { insets.offlineBarPx = 0 } }
                 }
                 TrackProfileLayer(
                     activeLayerId = activeLayerId,
