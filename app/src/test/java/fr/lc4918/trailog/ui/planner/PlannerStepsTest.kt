@@ -82,7 +82,7 @@ class PlannerStepsTest {
         etat.choose(etat.steps.first(), StepTarget.CurrentPosition)
         etat.choose(etat.steps[1], StepTarget.Place(lieu("Col de Peyresourde")))
         etat.choose(etat.steps.last(), StepTarget.CurrentPosition)
-        etat.moveStep(2, -1)
+        etat.moveStepTo(2, 1)
         assertEquals(listOf(StepTarget.CurrentPosition, StepTarget.Place(lieu("Col de Peyresourde"))),
             etat.targets)
     }

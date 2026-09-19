@@ -178,8 +178,7 @@
     <string name="planner_no_position">Ubicació no disponible: activeu la localització o trieu un punt de sortida</string>
     <string name="planner_no_network">Problema de connexió de xarxa</string>
     <string name="planner_add_step">Afegeix una etapa</string>
-    <string name="planner_move_up">Puja</string>
-    <string name="planner_move_down">Baixa</string>
+    <string name="planner_drag_step">Arrossega per moure l\'etapa</string>
     <string name="planner_remove_step">Elimina l\'etapa</string>
     <string name="planner_import_layer">Importa com a capa</string>
     <string name="planner_download_gpx">Baixa en GPX</string>

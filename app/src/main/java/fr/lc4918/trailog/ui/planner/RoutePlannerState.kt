@@ -522,15 +522,17 @@ class RoutePlannerState {
         if (hadTarget) invalidate()
     }
 
-    /** Deplace l'etape [index] de [delta] rangs, en restant dans la liste. */
-    fun moveStep(index: Int, delta: Int) {
-        val to = index + delta
-        if (index !in steps.indices || to !in steps.indices) return
-        val s = steps.removeAt(index)
-        steps.add(to, s)
-        // Ne recalcule que si l'ordre des points POSES change : intervertir deux lignes vierges, ou une
-        // vierge et une posee, laisse le trajet exactement tel qu'il etait.
-        if (s.target != null || steps.getOrNull(index)?.target != null) invalidate()
+    /**
+     * Deplace l'etape [from] au rang [to], les autres glissant d'un cran pour lui faire place : c'est le
+     * geste du glisser-deposer, qui peut franchir plusieurs lignes d'un coup.
+     */
+    fun moveStepTo(from: Int, to: Int) {
+        if (from !in steps.indices || to !in steps.indices || from == to) return
+        val avant = steps.mapNotNull { it.target }
+        steps.add(to, steps.removeAt(from))
+        // Ne recalcule que si l'ordre des points POSES change : glisser une ligne vierge, ou une ligne posee
+        // parmi des vierges, laisse le trajet exactement tel qu'il etait.
+        if (steps.mapNotNull { it.target } != avant) invalidate()
     }
 
     fun choose(step: PlannerStep, target: StepTarget) {

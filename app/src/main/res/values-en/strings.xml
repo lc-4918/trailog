@@ -178,8 +178,7 @@
     <string name="planner_no_position">Location unavailable: turn on location or pick a starting point</string>
     <string name="planner_no_network">Network connection problem</string>
     <string name="planner_add_step">Add a waypoint</string>
-    <string name="planner_move_up">Move up</string>
-    <string name="planner_move_down">Move down</string>
+    <string name="planner_drag_step">Drag to move the stop</string>
     <string name="planner_remove_step">Remove waypoint</string>
     <string name="planner_import_layer">Import as layer</string>
     <string name="planner_download_gpx">Download as GPX</string>

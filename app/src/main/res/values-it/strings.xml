@@ -178,8 +178,7 @@
     <string name="planner_no_position">Posizione non trovata: attiva la localizzazione o scegli un punto di partenza</string>
     <string name="planner_no_network">Problema di connessione di rete</string>
     <string name="planner_add_step">Aggiungi una tappa</string>
-    <string name="planner_move_up">Su</string>
-    <string name="planner_move_down">Giù</string>
+    <string name="planner_drag_step">Trascina per spostare la tappa</string>
     <string name="planner_remove_step">Elimina la tappa</string>
     <string name="planner_import_layer">Importa come livello</string>
     <string name="planner_download_gpx">Scarica in GPX</string>

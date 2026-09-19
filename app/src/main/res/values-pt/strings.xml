@@ -178,8 +178,7 @@
     <string name="planner_no_position">Localização indisponível: ative a localização ou escolha um ponto de partida</string>
     <string name="planner_no_network">Problema de ligação à rede</string>
     <string name="planner_add_step">Adicionar um ponto</string>
-    <string name="planner_move_up">Subir</string>
-    <string name="planner_move_down">Descer</string>
+    <string name="planner_drag_step">Arrastar para mover a etapa</string>
     <string name="planner_remove_step">Eliminar o ponto</string>
     <string name="planner_import_layer">Importar como camada</string>
     <string name="planner_download_gpx">Descarregar em GPX</string>

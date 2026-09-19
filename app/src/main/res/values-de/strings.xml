@@ -178,8 +178,7 @@
     <string name="planner_no_position">Position nicht auffindbar: Standort aktivieren oder einen Startpunkt wählen</string>
     <string name="planner_no_network">Netzwerkverbindungsproblem</string>
     <string name="planner_add_step">Zwischenziel hinzufügen</string>
-    <string name="planner_move_up">Nach oben</string>
-    <string name="planner_move_down">Nach unten</string>
+    <string name="planner_drag_step">Ziehen, um die Etappe zu verschieben</string>
     <string name="planner_remove_step">Zwischenziel entfernen</string>
     <string name="planner_import_layer">Als Ebene importieren</string>
     <string name="planner_download_gpx">Als GPX herunterladen</string>

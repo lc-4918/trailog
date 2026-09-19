@@ -1,6 +1,18 @@
 package fr.lc4918.trailog.ui.planner
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.platform.LocalContext
+import fr.lc4918.trailog.ui.routes.strongHaptic
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,8 +41,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
@@ -247,25 +258,65 @@ private fun StepList(
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val drag = remember { StepDrag() }
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     Column(modifier.verticalScroll(rememberScrollState())) {
         state.steps.forEachIndexed { i, step ->
-            StepRow(
-                state = state, step = step, index = i,
-                placeholder = stringResource(
-                    when {
-                        i == 0 -> R.string.planner_start
-                        i == state.steps.lastIndex -> R.string.planner_end
-                        else -> R.string.planner_via
-                    }
-                ),
-                onPickCurrentPosition = onPickCurrentPosition,
-                onPickOnMap = onPickOnMap,
-                sensorEnabled = sensorEnabled,
-                geocoding = geocoding,
-                history = history,
-                onPlaceChosen = onPlaceChosen,
-                onPlaceForgotten = onPlaceForgotten,
-            )
+            // Par identifiant, et non par rang : une ligne deposee ailleurs garde son champ, son focus et
+            // ses propositions, au lieu de les laisser a celle qui prend sa place.
+            key(step.id) {
+                StepRow(
+                    state = state, step = step, index = i,
+                    placeholder = stringResource(
+                        when {
+                            i == 0 -> R.string.planner_start
+                            i == state.steps.lastIndex -> R.string.planner_end
+                            else -> R.string.planner_via
+                        }
+                    ),
+                    onPickCurrentPosition = onPickCurrentPosition,
+                    onPickOnMap = onPickOnMap,
+                    sensorEnabled = sensorEnabled,
+                    geocoding = geocoding,
+                    history = history,
+                    onPlaceChosen = onPlaceChosen,
+                    onPlaceForgotten = onPlaceForgotten,
+                    modifier = Modifier
+                        .onSizeChanged { drag.heights[step.id] = it.height }
+                        .zIndex(if (drag.from == i) 1f else 0f)
+                        .graphicsLayer { translationY = drag.shift(i, state.steps.map { it.id }) }
+                        // La ligne tenue se detache par une TEINTE, et non par une ombre : une ombre tombe
+                        // vers le bas, et laissait sous la ligne une marge plus large qu'au-dessus. La teinte
+                        // est opaque - les lignes qu'on survole ne doivent pas transparaitre dessous.
+                        .then(
+                            if (drag.from == i) Modifier.background(
+                                MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+                            else Modifier
+                        ),
+                    handle = Modifier.pointerInput(step.id) {
+                        // Apres un appui long, comme dans le menu lateral : le glissement ne part pas d'un
+                        // effleurement, et la vibration dit l'instant ou la ligne est prise en main.
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                // Le clavier et le focus se retirent : on range des etapes, on n'en saisit plus.
+                                focusManager.clearFocus()
+                                drag.start(state.steps.indexOfFirst { it.id == step.id })
+                                strongHaptic(context)
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                val avant = drag.to
+                                drag.move(amount.y, state.steps.map { it.id })
+                                if (drag.to != avant) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            },
+                            onDragEnd = { drag.end()?.let { (a, b) -> state.moveStepTo(a, b) } },
+                            onDragCancel = { drag.end() },
+                        )
+                    },
+                )
+            }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -301,7 +352,7 @@ private fun BandAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     }
 }
 
-/** Une etape : son champ, ses deux fleches de reordonnancement, sa suppression, puis ses propositions. */
+/** Une etape : son champ, sa poignee de glissement, sa suppression, puis ses propositions. */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun StepRow(
@@ -316,6 +367,9 @@ private fun StepRow(
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
     onPlaceForgotten: (GeocodePlace) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Le geste de la poignee : le glisser-deposer, pose par la liste qui sait ou deposer (cf. StepDrag). */
+    handle: Modifier = Modifier,
 ) {
     var focused by remember(step.id) { mutableStateOf(false) }
     // Le clic sur l'affichage replie ne peut PAS demander le focus lui-meme : tant qu'il tient la place du
@@ -371,7 +425,7 @@ private fun StepRow(
             wantsFocus = false
         }
     }
-    Column(Modifier.bringIntoViewRequester(bringIntoView)) {
+    Column(modifier.bringIntoViewRequester(bringIntoView)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
                 if (step.target != null && !focused && !wantsFocus) {
@@ -442,21 +496,16 @@ private fun StepRow(
                 }
             }
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                // Fleches plutot qu'une poignee de glissement : le geste est plus sur au doigt sur une
-                // liste courte, et il ne rentre pas en concurrence avec le defilement de la zone.
-                // Empilees, et non cote a cote : monter et descendre sont deux sens d'un meme axe, et les
-                // poser l'un au-dessus de l'autre le dit sans qu'on ait a lire les icones.
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    IconButton(onClick = { state.moveStep(index, -1) }, enabled = index > 0,
-                        modifier = Modifier.size(22.dp)) {
-                        Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.planner_move_up),
-                            Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = { state.moveStep(index, 1) }, enabled = index < state.steps.lastIndex,
-                        modifier = Modifier.size(22.dp)) {
-                        Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.planner_move_down),
-                            Modifier.size(18.dp))
-                    }
+                // Une poignee de glissement, qui remplace les deux fleches : une etape se range en un geste,
+                // la ou il fallait taper autant de fois qu'elle avait de rangs a franchir. Le geste part de la
+                // poignee seule, apres un appui long, et la ne dispute rien au defilement de la liste ni au
+                // champ de saisie.
+                Box(
+                    handle.size(width = 26.dp, height = FieldHeight),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.DragHandle, stringResource(R.string.planner_drag_step),
+                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { state.removeStep(index) }, enabled = state.steps.size > 2,
                     modifier = Modifier.size(26.dp)) {
@@ -748,3 +797,82 @@ data class GeocodingParams(
 
 /** Discipline retenue au demarrage du planificateur, tiree des reglages. */
 fun initialProfile(settings: SettingsEntity): RoutingProfile = RoutingProfile.of(settings.routingProfile)
+
+/**
+ * Le glisser-deposer d'une etape, le temps du geste.
+ *
+ * **L'ordre ne change qu'au lacher.** Pendant le geste, les lignes ne font que se DECALER a l'ecran : la
+ * ligne tenue suit le doigt, et ses voisines glissent d'un cran pour lui faire place. Reordonner la liste a
+ * chaque ligne franchie aurait relance le calcul de l'itineraire autant de fois, pour des ordres de passage
+ * que personne n'a demandes.
+ *
+ * Hors de la composition, et sans Compose au-dela de l'etat : c'est ici que se decide ou la ligne tombe, et
+ * cela se teste (cf. `StepDragTest`).
+ */
+internal class StepDrag {
+    /** La hauteur de chaque ligne, par identifiant d'etape : c'est elle qui dit quand une voisine est franchie. */
+    val heights = mutableStateMapOf<Long, Int>()
+
+    /** Le rang de la ligne tenue, ou null hors du geste. */
+    var from by mutableStateOf<Int?>(null)
+        private set
+
+    /** Le rang ou elle tomberait si l'on lachait maintenant. */
+    var to by mutableStateOf<Int?>(null)
+        private set
+
+    /** Le chemin parcouru par le doigt depuis le debut du geste, en pixels. */
+    var offset by mutableFloatStateOf(0f)
+        private set
+
+    fun start(index: Int) {
+        if (index < 0) return
+        from = index; to = index; offset = 0f
+    }
+
+    /**
+     * Le doigt a bouge de [dy] : la ligne tombe au-dela de chaque voisine dont elle a franchi la MOITIE,
+     * comme on s'y attend d'une liste qu'on range a la main.
+     */
+    fun move(dy: Float, ids: List<Long>) {
+        val f = from ?: return
+        offset += dy
+        var t = f
+        var parcouru = 0f
+        if (offset > 0) {
+            while (t < ids.lastIndex) {
+                val h = heights[ids[t + 1]] ?: break
+                if (offset < parcouru + h / 2f) break
+                parcouru += h; t++
+            }
+        } else {
+            while (t > 0) {
+                val h = heights[ids[t - 1]] ?: break
+                if (-offset < parcouru + h / 2f) break
+                parcouru += h; t--
+            }
+        }
+        to = t
+    }
+
+    /** Le decalage a l'ecran de la ligne [index] : le doigt pour la ligne tenue, un cran pour celles
+     *  qu'elle a franchies, rien pour les autres. */
+    fun shift(index: Int, ids: List<Long>): Float {
+        val f = from ?: return 0f
+        val t = to ?: return 0f
+        if (index == f) return offset
+        val h = heights[ids.getOrNull(f)]?.toFloat() ?: return 0f
+        return when {
+            index in (f + 1)..t -> -h
+            index in t until f -> h
+            else -> 0f
+        }
+    }
+
+    /** Fin du geste : le deplacement a appliquer, ou null si la ligne revient a sa place. */
+    fun end(): Pair<Int, Int>? {
+        val f = from; val t = to
+        from = null; to = null; offset = 0f
+        return if (f != null && t != null && f != t) f to t else null
+    }
+}
