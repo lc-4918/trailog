@@ -21,6 +21,9 @@
          capteur sans elle, et le suivi ne demarre jamais que d'un geste. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Telechargement des donnees d'itineraire hors ligne application fermee (cf.
+         routing/offline/BrouterDownloadService) : une zone pese jusqu'a un gigaoctet. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Verrou processeur pendant le suivi seulement : le premier plan empeche qu'on nous tue, il ne
          garantit pas que l'appareil endormi traite les positions autrement que par salves. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -76,6 +79,10 @@
             android:name=".location.LocationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service
+            android:name=".routing.offline.BrouterDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name=".MainActivity"

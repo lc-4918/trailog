@@ -1,5 +1,9 @@
 package fr.lc4918.trailog
 
+import fr.lc4918.trailog.routing.BrouterLocal
+import fr.lc4918.trailog.routing.offline.BrouterDownloadService
+import fr.lc4918.trailog.routing.offline.BrouterDownloads
+import fr.lc4918.trailog.routing.offline.BrouterSegments
 import android.app.Application
 import android.content.Context
 import coil3.ImageLoader
@@ -35,6 +39,18 @@ open class TrailogApp : Application(), SingletonImageLoader.Factory {
         private set
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Les donnees de BRouter pour le calcul hors ligne, et leur file de telechargement.
+     *
+     * Ici et non dans un ecran : un transfert de deux cents megaoctets doit survivre a l'ecran qui l'a
+     * lance, et les reglages comme le telechargement d'une zone passent par la meme file (cf.
+     * BrouterDownloads).
+     */
+    val brouterData: BrouterDownloads by lazy {
+        BrouterDownloads(BrouterSegments({ BrouterLocal.segmentDir(this) }), scope,
+            onBusy = { BrouterDownloadService.start(this) })
+    }
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(LocalePrefs.wrap(base))
     }
@@ -55,6 +71,10 @@ open class TrailogApp : Application(), SingletonImageLoader.Factory {
         // et non après l'installation : à ce moment-là l'installateur système lit encore le fichier, et
         // l'application est de toute façon remplacée puis relancée (cf. UpdateManager.sweepDownloads).
         scope.launch { UpdateManager.sweepDownloads(this@TrailogApp) }
+        // Un telechargement de donnees d'itineraire interrompu par l'arret de l'application reprend au
+        // lancement suivant (cf. BrouterDownloadService). Sous garde dans le service : un demarrage refuse
+        // en arriere-plan ne fait que remettre la reprise a plus tard.
+        scope.launch { if (brouterData.hasPendingOnDisk()) BrouterDownloadService.start(this@TrailogApp) }
     }
 
     /** Init du SDK carte. Separe et ouverte : voir la note de classe. */

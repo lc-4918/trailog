@@ -70,6 +70,51 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         repo.settings.upsert(s)
     }
 
+    // ---------- donnees d'itineraire hors ligne ----------
+
+    /** Le dossier choisi pour les donnees d'itineraire, vide pour celui de l'application (cf. BrouterStorage). */
+    private val _brouterDir = MutableStateFlow(
+        fr.lc4918.trailog.routing.offline.BrouterStorage.customPath(getApplication()))
+    val brouterDir = _brouterDir.asStateFlow()
+
+    /**
+     * Choisit le dossier des donnees d'itineraire, et y deplace celles qu'on a deja : pres d'un gigaoctet
+     * pour la France, qu'on ne veut pas avoir a telecharger une seconde fois.
+     *
+     * Refuse pendant un telechargement, et si le dossier n'accepte pas l'ecriture : l'ecran le dit, et rien
+     * n'a bouge.
+     */
+    fun chooseBrouterDir(path: String) = viewModelScope.launch {
+        val app = getApplication<Application>()
+        val data = (app as TrailogApp).brouterData
+        val st = data.state.value
+        if (st.pending.isNotEmpty() || st.current != null) {
+            _status.value = app.getString(R.string.brouter_folder_busy)
+            return@launch
+        }
+        val ok = data.moveTo(java.io.File(path)) {
+            fr.lc4918.trailog.routing.offline.BrouterStorage.setCustomPath(app, path)
+        }
+        if (ok) _brouterDir.value = path
+        _status.value = app.getString(if (ok) R.string.brouter_folder_moved else R.string.brouter_folder_not_writable)
+    }
+
+    /**
+     * Le style des petites cartes qui montrent l'emprise d'une zone d'itineraire hors ligne.
+     *
+     * Le fond par defaut s'il est un service en ligne ; sinon OpenStreetMap. Un MBTiles ne couvre que la
+     * zone qu'on a telechargee, et une carte de l'Espagne y serait blanche.
+     */
+    suspend fun zoneMapStyle(): fr.lc4918.trailog.map.StyleBuilder.Result? {
+        val s = settings.value ?: return null
+        val provs = providers.value
+        val p = provs.firstOrNull { it.id == s.defaultBasemapId && it.type in setOf("XYZ", "VECTOR", "WMTS") }
+            ?: provs.firstOrNull { it.id == "osm" } ?: return null
+        return runCatching {
+            fr.lc4918.trailog.map.StyleBuilder.build(p, emptyList(), null, repo.mbtilesDir(s))
+        }.getOrNull()
+    }
+
     // ---------- cache des points d'interet ----------
 
     /** Lieux retenus au fil des deplacements, et lieux emportes avec une zone hors ligne. Les deux se

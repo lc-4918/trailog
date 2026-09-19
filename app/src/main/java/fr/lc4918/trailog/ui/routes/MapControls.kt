@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.ui.offline.RoutingDownloadIndicator
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.MyLocation
@@ -170,6 +171,9 @@ internal fun BoxScope.MapTopLeftControls(
             offlineDownload?.takeIf { it.minimized }?.let { dl ->
                 OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
             }
+            // Les donnees d'itineraire hors ligne, telechargees depuis les reglages : meme bouton orange,
+            // juste apres - les deux transferts peuvent courir en meme temps.
+            RoutingDownloadIndicator()
         }
         // La recherche de lieu ouvre sa barre de saisie juste dessous : elle reste donc dans la
         // colonne du haut, là où la barre a la place de se déplier.

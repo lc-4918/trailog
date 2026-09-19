@@ -68,6 +68,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 @Composable internal fun SystemTab(
     cur: SettingsEntity, vm: SettingsViewModel,
     onPickImportDir: () -> Unit, onPickMbtilesFolder: () -> Unit, onPickAvatar: () -> Unit,
+    onPickBrouterFolder: () -> Unit = {},
     onBackup: () -> Unit, onRestore: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -259,6 +260,17 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
                 else StoragePaths.displayName(cur.mbtilesDir),
         ) {
             InlineButton(stringResource(R.string.action_browse), Icons.Filled.Folder, onPickMbtilesFolder)
+        }
+        RowDivider()
+        // Les donnees du calcul d'itineraire hors ligne : jusqu'a un gigaoctet par pays, qu'on peut vouloir
+        // ranger sur une carte SD. Changer de dossier y deplace ce qui est deja telecharge.
+        val brouterDir by vm.brouterDir.collectAsState()
+        SetRow(
+            stringResource(R.string.settings_section_brouter_folder),
+            sub = if (brouterDir.isBlank()) stringResource(R.string.settings_app_folder_default)
+                else StoragePaths.displayName(brouterDir),
+        ) {
+            InlineButton(stringResource(R.string.action_browse), Icons.Filled.Folder, onPickBrouterFolder)
         }
     }
 

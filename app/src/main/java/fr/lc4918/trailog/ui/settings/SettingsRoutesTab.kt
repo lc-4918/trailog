@@ -287,6 +287,10 @@ import kotlinx.coroutines.launch
         Hint(stringResource(R.string.settings_route_engine_hint))
     }
 
+    // Juste apres le moteur : ce sont les donnees de l'un des deux, et c'est la qu'on vient voir s'il
+    // saura calculer sans reseau.
+    OfflineRoutingZones(vm)
+
     SectionTitle(stringResource(R.string.settings_section_services))
     SettingsCard {
         FieldRow(stringResource(R.string.settings_section_geocoding_service)) {

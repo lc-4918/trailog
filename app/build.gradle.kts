@@ -169,6 +169,11 @@ dependencies {
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 
+    // Le moteur BRouter, embarque pour calculer un itineraire sans reseau : le jar "routage seul" de la
+    // version 1.7.10 officielle (licence MIT, https://github.com/abrensch/brouter), sans dependance hors
+    // de java.base. Il n'est publie sur aucun depot Maven, d'ou le fichier.
+    implementation(files("libs/brouter-1.7.10-ro.jar"))
+
     // --- Tests unitaires (JVM + Robolectric) ---
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

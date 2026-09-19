@@ -92,6 +92,15 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
             vm.save(cur.copy(mbtilesDir = path))
         }
     }
+    val brouterDirPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let {
+            runCatching {
+                ctx.contentResolver.takePersistableUriPermission(
+                    it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+            StoragePaths.treeUriToPath(ctx, it)?.let { path -> vm.chooseBrouterDir(path) }
+        }
+    }
     val importDirPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let {
             runCatching { ctx.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -240,6 +249,7 @@ fun SettingsScreen(onBack: () -> Unit, vm: SettingsViewModel = viewModel()) {
                         else -> SystemTab(cur, vm,
                             onPickImportDir = { importDirPicker.launch(null) },
                             onPickMbtilesFolder = { treePicker.launch(null) },
+                            onPickBrouterFolder = { brouterDirPicker.launch(null) },
                             onPickAvatar = { avatarPicker.launch("image/*") },
                             onBackup = { backupWriter.launch(BackupFileName.of(System.currentTimeMillis())) },
                             onRestore = { restoreTarget = true })
