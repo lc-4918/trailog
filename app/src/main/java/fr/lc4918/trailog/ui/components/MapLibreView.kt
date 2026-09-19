@@ -564,6 +564,39 @@ class MapController {
     /** Rouge du cadre de la bbox hors-ligne, celui du bouton "Retour" de la barre de tracé. */
     private val BBOX_RED = "#D32F2F"
 
+    /**
+     * Le couloir d'un telechargement le long d'une trace : la trace, et la zone tampon qu'on va
+     * telecharger autour d'elle. [points] en (lon, lat) ; [bands] la zone tampon, calculee par
+     * `CorridorShape` en bandes jointives.
+     *
+     * Une SURFACE et non un trait epais : a vingt kilometres d'epaisseur, les jonctions d'un trait se
+     * chevauchaient et leur transparence s'additionnait en eventails plus fonces. Les bandes se touchent sans
+     * se recouvrir, et le lissage des bords est coupe - il tracerait un fin liseret a chaque jointure.
+     */
+    fun setCorridorPreview(points: List<Pair<Double, Double>>, bands: List<fr.lc4918.trailog.map.offline.Bbox>) {
+        val s = style ?: return
+        val coords = points.joinToString(",") { (lon, lat) -> "[$lon,$lat]" }
+        val polys = bands.joinToString(",") { b ->
+            "[[[${b.west},${b.south}],[${b.east},${b.south}],[${b.east},${b.north}],[${b.west},${b.north}],[${b.west},${b.south}]]]"
+        }
+        val zone = """{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[$polys]},"properties":{}}"""
+        val ligne = """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},"properties":{}}"""
+        val zoneSrc = s.getSourceAs<GeoJsonSource>("corridor-zone-src")
+        if (zoneSrc == null) {
+            s.addSource(GeoJsonSource("corridor-zone-src", zone))
+            s.addSource(GeoJsonSource("corridor-src", ligne))
+            addLayerSafe(FillLayer("corridor-buffer", "corridor-zone-src").withProperties(
+                PropertyFactory.fillColor(BBOX_RED), PropertyFactory.fillOpacity(0.22f),
+                PropertyFactory.fillAntialias(false)))
+            addLayerSafe(LineLayer("corridor-line", "corridor-src").withProperties(
+                PropertyFactory.lineColor(BBOX_RED), PropertyFactory.lineWidth(2.5f),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)))
+        } else {
+            zoneSrc.setGeoJson(zone)
+            s.getSourceAs<GeoJsonSource>("corridor-src")?.setGeoJson(ligne)
+        }
+    }
+
     /** Coins posés pendant le tracé de la bbox hors-ligne : rendus en croix "viseur" (pas les épingles
      *  habituelles) + cadre rouge et emprise blanchie une fois 2 coins posés. Source/couches dédiées,
      *  indépendantes du système générique [setLayers]/[RenderLayer] (overlay propre à l'app, pas une

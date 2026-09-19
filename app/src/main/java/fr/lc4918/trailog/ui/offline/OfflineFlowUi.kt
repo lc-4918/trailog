@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.map.offline.Bbox
@@ -44,6 +45,7 @@ internal fun BoxScope.OfflineFlowUi(
     download: OfflineDownloadState?,
     chrome: MapChrome,
     vm: MainViewModel,
+    folders: List<FolderEntity>,
     layers: List<LayerEntity>,
     currentProvider: ProviderEntity?,
     styleJson: String?,
@@ -65,7 +67,8 @@ internal fun BoxScope.OfflineFlowUi(
     }
     if (offline.pickTrack) {
         OfflineTrackPickDialog(
-            candidates = layers.filter { it.hasLine },
+            folders = folders,
+            layers = layers,
             onDismiss = { offline.pickTrack = false },
             onPick = { l ->
                 offline.pickTrack = false

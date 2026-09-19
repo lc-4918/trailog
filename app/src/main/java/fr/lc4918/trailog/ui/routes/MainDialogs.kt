@@ -1,5 +1,9 @@
 package fr.lc4918.trailog.ui.routes
 
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -127,32 +131,133 @@ internal fun ExportFormatDialog(dark: Boolean, onDismiss: () -> Unit, onPick: (g
 /**
  * Choix de la trace dont on veut border le couloir, quand [OfflineExtentDialog] a repondu "une trace".
  *
- * Seules les couches qui portent une ligne : un dossier de points n'a pas de couloir. La liste peut etre
- * vide - c'est un cas normal, une application fraichement installee - et le dit alors plutot que d'ouvrir
- * une boite sans rien dedans.
+ * **L'arborescence du menu lateral, et non une liste a plat.** On y retrouve ses traces la ou on les a
+ * rangees, avec leurs dossiers, leurs symboles et leurs couleurs : c'est la bibliotheque qu'on connait, pas
+ * une liste de noms a relire. Memes dimensions et memes icones que les lignes du menu lateral, sans ses
+ * prises - ici on choisit, on ne range pas.
+ *
+ * **Les traces masquees y sont, et se choisissent.** Emporter la carte d'une sortie ne demande pas de
+ * l'afficher : on prepare souvent un voyage dont on ne veut pas voir la trace par-dessus tout le reste.
+ * Elles se lisent grisees, l'oeil barre, comme dans le menu lateral.
+ *
+ * Seules les couches qui portent une ligne, et les dossiers qui en contiennent : un dossier de points n'a
+ * pas de couloir. L'arbre peut etre vide - c'est un cas normal, une application fraichement installee -, et
+ * le dit alors plutot que d'ouvrir une boite sans rien dedans.
  */
 @Composable
 internal fun OfflineTrackPickDialog(
-    candidates: List<LayerEntity>, onPick: (LayerEntity) -> Unit, onDismiss: () -> Unit,
+    folders: List<FolderEntity>, layers: List<LayerEntity>,
+    onPick: (LayerEntity) -> Unit, onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    val traces = layers.filter { it.hasLine }
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.offline_extent_track)) },
-        text = {
-            if (candidates.isEmpty()) Text(stringResource(R.string.offline_extent_no_track))
-            // Cible pleine largeur, comme les destinations d'import : choisir dans une liste se fait
-            // a la ligne.
-            else Column(Modifier.verticalScroll(rememberScrollState())) {
-                candidates.forEach { l ->
-                    TextButton(onClick = { onPick(l) }, modifier = Modifier.fillMaxWidth()) {
-                        Text(l.name, modifier = Modifier.fillMaxWidth())
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.85f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(Modifier.fillMaxSize().padding(vertical = 10.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.offline_extent_track), fontSize = 17.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
+                    }
+                }
+                HorizontalDivider(Modifier.padding(top = 4.dp, bottom = 4.dp))
+                if (traces.isEmpty()) {
+                    Text(stringResource(R.string.offline_extent_no_track),
+                        modifier = Modifier.padding(16.dp))
+                } else {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        PickTree(null, folders, traces, 0, onPick)
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) } },
-    )
+        }
+    }
+}
+
+/** Un niveau de l'arbre : ses dossiers qui portent une trace, puis ses traces, dans l'ordre du menu lateral. */
+@Composable
+private fun PickTree(
+    parentId: Long?, folders: List<FolderEntity>, traces: List<LayerEntity>, depth: Int,
+    onPick: (LayerEntity) -> Unit,
+) {
+    combinedChildren(parentId, folders, traces).forEach { item ->
+        when (item) {
+            is FolderEntity -> {
+                if (layersUnder(item.id, folders, traces).isEmpty()) return@forEach
+                key("folder", item.id) { PickFolder(item, folders, traces, depth, onPick) }
+            }
+            is LayerEntity -> key("layer", item.id) { PickLayer(item, depth, onPick) }
+        }
+    }
+}
+
+@Composable
+private fun PickFolder(
+    folder: FolderEntity, folders: List<FolderEntity>, traces: List<LayerEntity>, depth: Int,
+    onPick: (LayerEntity) -> Unit,
+) {
+    var ouvert by remember(folder.id) { mutableStateOf(true) }
+    Row(
+        Modifier.fillMaxWidth().clickable { ouvert = !ouvert }
+            .padding(start = DrawerRowPadH + DrawerIndent * depth, end = DrawerRowPadH,
+                top = DrawerRowPadV, bottom = DrawerRowPadV),
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(DrawerHitSize), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Icon(if (ouvert) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
+                stringResource(if (ouvert) R.string.action_collapse else R.string.action_expand),
+                Modifier.size(DrawerChevronSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(if (ouvert) Icons.Filled.Folder else Icons.Outlined.Folder, null,
+            Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(folder.name.uppercase(), fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text("${layersUnder(folder.id, folders, traces).size}", fontSize = DrawerCountSp.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (ouvert) PickTree(folder.id, folders, traces, depth + 1, onPick)
+}
+
+/** Une trace : toute la ligne la choisit. Masquee, elle palit et porte l'oeil barre, et reste choisissable. */
+@Composable
+private fun PickLayer(layer: LayerEntity, depth: Int, onPick: (LayerEntity) -> Unit) {
+    val alpha = if (layer.visible) 1f else 0.4f
+    Row(
+        Modifier.fillMaxWidth().clickable { onPick(layer) }
+            .padding(start = DrawerRowPadH + DrawerIndent * depth, end = DrawerRowPadH,
+                top = DrawerRowPadV, bottom = DrawerRowPadV),
+        horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
+        // La place du chevron d'un dossier, laissee vide : l'arbre garde sa colonne, comme au menu lateral.
+        Spacer(Modifier.width(DrawerHitSize))
+        Icon(
+            androidx.compose.ui.res.painterResource(
+                if (layer.hasPoints) R.drawable.ic_layer_globe else R.drawable.ic_layer_route),
+            null, Modifier.size(DrawerIconSize),
+            tint = androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(layer.color)).copy(alpha = alpha),
+        )
+        Text(layer.name, fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha), modifier = Modifier.weight(1f))
+        if (!layer.visible) {
+            Icon(Icons.Outlined.VisibilityOff, stringResource(R.string.action_show),
+                Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+        }
+    }
 }
 
 /**

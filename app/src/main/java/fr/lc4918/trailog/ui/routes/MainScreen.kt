@@ -1190,6 +1190,7 @@ fun MainScreen(
                 download = offlineDownload,
                 chrome = chrome,
                 vm = vm,
+                folders = folders,
                 layers = layers,
                 currentProvider = providers.firstOrNull { it.id == settings.defaultBasemapId },
                 styleJson = style?.styleJson,

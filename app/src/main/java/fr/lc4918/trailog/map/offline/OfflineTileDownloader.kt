@@ -37,10 +37,14 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
     ): Outcome {
         // Couloir : seules les tuiles qui bordent le parcours, sans doublon quand il revient sur lui-meme
         // (cf. TileMath.tilesAlong). Sinon, tout le rectangle.
+        //
+        // PRODUITES au fil du telechargement, et non listees d'avance : une zone de plusieurs gigaoctets
+        // compte des millions de tuiles, et la liste entiere - puis sa copie dans la file - saturait la
+        // memoire avant la premiere requete.
         val corridor = req.corridor
-        val tiles = (req.minZoom..req.maxZoom).flatMap { z ->
-            if (corridor != null) TileMath.tilesAlong(corridor.points, z, corridor.radiusM)
-            else TileMath.tilesFor(req.bbox, z)
+        val tiles = (req.minZoom..req.maxZoom).asSequence().flatMap { z ->
+            if (corridor != null) TileMath.tileSequenceAlong(corridor.points, z, corridor.radiusM)
+            else TileMath.tileSequenceFor(req.bbox, z)
         }
 
         val done = AtomicInteger(0)
@@ -55,8 +59,10 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
 
         writeDispatcher.use { writeDispatcher ->
             coroutineScope {
-                val tileChannel = Channel<Triple<Int, Int, Int>>(Channel.UNLIMITED).apply {
-                    tiles.forEach { trySend(it) }; close()
+                // File bornee : le producteur attend que les telechargeurs la vident.
+                val tileChannel = Channel<Triple<Int, Int, Int>>(capacity = 1024)
+                val producer = launch(Dispatchers.Default) {
+                    try { tiles.forEach { tileChannel.send(it) } } finally { tileChannel.close() }
                 }
                 // File des tuiles téléchargées à écrire ; capacité bornée pour ne pas tout garder en RAM.
                 val writeChannel = Channel<Tile>(capacity = 256)
@@ -103,6 +109,8 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
                     }
                 }
                 workers.joinAll()
+                // Des telechargeurs arretes sur erreur laisseraient le producteur bloque sur une file pleine.
+                producer.cancel()
                 writeChannel.close()
                 writerJob.join()
             }

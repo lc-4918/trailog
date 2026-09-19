@@ -1,5 +1,14 @@
 package fr.lc4918.trailog.ui.offline
 
+import fr.lc4918.trailog.map.offline.CorridorShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -73,14 +82,10 @@ import fr.lc4918.trailog.ui.settings.settingsPalette
  * l'appelant les a déjà sous la main.
  */
 /**
- * Largeurs proposees de chaque cote du parcours, en kilometres.
- *
- * Non equidistantes, comme les autres curseurs de l'application qui parcourent une liste : les premiers
- * crans sont ceux qu'on emploie - de quoi couvrir une erreur d'itineraire ou un detour -, les derniers
- * n'ont de sens que pour se garder une marge large, et chaque cran y coute bien plus de tuiles que le
- * precedent.
+ * Largeurs proposees de chaque cote du parcours, en kilometres : de 1 a 20, par kilometre. En deca, la
+ * carte s'arretait au bord du chemin, et le moindre detour sortait de ce qu'on avait emporte.
  */
-private val CorridorWidthKm = listOf(0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 10.0)
+private val CorridorWidthKm = (1..20).map { it.toDouble() }
 
 /** "500 m" en deca du kilometre, "2 km" au-dela : on ne dit pas "0,5 km". */
 private fun formatKm(km: Double): String = when {
@@ -124,11 +129,26 @@ fun OfflineDownloadConfigScreen(
     val maxZ = zoomRange.endInclusive.toInt()
     // Le compte suit le mode : le couloir ne prend que ce qui borde la trace, et une meme tuile n'y compte
     // qu'une fois meme quand le parcours repasse dessus.
-    val tileCount = remember(bbox, minZ, maxZ, corridorPoints, halfWidthKm) {
-        if (corridorPoints != null) TileMath.totalTileCountAlong(corridorPoints, minZ, maxZ, halfWidthKm * 1000.0)
-        else TileMath.totalTileCount(bbox, minZ, maxZ)
+    //
+    // Hors du fil de l'interface, et un instant apres le dernier cran du curseur : sur une longue trace aux
+    // grands zooms, le compte se chiffre en millions de tuiles, et le faire a chaque cran figeait l'ecran
+    // jusqu'a ce qu'Android propose de fermer l'application. Null seulement avant le premier calcul : pendant
+    // un recalcul, la valeur d'avant reste affichee, et le bouton garde son etat - les faire passer a "..." et
+    // au gris a chaque cran les faisait clignoter tant que le curseur bougeait.
+    var tileCount by remember { mutableStateOf<Long?>(null) }
+    // Le calcul en cours se voit a la place de la taille, par un rond qui tourne : la valeur d'avant reste
+    // gardee - le bouton en depend -, mais l'afficher laisserait croire qu'elle vaut pour le nouveau reglage.
+    var calcul by remember { mutableStateOf(true) }
+    LaunchedEffect(bbox, minZ, maxZ, corridorPoints, halfWidthKm) {
+        calcul = true
+        delay(300)
+        tileCount = withContext(Dispatchers.Default) {
+            if (corridorPoints != null) TileMath.totalTileCountAlong(corridorPoints, minZ, maxZ, halfWidthKm * 1000.0)
+            else TileMath.totalTileCount(bbox, minZ, maxZ)
+        }
+        calcul = false
     }
-    val sizeLabel = remember(tileCount) { TileMath.formatSize(TileMath.estimateSizeBytes(tileCount)) }
+    val sizeLabel = tileCount?.let { TileMath.formatSize(TileMath.estimateSizeBytes(it)) } ?: "..."
 
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
@@ -185,7 +205,11 @@ fun OfflineDownloadConfigScreen(
                         // L'estimation suit le curseur dans la même carte : c'est sa conséquence, pas
                         // une rubrique de plus. Le nombre de tuiles n'est plus affiché : le poids seul dit
                         // ce que ça coûte.
-                        SetRow(stringResource(R.string.offline_config_label_size)) { ValueText(sizeLabel) }
+                        SetRow(stringResource(R.string.offline_config_label_size)) {
+                            if (calcul) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp,
+                                color = p.accent)
+                            else ValueText(sizeLabel)
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     SettingsCard {
@@ -207,11 +231,11 @@ fun OfflineDownloadConfigScreen(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    BboxOverview(bbox, styleJson, styleUrl)
+                    BboxOverview(bbox, styleJson, styleUrl, corridorPoints, halfWidthKm * 1000.0)
                 }
                 // Action principale, hors du défilement : un aplat d'accent plein, là où les boutons de
                 // carte des réglages se contentent du container - c'est la seule action de l'écran.
-                val enabled = name.isNotBlank() && tileCount > 0
+                val enabled = name.isNotBlank() && (tileCount ?: 0L) > 0
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)
                         .navigationBarsPadding()
@@ -243,32 +267,101 @@ fun OfflineDownloadConfigScreen(
 }
 
 /**
- * Vue d'ensemble de l'emprise : la carte courante, cadrée sur le rectangle à télécharger et bordée du
- * même rouge que pendant le tracé.
+ * Vue d'ensemble de ce qu'on va telecharger : le rectangle, ou la trace et sa zone tampon.
  *
- * Une vraie carte, et non une image figée : le style du fond retenu est déjà chargé, et le cadrage
- * revient au [MapController.fitTo] qui sert partout ailleurs. Les gestes y sont coupés - c'est un
- * repère, pas une carte à explorer - et la vue est détruite en sortant, l'écran ne durant que le temps
- * d'un réglage.
+ * Une vraie carte, et non une image figee : le style du fond retenu est deja charge, et le cadrage revient
+ * au [MapController.fitTo] qui sert partout ailleurs. Les gestes y sont coupes - c'est un repere, pas une
+ * carte a explorer.
+ *
+ * **Le long d'une trace, on voit ce qu'on emporte** : la trace, et autour d'elle la zone tampon de la
+ * largeur reglee, qui suit le curseur. Un bouton au bas de la miniature ouvre la meme carte en grand, ou
+ * l'on peut zoomer pour verifier qu'un col ou un village a l'ecart est bien dedans.
  */
 @Composable
-private fun BboxOverview(bbox: Bbox, styleJson: String?, styleUrl: String?) {
-    val mini = remember { MapController() }
-    var ready by remember { mutableIntStateOf(0) }
-    LaunchedEffect(ready, bbox) {
-        if (mini.style == null) return@LaunchedEffect
-        mini.setBboxDraw(listOf(bbox.west to bbox.south, bbox.east to bbox.north), showPoints = false)
-        mini.fitTo(bbox.west, bbox.south, bbox.east, bbox.north)
-    }
+private fun BboxOverview(
+    bbox: Bbox, styleJson: String?, styleUrl: String?,
+    corridor: List<Pair<Double, Double>>? = null, radiusM: Double = 0.0,
+) {
+    var enGrand by remember { mutableStateOf(false) }
     Box(
         Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(16.dp))
             .background(settingsPalette.card),
     ) {
-        MapLibreView(
-            modifier = Modifier.fillMaxSize(), controller = mini,
-            styleJson = styleJson, styleUrl = styleUrl,
-            gesturesEnabled = false, destroyOnDispose = true,
-            onReady = { ready++ },
-        )
+        EmpriseMap(bbox, styleJson, styleUrl, corridor, radiusM, interactive = false)
+        if (corridor != null) {
+            Box(
+                Modifier.align(Alignment.BottomEnd).padding(8.dp).size(32.dp)
+                    .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f))
+                    .clickable { enGrand = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
+                    Modifier.size(20.dp), tint = Color.Black)
+            }
+        }
     }
+    if (enGrand) {
+        Dialog(onDismissRequest = { enGrand = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Box(
+                Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.88f).clip(RoundedCornerShape(16.dp))
+                    .background(settingsPalette.card),
+            ) {
+                EmpriseMap(bbox, styleJson, styleUrl, corridor, radiusM, interactive = true)
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp)
+                        .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.9f))
+                        .clickable { enGrand = false },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp),
+                        tint = Color.Black)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * La carte de l'emprise, cadree sur ce qu'on telecharge - la zone tampon comprise, le long d'une trace.
+ *
+ * La trace est allegee a deux mille points au plus : elle ne sert qu'a se voir, et une EuroVelo en porte des
+ * dizaines de milliers.
+ */
+@Composable
+private fun EmpriseMap(
+    bbox: Bbox, styleJson: String?, styleUrl: String?,
+    corridor: List<Pair<Double, Double>>?, radiusM: Double, interactive: Boolean,
+) {
+    val mini = remember { MapController() }
+    var ready by remember { mutableIntStateOf(0) }
+    val allegee = remember(corridor) {
+        corridor?.let { c -> val pas = c.size / 2000 + 1; c.filterIndexed { i, _ -> i % pas == 0 || i == c.lastIndex } }
+    }
+    // Le cadrage ne suit que l'emprise, pas la largeur : deplacer le curseur ne doit pas faire sauter la
+    // carte, seulement epaissir la zone tampon.
+    LaunchedEffect(ready, bbox) {
+        if (mini.style == null) return@LaunchedEffect
+        if (allegee == null) {
+            mini.setBboxDraw(listOf(bbox.west to bbox.south, bbox.east to bbox.north), showPoints = false)
+            mini.fitTo(bbox.west, bbox.south, bbox.east, bbox.north)
+        } else {
+            // L'emprise elargie de la zone tampon : sans cela, ses bords sortiraient du cadre.
+            val dLat = radiusM / 111_320.0
+            val dLon = dLat / kotlin.math.cos(Math.toRadians((bbox.south + bbox.north) / 2)).coerceAtLeast(0.1)
+            mini.fitTo(bbox.west - dLon, bbox.south - dLat, bbox.east + dLon, bbox.north + dLat)
+        }
+    }
+    // La zone tampon se calcule hors du fil de l'interface, comme le poids : sur une longue trace, elle se
+    // chiffre en milliers de bandes.
+    LaunchedEffect(ready, allegee, radiusM) {
+        if (mini.style == null || allegee == null) return@LaunchedEffect
+        val bandes = withContext(Dispatchers.Default) { CorridorShape.bands(allegee, radiusM) }
+        mini.setCorridorPreview(allegee, bandes)
+    }
+    MapLibreView(
+        modifier = Modifier.fillMaxSize(), controller = mini,
+        styleJson = styleJson, styleUrl = styleUrl,
+        gesturesEnabled = interactive, destroyOnDispose = true,
+        onReady = { ready++ },
+    )
 }

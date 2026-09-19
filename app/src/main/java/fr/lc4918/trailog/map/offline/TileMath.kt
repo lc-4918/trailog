@@ -61,6 +61,25 @@ object TileMath {
         return out
     }
 
+    /** Les tuiles de l'emprise au zoom donne, produites une a une : rien n'est tenu en memoire d'avance. */
+    fun tileSequenceFor(bbox: Bbox, zoom: Int): Sequence<Triple<Int, Int, Int>> = sequence {
+        val xMin = lonToTileX(bbox.west, zoom)
+        val xMax = lonToTileX(bbox.east, zoom)
+        val yMin = latToTileY(bbox.north, zoom)
+        val yMax = latToTileY(bbox.south, zoom)
+        for (x in xMin..xMax) for (y in yMin..yMax) yield(Triple(x, y, zoom))
+    }
+
+    /** Le couloir au zoom donne, produit tuile par tuile depuis sa grille de bits (cf. [tilesAlong]). */
+    fun tileSequenceAlong(points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double): Sequence<Triple<Int, Int, Int>> =
+        sequence {
+            val c = corridor(points, zoom, radiusM) ?: return@sequence
+            c.rows.forEachIndexed { i, row ->
+                var x = row.nextSetBit(0)
+                while (x >= 0) { yield(Triple(c.x0 + x, c.y0 + i, zoom)); x = row.nextSetBit(x + 1) }
+            }
+        }
+
     /** Somme des tuiles sur toute la plage [minZoom, maxZoom]. */
     fun totalTileCount(bbox: Bbox, minZoom: Int, maxZoom: Int): Long =
         (minZoom..maxZoom).sumOf { tileCount(bbox, it) }
@@ -76,64 +95,115 @@ object TileMath {
      * les trois quarts. Le couloir ne prend que ce qui borde le trace, pour la meme sortie et une fraction
      * du telechargement.
      *
-     * Le parcours est parcouru par pas d'une DEMI-TUILE : deux sommets distants de plusieurs kilometres -
-     * une ligne droite tracee a la regle - sauteraient sinon toutes les tuiles entre eux. Chaque position
-     * marque sa tuile et celles qui l'entourent dans le rayon demande.
-     *
      * Le resultat est un ENSEMBLE : une trace qui revient sur elle-meme, un lacet, une boucle passent
      * plusieurs fois sur les memes tuiles, et chacune ne doit etre comptee - donc telechargee - qu'une fois.
      */
     fun tilesAlong(
         points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double,
     ): List<Triple<Int, Int, Int>> {
-        if (points.isEmpty()) return emptyList()
-        val n = 1 shl zoom
-        val seen = LinkedHashSet<Long>()
-        val out = ArrayList<Triple<Int, Int, Int>>()
-
-        fun mark(lon: Double, lat: Double) {
-            val side = tileMeters(lat, zoom).coerceAtLeast(1.0)
-            val reach = kotlin.math.ceil(radiusM / side).toInt().coerceAtLeast(0)
-            val (cx, cy) = tileAt(lon, lat, zoom)
-            for (x in (cx - reach)..(cx + reach)) {
-                for (y in (cy - reach)..(cy + reach)) {
-                    if (x < 0 || y < 0 || x >= n || y >= n) continue
-                    if (seen.add(x.toLong() * n + y)) out.add(Triple(x, y, zoom))
-                }
-            }
-        }
-
-        mark(points[0].first, points[0].second)
-        for (i in 0 until points.size - 1) {
-            val (lon1, lat1) = points[i]
-            val (lon2, lat2) = points[i + 1]
-            val step = tileMeters((lat1 + lat2) / 2, zoom).coerceAtLeast(1.0) / 2
-            val length = haversine(lon1, lat1, lon2, lat2)
-            val steps = kotlin.math.ceil(length / step).toInt().coerceAtLeast(1)
-            for (k in 1..steps) {
-                val t = k.toDouble() / steps
-                mark(lon1 + (lon2 - lon1) * t, lat1 + (lat2 - lat1) * t)
-            }
+        val c = corridor(points, zoom, radiusM) ?: return emptyList()
+        val out = ArrayList<Triple<Int, Int, Int>>(c.count().toInt())
+        c.rows.forEachIndexed { i, row ->
+            var x = row.nextSetBit(0)
+            while (x >= 0) { out.add(Triple(c.x0 + x, c.y0 + i, zoom)); x = row.nextSetBit(x + 1) }
         }
         return out
     }
 
     /** Tuiles du couloir sur toute la plage de zoom. Chaque niveau a son propre ensemble : une meme tuile
-     *  ne peut pas exister a deux zooms differents. */
+     *  ne peut pas exister a deux zooms differents. Compte sans rien construire tuile par tuile. */
     fun totalTileCountAlong(
         points: List<Pair<Double, Double>>, minZoom: Int, maxZoom: Int, radiusM: Double,
-    ): Long = (minZoom..maxZoom).sumOf { tilesAlong(points, it, radiusM).size.toLong() }
+    ): Long = (minZoom..maxZoom).sumOf { corridor(points, it, radiusM)?.count() ?: 0L }
 
-    /** Distance entre deux points, en metres. Recopiee ici plutot qu'empruntee a `domain/geo` : ce module
-     *  ne depend de rien, et c'est ce qui lui permet d'etre teste sans le reste. */
-    private fun haversine(lon1: Double, lat1: Double, lon2: Double, lat2: Double): Double {
-        val r = 6_371_000.0
-        val la1 = Math.toRadians(lat1); val la2 = Math.toRadians(lat2)
-        val dLa = la2 - la1
-        val dLo = Math.toRadians(lon2 - lon1)
-        val h = kotlin.math.sin(dLa / 2).let { it * it } +
-            cos(la1) * cos(la2) * kotlin.math.sin(dLo / 2).let { it * it }
-        return 2 * r * kotlin.math.atan2(kotlin.math.sqrt(h), kotlin.math.sqrt(1 - h))
+    /** Le couloir a un zoom : une grille de bits, une rangee par ligne de tuiles, a partir de ([x0], [y0]). */
+    private class Couloir(val x0: Int, val y0: Int, val rows: Array<java.util.BitSet>) {
+        fun count(): Long = rows.sumOf { it.cardinality().toLong() }
+    }
+
+    private fun tileXf(lon: Double, n: Int): Double = (lon + 180.0) / 360.0 * n
+
+    private fun tileYf(lat: Double, n: Int): Double {
+        val r = Math.toRadians(lat.coerceIn(-85.0511, 85.0511))
+        return (1.0 - kotlin.math.ln(kotlin.math.tan(r) + 1 / cos(r)) / Math.PI) / 2.0 * n
+    }
+
+    /** La latitude du milieu de la ligne de tuiles [y]. */
+    private fun latOfRow(y: Int, n: Int): Double {
+        val m = Math.PI * (1 - 2 * (y + 0.5) / n)
+        return Math.toDegrees(kotlin.math.atan(kotlin.math.sinh(m)))
+    }
+
+    /**
+     * Le couloir, calcule en deux temps sur une grille de bits : la LIGNE du parcours d'abord, tuile par
+     * tuile, puis son elargissement a [radiusM] de chaque cote, rangee par rangee.
+     *
+     * **C'est une correction de lenteur, et elle etait bloquante.** Le calcul d'avant posait autour de chaque
+     * point du parcours un carre de tuiles, et rangeait chacune dans un ensemble : pour l'EV1 de Nantes a
+     * Hendaye au zoom 17 avec cinq kilometres de chaque cote, des dizaines de millions d'operations et des
+     * millions d'objets - refaits a chaque cran des curseurs de l'ecran de configuration, que l'application
+     * cessait de rafraichir jusqu'a ce qu'Android propose de la fermer. Le meme couloir se trace ici en
+     * quelques milliers de pas le long de la ligne, puis en operations sur des mots de 64 bits.
+     *
+     * Le parcours est parcouru par pas d'une DEMI-TUILE : deux sommets distants de plusieurs kilometres - une
+     * ligne droite tracee a la regle - sauteraient sinon les tuiles entre eux. L'elargissement se prend a la
+     * latitude de chaque rangee, ou une tuile n'a pas la meme taille au sol.
+     */
+    private fun corridor(points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double): Couloir? {
+        if (points.isEmpty()) return null
+        val n = 1 shl zoom
+        val xs = points.map { tileXf(it.first, n) }
+        val ys = points.map { tileYf(it.second, n) }
+        // L'elargissement le plus grand, pour dimensionner la grille : a la latitude la plus eloignee de
+        // l'equateur, ou les tuiles sont les plus petites au sol.
+        val latMax = points.maxOf { kotlin.math.abs(it.second) }
+        val marge = kotlin.math.ceil(radiusM.coerceAtLeast(0.0) / tileMeters(latMax, zoom).coerceAtLeast(1.0)).toInt() + 1
+        val x0 = (floor(xs.min()).toInt() - marge).coerceAtLeast(0)
+        val x1 = (floor(xs.max()).toInt() + marge).coerceAtMost(n - 1)
+        val y0 = (floor(ys.min()).toInt() - marge).coerceAtLeast(0)
+        val y1 = (floor(ys.max()).toInt() + marge).coerceAtMost(n - 1)
+        val largeur = x1 - x0 + 1
+        val hauteur = y1 - y0 + 1
+        val ligne = Array(hauteur) { java.util.BitSet() }
+        fun poser(x: Double, y: Double) {
+            val tx = floor(x).toInt().coerceIn(0, n - 1) - x0
+            val ty = floor(y).toInt().coerceIn(0, n - 1) - y0
+            if (tx in 0 until largeur && ty in 0 until hauteur) ligne[ty].set(tx)
+        }
+        poser(xs[0], ys[0])
+        for (i in 0 until points.size - 1) {
+            val dx = xs[i + 1] - xs[i]
+            val dy = ys[i + 1] - ys[i]
+            val pas = kotlin.math.ceil(kotlin.math.max(kotlin.math.abs(dx), kotlin.math.abs(dy)) * 2).toInt().coerceAtLeast(1)
+            for (k in 1..pas) {
+                val t = k.toDouble() / pas
+                poser(xs[i] + dx * t, ys[i] + dy * t)
+            }
+        }
+        // L'elargissement de chaque rangee, en tuiles, a sa propre latitude.
+        val portee = IntArray(hauteur) { i ->
+            kotlin.math.ceil(radiusM.coerceAtLeast(0.0) / tileMeters(latOfRow(y0 + i, n), zoom).coerceAtLeast(1.0)).toInt()
+        }
+        // Le long des rangees d'abord : chaque tuile de la ligne s'etend de sa portee a gauche et a droite.
+        val large = Array(hauteur) { i ->
+            val r = portee[i]
+            val src = ligne[i]
+            val dst = java.util.BitSet()
+            var x = src.nextSetBit(0)
+            while (x >= 0) {
+                dst.set((x - r).coerceAtLeast(0), (x + r + 1).coerceAtMost(largeur))
+                x = src.nextSetBit(x + 1)
+            }
+            dst
+        }
+        // Puis d'une rangee aux voisines : le carre de portee autour de chaque tuile de la ligne.
+        val rows = Array(hauteur) { java.util.BitSet() }
+        for (i in 0 until hauteur) {
+            if (large[i].isEmpty) continue
+            val r = portee[i]
+            for (j in (i - r).coerceAtLeast(0)..(i + r).coerceAtMost(hauteur - 1)) rows[j].or(large[i])
+        }
+        return Couloir(x0, y0, rows)
     }
 
     fun estimateSizeBytes(tileCount: Long): Long = tileCount * AVG_TILE_BYTES
