@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distanza e dislivello dalla posizione GPS</string>
     <string name="action_zoom_to_layers">Zoom sui livelli</string>
     <string name="action_folder_stats">Statistiche</string>
+    <string name="stats_date">Data</string>
+    <string name="stats_date_unknown">Senza orari</string>
     <string name="stats_layers">Livelli</string>
     <string name="stats_tracks">Tracce</string>
     <string name="stats_marker_layers">Livelli di marcatori</string>

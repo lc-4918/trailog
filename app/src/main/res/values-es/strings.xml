@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distancia y desnivel desde la posición GPS</string>
     <string name="action_zoom_to_layers">Zoom a las capas</string>
     <string name="action_folder_stats">Estadísticas</string>
+    <string name="stats_date">Fecha</string>
+    <string name="stats_date_unknown">Sin marcas de tiempo</string>
     <string name="stats_layers">Capas</string>
     <string name="stats_tracks">Trazas</string>
     <string name="stats_marker_layers">Capas de marcadores</string>

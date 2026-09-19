@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distanz und Anstieg ab der GPS-Position</string>
     <string name="action_zoom_to_layers">Auf Ebenen zoomen</string>
     <string name="action_folder_stats">Statistik</string>
+    <string name="stats_date">Datum</string>
+    <string name="stats_date_unknown">Ohne Zeitstempel</string>
     <string name="stats_layers">Ebenen</string>
     <string name="stats_tracks">Spuren</string>
     <string name="stats_marker_layers">Markerebenen</string>

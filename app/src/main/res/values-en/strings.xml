@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distance and ascent from the GPS position</string>
     <string name="action_zoom_to_layers">Zoom to layers</string>
     <string name="action_folder_stats">Statistics</string>
+    <string name="stats_date">Date</string>
+    <string name="stats_date_unknown">No timestamps</string>
     <string name="stats_layers">Layers</string>
     <string name="stats_tracks">Tracks</string>
     <string name="stats_marker_layers">Marker layers</string>

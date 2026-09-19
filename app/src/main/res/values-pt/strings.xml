@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distância e desnível desde a posição GPS</string>
     <string name="action_zoom_to_layers">Zoom nas camadas</string>
     <string name="action_folder_stats">Estatísticas</string>
+    <string name="stats_date">Data</string>
+    <string name="stats_date_unknown">Sem registo de hora</string>
     <string name="stats_layers">Camadas</string>
     <string name="stats_tracks">Trilhos</string>
     <string name="stats_marker_layers">Camadas de marcadores</string>

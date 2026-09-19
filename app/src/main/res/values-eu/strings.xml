@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distantzia eta desnibela GPS posiziotik</string>
     <string name="action_zoom_to_layers">Zooma geruzetara</string>
     <string name="action_folder_stats">Estatistikak</string>
+    <string name="stats_date">Data</string>
+    <string name="stats_date_unknown">Ordu-markarik gabe</string>
     <string name="stats_layers">Geruzak</string>
     <string name="stats_tracks">Ibilbideak</string>
     <string name="stats_marker_layers">Markatzaile-geruzak</string>

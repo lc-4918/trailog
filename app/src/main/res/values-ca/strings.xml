@@ -69,6 +69,8 @@
     <string name="settings_profile_remaining_sub">Distància i desnivell des de la posició GPS</string>
     <string name="action_zoom_to_layers">Zoom a les capes</string>
     <string name="action_folder_stats">Estadístiques</string>
+    <string name="stats_date">Data</string>
+    <string name="stats_date_unknown">Sense marques de temps</string>
     <string name="stats_layers">Capes</string>
     <string name="stats_tracks">Traces</string>
     <string name="stats_marker_layers">Capes de marcadors</string>

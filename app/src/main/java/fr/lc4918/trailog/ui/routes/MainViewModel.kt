@@ -704,6 +704,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         repo.settings.upsert(s.copy(poiHiddenCategories = csv, poiMasked = s.poiMasked && !rallume))
     }
 
+    /** L'instant du premier point horodate d'une trace - le jour de la sortie -, ou null s'il n'y en a pas. */
+    suspend fun trackStartTime(layer: LayerEntity): Long? =
+        repo.loadTrackLines(layer).mapNotNull { seg -> seg.firstNotNullOfOrNull { it.timeMs } }.minOrNull()
+
     /** La couche des points d'interet mise de cote, ou remise, par l'oeil de sa bulle. */
     fun savePoiMasked(masked: Boolean) = viewModelScope.launch {
         val s = settings.value

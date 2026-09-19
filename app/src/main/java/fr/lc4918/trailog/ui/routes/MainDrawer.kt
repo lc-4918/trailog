@@ -444,6 +444,83 @@ internal fun FolderStatsDialog(
     }
 }
 
+/**
+ * Les chiffres d'une trace : sa longueur, ses deniveles, sa duree si le fichier porte des heures, et le
+ * jour ou on l'a parcourue.
+ *
+ * Meme grammaire que celle d'un dossier (cf. [FolderStatsDialog]). La longueur et les deniveles viennent de
+ * la ligne en base ; la DATE, elle, n'y est pas - la couche ne retient que l'instant de son import, qui ne
+ * dit rien de la sortie. Elle se lit sur le premier point horodate de la trace, a l'ouverture de la
+ * fenetre : un fichier a relire, le temps d'un tour de roue.
+ *
+ * Une trace sans horodatage - dessinee, ou calculee par le planificateur - le dit, plutot que de montrer
+ * la date d'import comme si c'etait celle du parcours.
+ */
+@Composable
+internal fun LayerStatsDialog(
+    layer: LayerEntity,
+    imperial: Boolean,
+    dark: Boolean,
+    loadStart: suspend (LayerEntity) -> Long?,
+    onDismiss: () -> Unit,
+) {
+    // Trois etats : en lecture, lue (une date), lue sans rien trouver.
+    var lu by remember(layer.id) { mutableStateOf(false) }
+    var debut by remember(layer.id) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(layer.id) {
+        debut = if (layer.hasTime) runCatching { loadStart(layer) }.getOrNull() else null
+        lu = true
+    }
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    ProvideSettingsPalette(dark = dark) {
+        val p = settingsPalette
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = p.screen,
+            title = { Text(layer.name, color = p.label, maxLines = 2,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+            text = {
+                SettingsCard {
+                    SetRow(stringResource(R.string.chip_distance)) {
+                        ValueText(Format.distance(layer.distance, imperial))
+                    }
+                    RowDivider()
+                    SetRow(stringResource(R.string.info_name_ascent)) {
+                        ValueText(Format.elevation(layer.ascent, imperial))
+                    }
+                    RowDivider()
+                    SetRow(stringResource(R.string.info_name_descent)) {
+                        ValueText(Format.elevation(layer.descent, imperial))
+                    }
+                    // La duree, seulement si le fichier porte des heures : sans elles, il n'y a rien a
+                    // mesurer, et une ligne vide se lirait comme une sortie de zero minute.
+                    val duree = layer.movingTime?.takeIf { layer.hasTime }
+                    if (duree != null) {
+                        RowDivider()
+                        SetRow(stringResource(R.string.info_name_duration)) { ValueText(Format.duration(duree)) }
+                    }
+                    RowDivider()
+                    SetRow(stringResource(R.string.stats_date)) {
+                        val d = debut
+                        when {
+                            !lu -> androidx.compose.material3.CircularProgressIndicator(
+                                Modifier.size(14.dp), strokeWidth = 2.dp)
+                            d != null -> ValueText(
+                                java.time.Instant.ofEpochMilli(d).atZone(java.time.ZoneId.systemDefault())
+                                    .format(java.time.format.DateTimeFormatter
+                                        .ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(locale)))
+                            else -> ValueText(stringResource(R.string.stats_date_unknown))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close), color = p.accent) }
+            },
+        )
+    }
+}
+
 @Composable
 internal fun DropIndicatorLine() {
     Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
@@ -611,7 +688,8 @@ internal fun RowMenu(
     // dans sa ligne, et un dossier vide n'a rien a colorer - l'entree disparait plutot que de ne rien faire.
     onColor: (() -> Unit)? = null,
     layer: LayerEntity? = null, layerActions: LayerActions? = null,
-    // Propre au dossier : le total de ce qu'il contient, sous-dossiers compris.
+    // Le total de ce que le dossier contient, sous-dossiers compris. Pour une couche, ses propres chiffres
+    // passent par [layerActions].
     onStats: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -633,6 +711,12 @@ internal fun RowMenu(
             if (onStats != null) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
                     onClick = { open = false; onStats() })
+            }
+            // Une couche de marqueurs n'a ni longueur ni denivele : l'entree n'y apparait pas, plutot que
+            // d'ouvrir une fenetre de zeros.
+            if (layer != null && layerActions != null && layer.hasLine) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
+                    onClick = { open = false; layerActions.onStats(layer) })
             }
             if (onColor != null) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
@@ -665,6 +749,7 @@ internal fun RowMenu(
 class LayerActions(
     val onExport: (LayerEntity) -> Unit,
     val onShare: (LayerEntity) -> Unit,
+    val onStats: (LayerEntity) -> Unit = {},
 )
 
 /** Les couches que porte un dossier, sous-dossiers compris : ce sur quoi portent ses actions (oeil,
@@ -814,7 +899,9 @@ internal fun DrawerContent(
                 .onFailure { onFailure(R.string.error_no_app_share) }
         }
     }
-    val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer)
+    var layerStatsTarget by remember { mutableStateOf<LayerEntity?>(null) }
+    val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer,
+        onStats = { layerStatsTarget = it })
     var searchQuery by remember { mutableStateOf("") }
     var searchOpen by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
@@ -984,6 +1071,14 @@ internal fun DrawerContent(
                 }
                 if (geoJson) vm.layerGeoJson(layer, ready) else vm.layerGpx(layer, ready)
             },
+        )
+    }
+
+    layerStatsTarget?.let { l ->
+        LayerStatsDialog(
+            layer = l, imperial = settings.units == "imperial", dark = isDarkTheme(settings.theme),
+            loadStart = { vm.trackStartTime(it) },
+            onDismiss = { layerStatsTarget = null },
         )
     }
 
