@@ -59,8 +59,12 @@ internal fun rememberMapCameraCallbacks(
         // Appui long sur la carte : le contrôleur a déjà écarté les marqueurs et les modes de saisie
         // exclusifs (cf. handleLongPress), il ne reste ici qu'à ouvrir le point. Les traces ne sont plus
         // écartées - un appui long dessus ne faisait rien, alors qu'un col ou un croisement de sentiers
-        // est justement un endroit qu'on veut interroger.
-        controller.onLongPressEmpty = { lon, lat -> mapPoint.open(lon, lat) }
+        // est justement un endroit qu'on veut interroger. Le profil altimetrique se ferme AVANT : il occupe
+        // le bas de l'ecran, la ou l'infobulle s'ouvre, et les deux ne doivent jamais se voir ensemble.
+        controller.onLongPressEmpty = { lon, lat ->
+            vm.closeProfile()
+            mapPoint.open(lon, lat)
+        }
         controller.onCameraIdle = {
             ticks.idle++
             if (isPositioned()) controller.cameraState()?.let { (la, lo, z) -> vm.saveCameraState(la, lo, z) }
