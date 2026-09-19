@@ -802,7 +802,12 @@ fun MainScreen(
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
                         when (kind) {
-                            "layer" -> layers.firstOrNull { it.id == id }?.let { controller.fitTo(it.west, it.south, it.east, it.north) }
+                            // Cadrer une couche masquee montrerait une carte vide a l'endroit ou elle devrait
+                            // etre : on vient la regarder, elle s'allume donc au passage.
+                            "layer" -> layers.firstOrNull { it.id == id }?.let {
+                                if (!it.visible) vm.setLayerVisible(it, true)
+                                controller.fitTo(it.west, it.south, it.east, it.north)
+                            }
                             "folder" -> folderBbox(id, folders, layers)?.let { controller.fitTo(it[0], it[1], it[2], it[3]) }
                         }
                     },

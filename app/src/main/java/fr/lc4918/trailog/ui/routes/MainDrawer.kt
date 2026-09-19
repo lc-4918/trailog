@@ -230,7 +230,7 @@ internal fun FolderNode(
                     FolderNode(item, allFolders, allLayers, depth + 1, vm, dctx, onRename, onMove, onNewFolder, onZoom,
                         importingIds, layerActions, onStats, onDeleteFolder)
                 }
-                is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onMove, onZoom, layerActions) }
+                is LayerEntity -> key("layer", item.id) { LayerRow(item, depth + 1, vm, dctx, onRename, onZoom, layerActions) }
             }
         }
     }
@@ -272,7 +272,7 @@ class ImportSpinners(private val importing: Set<Long?>, private val elevating: S
 @Composable
 internal fun LayerRow(
     layer: LayerEntity, depth: Int, vm: MainViewModel, dctx: DragCtx,
-    onRename: (String, Long, String) -> Unit, onMove: (String, Long) -> Unit, onZoom: (String, Long) -> Unit,
+    onRename: (String, Long, String) -> Unit, onZoom: (String, Long) -> Unit,
     actions: LayerActions,
 ) {
     LayerLine(
@@ -284,7 +284,7 @@ internal fun LayerRow(
             else -> R.drawable.ic_layer_place
         },
         onToggle = { vm.setLayerVisible(layer, it) }, onColor = { vm.setLayerColor(layer, it) }, dctx = dctx,
-        onRename = { onRename("layer", layer.id, layer.name) }, onMove = { onMove("layer", layer.id) },
+        onRename = { onRename("layer", layer.id, layer.name) },
         onDelete = { vm.deleteLayer(layer) }, onZoom = { onZoom("layer", layer.id) },
         layerActions = actions, layer = layer,
     )
@@ -297,7 +297,7 @@ internal fun LayerLine(
     depth: Int, color: String, name: String, visible: Boolean,
     @DrawableRes icon: Int,
     onToggle: (Boolean) -> Unit, onColor: (String) -> Unit, dctx: DragCtx,
-    onRename: () -> Unit, onMove: () -> Unit, onDelete: () -> Unit, onZoom: () -> Unit,
+    onRename: () -> Unit, onDelete: () -> Unit, onZoom: () -> Unit,
     // Une couche et ce qu'on peut en faire ; null pour un dossier, dont le menu n'a ni sortie ni retouche.
     layerActions: LayerActions? = null, layer: LayerEntity? = null,
 ) {
@@ -337,7 +337,9 @@ internal fun LayerLine(
                 onDrag = { dctx.onDrag(kind, id, it) },
                 onEnd = { dctx.onEnd(kind, id) })
             RowMenu(
-                onRename = onRename, onMove = onMove, onNewSub = null, onDelete = onDelete, onZoom = onZoom,
+                // Sans "Deplacer" : une couche se range en la glissant par sa poignee, et l'entree du menu
+                // faisait la meme chose en deux ecrans de plus.
+                onRename = onRename, onMove = null, onNewSub = null, onDelete = onDelete, onZoom = onZoom,
                 layer = layer, layerActions = layerActions,
             )
         }
@@ -683,7 +685,7 @@ internal fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () 
 /** 3 points : menu contextuel (appui simple). */
 @Composable
 internal fun RowMenu(
-    onRename: () -> Unit, onMove: () -> Unit, onNewSub: (() -> Unit)?, onDelete: () -> Unit, onZoom: () -> Unit,
+    onRename: () -> Unit, onMove: (() -> Unit)?, onNewSub: (() -> Unit)?, onDelete: () -> Unit, onZoom: () -> Unit,
     // Propre au dossier, et seulement s'il porte des couches : une couche a deja sa pastille de couleur
     // dans sa ligne, et un dossier vide n'a rien a colorer - l'entree disparait plutot que de ne rien faire.
     onColor: (() -> Unit)? = null,
@@ -723,7 +725,7 @@ internal fun RowMenu(
                     onClick = { open = false; onColor() })
             }
             DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { open = false; onRename() })
-            DropdownMenuItem(text = { Text(stringResource(R.string.action_move)) }, onClick = { open = false; onMove() })
+            if (onMove != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_move)) }, onClick = { open = false; onMove() })
             if (onNewSub != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_new_subfolder)) }, onClick = { open = false; onNewSub() })
             // Les SORTIES d'une couche seulement. Les retouches, elles, ont quitte ce menu pour la barre
             // d'outils de la carte : elles agissent sur un segment, parfois sur deux, et designer un
@@ -1040,7 +1042,7 @@ internal fun DrawerContent(
                 }
                 found.forEach { item ->
                     key("found", item.id) {
-                        LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom, layerActions)
+                        LayerRow(item, 0, vm, dctx, openRename, onZoom, layerActions)
                     }
                 }
                 return@Column
@@ -1052,7 +1054,7 @@ internal fun DrawerContent(
                         FolderNode(item, folders, layers, 0, vm, dctx, openRename, openMove, openNewFolder, onZoom, importingIds,
                             layerActions, onStats = { statsTarget = it }) { deleteFolderTarget = it }
                     }
-                    is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, openMove, onZoom, layerActions) }
+                    is LayerEntity -> key("layer", item.id) { LayerRow(item, 0, vm, dctx, openRename, onZoom, layerActions) }
                 }
             }
         }
