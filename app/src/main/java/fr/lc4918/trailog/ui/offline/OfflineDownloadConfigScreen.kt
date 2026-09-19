@@ -274,8 +274,8 @@ fun OfflineDownloadConfigScreen(
  * carte a explorer.
  *
  * **Le long d'une trace, on voit ce qu'on emporte** : la trace, et autour d'elle la zone tampon de la
- * largeur reglee, qui suit le curseur. Un bouton au bas de la miniature ouvre la meme carte en grand, ou
- * l'on peut zoomer pour verifier qu'un col ou un village a l'ecart est bien dedans.
+ * largeur reglee, qui suit le curseur. Pour l'un comme pour l'autre, un bouton au bas de la miniature ouvre
+ * la meme carte en grand, ou l'on peut zoomer pour verifier qu'un col ou un village a l'ecart est bien dedans.
  */
 @Composable
 private fun BboxOverview(
@@ -288,16 +288,14 @@ private fun BboxOverview(
             .background(settingsPalette.card),
     ) {
         EmpriseMap(bbox, styleJson, styleUrl, corridor, radiusM, interactive = false)
-        if (corridor != null) {
-            Box(
-                Modifier.align(Alignment.BottomEnd).padding(8.dp).size(32.dp)
-                    .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f))
-                    .clickable { enGrand = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
-                    Modifier.size(20.dp), tint = Color.Black)
-            }
+        Box(
+            Modifier.align(Alignment.BottomEnd).padding(8.dp).size(32.dp)
+                .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f))
+                .clickable { enGrand = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
+                Modifier.size(20.dp), tint = Color.Black)
         }
     }
     if (enGrand) {
