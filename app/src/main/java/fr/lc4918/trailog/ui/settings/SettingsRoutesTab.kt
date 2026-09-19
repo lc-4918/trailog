@@ -179,19 +179,18 @@ import kotlinx.coroutines.launch
              * Eteint par defaut, ici comme en base : c'est un filtre qui RETIRE de la carte, et une couche
              * qui montre moins qu'on ne lui a demande sans l'avoir dit se lit comme une panne.
              */
+            // Le curseur parcourt les crans, et non les metres : "Sans limite" vaut zero en base, mais se
+            // tient tout a DROITE, au-dela de la plus grande distance - c'est la plus large de toutes.
+            val crans = PoiCorridorSteps
+            val cran = crans.indexOf(cur.poiTrackCorridorM).takeIf { it >= 0 }
+                ?: crans.indices.minBy { kotlin.math.abs(crans[it] - cur.poiTrackCorridorM) }
             SliderRow(
                 label = stringResource(R.string.settings_label_poi_corridor),
                 value = poiCorridorLabel(cur.poiTrackCorridorM),
-                fraction = fractionOf(
-                    cur.poiTrackCorridorM / PoiCorridorStepM,
-                    MinPoiCorridorM / PoiCorridorStepM, MaxPoiCorridorM / PoiCorridorStepM,
-                ),
-                steps = (MaxPoiCorridorM - MinPoiCorridorM) / PoiCorridorStepM - 1,
+                fraction = fractionOf(cran, 0, crans.lastIndex),
+                steps = crans.size - 2,
                 onFraction = {
-                    val pas = valueOf(
-                        it, MinPoiCorridorM / PoiCorridorStepM, MaxPoiCorridorM / PoiCorridorStepM,
-                    )
-                    vm.save(cur.copy(poiTrackCorridorM = pas * PoiCorridorStepM))
+                    vm.save(cur.copy(poiTrackCorridorM = crans[valueOf(it, 0, crans.lastIndex)]))
                 },
             )
             Hint(stringResource(R.string.settings_poi_corridor_hint))
@@ -544,17 +543,21 @@ private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
  * pays qu'on traverse - deux kilometres en ville, dix dans une vallee vide. Une poignee de valeurs
  * imposees obligeait a choisir la moins fausse.
  *
- * **Zero, tout a gauche, retire la limite** : on explore une region ou l'on n'a aucune trace ouverte, et
- * l'on veut voir ce qu'elle porte. Sans cette position, il fallait laisser une distance qui ne voulait
- * rien dire - et le couloir empeche desormais la requete elle-meme (cf. PoiCorridor.crosses), ce qui
- * viderait la carte pour de bon.
+ * **Zero retire la limite**, et se tient tout a DROITE du curseur, au-dela de vingt kilometres : c'est la
+ * plus large des distances, et on la cherchait a l'oppose, apres le plus grand chiffre. On explore une
+ * region ou l'on n'a aucune trace ouverte, et l'on veut voir ce qu'elle porte ; sans cette position, il
+ * fallait laisser une distance qui ne voulait rien dire - et le couloir empeche desormais la requete
+ * elle-meme (cf. PoiCorridor.crosses), ce qui viderait la carte pour de bon.
  */
-private const val MinPoiCorridorM = 0
 private const val MaxPoiCorridorM = 20_000
 
 /** Le pas du curseur : cinq cents metres. Au-dessous, on reglerait la precision d'un trace, pas la
  *  distance a laquelle on accepte de faire un detour. */
 private const val PoiCorridorStepM = 500
+
+/** Les crans du curseur, de gauche a droite : 500 m a 20 km, puis zero - sans limite. */
+private val PoiCorridorSteps: List<Int> =
+    (1..MaxPoiCorridorM / PoiCorridorStepM).map { it * PoiCorridorStepM } + 0
 
 /** "Sans limite", "500 m", "5 km" : le metre sous le kilometre, le kilometre au-dela, avec sa decimale
  *  quand elle compte - "2,5 km" est une distance qu'on se represente, "2500 m" beaucoup moins. */
