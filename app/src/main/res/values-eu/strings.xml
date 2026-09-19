@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">konexiorik gabe kalkulatua</string>
     <string name="offline_bbox_adjust">Doitu mapa eta aldatu eremuaren tamaina</string>
     <string name="action_next">Hurrengoa</string>
+    <string name="planner_reset_confirm_title">Ibilbidea berrezarri?</string>
+    <string name="planner_reset_confirm_text">Etapak eta kalkulatutako ibilbidea ezabatuko dira.</string>
 </resources>

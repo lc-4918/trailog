@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.planner
 
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +48,6 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.CircularProgressIndicator
@@ -188,7 +190,6 @@ fun RoutePlannerBand(
         ) {
             BandHeader(
                 recomputing = state.recomputing,
-                onReset = { state.reset() },
                 onClose = { state.collapseOrClose() },
             )
             RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
@@ -202,7 +203,8 @@ fun RoutePlannerBand(
 }
 
 /**
- * En-tete : le titre, puis les deux gestes de la bande a l'oppose - remettre a blanc, et ranger.
+ * En-tete : le titre, puis la croix qui range la bande. La remise a blanc est descendue avec les autres
+ * gestes du parcours, sous les etapes (cf. [StepList]).
  *
  * **Un seul bouton pour ranger, la ou il y en avait deux.** Le chevron "reduire" gardait le trajet, la
  * croix le detruisait apres une question : deux boutons voisins, presque identiques, dont l'un se
@@ -212,7 +214,6 @@ fun RoutePlannerBand(
 @Composable
 private fun BandHeader(
     recomputing: Boolean,
-    onReset: () -> Unit,
     onClose: () -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
@@ -223,11 +224,6 @@ private fun BandHeader(
             // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
             // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
             if (recomputing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-            // A gauche de la croix : le geste qui efface se lit AVANT celui qui range, dans l'ordre ou la
-            // main les rencontre en venant du titre.
-            IconButton(onClick = onReset, modifier = Modifier.size(28.dp)) {
-                Icon(Icons.Filled.RestartAlt, stringResource(R.string.planner_reset), Modifier.size(20.dp))
-            }
             IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
                 Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
             }
@@ -259,6 +255,7 @@ private fun StepList(
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
+    var confirmerReset by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -333,18 +330,34 @@ private fun StepList(
                 }
                 Spacer(Modifier.weight(1f))
                 // Les deux sorties n'ont de sens qu'une fois le parcours calcule : avant, elles n'auraient
-                // rien a ecrire. Memes boutons que ceux de l'en-tete du menu lateral, qui font deja ces
-                // gestes-la sur les couches.
+                // rien a ecrire. La remise a blanc, elle, est toujours la, a droite des deux autres - et
+                // demande confirmation : elle efface ce qu'on a compose.
                 if (state.route is RouteState.Done) {
                     BandAction(Icons.Outlined.Save, stringResource(R.string.planner_import_layer), onImport)
                     BandAction(Icons.Outlined.FileDownload, stringResource(R.string.planner_download_gpx), onDownload)
                 }
+                BandAction(Icons.Filled.DeleteOutline, stringResource(R.string.planner_reset)) { confirmerReset = true }
             }
         }
     }
+    if (confirmerReset) {
+        AlertDialog(
+            onDismissRequest = { confirmerReset = false },
+            title = { Text(stringResource(R.string.planner_reset_confirm_title)) },
+            text = { Text(stringResource(R.string.planner_reset_confirm_text)) },
+            confirmButton = {
+                TextButton(onClick = { confirmerReset = false; state.reset() }) {
+                    Text(stringResource(R.string.planner_reset))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmerReset = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
 }
 
-/** Une sortie du parcours : meme gabarit et meme gris que les actions de l'en-tete du menu lateral. */
+/** Un geste du parcours : meme gabarit et meme gris que les actions de l'en-tete du menu lateral. */
 @Composable
 private fun BandAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     Box(Modifier.size(38.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
@@ -504,8 +517,10 @@ private fun StepRow(
                     handle.size(width = 26.dp, height = FieldHeight),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.DragHandle, stringResource(R.string.planner_drag_step),
-                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Le meme dessin que la poignee des couches et des dossiers du menu lateral : meme icone,
+                    // meme taille, meme gris - c'est le meme geste.
+                    Icon(Icons.Filled.DragIndicator, stringResource(R.string.planner_drag_step),
+                        Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f))
                 }
                 IconButton(onClick = { state.removeStep(index) }, enabled = state.steps.size > 2,
                     modifier = Modifier.size(26.dp)) {

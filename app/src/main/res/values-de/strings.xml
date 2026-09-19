@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">offline berechnet</string>
     <string name="offline_bbox_adjust">Karte anpassen und Bereich in der Größe ändern</string>
     <string name="action_next">Weiter</string>
+    <string name="planner_reset_confirm_title">Route zurücksetzen?</string>
+    <string name="planner_reset_confirm_text">Die Etappen und die berechnete Route werden gelöscht.</string>
 </resources>

@@ -647,4 +647,6 @@
     <string name="planner_computed_offline">calculé hors ligne</string>
     <string name="offline_bbox_adjust">Ajuster la carte et redimensionner la zone</string>
     <string name="action_next">Suivant</string>
+    <string name="planner_reset_confirm_title">Réinitialiser l\'itinéraire ?</string>
+    <string name="planner_reset_confirm_text">Les étapes et le trajet calculé seront effacés.</string>
 </resources>

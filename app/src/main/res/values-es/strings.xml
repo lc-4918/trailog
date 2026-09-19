@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">calculada sin conexión</string>
     <string name="offline_bbox_adjust">Ajusta el mapa y cambia el tamaño de la zona</string>
     <string name="action_next">Siguiente</string>
+    <string name="planner_reset_confirm_title">¿Restablecer la ruta?</string>
+    <string name="planner_reset_confirm_text">Se borrarán las etapas y la ruta calculada.</string>
 </resources>

@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">calculada offline</string>
     <string name="offline_bbox_adjust">Ajuste o mapa e redimensione a zona</string>
     <string name="action_next">Seguinte</string>
+    <string name="planner_reset_confirm_title">Repor a rota?</string>
+    <string name="planner_reset_confirm_text">As etapas e a rota calculada serão apagadas.</string>
 </resources>

@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">computed offline</string>
     <string name="offline_bbox_adjust">Adjust the map and resize the area</string>
     <string name="action_next">Next</string>
+    <string name="planner_reset_confirm_title">Reset the route?</string>
+    <string name="planner_reset_confirm_text">The stops and the computed route will be cleared.</string>
 </resources>

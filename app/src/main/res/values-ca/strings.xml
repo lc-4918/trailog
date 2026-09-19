@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">calculada sense connexió</string>
     <string name="offline_bbox_adjust">Ajusteu el mapa i canvieu la mida de la zona</string>
     <string name="action_next">Següent</string>
+    <string name="planner_reset_confirm_title">Voleu restablir la ruta?</string>
+    <string name="planner_reset_confirm_text">S\'esborraran les etapes i la ruta calculada.</string>
 </resources>

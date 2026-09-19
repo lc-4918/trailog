@@ -449,7 +449,10 @@ class MainScreenUiTest {
         ouvreLeCalcul()
         compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
 
+        // La corbeille, puis la confirmation : effacer ce qu'on a compose se demande deux fois.
         compose.onNodeWithContentDescription(libelle(R.string.planner_reset)).performClick()
+        attend { texte(R.string.planner_reset_confirm_title) }
+        compose.onNodeWithText(libelle(R.string.planner_reset)).performClick()
         attend { !texteBrut("Mire") }
         assertTrue("la bande est toujours deployee", texte(R.string.planner_end))
     }

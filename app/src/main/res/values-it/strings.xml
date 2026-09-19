@@ -645,4 +645,6 @@
     <string name="planner_computed_offline">calcolato offline</string>
     <string name="offline_bbox_adjust">Regola la mappa e ridimensiona la zona</string>
     <string name="action_next">Avanti</string>
+    <string name="planner_reset_confirm_title">Reimpostare il percorso?</string>
+    <string name="planner_reset_confirm_text">Le tappe e il percorso calcolato saranno cancellati.</string>
 </resources>
