@@ -664,7 +664,10 @@ class LocationService : Service() {
                 if (fix.accuracyM > AutoFollow.ON_TRACK_M) return@collect
                 val candidates = listOfNotNull(FollowCatalog.route.value) + candidatesNear(fix.lat, fix.lon)
                 if (TrackWatch.detect(fix.lat, fix.lon, candidates, seuil, SystemClock.elapsedRealtime())) {
-                    FixLog.write(this@LocationService) { "trace accrochee \"${TrackWatch.followed.value?.layerName}\"" }
+                    FixLog.write(this@LocationService) {
+                        "trace accrochee \"${TrackWatch.followed.value?.layerName}\" sens=${TrackWatch.direction.value} " +
+                            "km=${TrackWatch.alongM.value?.toInt()}m"
+                    }
                 }
                 return@collect
             }
@@ -672,7 +675,19 @@ class LocationService : Service() {
             // trace (cf. FollowProgressMath), et dans quel sens on la parcourt.
             val projete = TrackMeasure.project(suivie.samples, fix.lon, fix.lat) ?: return@collect
             val away = projete.awayM
-            when (TrackWatch.step(away, seuil, projete.alongM, fix.accuracyM.toDouble())) {
+            // Le sens de parcours AVANT la position : s'il change, c'est elle qui l'a retourne, et tout
+            // le restant de la trace bascule avec lui (cf. FollowProgressMath). Le journal doit donc dire
+            // laquelle, d'ou elle venait, et ce qu'elle valait.
+            val sensAvant = TrackWatch.direction.value
+            val kmAvant = TrackWatch.alongM.value
+            val etape = TrackWatch.step(away, seuil, projete.alongM, fix.accuracyM.toDouble())
+            if (TrackWatch.direction.value != sensAvant) {
+                FixLog.write(this@LocationService) {
+                    "SENS $sensAvant -> ${TrackWatch.direction.value} sur ${fix.provider} prec=${fix.accuracyM.toInt()}m " +
+                        "(km ${kmAvant?.toInt()}m -> ${projete.alongM.toInt()}m)"
+                }
+            }
+            when (etape) {
                 TrackWatch.Step.Leave -> {
                     FixLog.write(this@LocationService) { "trace lachee a ${away.toInt()}m (seuil ${seuil.toInt()}m)" }
                     TrackWatch.stop(); notice.value = null; return@collect

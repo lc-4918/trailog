@@ -138,4 +138,13 @@ class LocationHubTest {
         LocationHub.publish(mesuree)
         assertEquals(42_000L, requireNotNull(LocationHub.fix.value).elapsedAtMs)
     }
+
+    /**
+     * Et le nom de celui qui l'a rendue : le suivi ecoute plusieurs fournisseurs, et ce qu'on conclut
+     * d'une position - jusqu'au sens dans lequel on parcourt une trace - depend de sa provenance.
+     */
+    @Test fun `chaque position porte son fournisseur`() {
+        LocationHub.publish(Location("network").apply { latitude = 45.18; longitude = 5.72 })
+        assertEquals("network", requireNotNull(LocationHub.fix.value).provider)
+    }
 }

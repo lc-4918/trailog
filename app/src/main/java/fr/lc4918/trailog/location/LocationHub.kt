@@ -47,6 +47,8 @@ object LocationHub {
         val receivedAtMs: Long,
         /** Instant MONOTONE de la mesure (cf. [timeMs]). Par defaut celui de la reception, faute de mieux. */
         val elapsedAtMs: Long = receivedAtMs,
+        /** Qui l'a rendue : "gps", "network". Le suivi ecoute les deux (cf. `LocationService.subscribe`). */
+        val provider: String = "",
         /** Incertitude sur la vitesse (m/s), quand le capteur la donne : une vitesse plus petite qu'elle
          *  n'est que du bruit (cf. DashboardMath.speed). */
         val speedAccuracyMps: Float? = null,
@@ -108,6 +110,7 @@ object LocationHub {
             // repondent ensemble se departagent dessus (cf. FixPicker), et une salve rattrapee au reveil
             // garde l'espacement de ses mesures plutot que celui de sa livraison (cf. TripStats).
             elapsedAtMs = loc.elapsedRealtimeNanos / 1_000_000L,
+            provider = loc.provider ?: "",
             // Temps depuis le demarrage de l'appareil, et non heure murale : c'est l'AGE de la mesure qui
             // dira si le repere ment encore, et une remise a l'heure du reseau ne doit pas le rajeunir.
             receivedAtMs = SystemClock.elapsedRealtime(),
