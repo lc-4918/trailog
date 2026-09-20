@@ -166,13 +166,17 @@ import kotlinx.coroutines.launch
     if (cur.offTrackAlertEnabled) OffTrackAlertSettings(cur, vm)
 
     GroupTitle(stringResource(R.string.settings_group_pois))
-    SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
-    SettingsCard {
-        StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
-            vm.save(cur.copy(markerSize = it))
+    // La taille des marqueurs : reglage fin, mode expert seulement. Celle par defaut convient a qui ne se
+    // pose pas la question, et la rubrique des infobulles suit juste apres.
+    if (cur.expertMode) {
+        SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
+        SettingsCard {
+            StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
+                vm.save(cur.copy(markerSize = it))
+            }
         }
     }
-    SectionTitle(stringResource(R.string.settings_section_bubbles))
+    SectionTitle(stringResource(R.string.settings_section_bubbles), tight = !cur.expertMode)
     SettingsCard {
         StepperLine(stringResource(R.string.settings_font_size), cur.bubbleFont, 7, 28,
             bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
@@ -262,9 +266,10 @@ import kotlinx.coroutines.launch
             },
         )
         RowDivider()
-        SwitchLine(stringResource(R.string.settings_sw_off_track_sound), cur.offTrackAlertSound) {
-            vm.save(cur.copy(offTrackAlertSound = it))
-        }
+        SwitchLine(
+            stringResource(R.string.settings_sw_off_track_sound), cur.offTrackAlertSound,
+            info = stringResource(R.string.settings_off_track_hint),
+        ) { vm.save(cur.copy(offTrackAlertSound = it)) }
         if (cur.offTrackAlertSound) {
             RowDivider()
             SetRow(
@@ -274,7 +279,6 @@ import kotlinx.coroutines.launch
                 ValueText(soundLabel ?: defaultSoundLabel)
             }
         }
-        Hint(stringResource(R.string.settings_off_track_hint))
     }
 }
 

@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Cuadrícula</string>
     <string name="settings_profile_color_by_slope">Colorear el área según la pendiente</string>
     <string name="settings_profile_slope_legend">Leyenda de pendientes</string>
-    <string name="settings_section_font_sizes">Tamaños de fuente (sp)</string>
+    <string name="settings_section_font_sizes">Estilos</string>
     <string name="font_axes">Ejes</string>
     <string name="font_title">Título</string>
     <string name="font_title_bar_info">Info (barra de título)</string>

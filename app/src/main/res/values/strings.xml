@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Grille</string>
     <string name="settings_profile_color_by_slope">Colorer l\'aire par pente</string>
     <string name="settings_profile_slope_legend">Légende des pentes</string>
-    <string name="settings_section_font_sizes">Tailles de police (sp)</string>
+    <string name="settings_section_font_sizes">Styles</string>
     <string name="font_axes">Axes</string>
     <string name="font_title">Titre</string>
     <string name="font_title_bar_info">Infos (barre de titre)</string>

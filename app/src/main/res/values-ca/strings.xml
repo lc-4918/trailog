@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Quadrícula</string>
     <string name="settings_profile_color_by_slope">Acoloreix l\'àrea segons el pendent</string>
     <string name="settings_profile_slope_legend">Llegenda de pendents</string>
-    <string name="settings_section_font_sizes">Mides de lletra (sp)</string>
+    <string name="settings_section_font_sizes">Estils</string>
     <string name="font_axes">Eixos</string>
     <string name="font_title">Títol</string>
     <string name="font_title_bar_info">Info (barra de títol)</string>

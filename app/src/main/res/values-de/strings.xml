@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Raster</string>
     <string name="settings_profile_color_by_slope">Fläche nach Steigung einfärben</string>
     <string name="settings_profile_slope_legend">Steigungslegende</string>
-    <string name="settings_section_font_sizes">Schriftgrößen (sp)</string>
+    <string name="settings_section_font_sizes">Stile</string>
     <string name="font_axes">Achsen</string>
     <string name="font_title">Titel</string>
     <string name="font_title_bar_info">Infos (Titelleiste)</string>

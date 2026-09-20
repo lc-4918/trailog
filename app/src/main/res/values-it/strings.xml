@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Griglia</string>
     <string name="settings_profile_color_by_slope">Colora l\'area in base alla pendenza</string>
     <string name="settings_profile_slope_legend">Legenda pendenze</string>
-    <string name="settings_section_font_sizes">Dimensioni carattere (sp)</string>
+    <string name="settings_section_font_sizes">Stili</string>
     <string name="font_axes">Assi</string>
     <string name="font_title">Titolo</string>
     <string name="font_title_bar_info">Info (barra del titolo)</string>

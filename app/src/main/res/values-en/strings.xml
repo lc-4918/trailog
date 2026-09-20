@@ -255,7 +255,7 @@
     <string name="settings_profile_grid">Grid</string>
     <string name="settings_profile_color_by_slope">Color area by slope</string>
     <string name="settings_profile_slope_legend">Slope legend</string>
-    <string name="settings_section_font_sizes">Font sizes (sp)</string>
+    <string name="settings_section_font_sizes">Styles</string>
     <string name="font_axes">Axes</string>
     <string name="font_title">Title</string>
     <string name="font_title_bar_info">Info (title bar)</string>
