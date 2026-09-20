@@ -399,10 +399,17 @@ import kotlinx.coroutines.launch
     SettingsCard {
         // Un interrupteur par info, comme les champs du tableau de bord : on en allume autant qu'on veut,
         // et les puces le disaient mal (cf. InfoSwitchRows).
+        // Les noms ENTIERS, ceux des bulles du profil, et non les abreviations des colonnes : "D+" tient
+        // dans une colonne de graphe, pas dans une liste de reglages ou rien ne presse.
         InfoSwitchRows(
-            listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent),
-                "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration),
-                "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
+            listOf(
+                "dist" to stringResource(R.string.info_name_distance),
+                "asc" to stringResource(R.string.info_name_ascent),
+                "desc" to stringResource(R.string.info_name_descent),
+                "dur" to stringResource(R.string.info_name_duration),
+                "min" to stringResource(R.string.info_name_alt_min),
+                "max" to stringResource(R.string.info_name_alt_max),
+            ),
             cur.titleInfos,
         ) { vm.save(cur.copy(titleInfos = it)) }
     }
