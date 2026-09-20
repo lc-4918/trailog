@@ -251,7 +251,7 @@ object TrackWatch {
      * [OffTrack.alerting]). Zero par defaut - c'est ce que valait le suivi quand il ne vivait que du GPS.
      */
     fun step(away: Double, thresholdM: Double, alongM: Double, accuracyM: Double = 0.0): Step {
-        _direction.value = AutoFollow.direction(_direction.value, _alongM.value, alongM)
+        _direction.value = AutoFollow.direction(_direction.value, _alongM.value, alongM, accuracyM)
         if (_armed.value) return if (update(away, thresholdM, alongM, accuracyM)) Step.Alert else Step.Stay
         _awayM.value = away
         _alongM.value = alongM

@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**1200 tests, 115 fichiers**, tous verts.
+**1202 tests, 115 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 

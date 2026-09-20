@@ -102,13 +102,22 @@ object AutoFollow {
     /**
      * Le sens de parcours, tenu a jour : il ne change que sur un deplacement franc le long de la trace, et
      * garde sa valeur sinon - a l'arret, le kilometrage tremble dans les deux sens.
+     *
+     * **[accuracyM] eleve le seuil a la hauteur de ce que la position sait.** Le sens commande tout le
+     * restant de la trace - a l'envers, ce qui reste est ce qu'on a deja fait, et les deniveles
+     * s'echangent (cf. `FollowProgressMath`) : cinq metres de recul suffisent a le retourner, et une
+     * position a cent metres pres en invente bien davantage. Depuis que le suivi ecoute aussi le
+     * fournisseur reseau (cf. `LocationService.subscribe`), de telles positions arrivent - rarement,
+     * seulement quand le GPS s'est tu assez longtemps pour leur ceder la main, mais elles arrivent.
+     * Un deplacement plus petit que l'incertitude de la mesure ne dit donc rien du sens.
      */
-    fun direction(current: Int, previousAlongM: Double?, alongM: Double): Int {
+    fun direction(current: Int, previousAlongM: Double?, alongM: Double, accuracyM: Double = 0.0): Int {
         val prev = previousAlongM ?: return current
+        val franc = maxOf(DIRECTION_MIN_M, accuracyM)
         val d = alongM - prev
         return when {
-            d >= DIRECTION_MIN_M -> 1
-            d <= -DIRECTION_MIN_M -> -1
+            d >= franc -> 1
+            d <= -franc -> -1
             else -> current
         }
     }

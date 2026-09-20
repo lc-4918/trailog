@@ -101,6 +101,17 @@ class AutoFollowTest {
         assertEquals(1, AutoFollow.direction(1, null, 50.0))
     }
 
+    /**
+     * Le sens commande tout le restant de la trace : a l'envers, ce qui reste est ce qu'on a deja fait,
+     * et les deniveles s'echangent. Une position a cent metres pres ne peut donc pas le retourner - elle
+     * invente un recul qu'elle n'est pas capable de mesurer.
+     */
+    @Test fun `une position imprecise ne retourne pas le sens`() {
+        assertEquals(1, AutoFollow.direction(1, 100.0, 20.0, accuracyM = 120.0))
+        assertEquals("elle ne le confirme pas davantage", -1, AutoFollow.direction(-1, 100.0, 180.0, accuracyM = 120.0))
+        assertEquals("un recul plus grand que l'incertitude, si", -1, AutoFollow.direction(1, 300.0, 100.0, accuracyM = 120.0))
+    }
+
     /** Cloche eteinte : une mesure aberrante ne fait pas lacher la trace, deux de suite si. */
     @Test fun `la trace se lache apres deux positions hors seuil`() {
         val (un, lache1) = AutoFollow.leave(0, 150.0, 100.0)
