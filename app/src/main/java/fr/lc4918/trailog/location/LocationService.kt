@@ -29,6 +29,7 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.domain.geo.AutoFollow
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.domain.geo.OffTrack
 import fr.lc4918.trailog.domain.geo.RestDetector
 import fr.lc4918.trailog.domain.geo.TrackMeasure
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +38,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
 /**
@@ -149,6 +154,7 @@ class LocationService : Service() {
         watchLayers()
         watchTrip()
         watchTrack()
+        watchAlertRing()
         watchNotice()
     }
 
@@ -159,6 +165,12 @@ class LocationService : Service() {
             stopReason = LocationHub.StopReason.USER
             stopSelf()
             return START_NOT_STICKY
+        }
+        if (intent?.action == ACTION_SILENCE_ALERT) {
+            // "Taire", depuis la notification de l'ecart : le meme geste que la banniere de la carte, et le
+            // meme effet - la sonnerie s'arrete, le suivi continue (cf. [TrackWatch.silence]).
+            TrackWatch.silence()
+            return START_STICKY
         }
         // L'autorisation AVANT tout le reste : depuis Android 14, se declarer en premier plan de type
         // "location" sans elle leve une SecurityException - et le systeme peut nous relancer (START_STICKY)
@@ -275,6 +287,10 @@ class LocationService : Service() {
     }
 
     override fun onDestroy() {
+        // La sonnerie ne survit pas au service : elle boucle, et une boucle sans personne pour la couper
+        // sonnerait jusqu'a la batterie vide.
+        AlertSound.stop()
+        cancelOffTrackAlert()
         runCatching { locationManager.removeUpdates(listener) }
         runCatching { unregisterReceiver(providerReceiver) }
         subscribed = false
@@ -395,10 +411,9 @@ class LocationService : Service() {
             val away = projete.awayM
             when (TrackWatch.step(away, seuil, projete.alongM)) {
                 TrackWatch.Step.Leave -> { TrackWatch.stop(); notice.value = null; return@collect }
-                TrackWatch.Step.Alert -> if (reglages?.offTrackAlertSound == true) {
-                    playAlertSound(this@LocationService, reglages.offTrackAlertSoundUri)
-                }
-                TrackWatch.Step.Stay -> Unit
+                // L'entree en alerte ne joue plus le son elle-meme : la sonnerie boucle tant que l'ecart
+                // dure, et c'est donc l'ETAT de l'alerte qui la commande (cf. [watchAlertRing]).
+                TrackWatch.Step.Alert, TrackWatch.Step.Stay -> Unit
             }
             notice.value = getString(
                 R.string.location_notice_following,
@@ -493,6 +508,125 @@ class LocationService : Service() {
         }
     }
 
+    /**
+     * La sonnerie de l'ecart et la notification qui l'accompagne, commandees par l'ETAT de l'alerte.
+     *
+     * **Pourquoi un etat et non un evenement.** Le son se jouait une fois, a l'entree en alerte, et une
+     * seule condition suffisait donc a le declencher. Il boucle desormais jusqu'a ce qu'on reponde : ce qui
+     * l'arrete compte alors autant que ce qui le lance - un tap sur la banniere ou sur la notification, un
+     * retour sur la trace, la cloche desarmee, le reglage eteint en pleine alerte. Ces quatre sorties se
+     * lisent dans les etats que la veille publie, pas dans l'evenement qui a ouvert l'alerte.
+     *
+     * **Le reglage du son vient du depot et non du champ [settings]** : eteindre "Emettre un son" alors que
+     * la sonnerie sonne doit la couper, et un champ relu ne reveille personne.
+     *
+     * La notification, elle, parait des que l'alerte parait - son ou pas : c'est elle qui porte l'alerte sur
+     * l'ecran de verrouillage et dans la barre de statut, la ou on la voit sans deverrouiller.
+     */
+    private fun watchAlertRing() = scope.launch {
+        val son = (application as TrailogApp).repository.settingsFlow
+            .map { (it?.offTrackAlertSound ?: false) to (it?.offTrackAlertSoundUri ?: "") }
+            .distinctUntilChanged()
+            // Les reglages arrivent de la base un instant apres le service : sans ce premier couple, rien
+            // ne serait combine tant qu'ils ne sont pas lus, et une alerte de la premiere seconde se
+            // tairait. "Pas de son" est le bon repli - le son est un reglage qu'on allume.
+            .onStart { emit(false to "") }
+        combine(TrackWatch.alerting, TrackWatch.silenced, TrackWatch.armed, son) { alerting, silenced, armed, (actif, uri) ->
+            Ring(
+                notifier = OffTrack.announcing(armed, alerting, silenced),
+                sonner = OffTrack.ringing(actif, armed, alerting, silenced),
+                uri = uri,
+            )
+        }.distinctUntilChanged().collect { etat ->
+            if (etat.notifier) postOffTrackAlert() else cancelOffTrackAlert()
+            if (etat.sonner) AlertSound.start(this@LocationService, etat.uri) else AlertSound.stop()
+        }
+    }
+
+    /** Ce que l'alerte demande a cet instant : la notification, la sonnerie, et le son a jouer. */
+    private data class Ring(val notifier: Boolean, val sonner: Boolean, val uri: String)
+
+    /**
+     * L'ecart a la trace, dit la ou on le lira sans rien deverrouiller : l'ecran de verrouillage et la barre
+     * de statut.
+     *
+     * **Pourquoi elle est necessaire.** La banniere de la carte ne se voit que carte ouverte et ecran
+     * allume, ce qui est justement ce qui n'arrive pas quand l'alerte sert : le telephone est en poche.
+     *
+     * **Muette, alors qu'elle sonne.** Le son ne vient pas d'elle mais de [AlertSound], parce qu'une
+     * notification ne sait pas boucler : son canal est donc cree sans sonnerie, et la vibration reste - elle
+     * dit la meme chose au poignet.
+     *
+     * **Intention plein ecran** : c'est le seul moyen qu'Android offre d'allumer l'ecran sur une alerte et
+     * d'y poser l'application par-dessus le verrouillage. Non accordee (Android 14+), elle retombe d'
+     * elle-meme en banniere par-dessus l'ecran en cours, ce qui reste le comportement voulu.
+     */
+    private fun postOffTrackAlert() {
+        ensureOffTrackChannel()
+        val suivie = TrackWatch.followed.value ?: return
+        val reglages = settings
+        val ecart = TrackWatch.awayM.value ?: (reglages?.offTrackAlertDistanceM ?: DEFAULT_ALERT_M).toDouble()
+        val texte = getString(
+            R.string.alert_off_track_banner,
+            Format.shortDistance(ecart, reglages?.units == "imperial"),
+            suivie.layerName,
+        )
+        val ouvrir = PendingIntent.getActivity(
+            this, 3,
+            Intent(this, MainActivity::class.java).apply {
+                action = ACTION_SHOW_ALERT
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val taire = PendingIntent.getService(
+            this, 4, Intent(this, LocationService::class.java).setAction(ACTION_SILENCE_ALERT),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notif = NotificationCompat.Builder(this, OFF_TRACK_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_location)
+            .setContentTitle(getString(R.string.alert_off_track_title))
+            .setContentText(texte)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(texte))
+            .setContentIntent(ouvrir)
+            .addAction(0, getString(R.string.alert_off_track_silence), taire)
+            .setFullScreenIntent(ouvrir, true)
+            .setAutoCancel(true)
+            // Elle ne se balaie pas : une alerte a laquelle on n'a pas repondu sonne toujours, et la faire
+            // disparaitre d'un geste qui ne l'arrete pas laisserait un telephone qui sonne sans raison lisible.
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
+            // Lisible verrouille : c'est tout son objet, et elle ne dit rien de personnel - un nom de trace
+            // et une distance.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        runCatching { nm.notify(OFF_TRACK_NOTIF_ID, notif) }
+    }
+
+    private fun cancelOffTrackAlert() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        runCatching { nm.cancel(OFF_TRACK_NOTIF_ID) }
+    }
+
+    /** Canal de l'ecart : importance haute pour paraitre par-dessus, et MUET - la sonnerie vient de nous. */
+    private fun ensureOffTrackChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        if (nm.getNotificationChannel(OFF_TRACK_CHANNEL_ID) != null) return
+        nm.createNotificationChannel(
+            NotificationChannel(
+                OFF_TRACK_CHANNEL_ID, getString(R.string.location_off_track_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                setSound(null, null)
+                enableVibration(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            },
+        )
+    }
+
     // ---------- notification ----------
 
     private fun notification(texte: String?): Notification {
@@ -537,8 +671,19 @@ class LocationService : Service() {
         private const val ALERT_CHANNEL_ID = "suivi-position-arrete"
         private const val NOTIF_ID = 4918
         private const val ALERT_NOTIF_ID = 4919
+        private const val OFF_TRACK_CHANNEL_ID = "ecart-trace"
+        private const val OFF_TRACK_NOTIF_ID = 4920
         private const val WAKE_LOCK_TAG = "trailog:suivi-position"
         const val ACTION_STOP = "fr.lc4918.trailog.STOP_LOCATION"
+
+        /** "Taire" sur la notification de l'ecart : la sonnerie s'arrete, le suivi continue. */
+        const val ACTION_SILENCE_ALERT = "fr.lc4918.trailog.SILENCE_OFF_TRACK_ALERT"
+
+        /**
+         * La notification de l'ecart, tapee : l'application s'ouvre sur la carte, et l'alerte se tait -
+         * on a repondu (cf. MainActivity).
+         */
+        const val ACTION_SHOW_ALERT = "fr.lc4918.trailog.SHOW_OFF_TRACK_ALERT"
 
         /**
          * Une position toutes les deux secondes, SANS distance minimale.

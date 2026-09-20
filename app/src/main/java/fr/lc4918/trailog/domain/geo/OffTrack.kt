@@ -49,4 +49,28 @@ object OffTrack {
         awayM <= thresholdM * ReturnRatio -> false
         else -> current
     }
+
+    /**
+     * L'alerte s'annonce : la cloche est armee, l'ecart dure, et personne n'a encore repondu.
+     *
+     * Ce que l'annonce vaut se dit partout ou l'alerte se montre - la banniere de la carte, la notification
+     * de l'ecran de verrouillage - et vaut sans le son : couper le son ne supprime pas l'alerte, il la rend
+     * muette.
+     */
+    fun announcing(armed: Boolean, alerting: Boolean, silenced: Boolean): Boolean =
+        armed && alerting && !silenced
+
+    /**
+     * La sonnerie doit sonner : l'alerte s'annonce ([announcing]) ET le son est demande dans les reglages.
+     *
+     * **Quatre conditions et non une**, parce que la sonnerie ne s'arrete plus d'elle-meme depuis qu'elle
+     * boucle : elle sonnait une fois a l'entree en alerte, et un seul evenement suffisait a la declencher.
+     * Ce qui la coupe est desormais aussi important que ce qui la lance - un tap sur la banniere ou sur la
+     * notification ([silenced]), un retour sur la trace ([alerting] retombe), la cloche desarmee, le
+     * reglage eteint en pleine alerte.
+     *
+     * Ici plutot que dans le service : c'est une regle, pas un branchement audio, et elle se verifie.
+     */
+    fun ringing(soundOn: Boolean, armed: Boolean, alerting: Boolean, silenced: Boolean): Boolean =
+        soundOn && announcing(armed, alerting, silenced)
 }

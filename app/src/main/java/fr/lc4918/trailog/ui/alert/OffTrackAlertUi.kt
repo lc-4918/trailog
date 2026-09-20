@@ -38,9 +38,13 @@ import fr.lc4918.trailog.location.TrackWatch
 private val AlertBarBackground = Color(0xFFB3261E).copy(alpha = 0.94f)
 
 /**
- * Banniere du bas : on s'est ecarte de la trace suivie, de tant, et voila laquelle.
+ * Banniere du haut : on s'est ecarte de la trace suivie, de tant, et voila laquelle.
  *
- * La croix ne rend pas la marche a la trace - elle tait CET ecart-la (cf. [TrackWatch.silenced]).
+ * **Toute la banniere repond**, et non sa seule croix : la sonnerie boucle jusqu'a ce qu'on reponde, et
+ * viser une cible de 20 dp d'un pouce gante, en marchant, pour faire taire un telephone qui sonne, est
+ * exactement le geste qu'il ne faut pas demander la. La croix reste, comme signe de ce que le tap fera.
+ *
+ * Repondre ne rend pas la marche a la trace - cela tait CET ecart-la (cf. [TrackWatch.silenced]).
  * L'alerte, elle, se desarme depuis la cloche du tableau de bord (cf. [Dashboard]).
  */
 @Composable
@@ -53,7 +57,9 @@ fun OffTrackAlertBar(
 ) {
     Box(
         modifier.fillMaxWidth().padding(8.dp)
-            .background(AlertBarBackground, RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(AlertBarBackground)
+            .clickable(onClick = onClose)
             .padding(10.dp),
     ) {
         Row(
@@ -68,8 +74,10 @@ fun OffTrackAlertBar(
                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
             )
         }
+        // La croix n'a plus de clic a elle : c'est la banniere entiere qui repond, et deux surfaces
+        // cliquables imbriquees pour le meme effet ne feraient que rendre le tap incertain.
         Box(
-            Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape).clickable(onClick = onClose),
+            Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(16.dp), tint = Color.White)

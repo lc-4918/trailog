@@ -32,6 +32,9 @@
          qu'on demande donc en meme temps que la localisation. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Alerte d'eloignement : allumer l'ecran et poser la carte par-dessus le verrouillage quand on
+         quitte la trace suivie, telephone en poche (cf. LocationService.postOffTrackAlert). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:name=".TrailogApp"

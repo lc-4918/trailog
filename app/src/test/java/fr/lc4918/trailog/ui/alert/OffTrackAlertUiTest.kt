@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
  *
  * Ce que la mesure decide est teste ailleurs, sans Android (cf. `TrackWatchTest`). Ce qui se verifie ici
  * est l'autre moitie, celle qu'aucun test de domaine n'atteint : que la distance et le nom de la trace
- * arrivent bien sous les yeux, et que sa croix repond.
+ * arrivent bien sous les yeux, et que la banniere entiere repond - pas seulement sa croix.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "fr")
@@ -48,6 +48,18 @@ class OffTrackAlertUiTest {
         compose.onNodeWithText(
             ctx.getString(R.string.alert_off_track_banner, "120 m", "GR 9"),
         ).assertDoesNotExist()
+    }
+
+    /**
+     * **Toute la banniere repond, pas seulement sa croix.** La sonnerie boucle jusqu'a ce qu'on reponde
+     * (cf. AlertSound), et viser une croix de 20 dp en marchant pour faire taire un telephone qui sonne est
+     * le geste qu'il ne faut pas demander la : le tap tombe a cote, et le telephone sonne toujours.
+     */
+    @Test fun `un tap n'importe ou sur la banniere repond`() {
+        var tue = false
+        compose.setContent { OffTrackAlertBar("GR 9", 120.0, false, onClose = { tue = true }) }
+        compose.onNodeWithText(ctx.getString(R.string.alert_off_track_banner, "120 m", "GR 9")).performClick()
+        assertTrue(tue)
     }
 
     @Test fun `la croix de la banniere repond`() {

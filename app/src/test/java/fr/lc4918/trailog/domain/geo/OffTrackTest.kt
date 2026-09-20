@@ -80,4 +80,33 @@ class OffTrackTest {
         assertEquals("une seule bascule sur toute la serie", 1, bascules)
         assertTrue(state)
     }
+    // ---------- ce qui s'annonce, ce qui sonne ----------
+
+    /**
+     * La sonnerie boucle jusqu'a ce qu'on reponde : ce qui la coupe compte donc autant que ce qui la lance,
+     * et chacune des quatre sorties se verifie ici.
+     */
+    @Test fun `l'alerte s'annonce et sonne quand tout y est`() {
+        assertTrue(OffTrack.announcing(armed = true, alerting = true, silenced = false))
+        assertTrue(OffTrack.ringing(soundOn = true, armed = true, alerting = true, silenced = false))
+    }
+
+    @Test fun `repondre tait la sonnerie sans desarmer l'alerte`() {
+        assertFalse(OffTrack.announcing(armed = true, alerting = true, silenced = true))
+        assertFalse(OffTrack.ringing(soundOn = true, armed = true, alerting = true, silenced = true))
+    }
+
+    @Test fun `revenir sur la trace tait la sonnerie`() {
+        assertFalse(OffTrack.ringing(soundOn = true, armed = true, alerting = false, silenced = false))
+    }
+
+    @Test fun `la cloche desarmee ne sonne pas`() {
+        assertFalse(OffTrack.ringing(soundOn = true, armed = false, alerting = true, silenced = false))
+    }
+
+    /** Le son coupe ne supprime pas l'alerte : elle s'annonce toujours, muette. */
+    @Test fun `sans son, l'alerte s'annonce quand meme`() {
+        assertFalse("elle ne sonne pas", OffTrack.ringing(soundOn = false, armed = true, alerting = true, silenced = false))
+        assertTrue("elle s'annonce", OffTrack.announcing(armed = true, alerting = true, silenced = false))
+    }
 }

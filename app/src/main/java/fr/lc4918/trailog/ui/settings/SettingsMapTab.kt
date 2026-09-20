@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +51,7 @@ import fr.lc4918.trailog.data.db.OffTrackAlertStepM
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.BubblePosition
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
+import fr.lc4918.trailog.location.AlertWakeScreen
 import fr.lc4918.trailog.location.alertSoundTitle
 import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import kotlinx.coroutines.launch
@@ -232,7 +235,7 @@ import kotlinx.coroutines.launch
 }
 
 /**
- * Alerte d'eloignement : l'ecart qui la declenche, et le son qui l'accompagne. Elle se commande depuis
+ * Alerte d'eloignement : l'ecart qui la declenche, et la sonnerie qui l'accompagne. Elle se commande depuis
  * la cloche du tableau de bord, qui ne parait que sur une trace suivie.
  *
  * Le son ne montre son choix que s'il est actif : une ligne de reglage qui ne sert a rien vaut mieux
@@ -240,7 +243,8 @@ import kotlinx.coroutines.launch
  */
 @Composable private fun OffTrackAlertSettings(cur: SettingsEntity, vm: SettingsViewModel) {
     val ctx = LocalContext.current
-    // Le selecteur de sonnerie du systeme : c'est lui qui liste les notifications du telephone et les fait
+    var demanderReveil by remember { mutableStateOf(false) }
+    // Le selecteur de sonnerie du systeme : c'est lui qui liste les sonneries du telephone et les fait
     // ecouter. En livrer un dans l'application reviendrait a redessiner un ecran que l'utilisateur connait.
     val soundPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         if (res.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
@@ -269,7 +273,12 @@ import kotlinx.coroutines.launch
         SwitchLine(
             stringResource(R.string.settings_sw_off_track_sound), cur.offTrackAlertSound,
             info = stringResource(R.string.settings_off_track_hint),
-        ) { vm.save(cur.copy(offTrackAlertSound = it)) }
+        ) { on ->
+            vm.save(cur.copy(offTrackAlertSound = on))
+            // Le son s'allume : c'est le moment de dire que l'ecran, lui, ne s'allumera pas sans une
+            // autorisation qu'Android ne donne plus d'office (cf. [AlertWakeScreen]).
+            if (AlertWakeScreen.shouldAsk(on, AlertWakeScreen.granted(ctx))) demanderReveil = true
+        }
         if (cur.offTrackAlertSound) {
             RowDivider()
             SetRow(
@@ -280,17 +289,47 @@ import kotlinx.coroutines.launch
             }
         }
     }
+    /*
+     * "Pour que l'ecran s'allume, il faut l'autoriser."
+     *
+     * Le son reste allume quoi qu'on reponde : l'autorisation ne conditionne pas la sonnerie mais le seul
+     * reveil de l'ecran, et refuser doit laisser une alerte qui sonne plutot qu'un reglage annule dans le
+     * dos de qui vient de l'allumer (cf. AlertWakeScreen).
+     */
+    if (demanderReveil) {
+        AlertDialog(
+            onDismissRequest = { demanderReveil = false },
+            title = { Text(stringResource(R.string.settings_off_track_wake_title)) },
+            text = { Text(stringResource(R.string.settings_off_track_wake_text)) },
+            confirmButton = {
+                TextButton(onClick = { demanderReveil = false; AlertWakeScreen.openSettings(ctx) }) {
+                    Text(stringResource(R.string.settings_off_track_wake_open))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { demanderReveil = false }) {
+                    Text(stringResource(R.string.update_action_later))
+                }
+            },
+        )
+    }
 }
 
-/** Intention du selecteur de sonnerie, limite aux notifications, ouvert sur le son deja retenu. */
+/**
+ * Intention du selecteur de sonnerie, limite aux SONNERIES, ouvert sur le son deja retenu.
+ *
+ * Les sonneries et non les notifications : l'alerte sonne en boucle sur le flux sonnerie du telephone
+ * (cf. AlertSound), et un son de notification - une seconde, souvent discret - n'a pas ete concu pour cela.
+ * L'ecoute du selecteur passe alors par le meme curseur de volume que l'alerte, et dit donc vrai.
+ */
 private fun ringtonePickerIntent(ctx: android.content.Context, current: String): Intent =
     Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_RINGTONE)
         putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, ctx.getString(R.string.settings_label_off_track_sound))
         putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
         putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
         putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
-            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
         putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
             current.takeIf { it.isNotBlank() }?.toUri())
     }
