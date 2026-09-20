@@ -54,6 +54,14 @@ class MainDialogState {
     fun failed(@StringRes message: Int) { failure = message }
 
     /**
+     * Le meme refus, mais avec ce qu'il faut nommer : le fond de plan qui n'autorise pas le
+     * telechargement, par exemple. Un texte et non une ressource, puisqu'il est deja compose.
+     */
+    var failureText by mutableStateOf<String?>(null)
+
+    fun failedText(text: String) { failureText = text }
+
+    /**
      * L'editeur de proprietes du marqueur selectionne est ouvert.
      *
      * Il REMPLACE l'infobulle, qui s'efface le temps de l'edition : les deux montrent les memes champs,

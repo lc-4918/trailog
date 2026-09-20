@@ -655,7 +655,7 @@
     <string name="dash_set_eta">Temps restant estimé</string>
     <string name="settings_dashboard_off">Activez le bouton du tableau de bord dans Boutons et gestes, rubrique Position.</string>
     <string name="offline_config_title_track">Téléchargement de carte le long de la trace</string>
-    <string name="offline_config_track_hint">La carte est téléchargée de chaque côté de la trace, sur la largeur choisie.</string>
+    <string name="offline_config_track_hint">Télécharge le fond de plan courant de chaque côté de la trace, sur la largeur choisie.</string>
     <string name="offline_config_section_label">Portion de la trace</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Ce sont seulement les données régionales du moteur d\'itinéraire (BRouter), pour calculer un itinéraire sans réseau. Ni fonds de plan ni traces : la carte hors ligne se télécharge à part.</string>
@@ -669,4 +669,6 @@
     <string name="settings_label_vertical_scale_value">Échelle</string>
     <string name="settings_label_exaggeration">Exagération</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">Le fond de plan « %1$s » n\'autorise pas le téléchargement. Choisissez un fond en ligne : ni composite, ni MBTiles, ni OpenStreetMap.</string>
+    <string name="offline_download_area_info">Télécharge une ZONE RECTANGULAIRE du fond de plan actuellement affiché, que vous cadrez sur la carte. Certains fonds ne l\'autorisent pas : les composites, les fichiers MBTiles déjà sur le téléphone, et OpenStreetMap, dont les conditions d\'usage interdisent le téléchargement en masse.</string>
 </resources>

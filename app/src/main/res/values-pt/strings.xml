@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Tempo restante estimado</string>
     <string name="settings_dashboard_off">Ative o botão do painel em Botões e gestos, secção Posição.</string>
     <string name="offline_config_title_track">Transferência do mapa ao longo do trilho</string>
-    <string name="offline_config_track_hint">O mapa é transferido de cada lado do trilho, na largura escolhida.</string>
+    <string name="offline_config_track_hint">Transfere o mapa de fundo atual de cada lado do trilho, na largura escolhida.</string>
     <string name="offline_config_section_label">Parte do trilho</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">São apenas os dados regionais do motor de itinerários (BRouter), para calcular um itinerário sem rede. Nem mapas de fundo nem trilhos: o mapa offline transfere-se à parte.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Escala</string>
     <string name="settings_label_exaggeration">Exagero</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">O mapa de fundo «%1$s» não permite a transferência. Escolha um mapa online: nem composto, nem MBTiles, nem OpenStreetMap.</string>
+    <string name="offline_download_area_info">Transfere uma ÁREA RETANGULAR do mapa de fundo atualmente apresentado, que enquadra no mapa. Alguns mapas não o permitem: os compostos, os ficheiros MBTiles já no telemóvel e o OpenStreetMap, cujas condições de utilização proíbem a transferência em massa.</string>
 </resources>

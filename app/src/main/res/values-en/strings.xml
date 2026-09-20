@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Estimated time left</string>
     <string name="settings_dashboard_off">Turn on the dashboard button in Buttons and gestures, Position section.</string>
     <string name="offline_config_title_track">Map download along the track</string>
-    <string name="offline_config_track_hint">The map is downloaded on each side of the track, over the chosen width.</string>
+    <string name="offline_config_track_hint">Downloads the current basemap on each side of the track, over the chosen width.</string>
     <string name="offline_config_section_label">Part of the track</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">These are only the regional data of the route engine (BRouter), used to calculate a route without a network. Neither basemaps nor tracks: the offline map is downloaded separately.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Scale</string>
     <string name="settings_label_exaggeration">Exaggeration</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">The basemap \u0022%1$s\u0022 does not allow downloading. Choose an online basemap: neither composite, nor MBTiles, nor OpenStreetMap.</string>
+    <string name="offline_download_area_info">Downloads a RECTANGULAR AREA of the basemap currently displayed, which you frame on the map. Some basemaps do not allow it: composites, MBTiles files already on the phone, and OpenStreetMap, whose usage policy forbids bulk downloading.</string>
 </resources>

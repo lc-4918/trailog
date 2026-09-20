@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Tempo residuo stimato</string>
     <string name="settings_dashboard_off">Attiva il pulsante del cruscotto in Pulsanti e gesti, sezione Posizione.</string>
     <string name="offline_config_title_track">Download della mappa lungo la traccia</string>
-    <string name="offline_config_track_hint">La mappa viene scaricata su ogni lato della traccia, per la larghezza scelta.</string>
+    <string name="offline_config_track_hint">Scarica la mappa di base corrente su ogni lato della traccia, per la larghezza scelta.</string>
     <string name="offline_config_section_label">Parte della traccia</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Sono solo i dati regionali del motore di itinerario (BRouter), per calcolare un itinerario senza rete. Né mappe di base né tracce: la mappa offline si scarica a parte.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Scala</string>
     <string name="settings_label_exaggeration">Esagerazione</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">La mappa di base «%1$s» non consente il download. Scegli una mappa online: né composita, né MBTiles, né OpenStreetMap.</string>
+    <string name="offline_download_area_info">Scarica un\'AREA RETTANGOLARE della mappa di base attualmente visualizzata, che inquadri sulla mappa. Alcune mappe non lo consentono: le composite, i file MBTiles già sul telefono e OpenStreetMap, le cui condizioni d\'uso vietano il download di massa.</string>
 </resources>

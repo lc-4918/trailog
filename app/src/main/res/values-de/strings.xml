@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Geschätzte Restzeit</string>
     <string name="settings_dashboard_off">Schalten Sie die Dashboard-Schaltfläche unter Schaltflächen und Gesten, Abschnitt Position, ein.</string>
     <string name="offline_config_title_track">Kartendownload entlang der Spur</string>
-    <string name="offline_config_track_hint">Die Karte wird auf beiden Seiten der Spur in der gewählten Breite heruntergeladen.</string>
+    <string name="offline_config_track_hint">Lädt die aktuelle Hintergrundkarte auf beiden Seiten der Spur in der gewählten Breite herunter.</string>
     <string name="offline_config_section_label">Abschnitt der Spur</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Das sind nur die regionalen Daten der Routing-Engine (BRouter), um ohne Netz eine Route zu berechnen. Weder Hintergrundkarten noch Spuren: die Offline-Karte wird separat heruntergeladen.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Maßstab</string>
     <string name="settings_label_exaggeration">Überhöhung</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">Die Hintergrundkarte „%1$s“ erlaubt kein Herunterladen. Wählen Sie eine Online-Karte: weder Komposit, noch MBTiles, noch OpenStreetMap.</string>
+    <string name="offline_download_area_info">Lädt einen RECHTECKIGEN BEREICH der aktuell angezeigten Hintergrundkarte herunter, den Sie auf der Karte aufziehen. Manche Karten erlauben das nicht: Komposite, bereits auf dem Telefon liegende MBTiles-Dateien und OpenStreetMap, dessen Nutzungsbedingungen Massen-Downloads untersagen.</string>
 </resources>

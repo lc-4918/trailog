@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.ui.offline.basemapLabel
 import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
 import android.annotation.SuppressLint
 import android.os.SystemClock
@@ -149,6 +150,11 @@ fun MainScreen(
     // Le telechargement pour le hors-ligne n'est propose que pour un fond qui s'y prete (cf.
     // offlineDownloadAvailable) : le menu d'une trace n'offre "Telecharger la carte" qu'a cette condition.
     val offlineButtonVisible = offlineDownloadAvailable(settings.defaultBasemapId, providers)
+    // Ce qu'on repond quand le fond affiche ne se telecharge pas : on le NOMME, l'utilisateur en ayant
+    // souvent plusieurs et venant peut-etre d'en changer.
+    val nomFond = basemapLabel(settings.defaultBasemapId, providers, composites)
+    val refusTelechargement = if (nomFond.isBlank()) stringResource(R.string.offline_unavailable)
+        else stringResource(R.string.offline_unavailable_named, nomFond)
     // Une zone a telecharger, demandee depuis les reglages : le cadrage s'ouvre sur la carte, profil et
     // tableau de bord refermes (cf. OfflineFlowState.startDrawing).
     LaunchedEffect(downloadAreaRequest) {
@@ -814,9 +820,13 @@ fun MainScreen(
                     onImport = { importFlow.askFolder() },
                     // Le long d'une trace, depuis son menu : on part directement sur la configuration, la trace
                     // choisie - masquee ou non, sa geometrie se relit sur le disque.
-                    onDownloadMap = if (!offlineButtonVisible) null else ({ l ->
+                    // L'entree reste OFFERTE meme quand le fond ne se telecharge pas : elle disparaissait,
+                    // et l'on cherchait une fonction qu'on avait deja utilisee, sans savoir que le fond
+                    // choisi entre-temps l'interdisait. Elle le dit desormais, en nommant ce fond.
+                    onDownloadMap = ({ l ->
                         scope.launch { drawerState.close() }
-                        vm.trackPointsOf(l) { pts ->
+                        if (!offlineButtonVisible) dialogs.failedText(refusTelechargement)
+                        else vm.trackPointsOf(l) { pts ->
                             if (pts.isNotEmpty()) {
                                 offline.corridor = l to pts
                                 offline.configBbox = Bbox.of(

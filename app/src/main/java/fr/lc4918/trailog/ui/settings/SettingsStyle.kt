@@ -304,8 +304,11 @@ fun ColumnScopeMarker.SliderRow(
     onFraction: (Float) -> Unit, steps: Int = 0,
     /** Une explication, derriere un petit "i" a cote du libelle (cf. [InfoTip]) ; rien quand null. */
     info: String? = null,
+    /** L'air sous la piste. Resserre quand une mention suit immediatement - une attribution, par
+     *  exemple : l'ecart normal separerait deux choses qui n'en font qu'une. */
+    bottomPadding: Dp = 13.dp,
 ) {
-    Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = 13.dp)) {
+    Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = bottomPadding)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Text(label, fontSize = LabelSp.sp, color = settingsPalette.label, modifier = Modifier.weight(1f, fill = false))

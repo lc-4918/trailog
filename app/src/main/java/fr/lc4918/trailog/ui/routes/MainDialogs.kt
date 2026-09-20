@@ -446,6 +446,10 @@ internal fun MainDialogs(
         NoConnectionDialog(onDismiss = { dialogs.noConnection = false })
     }
 
+    dialogs.failureText?.let { texte ->
+        MapFailureDialog(texte, onDismiss = { dialogs.failureText = null })
+    }
+
     dialogs.failure?.let { message ->
         MapFailureDialog(stringResource(message), onDismiss = { dialogs.failure = null })
     }

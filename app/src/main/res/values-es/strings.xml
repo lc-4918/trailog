@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Tiempo restante estimado</string>
     <string name="settings_dashboard_off">Activa el botón del panel en Botones y gestos, sección Posición.</string>
     <string name="offline_config_title_track">Descarga del mapa a lo largo de la traza</string>
-    <string name="offline_config_track_hint">El mapa se descarga a cada lado de la traza, en la anchura elegida.</string>
+    <string name="offline_config_track_hint">Descarga el mapa base actual a cada lado de la traza, en la anchura elegida.</string>
     <string name="offline_config_section_label">Parte de la traza</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Son solo los datos regionales del motor de rutas (BRouter), para calcular una ruta sin red. Ni mapas base ni trazas: el mapa sin conexión se descarga aparte.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Escala</string>
     <string name="settings_label_exaggeration">Exageración</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">El mapa base «%1$s» no permite la descarga. Elige un mapa en línea: ni compuesto, ni MBTiles, ni OpenStreetMap.</string>
+    <string name="offline_download_area_info">Descarga una ZONA RECTANGULAR del mapa base mostrado actualmente, que encuadras en el mapa. Algunos mapas no lo permiten: los compuestos, los archivos MBTiles ya en el teléfono y OpenStreetMap, cuyas condiciones de uso prohíben la descarga masiva.</string>
 </resources>

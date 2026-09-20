@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Temps restant estimat</string>
     <string name="settings_dashboard_off">Activa el botó del tauler a Botons i gestos, secció Posició.</string>
     <string name="offline_config_title_track">Descàrrega del mapa al llarg de la traça</string>
-    <string name="offline_config_track_hint">El mapa es descarrega a cada costat de la traça, en l\'amplada triada.</string>
+    <string name="offline_config_track_hint">Descarrega el mapa de fons actual a cada costat de la traça, en l\'amplada triada.</string>
     <string name="offline_config_section_label">Part de la traça</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Són només les dades regionals del motor d\'itineraris (BRouter), per calcular un itinerari sense xarxa. Ni mapes de fons ni traces: el mapa fora de línia es descarrega a part.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Escala</string>
     <string name="settings_label_exaggeration">Exageració</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">El mapa de fons «%1$s» no permet la descàrrega. Tria un mapa en línia: ni compost, ni MBTiles, ni OpenStreetMap.</string>
+    <string name="offline_download_area_info">Descarrega una ZONA RECTANGULAR del mapa de fons mostrat actualment, que enquadres al mapa. Alguns mapes no ho permeten: els compostos, els fitxers MBTiles ja al telèfon i OpenStreetMap, les condicions d\'ús del qual prohibeixen la descàrrega massiva.</string>
 </resources>

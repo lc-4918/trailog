@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.settings
 
 import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
+import fr.lc4918.trailog.ui.offline.basemapLabel
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -168,6 +169,7 @@ import kotlinx.coroutines.launch
         // Les deux facons d'apporter un fond : l'importer, ou le telecharger depuis celui qu'on affiche -
         // une zone qu'on cadre sur la carte. Composer vient en dessous : il assemble ce qu'on a deja.
         val telechargeable = offlineDownloadAvailable(cur.defaultBasemapId, providers)
+        var refusFond by remember { mutableStateOf(false) }
         Row(Modifier.fillMaxWidth()) {
             CardButton(
                 stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_import),
@@ -178,10 +180,27 @@ import kotlinx.coroutines.launch
                 rememberVectorPainter(Icons.Outlined.FileDownload),
                 modifier = Modifier.weight(1f),
             ) {
-                // Un fond qu'on ne peut pas telecharger le dit, plutot que d'ouvrir un cadrage qui n'aboutira
-                // a rien.
-                if (telechargeable) onDownloadArea() else vm.showStatus(R.string.offline_unavailable)
+                // Un fond qu'on ne peut pas telecharger le dit, en se NOMMANT, plutot que d'ouvrir un
+                // cadrage qui n'aboutira a rien.
+                if (telechargeable) onDownloadArea() else refusFond = true
             }
+            InfoTip(stringResource(R.string.offline_download_area_info))
+        }
+        if (refusFond) {
+            val nom = basemapLabel(cur.defaultBasemapId, providers, composites)
+            AlertDialog(
+                onDismissRequest = { refusFond = false },
+                title = { Text(stringResource(R.string.offline_action_download)) },
+                text = {
+                    Text(
+                        if (nom.isBlank()) stringResource(R.string.offline_unavailable)
+                        else stringResource(R.string.offline_unavailable_named, nom),
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { refusFond = false }) { Text(stringResource(R.string.action_ok)) }
+                },
+            )
         }
         CardButton(
             stringResource(R.string.action_create_composite), painterResource(R.drawable.ic_settings_layers),

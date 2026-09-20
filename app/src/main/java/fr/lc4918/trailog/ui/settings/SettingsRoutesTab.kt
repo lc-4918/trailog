@@ -197,9 +197,13 @@ import kotlinx.coroutines.launch
                     vm.save(cur.copy(poiTrackCorridorM = crans[valueOf(it, 0, crans.lastIndex)]))
                 },
                 info = stringResource(R.string.settings_poi_corridor_hint),
+                // L'attribution suit immediatement : elle appartient a ce qui est au-dessus, et l'ecart
+                // normal l'en aurait detachee.
+                bottomPadding = 6.dp,
             )
-            RowDivider()
         }
+        // Sans filet au-dessus : un filet separe deux reglages, et l'attribution n'en est pas un - c'est
+        // la mention que les donnees imposent, au bas de ce qui les affiche.
         Hint(stringResource(R.string.settings_poi_attribution))
     }
 

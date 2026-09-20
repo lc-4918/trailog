@@ -653,7 +653,7 @@
     <string name="dash_set_eta">Geratzen den denbora</string>
     <string name="settings_dashboard_off">Aktibatu aginte-panelaren botoia Botoiak eta keinuak atalean, Kokapena azpiatalean.</string>
     <string name="offline_config_title_track">Mapa deskargatu arrastoan zehar</string>
-    <string name="offline_config_track_hint">Mapa arrastoaren alde bakoitzean deskargatzen da, aukeratutako zabaleran.</string>
+    <string name="offline_config_track_hint">Uneko oinarri-mapa deskargatzen du arrastoaren alde bakoitzean, aukeratutako zabaleran.</string>
     <string name="offline_config_section_label">Arrasto-zatia</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Ibilbide-motorraren (BRouter) eskualdeko datuak baino ez dira, sarerik gabe ibilbide bat kalkulatzeko. Ez oinarri-maparik ez arrastorik: lineaz kanpoko mapa bereiz deskargatzen da.</string>
@@ -667,4 +667,6 @@
     <string name="settings_label_vertical_scale_value">Eskala</string>
     <string name="settings_label_exaggeration">Handitzea</string>
     <string name="settings_exaggeration_value">×%1$d</string>
+    <string name="offline_unavailable_named">«%1$s» oinarri-mapak ez du deskargatzea baimentzen. Aukeratu lineako mapa bat: ez konposatua, ez MBTiles, ez OpenStreetMap.</string>
+    <string name="offline_download_area_info">Une ikusgai dagoen oinarri-maparen AREA LAUKIZUZENA deskargatzen du, mapan enkoadratzen duzuna. Mapa batzuek ez dute baimentzen: konposatuek, telefonoan dauden MBTiles fitxategiek eta OpenStreetMap-ek, zeinen erabilera-baldintzek masiboki deskargatzea debekatzen duten.</string>
 </resources>
