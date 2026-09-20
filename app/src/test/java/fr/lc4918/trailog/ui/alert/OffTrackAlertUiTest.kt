@@ -51,9 +51,9 @@ class OffTrackAlertUiTest {
     }
 
     /**
-     * **Toute la banniere repond, pas seulement sa croix.** La sonnerie boucle jusqu'a ce qu'on reponde
-     * (cf. AlertSound), et viser une croix de 20 dp en marchant pour faire taire un telephone qui sonne est
-     * le geste qu'il ne faut pas demander la : le tap tombe a cote, et le telephone sonne toujours.
+     * **Toute la banniere repond.** La sonnerie boucle jusqu'a ce qu'on reponde (cf. AlertSound), et viser
+     * une croix de 20 dp en marchant pour faire taire un telephone qui sonne est le geste qu'il ne faut pas
+     * demander la : le tap tombe a cote, et le telephone sonne toujours.
      */
     @Test fun `un tap n'importe ou sur la banniere repond`() {
         var tue = false
@@ -62,11 +62,13 @@ class OffTrackAlertUiTest {
         assertTrue(tue)
     }
 
-    @Test fun `la croix de la banniere repond`() {
-        var tue = false
-        compose.setContent { OffTrackAlertBar("GR 9", 120.0, false, onClose = { tue = true }) }
+    /**
+     * Et elle n'a pas de croix : une cible qu'on n'a pas a viser, sur une surface qui repond partout,
+     * n'apprend rien - elle laisse croire l'inverse, et prend au texte la largeur qu'elle reserve.
+     */
+    @Test fun `la banniere n'a pas de croix`() {
+        compose.setContent { OffTrackAlertBar("GR 9", 120.0, false, onClose = {}) }
         compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.action_close)))
-            .performClick()
-        assertTrue(tue)
+            .assertDoesNotExist()
     }
 }

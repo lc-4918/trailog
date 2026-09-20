@@ -164,9 +164,14 @@ import kotlinx.coroutines.launch
      */
     GroupTitle(stringResource(R.string.settings_group_dashboard))
 
-    DashboardSettings(cur, vm)
-
+    /*
+     * L'alerte d'eloignement AVANT les champs : c'est elle qu'on vient regler - l'ecart qui declenche, la
+     * sonnerie -, tandis que les champs se cochent une fois pour toutes. La liste des champs est en outre
+     * longue de neuf lignes, et la releguait en bas d'un defilement.
+     */
     if (cur.offTrackAlertEnabled) OffTrackAlertSettings(cur, vm)
+
+    DashboardSettings(cur, vm)
 
     GroupTitle(stringResource(R.string.settings_group_pois))
     // La taille des marqueurs : reglage fin, mode expert seulement. Celle par defaut convient a qui ne se
@@ -217,6 +222,9 @@ import kotlinx.coroutines.launch
  * Eteint, le groupe ne montre que ce renvoi : des reglages qui ne servent a rien valent mieux absents que
  * grises, mais il faut dire ou les allumer.
  */
+private const val DashboardFontMin = 10
+private const val DashboardFontMax = 40
+
 @Composable private fun DashboardSettings(cur: SettingsEntity, vm: SettingsViewModel) {
     if (!cur.offTrackAlertEnabled) {
         SettingsCard { Hint(stringResource(R.string.settings_dashboard_off)) }
@@ -224,9 +232,16 @@ import kotlinx.coroutines.launch
     }
     SectionTitle(stringResource(R.string.settings_section_dashboard_fields), tight = true)
     SettingsCard {
+        // Le corps EN TETE des champs qu'il regle : c'est un reglage de la rangee entiere, et le chercher
+        // apres neuf interrupteurs reviendrait a le cacher. Pas de graisse - les compteurs en ont deja une,
+        // et un chiffre qu'on lit a bout de bras se regle par sa taille.
+        StepperLine(
+            stringResource(R.string.settings_label_dashboard_font),
+            cur.dashboardFontSize, DashboardFontMin, DashboardFontMax,
+        ) { vm.save(cur.copy(dashboardFontSize = it)) }
         val masques = DashboardField.hidden(cur.dashboardHidden)
-        DashboardField.entries.forEachIndexed { i, f ->
-            if (i > 0) RowDivider()
+        DashboardField.entries.forEach { f ->
+            RowDivider()
             SwitchLine(stringResource(f.settingsLabel), f !in masques) { on ->
                 vm.save(cur.copy(dashboardHidden = DashboardField.withHidden(cur.dashboardHidden, f, hide = !on)))
             }

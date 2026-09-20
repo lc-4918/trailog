@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -153,6 +155,23 @@ private const val SpeedWeight = 1.25f
 private val SectionGap = 12.dp
 
 /**
+ * Le corps des compteurs, en points, quand rien n'est regle : celui qu'ils ont toujours eu.
+ *
+ * Il se regle desormais (cf. `SettingsEntity.dashboardFontSize`) : un guidon se lit a bout de bras, et
+ * seize points a cette distance ne valent pas seize points dans la main.
+ */
+const val DashboardFontDefaultSp = 16
+
+/**
+ * Le libelle par rapport a la valeur : onze points pour seize, et cette proportion se garde.
+ *
+ * Grossir la valeur sans grossir son libelle finirait par nommer en petites lettres un chiffre enorme ;
+ * les grossir pareil ferait crier "Distance" aussi fort que la distance. C'est un rapport, pas deux
+ * reglages : personne n'a envie d'en regler deux.
+ */
+private const val LabelRatio = 11f / 16f
+
+/**
  * Le tableau de bord de la sortie, en bas de la carte.
  *
  * Des champs encadres, sur un fond presque opaque : il se lit d'un coup d'oeil, telephone sur le guidon,
@@ -166,6 +185,7 @@ private val SectionGap = 12.dp
  *
  * @param progress l'avancement sur la trace suivie, null hors trace.
  * @param trackName le nom de la trace suivie, null hors trace.
+ * @param fontSp le corps des compteurs (cf. [DashboardFontDefaultSp]) ; les libelles suivent.
  */
 @Composable
 fun Dashboard(
@@ -176,6 +196,7 @@ fun Dashboard(
     armed: Boolean,
     alerting: Boolean,
     hidden: Set<DashboardField>,
+    fontSp: Int = DashboardFontDefaultSp,
     imperial: Boolean,
     bg: Color,
     fg: Color,
@@ -193,7 +214,7 @@ fun Dashboard(
             .padding(start = 8.dp, end = 8.dp, top = 8.dp)
             .testTag("dashboard"),
     ) {
-        FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fg)
+        FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fg, fontSp)
         if (following) {
             Spacer(Modifier.height(SectionGap))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -214,7 +235,7 @@ fun Dashboard(
                     modifier = Modifier.weight(1f).testTag("dashboard_track"),
                 )
             }
-            FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fg)
+            FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fg, fontSp)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = { confirmReset = true }, modifier = Modifier.size(40.dp).testTag("dashboard_reset")) {
@@ -237,16 +258,32 @@ fun Dashboard(
     }
 }
 
-/** Une rangee de champs sur toute la largeur ; rien du tout quand tous sont masques. */
+/**
+ * Une rangee de champs sur toute la largeur ; rien du tout quand tous sont masques.
+ *
+ * **Elle passe a la ligne** plutot que de tout tenir sur une seule : les champs se resserrent deja pour
+ * rester lisibles (cf. [FitText]), et sans retour a la ligne un corps regle plus grand serait aussitot
+ * repris par ce resserrement - le reglage n'aurait aucun effet visible. Ce qui ne tient pas descend donc,
+ * et le panneau grandit d'autant : mieux vaut un tableau de bord haut que des chiffres qu'on ne lit pas.
+ *
+ * `FlowRow` est encore marque experimental dans cette version de Compose, d'ou l'acceptation explicite :
+ * l'API est celle d'une `Row` a un detail pres, et la reecrire a la main ne rendrait pas le code plus sur.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FieldRow(
-    fields: List<DashboardField>, trip: Trip, speedMps: Float?, progress: FollowProgress?, imperial: Boolean, fg: Color,
+    fields: List<DashboardField>, trip: Trip, speedMps: Float?, progress: FollowProgress?, imperial: Boolean,
+    fg: Color, fontSp: Int,
 ) {
     if (fields.isEmpty()) return
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         fields.forEach { f ->
             Field(
-                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial), fg,
+                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial), fg, fontSp,
                 Modifier.weight(if (f == DashboardField.SPEED) SpeedWeight else 1f),
             )
         }
@@ -270,14 +307,17 @@ internal fun value(
 }
 
 @Composable
-private fun Field(label: String, value: String, fg: Color, modifier: Modifier) {
+private fun Field(label: String, value: String, fg: Color, fontSp: Int, modifier: Modifier) {
     Column(
         modifier
             .border(1.dp, fg.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
             .padding(horizontal = 5.dp, vertical = 3.dp),
     ) {
-        FitText(AnnotatedString(label), color = fg.copy(alpha = 0.7f), fontSize = 11.sp, weight = FontWeight.Normal)
-        FitText(withSmallUnit(value), color = fg, fontSize = 16.sp, weight = FontWeight.SemiBold)
+        FitText(
+            AnnotatedString(label), color = fg.copy(alpha = 0.7f),
+            fontSize = (fontSp * LabelRatio).sp, weight = FontWeight.Normal,
+        )
+        FitText(withSmallUnit(value), color = fg, fontSize = fontSp.sp, weight = FontWeight.SemiBold)
     }
 }
 

@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.alert
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -155,6 +158,36 @@ class DashboardUiTest {
 
     @Test fun `sans position, pas de vitesse`() {
         assertEquals(null, DashboardMath.speed(null, null, null, null))
+    }
+
+    // ---------- le corps des compteurs ----------
+
+    /**
+     * Le corps se regle, et le panneau suit.
+     *
+     * **Ce que ce test protege.** Les compteurs se resserrent d'eux-memes pour tenir dans leur colonne
+     * (cf. FitText). Si la rangee ne savait pas passer a la ligne, un corps regle plus grand serait
+     * aussitot repris par ce resserrement : le reglage existerait en base, dans l'ecran des reglages, et
+     * ne se verrait nulle part. La hauteur du panneau est la preuve observable qu'il agit.
+     */
+    @Test fun `un corps plus grand fait grandir le panneau, sans perdre de champ`() {
+        var corps by mutableIntStateOf(DashboardFontDefaultSp)
+        compose.setContent {
+            Dashboard(
+                trip = trip, speedMps = 2.5f, progress = null, trackName = null, armed = false,
+                alerting = false, hidden = emptySet(), fontSp = corps, imperial = false,
+                bg = Color.White, fg = Color.Black, onBell = {}, onReset = {},
+            )
+        }
+        val petit = compose.onNodeWithTag("dashboard").fetchSemanticsNode().size.height
+        corps = 40
+        compose.waitForIdle()
+        val grand = compose.onNodeWithTag("dashboard").fetchSemanticsNode().size.height
+        assertTrue("le panneau grandit avec le corps ($petit -> $grand)", grand > petit)
+        // Passer a la ligne ne perd aucun champ : ils descendent, ils ne disparaissent pas.
+        compose.onNodeWithText("640 m").assertExists()
+        compose.onNodeWithText("210 m").assertExists()
+        compose.onNodeWithText("1:48").assertExists()
     }
 
     /** Le restant, a la vitesse moyenne en mouvement : 6 km en 1 h, il en reste 3, soit 30 min. */

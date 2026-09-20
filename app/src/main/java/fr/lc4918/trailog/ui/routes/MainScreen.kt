@@ -1173,6 +1173,7 @@ fun MainScreen(
                         armed = armed,
                         alerting = alerting,
                         hidden = remember(settings.dashboardHidden) { DashboardField.hidden(settings.dashboardHidden) },
+                        fontSp = settings.dashboardFontSize,
                         imperial = imperialUnits,
                         bg = chromeBg,
                         fg = chromeFg,

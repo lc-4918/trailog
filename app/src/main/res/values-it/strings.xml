@@ -660,6 +660,7 @@
     <string name="settings_group_dashboard">Cruscotto</string>
     <string name="content_desc_dashboard">Cruscotto</string>
     <string name="settings_section_dashboard_fields">Campi mostrati</string>
+    <string name="settings_label_dashboard_font">Dimensione del testo</string>
     <string name="dash_eta">Tempo rest.</string>
     <string name="dash_set_eta">Tempo residuo stimato</string>
     <string name="settings_dashboard_off">Attiva il pulsante del cruscotto in Pulsanti e gesti, sezione Posizione.</string>

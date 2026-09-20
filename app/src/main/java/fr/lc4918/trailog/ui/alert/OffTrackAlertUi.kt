@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,9 +38,11 @@ private val AlertBarBackground = Color(0xFFB3261E).copy(alpha = 0.94f)
 /**
  * Banniere du haut : on s'est ecarte de la trace suivie, de tant, et voila laquelle.
  *
- * **Toute la banniere repond**, et non sa seule croix : la sonnerie boucle jusqu'a ce qu'on reponde, et
+ * **Toute la banniere repond**, et elle n'a pas de croix : la sonnerie boucle jusqu'a ce qu'on reponde, et
  * viser une cible de 20 dp d'un pouce gante, en marchant, pour faire taire un telephone qui sonne, est
- * exactement le geste qu'il ne faut pas demander la. La croix reste, comme signe de ce que le tap fera.
+ * exactement le geste qu'il ne faut pas demander la. La croix y est restee un temps, comme signe de ce que
+ * le tap ferait ; elle disait surtout le contraire de ce qui est vrai - qu'il fallait la viser - et prenait
+ * au texte la largeur qu'elle reservait.
  *
  * Repondre ne rend pas la marche a la trace - cela tait CET ecart-la (cf. [TrackWatch.silenced]).
  * L'alerte, elle, se desarme depuis la cloche du tableau de bord (cf. [Dashboard]).
@@ -63,7 +63,7 @@ fun OffTrackAlertBar(
             .padding(10.dp),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(end = 22.dp),
+            Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -73,14 +73,6 @@ fun OffTrackAlertBar(
                 style = MaterialTheme.typography.bodySmall, color = Color.White,
                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
             )
-        }
-        // La croix n'a plus de clic a elle : c'est la banniere entiere qui repond, et deux surfaces
-        // cliquables imbriquees pour le meme effet ne feraient que rendre le tap incertain.
-        Box(
-            Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(16.dp), tint = Color.White)
         }
     }
 }

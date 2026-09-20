@@ -361,6 +361,10 @@ data class SettingsEntity(
     // Vide : tous s'affichent. Les MASQUES plutot que les affiches, pour qu'un champ ajoute plus tard
     // paraisse de lui-meme au lieu d'attendre qu'on aille le cocher.
     val dashboardHidden: String = "",
+    // Corps du texte des compteurs du tableau de bord, en points. Les libelles suivent, proportionnellement
+    // (cf. Dashboard). Seize : la taille d'origine, et celle qui convient a qui ne se pose pas la question.
+    // Un corps plus grand fait passer les champs a la ligne, et le panneau grandit avec eux.
+    val dashboardFontSize: Int = 16,
     // Mode expert des reglages : les reglages fins (panneau des fonds, preferences de trace, services,
     // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur l'avatar des reglages
     // l'allument et l'eteignent (cf. ExpertTaps).
