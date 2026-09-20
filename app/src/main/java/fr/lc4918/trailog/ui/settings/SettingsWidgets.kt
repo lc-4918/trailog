@@ -108,19 +108,26 @@ internal fun valueOf(fraction: Float, min: Int, max: Int): Int =
     }
 }
 
-/** Puces d'un choix multiple ordonne (infos affichees) : l'ordre d'affichage suit celui des puces, non
- *  celui des taps - deux traces cote a cote doivent presenter leurs infos dans le meme ordre. */
-@Composable internal fun ColumnScopeMarker.InfoChipRow(
-    options: List<Pair<String, String>>, csv: String, scrollable: Boolean = false, onChange: (String) -> Unit,
+/**
+ * Les infos qu'on affiche, une ligne a interrupteur chacune.
+ *
+ * Des puces se tenaient la : posees a la suite, elles se lisaient comme un choix exclusif - on croyait en
+ * designer une - alors qu'on en allume autant qu'on veut. Un interrupteur par ligne ne laisse aucun doute,
+ * et c'est deja la forme des champs du tableau de bord, qui repondent a la meme question.
+ *
+ * L'ordre enregistre reste celui des OPTIONS, et non celui des gestes : c'est lui qui decide de l'ordre a
+ * l'ecran, et deux traces cote a cote doivent presenter leurs infos dans le meme ordre.
+ */
+@Composable internal fun ColumnScopeMarker.InfoSwitchRows(
+    options: List<Pair<String, String>>, csv: String, onChange: (String) -> Unit,
 ) {
     val selected = csv.split(",").map { it.trim() }.filter { it.isNotBlank() }
-    ChipRow(scrollable = scrollable) {
-        options.forEach { (key, label) ->
-            val on = key in selected
-            SettingsChip(label, selected = on) {
-                val next = if (on) selected - key else selected + key
-                onChange(options.map { it.first }.filter { it in next }.joinToString(","))
-            }
+    options.forEachIndexed { i, (key, label) ->
+        if (i > 0) RowDivider()
+        val on = key in selected
+        SwitchLine(label, on) {
+            val next = if (on) selected - key else selected + key
+            onChange(options.map { it.first }.filter { it in next }.joinToString(","))
         }
     }
 }

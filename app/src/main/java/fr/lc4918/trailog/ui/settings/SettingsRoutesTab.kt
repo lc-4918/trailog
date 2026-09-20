@@ -358,16 +358,19 @@ import kotlinx.coroutines.launch
 
     SectionTitle(stringResource(R.string.settings_section_title_line_info))
     SettingsCard {
-        SetRow(stringResource(R.string.settings_label_title_line))
-        InfoChipRow(
+        // Un interrupteur par info, comme les champs du tableau de bord : on en allume autant qu'on veut,
+        // et les puces le disaient mal (cf. InfoSwitchRows).
+        InfoSwitchRows(
             listOf("dist" to stringResource(R.string.chip_distance), "asc" to stringResource(R.string.chip_ascent),
                 "desc" to stringResource(R.string.chip_descent), "dur" to stringResource(R.string.chip_duration),
                 "min" to stringResource(R.string.chip_alt_min), "max" to stringResource(R.string.chip_alt_max)),
-            cur.titleInfos, scrollable = true,
+            cur.titleInfos,
         ) { vm.save(cur.copy(titleInfos = it)) }
-        RowDivider()
-        SetRow(stringResource(R.string.settings_label_current_point))
-        InfoChipRow(
+    }
+
+    SectionTitle(stringResource(R.string.settings_label_current_point))
+    SettingsCard {
+        InfoSwitchRows(
             listOf("dist" to stringResource(R.string.chip_distance), "ele" to stringResource(R.string.chip_altitude),
                 "slope" to stringResource(R.string.chip_slope), "time" to stringResource(R.string.chip_time)),
             cur.cursorInfos,

@@ -110,4 +110,23 @@ class InfoTipTest {
         compose.onNode(hasContentDescription("Enregistrer")).performClick()
         assertEquals("Mes traces", enregistre)
     }
+
+    /**
+     * Les infos affichees se cochent une par une, et l'ORDRE enregistre reste celui des options : c'est
+     * lui qui decide de l'ordre a l'ecran, pas l'ordre des gestes.
+     */
+    @Test fun `les infos s'allument une par une, dans l'ordre des options`() {
+        var csv = "asc"
+        compose.setContent {
+            ProvideSettingsPalette(dark = false) {
+                SettingsCard {
+                    InfoSwitchRows(
+                        listOf("dist" to "Distance", "asc" to "D+", "desc" to "D-"), csv,
+                    ) { csv = it }
+                }
+            }
+        }
+        compose.onNodeWithText("Distance").performClick()
+        assertEquals("dist,asc", csv)
+    }
 }

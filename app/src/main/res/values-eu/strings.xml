@@ -439,7 +439,6 @@
     <string name="settings_label_opacity">Opakutasuna</string>
     <string name="settings_label_smoothing">Profilaren leuntzea</string>
     <string name="settings_label_vertical_scale">Eskala bertikala</string>
-    <string name="settings_label_title_line">Izenburu-lerroa</string>
     <string name="settings_label_current_point">Uneko puntua</string>
     <string name="settings_label_waypoints">Bidepuntuak</string>
     <string name="settings_label_tracks">Arrastoak</string>

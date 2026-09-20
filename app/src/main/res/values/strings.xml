@@ -441,7 +441,6 @@
     <string name="settings_label_opacity">Opacité</string>
     <string name="settings_label_smoothing">Lissage du profil</string>
     <string name="settings_label_vertical_scale">Échelle verticale</string>
-    <string name="settings_label_title_line">Ligne de titre</string>
     <string name="settings_label_current_point">Point courant</string>
     <string name="settings_label_waypoints">Waypoints</string>
     <string name="settings_label_tracks">Traces</string>

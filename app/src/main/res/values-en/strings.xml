@@ -439,7 +439,6 @@
     <string name="settings_label_opacity">Opacity</string>
     <string name="settings_label_smoothing">Profile smoothing</string>
     <string name="settings_label_vertical_scale">Vertical scale</string>
-    <string name="settings_label_title_line">Title line</string>
     <string name="settings_label_current_point">Current point</string>
     <string name="settings_label_waypoints">Waypoints</string>
     <string name="settings_label_tracks">Tracks</string>
