@@ -108,7 +108,10 @@ class LocationService : Service() {
     private fun onFix(loc: Location) {
         val mesureeA = loc.elapsedRealtimeNanos / 1_000_000L
         val precision = if (loc.hasAccuracy()) loc.accuracy else 0f
-        if (held && !FixPicker.better(heldAccuracyM, heldAtMs, precision, mesureeA)) return
+        if (held && !FixPicker.better(heldAccuracyM, heldAtMs, precision, mesureeA)) {
+            FixLog.write(this) { "ecartee ${loc.provider} prec=${precision.toInt()}m" }
+            return
+        }
         held = true
         heldAccuracyM = precision
         heldAtMs = mesureeA
@@ -116,6 +119,11 @@ class LocationService : Service() {
         if (silence.alerted) {
             LocationHub.clearSilenceNotice()
             cancelStoppedAlert()
+        }
+        FixLog.write(this) {
+            val creux = (SystemClock.elapsedRealtime() - silence.lastFixAtMs) / 1000
+            "position ${loc.provider} prec=${precision.toInt()}m depuis=${creux}s" +
+                if (silence.alerted) " (positions revenues)" else ""
         }
         silence = FixWatchdog.onFix(SystemClock.elapsedRealtime())
         LocationHub.publish(loc)
@@ -159,6 +167,7 @@ class LocationService : Service() {
     private fun applyPace(repos: Boolean) {
         if (repos == resting || !subscribed) return
         resting = repos
+        FixLog.write(this) { "cadence ${if (repos) "repos" else "marche"}" }
         subscribedTo.forEach { provider ->
             runCatching {
                 if (repos) locationManager.requestLocationUpdates(provider, REST_INTERVAL_MS, REST_DISTANCE_M, listenerFor(provider), mainLooper)
@@ -221,6 +230,19 @@ class LocationService : Service() {
      * localisation en cours de sortie, et rien ne la rallumait cote application - il fallait rouvrir la
      * carte et retaper sur le bouton, ce que personne ne fait sans savoir qu'il le faut.
      */
+    /**
+     * L'ecran allume ou eteint, journalise et rien d'autre (debug seulement, cf. [FixLog]).
+     *
+     * C'est LA variable du defaut qu'on cherche - l'economie d'energie eteint le GPS avec l'ecran -
+     * et un journal qui ne la porte pas obligerait a deviner, au retour, quand l'ecran s'est eteint.
+     */
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val allume = intent?.action == Intent.ACTION_SCREEN_ON
+            FixLog.write(this@LocationService) { "ecran ${if (allume) "allume" else "eteint"}" }
+        }
+    }
+
     private val providerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             powerCuts = PowerSave.cutsLocation(this@LocationService)
@@ -240,6 +262,10 @@ class LocationService : Service() {
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
         }
         ContextCompat.registerReceiver(this, providerReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        if (FixLog.enabled) {
+            val ecran = IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) }
+            ContextCompat.registerReceiver(this, screenReceiver, ecran, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
         watchSettings()
         watchFollowed()
         watchBell()
@@ -292,6 +318,7 @@ class LocationService : Service() {
         // nous relancant apres avoir repris sa memoire.
         LocationHub.wantTracking()
         stopReason = LocationHub.StopReason.SYSTEM
+        FixLog.start(this, enabledProviders(), PowerSave.isPowerSaveMode(this), PowerSave.locationMode(this))
         if (subscribe()) {
             restartSilenceClock()
             LocationHub.setTracking(true)
@@ -311,6 +338,7 @@ class LocationService : Service() {
      * fallait renoncer. [providerReceiver] reveille des que la localisation revient.
      */
     private fun awaitProvider() {
+        FixLog.write(this) { "localisation coupee - en attente du capteur" }
         LocationHub.setTracking(false, LocationHub.StopReason.SENSOR_OFF)
         notice.value = getString(R.string.location_notice_waiting)
         postStoppedAlert(LocationHub.StopReason.SENSOR_OFF)
@@ -386,6 +414,10 @@ class LocationService : Service() {
         if (!hasPermission()) return
         val actifs = enabledProviders()
         if (actifs == subscribedTo) return
+        FixLog.write(this) {
+            "fournisseurs ${subscribedTo.joinToString(",").ifEmpty { "aucun" }} -> " +
+                actifs.joinToString(",").ifEmpty { "aucun" }
+        }
         unsubscribe()
         if (actifs.isEmpty()) {
             awaitProvider()
@@ -417,6 +449,8 @@ class LocationService : Service() {
         cancelOffTrackAlert()
         unsubscribe()
         runCatching { unregisterReceiver(providerReceiver) }
+        if (FixLog.enabled) runCatching { unregisterReceiver(screenReceiver) }
+        FixLog.write(this) { "--- suivi arrete ($stopReason)" }
         releaseWakeLock()
         // L'annonce AVANT l'arret : setTracking efface l'intention lue par postStoppedAlert.
         if (stopReason != LocationHub.StopReason.USER) postStoppedAlert(stopReason)
@@ -472,6 +506,7 @@ class LocationService : Service() {
             }.isSuccess
         }
         if (pris.isEmpty()) return false
+        FixLog.write(this) { "abonnement ${pris.joinToString(",")}" }
         subscribedTo = pris
         rest = RestDetector.State()
         resting = false
@@ -551,7 +586,10 @@ class LocationService : Service() {
         silence = etat
         when (action) {
             FixWatchdog.Action.None -> Unit
-            FixWatchdog.Action.Resubscribe -> resubscribe()
+            FixWatchdog.Action.Resubscribe -> {
+                FixLog.write(this) { "silence ${FixWatchdog.RESUBSCRIBE_MS / 1000}s - reabonnement" }
+                resubscribe()
+            }
             FixWatchdog.Action.Alert -> announceSilence()
         }
     }
@@ -583,6 +621,7 @@ class LocationService : Service() {
      */
     private fun announceSilence() {
         powerCuts = PowerSave.cutsLocation(this)
+        FixLog.write(this) { "silence ${FixWatchdog.ALERT_MS / 1000}s - alerte (economie d'energie=$powerCuts)" }
         notice.value = getString(
             if (powerCuts) R.string.location_notice_silent_power else R.string.location_notice_silent,
         )

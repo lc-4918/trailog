@@ -101,6 +101,20 @@ Suivi de position qui se tait écran éteint sur un appareil en économie d'éne
 téléphone, pas un défaut de l'application. Le diagnostic et la commande qui le désarment sont dans
 [`CONTEXT.md`](CONTEXT.md#pièges-connus).
 
+**Le journal du suivi** (`location/FixLog`, **build debug uniquement**) écrit dans le stockage privé de
+l'app chaque position reçue ou écartée, chaque changement de fournisseur et de cadence, l'extinction et
+l'allumage de l'écran, et les deux paliers du chien de garde. C'est ce qui permet de relire une sortie
+qu'on n'a pas pu regarder. À lire au retour, téléphone rebranché :
+
+```bash
+adb shell run-as fr.lc4918.trailog.debug cat files/diagnostic-suivi.log
+adb shell run-as fr.lc4918.trailog.debug cat files/diagnostic-suivi.log.1   # la sortie d'avant
+```
+
+Le fichier tourne à 1 Mo et ne garde qu'une génération. Rien de tout cela n'existe en release : une
+application qui écrit des positions horodatées toutes les deux secondes chez quelqu'un qui n'a rien
+demandé serait exactement ce qu'on reproche à d'autres.
+
 ## 5. Tests
 
 ```bash
