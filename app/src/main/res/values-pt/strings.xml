@@ -420,7 +420,7 @@
     <string name="settings_section_position">Posição</string>
     <string name="settings_section_search_route">Pesquisa e itinerário</string>
     <string name="settings_section_track_tools">Ferramentas de trilho</string>
-    <string name="settings_sw_track_follow">Botão do painel</string>
+    <string name="settings_sw_track_follow">Painel</string>
     <string name="settings_group_storage">Armazenamento</string>
     <string name="settings_group_interaction">Interação</string>
     <string name="settings_group_appearance">Aparência</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Título do menu lateral</string>
     <string name="settings_sw_gps_button">Localização GPS</string>
-    <string name="settings_sw_gps_recenter">Centrar na minha posição</string>
-    <string name="settings_sw_gps_recenter_sub">Ao ativar a localização. O nível de zoom nunca é alterado.</string>
+    <string name="settings_sw_gps_recenter">Centrar na posição</string>
+    <string name="settings_sw_gps_recenter_sub">Centrar na posição ao ativar a localização GPS.</string>
     <string name="settings_sw_gps_last_fix">Mostrar a última posição medida</string>
     <string name="settings_sw_gps_last_fix_sub">Ao parar o seguimento, fica no mapa a cinzento, imóvel.</string>
     <string name="settings_sw_geocoding">Pesquisa de local e endereço</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: ao arrancar, o Trailog verifica se foi publicada uma nova versão e propõe instalá-la. Manual: a verificação só é feita quando a pedir.</string>
     <string name="settings_expert_on">Modo especialista ativado</string>
     <string name="settings_expert_off">Modo especialista desativado</string>
+    <string name="settings_clear_map_cache">Limpar a cache do mapa</string>
+    <string name="settings_map_cache_empty">Vazia</string>
+    <string name="settings_map_cache_hint">Os mosaicos vistos uma vez são guardados para uma apresentação mais rápida, dentro do limite definido. Limpá-los fará com que sejam transferidos de novo. Os mapas offline não são afetados.</string>
 </resources>

@@ -420,7 +420,7 @@
     <string name="settings_section_position">Posizione</string>
     <string name="settings_section_search_route">Ricerca e itinerario</string>
     <string name="settings_section_track_tools">Strumenti traccia</string>
-    <string name="settings_sw_track_follow">Pulsante del cruscotto</string>
+    <string name="settings_sw_track_follow">Cruscotto</string>
     <string name="settings_group_storage">Archiviazione</string>
     <string name="settings_group_interaction">Interazione</string>
     <string name="settings_group_appearance">Aspetto</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Titolo del menu laterale</string>
     <string name="settings_sw_gps_button">Posizione GPS</string>
-    <string name="settings_sw_gps_recenter">Centrare sulla mia posizione</string>
-    <string name="settings_sw_gps_recenter_sub">All\'attivazione della localizzazione. Il livello di zoom non viene mai modificato.</string>
+    <string name="settings_sw_gps_recenter">Centra sulla posizione</string>
+    <string name="settings_sw_gps_recenter_sub">Centra sulla posizione all\'accensione della localizzazione GPS.</string>
     <string name="settings_sw_gps_last_fix">Mostrare l\'ultima posizione misurata</string>
     <string name="settings_sw_gps_last_fix_sub">Fermato il monitoraggio, resta sulla mappa in grigio, immobile.</string>
     <string name="settings_sw_geocoding">Ricerca di luoghi e indirizzi</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: all\'avvio, Trailog verifica se è pubblicata una nuova versione e propone di installarla. Manuale: la verifica avviene solo quando la richiedi.</string>
     <string name="settings_expert_on">Modalità esperto attivata</string>
     <string name="settings_expert_off">Modalità esperto disattivata</string>
+    <string name="settings_clear_map_cache">Svuota la cache della mappa</string>
+    <string name="settings_map_cache_empty">Vuota</string>
+    <string name="settings_map_cache_hint">Le tessere viste una volta sono conservate per una visualizzazione più rapida, entro il limite impostato. Svuotarle le farà riscaricare. Le mappe offline non sono toccate.</string>
 </resources>

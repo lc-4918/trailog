@@ -422,7 +422,7 @@
     <string name="settings_section_position">Position</string>
     <string name="settings_section_search_route">Recherche et itinéraire</string>
     <string name="settings_section_track_tools">Outils de trace</string>
-    <string name="settings_sw_track_follow">Bouton du tableau de bord</string>
+    <string name="settings_sw_track_follow">Tableau de bord</string>
     <string name="settings_group_storage">Stockage</string>
     <string name="settings_group_interaction">Interaction</string>
     <string name="settings_group_appearance">Apparence</string>
@@ -455,8 +455,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Titre du menu latéral</string>
     <string name="settings_sw_gps_button">Localisation GPS</string>
-    <string name="settings_sw_gps_recenter">Recentrer sur ma position</string>
-    <string name="settings_sw_gps_recenter_sub">À l\'allumage de la localisation. Le niveau de zoom n\'est jamais modifié.</string>
+    <string name="settings_sw_gps_recenter">Recentrer sur la position</string>
+    <string name="settings_sw_gps_recenter_sub">Recentrer sur la position à l\'allumage de la localisation GPS.</string>
     <string name="settings_sw_gps_last_fix">Afficher la dernière position mesurée</string>
     <string name="settings_sw_gps_last_fix_sub">Le suivi arrêté, elle reste sur la carte en gris, immobile.</string>
     <string name="settings_sw_geocoding">Recherche de lieu et d\'adresse</string>
@@ -663,4 +663,7 @@
     <string name="settings_updates_info">Auto : au démarrage, Trailog vérifie si une nouvelle version est publiée et propose de l\'installer. Manuel : la vérification ne se fait que quand vous la demandez.</string>
     <string name="settings_expert_on">Mode expert activé</string>
     <string name="settings_expert_off">Mode expert désactivé</string>
+    <string name="settings_clear_map_cache">Effacer le cache de carte</string>
+    <string name="settings_map_cache_empty">Vide</string>
+    <string name="settings_map_cache_hint">Les tuiles vues une fois sont gardées pour un affichage plus rapide, dans la limite réglée. Les effacer les fera retélécharger. Les cartes hors ligne ne sont pas touchées.</string>
 </resources>

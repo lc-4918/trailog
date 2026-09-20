@@ -420,7 +420,7 @@
     <string name="settings_section_position">Posición</string>
     <string name="settings_section_search_route">Búsqueda y ruta</string>
     <string name="settings_section_track_tools">Herramientas de traza</string>
-    <string name="settings_sw_track_follow">Botón del panel</string>
+    <string name="settings_sw_track_follow">Panel</string>
     <string name="settings_group_storage">Almacenamiento</string>
     <string name="settings_group_interaction">Interacción</string>
     <string name="settings_group_appearance">Apariencia</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Título del menú lateral</string>
     <string name="settings_sw_gps_button">Ubicación GPS</string>
-    <string name="settings_sw_gps_recenter">Centrar en mi ubicación</string>
-    <string name="settings_sw_gps_recenter_sub">Al activar la localización. El nivel de zoom nunca se modifica.</string>
+    <string name="settings_sw_gps_recenter">Recentrar en la posición</string>
+    <string name="settings_sw_gps_recenter_sub">Recentrar en la posición al activar la localización GPS.</string>
     <string name="settings_sw_gps_last_fix">Mostrar la última posición medida</string>
     <string name="settings_sw_gps_last_fix_sub">Al detener el seguimiento, permanece en el mapa en gris, inmóvil.</string>
     <string name="settings_sw_geocoding">Búsqueda de lugar y dirección</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: al iniciarse, Trailog comprueba si hay una nueva versión publicada y propone instalarla. Manual: la comprobación solo se hace cuando la pides.</string>
     <string name="settings_expert_on">Modo experto activado</string>
     <string name="settings_expert_off">Modo experto desactivado</string>
+    <string name="settings_clear_map_cache">Borrar la caché del mapa</string>
+    <string name="settings_map_cache_empty">Vacía</string>
+    <string name="settings_map_cache_hint">Las teselas vistas una vez se guardan para mostrarlas más rápido, dentro del límite configurado. Borrarlas hará que se descarguen de nuevo. Los mapas sin conexión no se ven afectados.</string>
 </resources>

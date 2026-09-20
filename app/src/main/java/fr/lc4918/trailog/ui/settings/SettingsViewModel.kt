@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import fr.lc4918.trailog.map.AmbientCache
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -133,6 +136,22 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      * les lieux emportes - n'est justement pas touche.
      */
     fun clearPoiCache() = viewModelScope.launch { repo.pois.clearUnpinned(); repo.pois.clearUnpinnedCells() }
+
+    // ---------- cache de carte (tuiles) ----------
+
+    private val _mapCacheBytes = MutableStateFlow(0L)
+
+    /** Poids des tuiles gardees par la carte (cf. AmbientCache). Relu a l'ouverture et apres effacement. */
+    val mapCacheBytes: StateFlow<Long> = _mapCacheBytes.asStateFlow()
+
+    fun refreshMapCache() = viewModelScope.launch {
+        _mapCacheBytes.value = withContext(Dispatchers.IO) { AmbientCache.sizeBytes(getApplication()) }
+    }
+
+    /** Efface les tuiles gardees, puis relit le poids : le compteur doit dire ce qui reste. */
+    fun clearMapCache() {
+        AmbientCache.clear(getApplication()) { refreshMapCache() }
+    }
 
     // ---------- sauvegarde et restauration ----------
 

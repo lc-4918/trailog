@@ -144,7 +144,7 @@ data class SettingsEntity(
     // telephone regle en sombre la posait sous des bandeaux noirs.
     val theme: String = "light",           // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil
-    val profileSlope: Boolean = true,      // colorer l'aire par pente
+    val profileSlope: Boolean = false,     // colorer l'aire par pente
     // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
     // n'est plus une preference mais un etat d'affichage, qui se referme du meme geste.
     val profileSlopeLegend: Boolean = false,
@@ -299,7 +299,7 @@ data class SettingsEntity(
     // Completer a l'import les altitudes que le fichier ne porte pas (cf. elevation/ElevationFiller).
     // Desactive par defaut, comme le geocodage : c'est la seule autre fonction qui fait partir des requetes
     // vers un service tiers sans qu'on l'ait demandee sur le moment.
-    val fillMissingElevation: Boolean = false,
+    val fillMissingElevation: Boolean = true,
     // Service altimetrique francais (API Geoplateforme). Vide = instance publique (IgnElevation.DEFAULT_URL).
     val elevationIgnUrl: String = "",
     // Service altimetrique mondial (API OpenTopography). Vide = instance publique (OpenTopo.DEFAULT_URL).

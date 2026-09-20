@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.data.repo
 
+import org.junit.Before
+import kotlinx.coroutines.runBlocking
+import fr.lc4918.trailog.data.db.SettingsEntity
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.imp.EmptyLayerException
@@ -30,6 +33,16 @@ class TrailogRepositoryTest {
     /** Derniere couche inseree. La base est partagee par les methodes de la classe : se fier a l'ordre
      *  de la liste rendrait les tests dependants les uns des autres. */
     private suspend fun derniereCouche(): LayerEntity = db.layers().all().first().maxByOrNull { it.id }!!
+
+    /**
+     * Le completement de l'altitude est ETEINT pour ces tests : il est allume par defaut depuis que
+     * l'application le propose d'emblee, et il interroge des services d'altimetrie. Ce qu'on eprouve ici
+     * est la lecture des fichiers, pas le reseau - et un test qui sort de la machine ne vaut rien.
+     */
+    @Before fun sansCompletementAltimetrique() = runBlocking {
+        val s = db.settings().get() ?: SettingsEntity()
+        db.settings().upsert(s.copy(fillMissingElevation = false))
+    }
 
     // ---------- Import nominal ----------
 

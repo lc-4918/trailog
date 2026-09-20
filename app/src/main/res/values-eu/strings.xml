@@ -420,7 +420,7 @@
     <string name="settings_section_position">Kokapena</string>
     <string name="settings_section_search_route">Bilaketa eta ibilbidea</string>
     <string name="settings_section_track_tools">Arrasto-tresnak</string>
-    <string name="settings_sw_track_follow">Aginte-panelaren botoia</string>
+    <string name="settings_sw_track_follow">Aginte-panela</string>
     <string name="settings_group_storage">Biltegiratzea</string>
     <string name="settings_group_interaction">Interakzioa</string>
     <string name="settings_group_appearance">Itxura</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatarra</string>
     <string name="settings_label_side_title">Alboko menuaren izenburua</string>
     <string name="settings_sw_gps_button">GPS kokapena</string>
-    <string name="settings_sw_gps_recenter">Zentratu nire kokapenean</string>
-    <string name="settings_sw_gps_recenter_sub">Kokapena aktibatzean. Zoom-maila ez da inoiz aldatzen.</string>
+    <string name="settings_sw_gps_recenter">Kokapenean zentratu</string>
+    <string name="settings_sw_gps_recenter_sub">GPS kokapena pizten denean kokapenean zentratu.</string>
     <string name="settings_sw_gps_last_fix">Erakutsi neurtutako azken kokapena</string>
     <string name="settings_sw_gps_last_fix_sub">Jarraipena gelditzean, mapan geratzen da grisez, geldirik.</string>
     <string name="settings_sw_geocoding">Leku eta helbide bilaketa</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: abiaraztean, Trailog-ek bertsio berririk argitaratu den egiaztatzen du eta instalatzea proposatzen du. Eskuzkoa: egiaztapena eskatzen duzunean bakarrik egiten da.</string>
     <string name="settings_expert_on">Aditu modua aktibatuta</string>
     <string name="settings_expert_off">Aditu modua desaktibatuta</string>
+    <string name="settings_clear_map_cache">Maparen cachea ezabatu</string>
+    <string name="settings_map_cache_empty">Hutsik</string>
+    <string name="settings_map_cache_hint">Behin ikusitako lauzak azkarrago erakusteko gordetzen dira, ezarritako mugaren barruan. Ezabatzeak berriro deskargatzea eragingo du. Lineaz kanpoko mapak ez dira ukitzen.</string>
 </resources>

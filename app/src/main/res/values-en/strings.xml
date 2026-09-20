@@ -420,7 +420,7 @@
     <string name="settings_section_position">Position</string>
     <string name="settings_section_search_route">Search and route</string>
     <string name="settings_section_track_tools">Track tools</string>
-    <string name="settings_sw_track_follow">Dashboard button</string>
+    <string name="settings_sw_track_follow">Dashboard</string>
     <string name="settings_group_storage">Storage</string>
     <string name="settings_group_interaction">Interaction</string>
     <string name="settings_group_appearance">Appearance</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Side menu title</string>
     <string name="settings_sw_gps_button">GPS location</string>
-    <string name="settings_sw_gps_recenter">Recentre on my location</string>
-    <string name="settings_sw_gps_recenter_sub">When location is switched on. The zoom level is never changed.</string>
+    <string name="settings_sw_gps_recenter">Recentre on position</string>
+    <string name="settings_sw_gps_recenter_sub">Recentre on the position when GPS location is turned on.</string>
     <string name="settings_sw_gps_last_fix">Show the last measured position</string>
     <string name="settings_sw_gps_last_fix_sub">When tracking stops, it stays on the map in grey, motionless.</string>
     <string name="settings_sw_geocoding">Place and address search</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: at startup, Trailog checks whether a new version is published and offers to install it. Manual: the check only happens when you ask for it.</string>
     <string name="settings_expert_on">Expert mode on</string>
     <string name="settings_expert_off">Expert mode off</string>
+    <string name="settings_clear_map_cache">Clear map cache</string>
+    <string name="settings_map_cache_empty">Empty</string>
+    <string name="settings_map_cache_hint">Tiles seen once are kept for faster display, within the configured limit. Clearing them makes them download again. Offline maps are not affected.</string>
 </resources>

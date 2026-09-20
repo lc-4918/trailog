@@ -1,5 +1,9 @@
 package fr.lc4918.trailog.ui.settings
 
+import fr.lc4918.trailog.map.offline.TileMath
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.RestartAlt
 import android.app.Activity
 import android.content.Intent
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -217,6 +221,10 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
     val poiEnCache by vm.poiCached.collectAsState()
     val poiEmportes by vm.poiPinned.collectAsState()
     val lieux = PlannerHistory.of(cur.plannerHistory).places
+    // Le poids du cache de carte se lit sur le disque, a l'ouverture de l'onglet et apres chaque
+    // effacement : la bibliotheque ne le publie pas (cf. AmbientCache).
+    val mapCache by vm.mapCacheBytes.collectAsState()
+    LaunchedEffect(Unit) { vm.refreshMapCache() }
     SettingsCard {
         SetRow(
             stringResource(R.string.settings_clear_poi_cache),
@@ -245,6 +253,22 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             Icon(
                 Icons.Filled.DeleteOutline, null,
                 tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
+            )
+        }
+        RowDivider()
+        // Les tuiles gardees par la carte, avec leur poids : meme gabarit que les deux lignes du dessus -
+        // un etat en sous-titre, une corbeille eteinte quand il n'y a rien a effacer.
+        SetRow(
+            stringResource(R.string.settings_clear_map_cache),
+            sub = if (mapCache <= 0L) stringResource(R.string.settings_map_cache_empty)
+            else TileMath.formatSize(mapCache),
+            onClick = if (mapCache <= 0L) null else ({ vm.clearMapCache() }),
+            role = Role.Button,
+            info = stringResource(R.string.settings_map_cache_hint),
+        ) {
+            Icon(
+                Icons.Filled.DeleteOutline, null,
+                tint = if (mapCache <= 0L) settingsPalette.subtle else settingsPalette.accent,
             )
         }
     }
@@ -308,7 +332,17 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
     var titleText by remember(cur.customTitle) { mutableStateOf(cur.customTitle) }
     SettingsCard {
         FieldRow(stringResource(R.string.settings_label_side_title)) {
-            SettingsTextField(titleText, stringResource(R.string.drawer_default_title)) { titleText = it }
+            // La disquette n'apparait qu'apres une modification, DANS le champ : l'action d'enregistrer
+            // appartient a ce qu'on vient de taper, et non au bas de la carte, ou elle se lisait comme
+            // l'action de la rubrique entiere - avatar compris, qui s'enregistre pourtant tout seul.
+            SettingsTextField(
+                titleText, stringResource(R.string.drawer_default_title),
+                trailing = if (titleText == cur.customTitle) null else ({
+                    RowIcon(Icons.Filled.Save, stringResource(R.string.action_save)) {
+                        vm.save(cur.copy(customTitle = titleText))
+                    }
+                }),
+            ) { titleText = it }
         }
         RowDivider()
         SetRow(stringResource(R.string.settings_label_avatar)) {
@@ -321,12 +355,16 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
                 avatarDialogOpen = true
             }
         }
-        CardAction(stringResource(R.string.action_save)) { vm.save(cur.copy(customTitle = titleText)) }
     }
 
     SettingsCard {
         UpdatesRow(cur, vm)
-        CardAction(stringResource(R.string.action_reset_all_settings)) { confirmReset = true }
+        // Un bouton a contour plutot qu'une action de fin de carte : il ne touche pas a la carte ou il se
+        // trouve mais a TOUS les reglages, des quatre onglets. Un texte cale a droite, comme
+        // "Reinitialiser" ailleurs, l'aurait fait lire comme le defaire de la ligne du dessus.
+        CardOutlinedButton(stringResource(R.string.action_reset_all_settings), Icons.Filled.RestartAlt) {
+            confirmReset = true
+        }
     }
 
     if (avatarDialogOpen) {

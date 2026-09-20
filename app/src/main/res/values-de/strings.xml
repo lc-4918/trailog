@@ -420,7 +420,7 @@
     <string name="settings_section_position">Position</string>
     <string name="settings_section_search_route">Suche und Route</string>
     <string name="settings_section_track_tools">Werkzeuge für Tracks</string>
-    <string name="settings_sw_track_follow">Dashboard-Schaltfläche</string>
+    <string name="settings_sw_track_follow">Dashboard</string>
     <string name="settings_group_storage">Speicher</string>
     <string name="settings_group_interaction">Interaktion</string>
     <string name="settings_group_appearance">Darstellung</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Titel des Seitenmenüs</string>
     <string name="settings_sw_gps_button">GPS-Standort</string>
-    <string name="settings_sw_gps_recenter">Auf meinen Standort zentrieren</string>
-    <string name="settings_sw_gps_recenter_sub">Beim Einschalten der Ortung. Die Zoomstufe wird nie verändert.</string>
+    <string name="settings_sw_gps_recenter">Auf Position zentrieren</string>
+    <string name="settings_sw_gps_recenter_sub">Beim Einschalten der GPS-Ortung auf die Position zentrieren.</string>
     <string name="settings_sw_gps_last_fix">Letzte gemessene Position anzeigen</string>
     <string name="settings_sw_gps_last_fix_sub">Nach dem Stoppen bleibt sie grau und unbewegt auf der Karte.</string>
     <string name="settings_sw_geocoding">Orts- und Adresssuche</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: Beim Start prüft Trailog, ob eine neue Version veröffentlicht wurde, und bietet die Installation an. Manuell: Die Prüfung erfolgt nur auf Ihre Anfrage.</string>
     <string name="settings_expert_on">Expertenmodus aktiviert</string>
     <string name="settings_expert_off">Expertenmodus deaktiviert</string>
+    <string name="settings_clear_map_cache">Kartenspeicher leeren</string>
+    <string name="settings_map_cache_empty">Leer</string>
+    <string name="settings_map_cache_hint">Einmal gesehene Kacheln werden im eingestellten Rahmen für eine schnellere Anzeige behalten. Beim Leeren werden sie erneut heruntergeladen. Offline-Karten sind nicht betroffen.</string>
 </resources>

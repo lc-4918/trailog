@@ -2,6 +2,7 @@ package fr.lc4918.trailog.map
 
 import android.content.Context
 import org.maplibre.android.offline.OfflineManager
+import java.io.File
 
 /**
  * La taille du cache de tuiles de MapLibre, celle que les reglages annoncent.
@@ -46,4 +47,39 @@ object AmbientCache {
             )
         }
     }
+
+    /**
+     * Le poids du cache sur le disque.
+     *
+     * Lu sur les FICHIERS et non demande a la bibliotheque : elle ne dit pas ce qu'elle occupe, seulement
+     * ce qu'elle s'autorise. Or c'est le poids reel qu'on vient voir avant de l'effacer.
+     */
+    fun sizeBytes(ctx: Context): Long =
+        ctx.filesDir.listFiles()?.filter { isCacheFile(it.name) }?.sumOf { it.length() } ?: 0L
+
+    /**
+     * Les fichiers du cache de tuiles, parmi ceux de l'application : la base de MapLibre et ses journaux.
+     *
+     * Les cartes hors ligne n'en sont pas : ce sont nos propres MBTiles, ailleurs (cf. TrailogRepository).
+     */
+    fun isCacheFile(name: String): Boolean = name.startsWith("mbgl-")
+
+    /**
+     * Efface les tuiles gardees. Les cartes hors ligne ne sont pas touchees - elles ne sont pas la.
+     *
+     * [onDone] est appele dans tous les cas : le compteur affiche doit se relire meme si la bibliotheque
+     * a refuse, sans quoi l'ecran annoncerait un poids qui n'est plus le bon.
+     */
+    fun clear(ctx: Context, onDone: () -> Unit) {
+        val ok = runCatching {
+            OfflineManager.getInstance(ctx).clearAmbientCache(object : OfflineManager.FileSourceCallback {
+                override fun onSuccess() = onDone()
+                override fun onError(message: String) = onDone()
+            })
+        }.isSuccess
+        if (!ok) onDone()
+    }
+
+    /** Ce que le cache occupe, sans Android : la somme de ses fichiers (cf. [isCacheFile]). */
+    fun sizeOf(files: List<File>): Long = files.filter { isCacheFile(it.name) }.sumOf { it.length() }
 }

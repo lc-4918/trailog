@@ -891,6 +891,21 @@ class MigrationsTest {
         db.close()
     }
 
+    /** Les deux defauts corriges valent aussi pour une base en place : ce ne sont pas des choix de
+     *  l'utilisateur, mais ceux que l'application prenait pour lui. */
+    @Test fun `69 vers 70 remet les deux defauts a l'endroit`() {
+        val db = freshDb("m6970"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_FILL_MISSING_ELEVATION)
+        db.execSQL("ALTER TABLE settings ADD COLUMN profileSlope INTEGER NOT NULL DEFAULT 1")
+        db.execSQL(MigrationSql.SET_NEW_DEFAULTS)
+        assertEquals(0, scalar(db, "SELECT profileSlope FROM settings") { it.getInt(0) })
+        assertEquals(1, scalar(db, "SELECT fillMissingElevation FROM settings") { it.getInt(0) })
+        // Et une installation neuve part des memes valeurs : les deux chemins doivent donner le meme etat.
+        assertEquals(false, SettingsEntity().profileSlope)
+        assertEquals(true, SettingsEntity().fillMissingElevation)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

@@ -3,8 +3,20 @@ package fr.lc4918.trailog.ui.settings
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
@@ -72,5 +84,30 @@ class InfoTipTest {
         }
         compose.onNodeWithText("8 lieux").assertIsDisplayed()
         compose.onNodeWithText(explication).assertDoesNotExist()
+    }
+
+    /** La disquette ne parait qu'apres une modification du champ, et enregistre ce qu'on a tape. */
+    @Test fun `la disquette du champ parait apres modification`() {
+        var enregistre: String? = null
+        compose.setContent {
+            ProvideSettingsPalette(dark = false) {
+                var texte by remember { mutableStateOf("Trailog") }
+                SettingsCard {
+                    FieldRow("Titre") {
+                        SettingsTextField(
+                            texte, "Trailog",
+                            trailing = if (texte == "Trailog") null else ({
+                                RowIcon(Icons.Filled.Save, "Enregistrer") { enregistre = texte }
+                            }),
+                        ) { texte = it }
+                    }
+                }
+            }
+        }
+        compose.onAllNodesWithContentDescription("Enregistrer").assertCountEquals(0)
+        compose.onNode(hasSetTextAction()).performTextReplacement("Mes traces")
+        compose.waitForIdle()
+        compose.onNode(hasContentDescription("Enregistrer")).performClick()
+        assertEquals("Mes traces", enregistre)
     }
 }

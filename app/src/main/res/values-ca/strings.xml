@@ -420,7 +420,7 @@
     <string name="settings_section_position">Posició</string>
     <string name="settings_section_search_route">Cerca i itinerari</string>
     <string name="settings_section_track_tools">Eines de traça</string>
-    <string name="settings_sw_track_follow">Botó del tauler</string>
+    <string name="settings_sw_track_follow">Tauler</string>
     <string name="settings_group_storage">Emmagatzematge</string>
     <string name="settings_group_interaction">Interacció</string>
     <string name="settings_group_appearance">Aparença</string>
@@ -453,8 +453,8 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Títol del menú lateral</string>
     <string name="settings_sw_gps_button">Ubicació GPS</string>
-    <string name="settings_sw_gps_recenter">Centra en la meva ubicació</string>
-    <string name="settings_sw_gps_recenter_sub">En activar la localització. El nivell de zoom mai no es modifica.</string>
+    <string name="settings_sw_gps_recenter">Recentra a la posició</string>
+    <string name="settings_sw_gps_recenter_sub">Recentra a la posició en activar la localització GPS.</string>
     <string name="settings_sw_gps_last_fix">Mostra l\'última posició mesurada</string>
     <string name="settings_sw_gps_last_fix_sub">En aturar el seguiment, es queda al mapa en gris, immòbil.</string>
     <string name="settings_sw_geocoding">Cerca de lloc i adreça</string>
@@ -661,4 +661,7 @@
     <string name="settings_updates_info">Auto: en iniciar-se, Trailog comprova si hi ha una nova versió publicada i proposa instal·lar-la. Manual: la comprovació només es fa quan la demanes.</string>
     <string name="settings_expert_on">Mode expert activat</string>
     <string name="settings_expert_off">Mode expert desactivat</string>
+    <string name="settings_clear_map_cache">Esborra la memòria cau del mapa</string>
+    <string name="settings_map_cache_empty">Buida</string>
+    <string name="settings_map_cache_hint">Les tessel·les vistes un cop es guarden per mostrar-les més ràpid, dins del límit configurat. Esborrar-les farà que es tornin a descarregar. Els mapes fora de línia no es toquen.</string>
 </resources>

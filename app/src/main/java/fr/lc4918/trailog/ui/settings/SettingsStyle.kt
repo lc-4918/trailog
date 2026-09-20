@@ -581,6 +581,23 @@ fun ColumnScopeMarker.CardButton(
     }
 }
 
+/**
+ * Un bouton a contour pose seul dans une carte, centre sur sa ligne.
+ *
+ * Pour une action qui deborde la rubrique ou elle se trouve - "Reinitialiser tous les reglages" touche
+ * les quatre onglets -, la ou une action de fin de carte ([CardAction]) se lit comme le defaire de ce qui
+ * est juste au-dessus.
+ */
+@Composable
+fun ColumnScopeMarker.CardOutlinedButton(label: String, icon: ImageVector? = null, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = RowPadH, vertical = 10.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        InlineButton(label, icon, onClick)
+    }
+}
+
 /** Action de fin de carte, calee a droite au-dessus d'un filet : "Reinitialiser", "Enregistrer". */
 @Composable
 fun ColumnScopeMarker.CardAction(label: String, onClick: () -> Unit) {
@@ -652,7 +669,12 @@ fun fieldBoxModifier(): Modifier {
  * saisie, et non une redite du libelle.
  */
 @Composable
-fun SettingsTextField(value: String, placeholder: String, onValueChange: (String) -> Unit) {
+fun SettingsTextField(
+    value: String, placeholder: String,
+    /** Ce qui se pose au bout du champ : la disquette d'un titre modifie, par exemple. */
+    trailing: (@Composable () -> Unit)? = null,
+    onValueChange: (String) -> Unit,
+) {
     val p = settingsPalette
     BasicTextField(
         value = value, onValueChange = onValueChange, singleLine = true,
@@ -660,12 +682,18 @@ fun SettingsTextField(value: String, placeholder: String, onValueChange: (String
         cursorBrush = SolidColor(p.accent),
         modifier = fieldBoxModifier(),
         decorationBox = { field ->
-            Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp), contentAlignment = Alignment.CenterStart) {
-                if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    Text(placeholder, fontSize = 12.sp, color = p.subtle, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
+            Row(
+                Modifier.fillMaxWidth().padding(start = 12.dp, end = if (trailing == null) 12.dp else 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty() && placeholder.isNotEmpty()) {
+                        Text(placeholder, fontSize = 12.sp, color = p.subtle, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
+                    }
+                    field()
                 }
-                field()
+                trailing?.invoke()
             }
         },
     )
