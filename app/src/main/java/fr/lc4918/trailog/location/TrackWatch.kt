@@ -151,11 +151,11 @@ object TrackWatch {
      * le franchissement, il ne sonne pas tant qu'on est loin. Revenir sous le seuil leve le silence - la
      * croix ne tait que l'ecart du moment, pas la fonction - et rearme donc l'annonce suivante.
      */
-    fun update(away: Double, thresholdM: Double, alongM: Double? = null): Boolean {
+    fun update(away: Double, thresholdM: Double, alongM: Double? = null, accuracyM: Double = 0.0): Boolean {
         _awayM.value = away
         if (alongM != null) _alongM.value = alongM
         val avant = _alerting.value
-        val next = OffTrack.alerting(avant, away, thresholdM)
+        val next = OffTrack.alerting(avant, away, thresholdM, accuracyM)
         if (!next) _silenced.value = false
         _alerting.value = next
         return next && !avant
@@ -246,13 +246,18 @@ object TrackWatch {
     /**
      * Une position de plus sur la trace suivie. Rend ce qu'il faut en faire : [Step.Alert] a l'entree en
      * alerte (le son), [Step.Leave] quand, cloche eteinte, on a quitte la trace.
+     *
+     * [accuracyM] est l'incertitude de la position : elle borne ce qu'on ose en conclure (cf.
+     * [OffTrack.alerting]). Zero par defaut - c'est ce que valait le suivi quand il ne vivait que du GPS.
      */
-    fun step(away: Double, thresholdM: Double, alongM: Double): Step {
+    fun step(away: Double, thresholdM: Double, alongM: Double, accuracyM: Double = 0.0): Step {
         _direction.value = AutoFollow.direction(_direction.value, _alongM.value, alongM)
-        if (_armed.value) return if (update(away, thresholdM, alongM)) Step.Alert else Step.Stay
+        if (_armed.value) return if (update(away, thresholdM, alongM, accuracyM)) Step.Alert else Step.Stay
         _awayM.value = away
         _alongM.value = alongM
-        val (n, lacher) = AutoFollow.leave(horsSeuil, away, thresholdM)
+        // L'ecart dont on est SUR : une position floue - reseau, GPS sous couvert - ne fait pas lacher
+        // une trace qu'on suit peut-etre encore.
+        val (n, lacher) = AutoFollow.leave(horsSeuil, OffTrack.sureAwayM(away, accuracyM), thresholdM)
         horsSeuil = n
         return if (lacher) Step.Leave else Step.Stay
     }

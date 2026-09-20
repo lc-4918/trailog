@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
@@ -29,6 +30,8 @@ import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
 import fr.lc4918.trailog.domain.geo.AutoFollow
+import fr.lc4918.trailog.domain.geo.FixPicker
+import fr.lc4918.trailog.domain.geo.FixWatchdog
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.OffTrack
 import fr.lc4918.trailog.domain.geo.RestDetector
@@ -44,6 +47,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -76,9 +80,46 @@ class LocationService : Service() {
     /** Ce que la notification annonce, recalcule a chaque position et a chaque changement de trace. */
     private val notice = MutableStateFlow<String?>(null)
 
-    private val listener = LocationListener { loc ->
+    /**
+     * Un listener PAR fournisseur, et non un seul pour tous : `LocationManager` indexe ses demandes
+     * par listener, et le meme objet abonne deux fois n'en garderait qu'une - la derniere.
+     */
+    private val listeners = HashMap<String, LocationListener>()
+
+    private fun listenerFor(provider: String): LocationListener =
+        listeners.getOrPut(provider) { LocationListener { loc -> onFix(loc) } }
+
+    /** La position tenue a cet instant : de quoi departager celle qui arrive (cf. [FixPicker]). */
+    private var held = false
+    private var heldAccuracyM = 0f
+    private var heldAtMs = 0L
+
+    /** Le silence des positions (cf. [FixWatchdog]) : sur le fil principal, comme la cadence. */
+    private var silence = FixWatchdog.State()
+
+    /**
+     * Une position, de l'un quelconque des fournisseurs abonnes.
+     *
+     * **Elle n'est pas publiee d'office.** Le GPS et le reseau repondent tous deux, et a quelques
+     * centaines de metres l'un de l'autre : tout publier ferait sauter le repere de l'un a l'autre
+     * sans que rien ne bouge. [FixPicker] garde la meilleure, et laisse passer n'importe laquelle
+     * des que celle qu'on tient a fait son temps.
+     */
+    private fun onFix(loc: Location) {
+        val mesureeA = loc.elapsedRealtimeNanos / 1_000_000L
+        val precision = if (loc.hasAccuracy()) loc.accuracy else 0f
+        if (held && !FixPicker.better(heldAccuracyM, heldAtMs, precision, mesureeA)) return
+        held = true
+        heldAccuracyM = precision
+        heldAtMs = mesureeA
+        // Les positions sont revenues : ce qui annoncait leur silence n'a plus d'objet.
+        if (silence.alerted) {
+            LocationHub.clearSilenceNotice()
+            cancelStoppedAlert()
+        }
+        silence = FixWatchdog.onFix(SystemClock.elapsedRealtime())
         LocationHub.publish(loc)
-        pace(loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy else 0f)
+        pace(loc.latitude, loc.longitude, precision)
     }
 
     /** L'arret en cours, ou non (cf. [RestDetector]) : sur le fil principal, celui du listener. */
@@ -118,10 +159,11 @@ class LocationService : Service() {
     private fun applyPace(repos: Boolean) {
         if (repos == resting || !subscribed) return
         resting = repos
-        val provider = enabledProvider() ?: return
-        runCatching {
-            if (repos) locationManager.requestLocationUpdates(provider, REST_INTERVAL_MS, REST_DISTANCE_M, listener, mainLooper)
-            else locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
+        subscribedTo.forEach { provider ->
+            runCatching {
+                if (repos) locationManager.requestLocationUpdates(provider, REST_INTERVAL_MS, REST_DISTANCE_M, listenerFor(provider), mainLooper)
+                else locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listenerFor(provider), mainLooper)
+            }
         }
     }
 
@@ -160,8 +202,17 @@ class LocationService : Service() {
      */
     @Volatile private var stopReason = LocationHub.StopReason.SYSTEM
 
+    /**
+     * Les fournisseurs auxquels on est abonne, dans l'ordre de [PROVIDERS]. Vide quand le service
+     * attend que le capteur revienne.
+     */
+    @Volatile private var subscribedTo: List<String> = emptyList()
+
     /** Le capteur est ecoute a cet instant. Faux quand le service attend qu'il revienne. */
-    @Volatile private var subscribed = false
+    private val subscribed: Boolean get() = subscribedTo.isNotEmpty()
+
+    /** L'economie d'energie bride la localisation : de quoi NOMMER la cause du silence (cf. [PowerSave]). */
+    @Volatile private var powerCuts = false
 
     /**
      * La bascule de la localisation dans le telephone, ecoutee par le SERVICE et non par l'ecran.
@@ -171,7 +222,10 @@ class LocationService : Service() {
      * carte et retaper sur le bouton, ce que personne ne fait sans savoir qu'il le faut.
      */
     private val providerReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) { retryIfPossible() }
+        override fun onReceive(context: Context?, intent: Intent?) {
+            powerCuts = PowerSave.cutsLocation(this@LocationService)
+            retryIfPossible()
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -181,6 +235,9 @@ class LocationService : Service() {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION).apply {
             addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+            // L'economie d'energie qui s'allume ou s'eteint change les fournisseurs disponibles sans
+            // que la localisation bouge : sans cette action, on l'apprendrait par le silence.
+            addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
         }
         ContextCompat.registerReceiver(this, providerReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         watchSettings()
@@ -192,6 +249,8 @@ class LocationService : Service() {
         watchDetectionPace()
         watchAlertRing()
         watchNotice()
+        watchSilence()
+        powerCuts = PowerSave.cutsLocation(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -233,7 +292,12 @@ class LocationService : Service() {
         // nous relancant apres avoir repris sa memoire.
         LocationHub.wantTracking()
         stopReason = LocationHub.StopReason.SYSTEM
-        if (subscribe()) LocationHub.setTracking(true) else awaitProvider()
+        if (subscribe()) {
+            restartSilenceClock()
+            LocationHub.setTracking(true)
+        } else {
+            awaitProvider()
+        }
         // Le systeme peut nous relancer apres avoir eu besoin de memoire : le suivi reprend alors seul,
         // ce qu'on attend d'une fonction qu'on a demandee pour la duree d'une sortie.
         return START_STICKY
@@ -267,8 +331,15 @@ class LocationService : Service() {
         if (!LocationHub.wanted.value) return
         ensureAlertChannel()
         val texte = getString(
-            if (reason == LocationHub.StopReason.SENSOR_OFF) R.string.location_stopped_sensor
-            else R.string.location_stopped_system,
+            when (reason) {
+                LocationHub.StopReason.SENSOR_OFF -> R.string.location_stopped_sensor
+                // Le silence a une cause qu'on sait souvent nommer, et la nommer change ce qu'on en
+                // fait : "le GPS ne repond plus" fait secouer le telephone, "l'economie d'energie
+                // l'eteint quand l'ecran s'eteint" fait ouvrir le bon reglage.
+                LocationHub.StopReason.SENSOR_SILENT ->
+                    if (powerCuts) R.string.location_stopped_silent_power else R.string.location_stopped_silent
+                else -> R.string.location_stopped_system
+            },
         )
         val ouvrir = PendingIntent.getActivity(
             this, 2, Intent(this, MainActivity::class.java).apply {
@@ -302,24 +373,41 @@ class LocationService : Service() {
         )
     }
 
-    /** La localisation vient de basculer : on se rebranche si elle est revenue, on lache si elle est partie. */
+    /**
+     * Les fournisseurs viennent de changer : on se rebranche sur ceux qui restent.
+     *
+     * **Ce qui n'allait pas.** On demandait seulement s'il restait UN fournisseur, et, si l'on etait
+     * deja abonne, on ne faisait rien. Or c'est exactement ce qui arrive en economie d'energie :
+     * l'ecran s'eteint, le telephone coupe le GPS - lui seul -, le reseau reste actif, la condition
+     * "il reste un fournisseur" est vraie, et le service demeurait abonne a un fournisseur mort.
+     * Sans position, sans annonce, et sans rien pour le dire au retour de l'ecran.
+     */
     private fun retryIfPossible() {
         if (!hasPermission()) return
-        if (enabledProvider() != null) {
-            if (subscribed) return
-            if (subscribe()) {
-                notice.value = null
-                LocationHub.setTracking(true)
-                // Le suivi a repris de lui-meme : l'annonce d'arret n'a plus d'objet, et la laisser
-                // afficher un probleme resolu serait la rendre inutile a la fois suivante.
-                val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                runCatching { nm?.cancel(ALERT_NOTIF_ID) }
-            }
-        } else if (subscribed) {
-            runCatching { locationManager.removeUpdates(listener) }
-            subscribed = false
+        val actifs = enabledProviders()
+        if (actifs == subscribedTo) return
+        unsubscribe()
+        if (actifs.isEmpty()) {
             awaitProvider()
+            return
         }
+        if (!subscribe()) {
+            awaitProvider()
+            return
+        }
+        restartSilenceClock()
+        notice.value = null
+        LocationHub.setTracking(true)
+        // Le suivi a repris de lui-meme : l'annonce d'arret n'a plus d'objet, et la laisser afficher
+        // un probleme resolu serait la rendre inutile a la fois suivante.
+        LocationHub.clearSilenceNotice()
+        cancelStoppedAlert()
+    }
+
+    /** L'annonce d'un suivi interrompu, retiree : ce qu'elle disait ne vaut plus. */
+    private fun cancelStoppedAlert() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        runCatching { nm?.cancel(ALERT_NOTIF_ID) }
     }
 
     override fun onDestroy() {
@@ -327,9 +415,8 @@ class LocationService : Service() {
         // sonnerait jusqu'a la batterie vide.
         AlertSound.stop()
         cancelOffTrackAlert()
-        runCatching { locationManager.removeUpdates(listener) }
+        unsubscribe()
         runCatching { unregisterReceiver(providerReceiver) }
-        subscribed = false
         releaseWakeLock()
         // L'annonce AVANT l'arret : setTracking efface l'intention lue par postStoppedAlert.
         if (stopReason != LocationHub.StopReason.USER) postStoppedAlert(stopReason)
@@ -359,32 +446,58 @@ class LocationService : Service() {
 
     // ---------- capteur ----------
 
+    /**
+     * L'abonnement a TOUS les fournisseurs actifs, et non au meilleur du moment.
+     *
+     * **Pourquoi tous.** Le mode economie d'energie de certains telephones - un Galaxy S10e sous
+     * Android 12 le fait - eteint le GPS des que l'ecran s'endort, et lui seul : le reseau continue
+     * de repondre. Abonne au seul GPS, le suivi devenait aveugle pour toute la sortie ; abonne aux
+     * deux, il continue avec des positions plus grossieres, et le GPS reprend la main au rallumage
+     * sans que personne n'ait rien a faire. Le tri se fait a l'arrivee (cf. [onFix]).
+     *
+     * **Ce repli ne vaut PAS en mode avion**, et c'est justement la qu'une bonne part des sorties se
+     * passent : sans reseau, le fournisseur du meme nom n'a rien a calculer, et le GPS eteint ne
+     * laisse rien derriere lui. Ce qui reste alors est le chien de garde (cf. [FixWatchdog]), qui le
+     * DIT, et le reglage du telephone, qui seul peut l'empecher. S'abonner aux deux ne coute rien
+     * pour autant - un fournisseur muet est muet - et rend le suivi continu partout ailleurs.
+     */
     @SuppressLint("MissingPermission")
     private fun subscribe(): Boolean {
         if (!hasPermission()) return false
-        val provider = enabledProvider() ?: return false
-        return runCatching {
-            locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
-            rest = RestDetector.State()
-            resting = false
-            subscribed = true
-            // La derniere position connue tout de suite : le systeme la tient deja, et l'attendre laisserait
-            // la carte sans repere pendant les secondes que le GPS met a se fixer.
-            locationManager.getLastKnownLocation(provider)?.let { LocationHub.publish(it) }
-            acquireWakeLock()
-            true
-        }.getOrDefault(false)
+        val actifs = enabledProviders()
+        if (actifs.isEmpty()) return false
+        val pris = actifs.filter { provider ->
+            runCatching {
+                locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listenerFor(provider), mainLooper)
+            }.isSuccess
+        }
+        if (pris.isEmpty()) return false
+        subscribedTo = pris
+        rest = RestDetector.State()
+        resting = false
+        held = false
+        // La derniere position connue tout de suite : le systeme la tient deja, et l'attendre laisserait
+        // la carte sans repere pendant les secondes que le GPS met a se fixer.
+        pris.firstNotNullOfOrNull { runCatching { locationManager.getLastKnownLocation(it) }.getOrNull() }
+            ?.let { LocationHub.publish(it) }
+        acquireWakeLock()
+        return true
+    }
+
+    /** Tous les listeners retires, et plus aucun fournisseur ecoute. */
+    private fun unsubscribe() {
+        listeners.values.forEach { runCatching { locationManager.removeUpdates(it) } }
+        subscribedTo = emptyList()
     }
 
     private fun hasPermission() =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    private fun enabledProvider(): String? = when {
-        !LocationManagerCompat.isLocationEnabled(locationManager) -> null
-        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-        locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-        else -> null
+    /** Les fournisseurs actifs, du plus precis au plus grossier. Vide quand la localisation est coupee. */
+    private fun enabledProviders(): List<String> {
+        if (!LocationManagerCompat.isLocationEnabled(locationManager)) return emptyList()
+        return PROVIDERS.filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
     }
 
     /**
@@ -412,6 +525,71 @@ class LocationService : Service() {
         wakeLock = null
     }
 
+    // ---------- le silence des positions ----------
+
+    /**
+     * Le battement qui surveille le silence (cf. [FixWatchdog]).
+     *
+     * **Pourquoi une horloge et non un evenement.** Tout ce que le service sait d'un ennui lui vient
+     * d'une annonce du telephone : la localisation coupee, un fournisseur qui disparait. Un GPS
+     * eteint par l'economie d'energie n'annonce rien du tout - la localisation reste allumee, le
+     * fournisseur reste declare, et les positions cessent simplement d'arriver. Seul le temps qui
+     * passe peut le dire.
+     *
+     * Le calcul se fait sur le fil principal, avec [rest], [resting] et [silence] : deux fils qui
+     * redemandent des positions en meme temps en laisseraient une demande derriere eux.
+     */
+    private fun watchSilence() = scope.launch {
+        while (isActive) {
+            delay(SILENCE_TICK_MS)
+            mainHandler.post { tickSilence() }
+        }
+    }
+
+    private fun tickSilence() {
+        val (etat, action) = FixWatchdog.check(silence, SystemClock.elapsedRealtime(), subscribed && !resting)
+        silence = etat
+        when (action) {
+            FixWatchdog.Action.None -> Unit
+            FixWatchdog.Action.Resubscribe -> resubscribe()
+            FixWatchdog.Action.Alert -> announceSilence()
+        }
+    }
+
+    /** L'horloge du silence repart : un abonnement tout neuf n'a pas a porter le silence du precedent. */
+    private fun restartSilenceClock() {
+        silence = FixWatchdog.onFix(SystemClock.elapsedRealtime())
+    }
+
+    /**
+     * Une tentative de reprendre la main : les memes fournisseurs, redemandes.
+     *
+     * L'horloge du silence n'est PAS remise a zero - sans quoi le second delai, celui qui annonce,
+     * ne serait jamais atteint : on se rabonnerait indefiniment sans jamais rien dire.
+     */
+    @SuppressLint("MissingPermission")
+    private fun resubscribe() {
+        if (!subscribed) return
+        unsubscribe()
+        if (!subscribe()) awaitProvider()
+    }
+
+    /**
+     * Le suivi ne recoit plus rien, et le porteur l'apprend : notification sonore, banniere de la
+     * carte, et la notification permanente qui cesse d'annoncer un ecart qu'elle ne mesure plus.
+     *
+     * Le suivi n'est pas arrete pour autant - le service tourne, l'abonnement tient, une position
+     * peut revenir a la seconde d'apres, et elle effacera tout (cf. [onFix]).
+     */
+    private fun announceSilence() {
+        powerCuts = PowerSave.cutsLocation(this)
+        notice.value = getString(
+            if (powerCuts) R.string.location_notice_silent_power else R.string.location_notice_silent,
+        )
+        LocationHub.noticeSilence()
+        postStoppedAlert(LocationHub.StopReason.SENSOR_SILENT)
+    }
+
     // ---------- veille sur la trace suivie ----------
 
     /**
@@ -437,6 +615,9 @@ class LocationService : Service() {
             val suivie = TrackWatch.followed.value
             if (suivie == null) {
                 notice.value = null
+                // Une position plus floue que le couloir de reconnaissance ne reconnait rien : elle
+                // accrocherait aussi bien la trace d'a cote, et c'est ce qu'on suivrait ensuite.
+                if (fix.accuracyM > AutoFollow.ON_TRACK_M) return@collect
                 val candidates = listOfNotNull(FollowCatalog.route.value) + candidatesNear(fix.lat, fix.lon)
                 TrackWatch.detect(fix.lat, fix.lon, candidates, seuil, SystemClock.elapsedRealtime())
                 return@collect
@@ -445,7 +626,7 @@ class LocationService : Service() {
             // trace (cf. FollowProgressMath), et dans quel sens on la parcourt.
             val projete = TrackMeasure.project(suivie.samples, fix.lon, fix.lat) ?: return@collect
             val away = projete.awayM
-            when (TrackWatch.step(away, seuil, projete.alongM)) {
+            when (TrackWatch.step(away, seuil, projete.alongM, fix.accuracyM.toDouble())) {
                 TrackWatch.Step.Leave -> { TrackWatch.stop(); notice.value = null; return@collect }
                 // L'entree en alerte ne joue plus le son elle-meme : la sonnerie boucle tant que l'ecart
                 // dure, et c'est donc l'ETAT de l'alerte qui la commande (cf. [watchAlertRing]).
@@ -751,6 +932,23 @@ class LocationService : Service() {
         /** La cadence de repos : une position toutes les dix secondes au plus, et seulement apres 10 m. */
         private const val REST_INTERVAL_MS = 10_000L
         private const val REST_DISTANCE_M = 10f
+
+        /**
+         * Les fournisseurs ecoutes, du plus precis au plus grossier (cf. [subscribe]).
+         *
+         * **Pas le fournisseur passif**, qui semblait pourtant gratuit : il rend ce que N'IMPORTE QUELLE
+         * application recoit, y compris nous - chacune de nos propres positions GPS nous reviendrait donc
+         * en double, et la cadence comme la detection d'arret compteraient deux fois le meme instant. Il
+         * n'apporte rien la ou il servirait : quand l'economie d'energie eteint le GPS, elle l'eteint
+         * pour tout le monde, et il n'y a plus rien a entendre en passant.
+         */
+        private val PROVIDERS = listOf(
+            LocationManager.GPS_PROVIDER,
+            LocationManager.NETWORK_PROVIDER,
+        )
+
+        /** Le battement du chien de garde : cinq secondes, pour une alerte qui se compte en dizaines. */
+        private const val SILENCE_TICK_MS = 5_000L
 
         /** Repli quand les reglages ne sont pas encore lus - la meme valeur que leur defaut. */
         private const val DEFAULT_ALERT_M = 50

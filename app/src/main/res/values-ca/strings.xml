@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Ubicació desactivada al telèfon: ja no hi ha marcador. El seguiment es reprendrà tan aviat com torni.</string>
     <string name="location_stopped_system">El seguiment de posició s\'ha aturat tot sol. Ja no teniu marcador al mapa.</string>
     <string name="location_stopped_resume">Reprèn</string>
+    <string name="location_notice_silent">Ja no arriba cap posició al seguiment.</string>
+    <string name="location_notice_silent_power">L\'estalvi de bateria apaga el GPS amb la pantalla apagada.</string>
+    <string name="location_stopped_silent">Ja no arriba cap posició al seguiment: el marcador del mapa no està actualitzat.</string>
+    <string name="location_stopped_silent_power">L\'estalvi de bateria apaga el GPS quan s\'apaga la pantalla: ja no arriba cap posició al seguiment i el marcador del mapa no està actualitzat.</string>
+    <string name="location_stopped_power_settings">Estalvi de bateria</string>
     <string name="settings_section_route_prefs">Preferències de traçat</string>
     <string name="settings_label_route_ways">Vies</string>
     <string name="settings_label_route_hills">Relleu</string>

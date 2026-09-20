@@ -97,6 +97,10 @@ vues dynamiques, décisions), [`SPEC.md`](SPEC.md) pour la spécification foncti
 
 Logs : `adb logcat` ou la fenêtre **Logcat** d'Android Studio.
 
+Suivi de position qui se tait écran éteint sur un appareil en économie d'énergie : c'est un réglage du
+téléphone, pas un défaut de l'application. Le diagnostic et la commande qui le désarment sont dans
+[`CONTEXT.md`](CONTEXT.md#pièges-connus).
+
 ## 5. Tests
 
 ```bash

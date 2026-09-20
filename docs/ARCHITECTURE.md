@@ -890,6 +890,24 @@ un mot**. La frontière de durabilité était incohérente - l'*intention* de su
 c'est le seul chemin de reprise qui vaille aussi pour le parcours du planificateur, lequel n'a aucune
 couche derrière lui.
 
+**Un suivi qui se tait n'est pas un suivi qui s'arrête, et c'est pire.** Mesure faite sur un Galaxy S10e
+sous Android 12 : en mode économie d'énergie, la politique du système porte `location_mode=1`, autrement
+dit le téléphone **éteint le fournisseur GPS dès que l'écran s'éteint**, pour toutes les applications,
+service de premier plan ou non. Ni le type de service, ni le wake-lock, ni l'exemption de restriction de
+batterie n'y changent quoi que ce soit : c'est un réglage de l'appareil. Et rien n'est annoncé - la
+localisation reste allumée, donc `PROVIDERS_CHANGED` ne dit que la perte du GPS, et le service, déjà
+abonné, n'en tirait rien. Résultat sur le terrain : curseur figé jusqu'au rallumage, quelques kilomètres
+manquants sur vingt (`TripStats` refuse à juste titre de relier deux points séparés de plus d'une minute),
+et une alerte d'éloignement qui n'a sonné qu'au rallumage de l'écran, à dix fois le seuil.
+
+Trois règles en découlent. **Le service s'abonne à tous les fournisseurs actifs**, pas au meilleur du
+moment : le réseau prend le relais quand le GPS s'éteint, et le GPS reprend la main au rallumage sans que
+personne n'ait rien à faire ; `FixPicker` départage les positions qui arrivent alors en double. **Ce qu'on
+conclut d'une position est borné par sa précision** : une position réseau se donne à quelques centaines de
+mètres près, et n'ouvre ni ne lève une alerte que son incertitude à elle seule expliquerait. **Le silence
+se surveille à l'horloge**, puisque aucun événement ne l'annonce : `FixWatchdog` tente d'abord un
+réabonnement, puis le dit - notification sonore et bannière - et une position revenue efface tout.
+
 **Un repère figé est un repère qui ment.** `Fix` porte son heure de réception, sur l'horloge de l'appareil
 et non l'heure murale. Le repère **passe au gris** quand le suivi s'arrête, et seulement alors : il le
 faisait aussi au-delà de trente secondes sans mesure, ce qui grisait un repère parfaitement juste chaque

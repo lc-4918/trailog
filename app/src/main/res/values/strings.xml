@@ -522,6 +522,11 @@
     <string name="location_stopped_sensor">Localisation coupée dans le téléphone : plus de repère. Le suivi reprendra dès son retour.</string>
     <string name="location_stopped_system">Le suivi de position s\'est arrêté tout seul. Vous n\'avez plus de repère sur la carte.</string>
     <string name="location_stopped_resume">Reprendre</string>
+    <string name="location_notice_silent">Plus aucune position ne parvient au suivi.</string>
+    <string name="location_notice_silent_power">L\'économie d\'énergie coupe le GPS, écran éteint.</string>
+    <string name="location_stopped_silent">Plus aucune position ne parvient au suivi : le repère de la carte n\'est plus à jour.</string>
+    <string name="location_stopped_silent_power">L\'économie d\'énergie coupe le GPS quand l\'écran s\'éteint : plus aucune position ne parvient au suivi, et le repère de la carte n\'est plus à jour.</string>
+    <string name="location_stopped_power_settings">Économie d\'énergie</string>
     <string name="settings_section_route_prefs">Préférences de tracé</string>
     <string name="settings_label_route_ways">Voies</string>
     <string name="settings_label_route_hills">Relief</string>

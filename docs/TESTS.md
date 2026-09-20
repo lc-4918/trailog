@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**875 tests, 82 fichiers**, tous verts.
+**1195 tests, 114 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -120,7 +120,9 @@ test unitaire.
 | `TrackEditTest` | 20 | couper, joindre, fusionner et inverser une trace importée |
 | `FormatTest` | 14 | formatage des durées, distances et altitudes affichées dans le profil et sur les mesures de géocodage |
 | `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, échantillonnage du parcours mesuré |
-| `OffTrackTest` | 10 | pré-tri des couches sur leur emprise, et bascule de l'alerte d'éloignement |
+| `OffTrackTest` | 18 | pré-tri des couches sur leur emprise, bascule de l'alerte d'éloignement, et ce qu'une position floue n'autorise pas à conclure |
+| `FixPickerTest` | 6 | le tri des positions quand plusieurs fournisseurs répondent ensemble |
+| `FixWatchdogTest` | 3 | le suivi abonné au capteur qui ne reçoit plus rien : quand se rabonner, quand le dire |
 
 `TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas à viser la ligne
 au pixel (projeté orthogonal, borné aux extrémités), et le parcours mesuré est rendu à pas constant en
@@ -136,6 +138,17 @@ sa position, son altitude et son horaire interpolés. Sans lui, le point sautait
 ne se lâche qu'à 80 % de celui-ci. Un test y fait osciller la position autour du seuil et compte les
 bascules : une seule est admise. Sans cette marge, une position qui tremble - le lot d'un GPS de téléphone
 sous couvert - rallumerait la bannière et son son toutes les deux secondes.
+
+`FixPickerTest` et `FixWatchdogTest` **viennent d'une sortie en mode économie d'énergie.** Le téléphone
+y éteint le GPS dès que l'écran s'éteint - et lui seul : la localisation reste allumée, le fournisseur
+réseau continue de répondre, et rien n'est annoncé. Le suivi se croyait donc en marche pendant que plus
+aucune position n'arrivait : le curseur sautait au rallumage, les kilomètres manquaient, et l'alerte
+d'éloignement n'a sonné qu'une fois l'écran rallumé, à dix fois le seuil. La correction tient en trois
+règles, vérifiées ici : s'abonner à **tous** les fournisseurs actifs plutôt qu'au meilleur du moment,
+trier les positions qui arrivent alors en double (`FixPickerTest`), et surveiller le silence puisque
+personne ne l'annonce (`FixWatchdogTest`). `OffTrackTest` en tire la quatrième : une position réseau se
+donne à quelques centaines de mètres près, et n'a donc le droit ni d'ouvrir ni de lever une alerte que
+son incertitude à elle seule expliquerait.
 
 `TrackEditTest` couvre les seules opérations qui **modifient** une trace reçue : une faute n'y est pas
 réparable, le fichier d'origine n'est plus là. Il verrouille que le point de coupe appartient aux **deux**
@@ -526,7 +539,8 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 |---|---|---|
 | `TrackWatchTest` | 13 | l'alerte d'éloignement : ce qui la déclenche, ce qui la tait, ce qui la réarme, et la reprise après une mort du processus |
 | `FollowedStoreTest` | 5 | la trace suivie gardée sur le disque : ce qui traverse la mort du processus |
-| `LocationHubTest` | 9 | la différence entre un suivi qu'on arrête et un suivi qui s'arrête |
+| `LocationHubTest` | 10 | la différence entre un suivi qu'on arrête, un suivi qui s'arrête, et un suivi qui se tait |
+| `TripWatchTest` | 3 | les compteurs de la sortie entre le service, le bouton de remise à zéro et le disque |
 | `LastFixShownTest` | 5 | la dernière position mesurée, gardée en gris quand le suivi s'arrête |
 
 `LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
@@ -534,6 +548,12 @@ repère avait disparu, il l'avait vu, et rien ne lui a appris que l'application 
 Le suivi s'était arrêté tout seul - localisation coupée, ou service tué - et le code traitait cet arrêt-là
 exactement comme un tap sur le bouton. Toute la correction tient dans cette distinction : ce qui suit un
 arrêt **demandé** est le silence, ce qui suit un arrêt **subi** est une annonce et une reprise.
+
+Un troisième arrêt s'y est ajouté depuis, et il n'a pas la même nature que les deux autres : le suivi qui
+**se tait**. Le service tourne, l'abonnement tient, la localisation n'est pas coupée - et plus aucune
+position n'arrive, parce que l'économie d'énergie a éteint le GPS avec l'écran. Le téléphone n'annonce
+rien, puisque de son point de vue rien n'est arrêté : c'est la seule panne dont l'application soit le seul
+témoin possible, et la seule que son horloge, et non un événement, puisse constater (cf. `FixWatchdogTest`).
 
 Deux mutations vérifient que ces tests attrapent bien le défaut d'origine. Faire taire l'arrêt subi - le
 comportement exact d'avant - fait tomber **5 tests** ; effacer l'intention à l'arrêt, ce qui supprimerait

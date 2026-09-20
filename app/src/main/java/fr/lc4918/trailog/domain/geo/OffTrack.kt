@@ -40,15 +40,31 @@ object OffTrack {
 
     /**
      * L'alerte, une position de plus : [current] est son etat precedent, [awayM] l'ecart mesure a la trace
-     * suivie, [thresholdM] l'ecart regle.
+     * suivie, [thresholdM] l'ecart regle, [accuracyM] l'incertitude de la position.
      *
      * Entre le seuil et sa marge de retour, rien ne change - c'est la zone morte qui empeche le clignotement.
+     *
+     * **L'incertitude compte des lors que le suivi ne vit plus du seul GPS.** Une position reseau -
+     * celle qui prend le relais quand l'economie d'energie eteint le GPS avec l'ecran - se donne a
+     * quelques centaines de metres pres. Comparee telle quelle a un seuil de cinquante metres, elle
+     * alerterait sur place, et une alerte fausse decredibilise toutes les autres. On n'entre donc en
+     * alerte que si l'ecart depasse le seuil MEME en retranchant l'incertitude, et on n'en sort que
+     * s'il passe sous la marge de retour en l'ajoutant. Entre les deux, la position ne dit rien, et
+     * l'alerte reste ce qu'elle etait.
      */
-    fun alerting(current: Boolean, awayM: Double, thresholdM: Double): Boolean = when {
-        awayM >= thresholdM -> true
-        awayM <= thresholdM * ReturnRatio -> false
+    fun alerting(current: Boolean, awayM: Double, thresholdM: Double, accuracyM: Double = 0.0): Boolean = when {
+        awayM - accuracyM >= thresholdM -> true
+        awayM + accuracyM <= thresholdM * ReturnRatio -> false
         else -> current
     }
+
+    /**
+     * L'ecart dont on est SUR : la mesure moins son incertitude, jamais negative.
+     *
+     * Sert la ou un ecart fait lacher la trace suivie (cf. `AutoFollow.leave`) : on ne se defait pas
+     * d'une trace sur la foi d'une position floue.
+     */
+    fun sureAwayM(awayM: Double, accuracyM: Double): Double = maxOf(0.0, awayM - accuracyM)
 
     /**
      * L'alerte s'annonce : la cloche est armee, l'ecart dure, et personne n'a encore repondu.

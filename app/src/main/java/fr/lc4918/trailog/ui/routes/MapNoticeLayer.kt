@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.location.LocationHub
+import fr.lc4918.trailog.location.PowerSave
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.ui.alert.OffTrackAlertBar
 import fr.lc4918.trailog.ui.location.LocationControls
@@ -89,14 +91,36 @@ internal fun BoxScope.MapNoticeLayer(
      */
     val arret = stopNotice
     if (arret != null) {
+        val ctx = LocalContext.current
+        /*
+         * Le suivi qui se tait est le seul cas ou l'application connait souvent la cause : l'economie
+         * d'energie eteint le GPS avec l'ecran, et c'est un reglage du telephone, pas une panne. On le
+         * nomme, et le bouton mene la ou cela se corrige.
+         *
+         * Le meme silence sans economie d'energie n'a PAS de bouton : "Reprendre" rallumerait le suivi,
+         * or il tourne toujours - le geste l'aurait arrete.
+         */
+        val economie = arret == LocationHub.StopReason.SENSOR_SILENT && PowerSave.cutsLocation(ctx)
         LocationNoticeBar(
             text = stringResource(
-                if (arret == LocationHub.StopReason.SENSOR_OFF) R.string.location_stopped_sensor
-                else R.string.location_stopped_system,
+                when {
+                    arret == LocationHub.StopReason.SENSOR_OFF -> R.string.location_stopped_sensor
+                    economie -> R.string.location_stopped_silent_power
+                    arret == LocationHub.StopReason.SENSOR_SILENT -> R.string.location_stopped_silent
+                    else -> R.string.location_stopped_system
+                },
             ),
             onDismiss = { location.dismissStopNotice() },
-            actionLabel = stringResource(R.string.location_stopped_resume),
-            onAction = { location.dismissStopNotice(); location.onGpsButtonTap() },
+            actionLabel = when {
+                economie -> stringResource(R.string.location_stopped_power_settings)
+                arret == LocationHub.StopReason.SENSOR_SILENT -> null
+                else -> stringResource(R.string.location_stopped_resume)
+            },
+            onAction = when {
+                economie -> ({ location.dismissStopNotice(); PowerSave.openSettings(ctx) })
+                arret == LocationHub.StopReason.SENSOR_SILENT -> null
+                else -> ({ location.dismissStopNotice(); location.onGpsButtonTap() })
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
     }

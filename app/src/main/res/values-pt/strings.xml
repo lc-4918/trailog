@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Localização desativada no telemóvel: já não há marcador. O seguimento retomará assim que voltar.</string>
     <string name="location_stopped_system">O seguimento de posição parou sozinho. Já não tem marcador no mapa.</string>
     <string name="location_stopped_resume">Retomar</string>
+    <string name="location_notice_silent">Já não chega nenhuma posição ao seguimento.</string>
+    <string name="location_notice_silent_power">A poupança de bateria desliga o GPS com o ecrã apagado.</string>
+    <string name="location_stopped_silent">Já não chega nenhuma posição ao seguimento: o marcador do mapa está desatualizado.</string>
+    <string name="location_stopped_silent_power">A poupança de bateria desliga o GPS quando o ecrã se apaga: já não chega nenhuma posição ao seguimento e o marcador do mapa está desatualizado.</string>
+    <string name="location_stopped_power_settings">Poupança de bateria</string>
     <string name="settings_section_route_prefs">Preferências de traçado</string>
     <string name="settings_label_route_ways">Vias</string>
     <string name="settings_label_route_hills">Relevo</string>

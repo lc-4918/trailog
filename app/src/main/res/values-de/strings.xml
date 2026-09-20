@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Standort im Telefon deaktiviert: keine Markierung mehr. Die Verfolgung wird fortgesetzt, sobald er zurückkehrt.</string>
     <string name="location_stopped_system">Die Positionsverfolgung wurde von selbst beendet. Sie haben keine Markierung mehr auf der Karte.</string>
     <string name="location_stopped_resume">Fortsetzen</string>
+    <string name="location_notice_silent">Es erreicht keine Position mehr die Verfolgung.</string>
+    <string name="location_notice_silent_power">Der Energiesparmodus schaltet das GPS bei ausgeschaltetem Bildschirm ab.</string>
+    <string name="location_stopped_silent">Es erreicht keine Position mehr die Verfolgung: die Markierung auf der Karte ist nicht mehr aktuell.</string>
+    <string name="location_stopped_silent_power">Der Energiesparmodus schaltet das GPS ab, sobald der Bildschirm ausgeht: es erreicht keine Position mehr die Verfolgung, und die Markierung auf der Karte ist nicht mehr aktuell.</string>
+    <string name="location_stopped_power_settings">Energiesparmodus</string>
     <string name="settings_section_route_prefs">Routenvorlieben</string>
     <string name="settings_label_route_ways">Wege</string>
     <string name="settings_label_route_hills">Gelände</string>

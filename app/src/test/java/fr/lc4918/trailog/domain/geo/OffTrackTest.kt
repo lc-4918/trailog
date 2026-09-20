@@ -109,4 +109,28 @@ class OffTrackTest {
         assertFalse("elle ne sonne pas", OffTrack.ringing(soundOn = false, armed = true, alerting = true, silenced = false))
         assertTrue("elle s'annonce", OffTrack.announcing(armed = true, alerting = true, silenced = false))
     }
+
+    // ---------- l'incertitude de la position ----------
+
+    /**
+     * Le suivi ne vit plus du seul GPS : quand l'economie d'energie l'eteint avec l'ecran, c'est le
+     * fournisseur reseau qui parle, a quelques centaines de metres pres. Alerter la-dessus, c'est
+     * alerter sur place - et une alerte fausse decredibilise toutes les autres.
+     */
+    @Test fun `une position floue n'entre pas en alerte`() {
+        assertFalse(OffTrack.alerting(current = false, awayM = 120.0, thresholdM = 50.0, accuracyM = 300.0))
+        assertTrue("la meme mesure, sure, alerte", OffTrack.alerting(false, 120.0, 50.0, accuracyM = 10.0))
+    }
+
+    /** Et elle ne rassure pas davantage : une alerte en cours ne se leve pas sur une position floue. */
+    @Test fun `une position floue ne sort pas d'alerte`() {
+        assertTrue(OffTrack.alerting(current = true, awayM = 20.0, thresholdM = 50.0, accuracyM = 300.0))
+        assertFalse("revenu pour de bon, elle se leve", OffTrack.alerting(true, 20.0, 50.0, accuracyM = 5.0))
+    }
+
+    /** L'ecart dont on est sur ne passe pas de l'autre cote de la trace. */
+    @Test fun `l'ecart sur ne descend pas sous zero`() {
+        assertEquals(0.0, OffTrack.sureAwayM(20.0, 300.0), 0.0)
+        assertEquals(10.0, OffTrack.sureAwayM(20.0, 10.0), 0.0)
+    }
 }

@@ -125,4 +125,17 @@ class LocationHubTest {
         assertTrue("posee a la reception", recue >= avant)
         assertTrue("et non l'heure de la mesure", recue < 1_700_000_000_000L)
     }
+
+    /**
+     * L'instant MONOTONE de la mesure, distinct de celui de sa reception.
+     *
+     * C'est lui qui departage deux fournisseurs qui repondent ensemble (cf. FixPicker), et lui qui dit
+     * l'espacement reel de positions livrees d'un coup au reveil : datees de leur livraison, elles
+     * paraitraient consecutives, et les kilometres entre elles se compteraient en ligne droite.
+     */
+    @Test fun `chaque position porte l'instant de sa mesure`() {
+        val mesuree = position().apply { elapsedRealtimeNanos = 42_000L * 1_000_000L }
+        LocationHub.publish(mesuree)
+        assertEquals(42_000L, requireNotNull(LocationHub.fix.value).elapsedAtMs)
+    }
 }

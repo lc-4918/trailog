@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Posizione disattivata nel telefono: nessun indicatore. Il tracciamento riprenderà appena tornerà disponibile.</string>
     <string name="location_stopped_system">Il tracciamento della posizione si è fermato da solo. Non hai più un indicatore sulla mappa.</string>
     <string name="location_stopped_resume">Riprendi</string>
+    <string name="location_notice_silent">Nessuna posizione raggiunge più il tracciamento.</string>
+    <string name="location_notice_silent_power">Il risparmio energetico spegne il GPS a schermo spento.</string>
+    <string name="location_stopped_silent">Nessuna posizione raggiunge più il tracciamento: l\'indicatore sulla mappa non è aggiornato.</string>
+    <string name="location_stopped_silent_power">Il risparmio energetico spegne il GPS quando lo schermo si spegne: nessuna posizione raggiunge più il tracciamento e l\'indicatore sulla mappa non è aggiornato.</string>
+    <string name="location_stopped_power_settings">Risparmio energetico</string>
     <string name="settings_section_route_prefs">Preferenze di percorso</string>
     <string name="settings_label_route_ways">Vie</string>
     <string name="settings_label_route_hills">Rilievo</string>

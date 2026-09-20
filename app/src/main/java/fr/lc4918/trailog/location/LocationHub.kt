@@ -33,7 +33,8 @@ object LocationHub {
      * qui se lit comme une vraie valeur. Ils sont ici absents plutot que faux.
      *
      * [timeMs] est l'heure de la MESURE et non celle de sa reception : c'est elle qu'un enregistrement
-     * horodaterait.
+     * horodaterait. [elapsedAtMs] dit le meme instant sur l'horloge monotone du telephone : c'est
+     * celui-la qui sert a mesurer des durees, l'heure murale pouvant etre remise par le reseau.
      */
     data class Fix(
         val lat: Double,
@@ -44,6 +45,8 @@ object LocationHub {
         val altitudeM: Double?,
         val timeMs: Long,
         val receivedAtMs: Long,
+        /** Instant MONOTONE de la mesure (cf. [timeMs]). Par defaut celui de la reception, faute de mieux. */
+        val elapsedAtMs: Long = receivedAtMs,
         /** Incertitude sur la vitesse (m/s), quand le capteur la donne : une vitesse plus petite qu'elle
          *  n'est que du bruit (cf. DashboardMath.speed). */
         val speedAccuracyMps: Float? = null,
@@ -65,6 +68,15 @@ object LocationHub {
 
         /** Le service tue, ou le capteur devenu muet : personne n'a rien demande. */
         SYSTEM,
+
+        /**
+         * Le suivi tourne, abonne au capteur, et plus aucune position n'arrive (cf. `FixWatchdog`).
+         *
+         * Distinct de [SENSOR_OFF] : la localisation n'est PAS coupee, et le telephone n'annonce donc
+         * rien. C'est ce que fait l'economie d'energie qui eteint le GPS avec l'ecran, et c'est le seul
+         * arret dont l'application soit le seul temoin possible.
+         */
+        SENSOR_SILENT,
     }
 
     private val _fix = MutableStateFlow<Fix?>(null)
@@ -92,6 +104,10 @@ object LocationHub {
             speedMps = if (loc.hasSpeed()) loc.speed else null,
             altitudeM = if (loc.hasAltitude()) loc.altitude else null,
             timeMs = loc.time,
+            // L'instant MONOTONE de la mesure, celui que comparent les durees : deux fournisseurs qui
+            // repondent ensemble se departagent dessus (cf. FixPicker), et une salve rattrapee au reveil
+            // garde l'espacement de ses mesures plutot que celui de sa livraison (cf. TripStats).
+            elapsedAtMs = loc.elapsedRealtimeNanos / 1_000_000L,
             // Temps depuis le demarrage de l'appareil, et non heure murale : c'est l'AGE de la mesure qui
             // dira si le repere ment encore, et une remise a l'heure du reseau ne doit pas le rajeunir.
             receivedAtMs = SystemClock.elapsedRealtime(),
@@ -138,6 +154,23 @@ object LocationHub {
 
     /** L'ecran a dit l'arret : l'annonce est consommee. */
     fun clearStopNotice() { _stopNotice.value = null }
+
+    /**
+     * Le suivi tourne mais ne recoit plus rien (cf. `FixWatchdog`).
+     *
+     * Ne passe pas par [setTracking] : le suivi n'est pas arrete - le service tourne, l'abonnement
+     * tient, et une position peut revenir a tout instant. Ce qui est faux est le REPERE, et c'est lui
+     * qu'on annonce. La derniere position est donc gardee : effacee, la carte n'aurait plus rien a
+     * montrer, alors que le dernier point connu reste la meilleure chose qu'on sache.
+     */
+    fun noticeSilence() {
+        if (_wanted.value) _stopNotice.value = StopReason.SENSOR_SILENT
+    }
+
+    /** Les positions sont revenues : l'annonce du silence n'a plus d'objet, les autres restent. */
+    fun clearSilenceNotice() {
+        if (_stopNotice.value == StopReason.SENSOR_SILENT) _stopNotice.value = null
+    }
 
     /**
      * Debut ou fin du suivi. L'arret oublie la derniere position : la garder ferait reapparaitre le repere

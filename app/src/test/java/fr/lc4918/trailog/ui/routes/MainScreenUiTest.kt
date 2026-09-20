@@ -282,6 +282,24 @@ class MainScreenUiTest {
         assertFalse(texte(R.string.location_stopped_system))
     }
 
+    /**
+     * Le suivi qui se TAIT, sans s'arreter : le service tourne, l'abonnement tient, et plus aucune
+     * position n'arrive. C'est ce que fait l'economie d'energie qui eteint le GPS avec l'ecran, et
+     * c'est la seule panne dont l'application soit le seul temoin possible.
+     */
+    @Test fun `le suivi qui ne recoit plus rien se dit aussi`() {
+        reglages()
+        ecran()
+        attend { surface.controller != null }
+        compose.runOnUiThread {
+            LocationHub.wantTracking()
+            LocationHub.setTracking(true)
+            LocationHub.noticeSilence()
+        }
+        attend { texte(R.string.location_stopped_silent) }
+        assertFalse("la localisation n'est pas coupee pour autant", texte(R.string.location_stopped_sensor))
+    }
+
     /** Un arret DEMANDE ne s'annonce pas : une banniere apres chaque tap sur le bouton apprendrait a
      *  l'ignorer, et c'est la seule chose qu'elle ne doit pas devenir. */
     @Test fun `un arret demande n'affiche rien`() {

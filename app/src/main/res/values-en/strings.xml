@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Location turned off on the phone: no more marker. Tracking will resume as soon as it returns.</string>
     <string name="location_stopped_system">Location tracking stopped on its own. You no longer have a marker on the map.</string>
     <string name="location_stopped_resume">Resume</string>
+    <string name="location_notice_silent">No location is reaching tracking any more.</string>
+    <string name="location_notice_silent_power">Battery saver turns the GPS off while the screen is off.</string>
+    <string name="location_stopped_silent">No location is reaching tracking any more: the marker on the map is out of date.</string>
+    <string name="location_stopped_silent_power">Battery saver turns the GPS off when the screen goes off: no location reaches tracking any more, and the marker on the map is out of date.</string>
+    <string name="location_stopped_power_settings">Battery saver</string>
     <string name="settings_section_route_prefs">Route preferences</string>
     <string name="settings_label_route_ways">Ways</string>
     <string name="settings_label_route_hills">Terrain</string>

@@ -413,6 +413,42 @@ commits, imposant un `git pull` avant chaque push suivant une release.
 instancie la vraie `Application` échoue en `UnsatisfiedLinkError`
 (cf. [`TESTS.md`](TESTS.md#pièges-de-linfrastructure)).
 
+**Le mode économie d'énergie éteint le GPS quand l'écran s'éteint.** Mesuré sur un Galaxy S10e sous
+Android 12 : économie d'énergie active, la politique en vigueur porte `location_mode=1`, c'est-à-dire
+`LOCATION_MODE_GPS_DISABLED_WHEN_SCREEN_OFF`. Le fournisseur GPS est coupé dès l'extinction de l'écran,
+pour **toutes** les applications - ni le service de premier plan, ni le verrou processeur, ni l'usage de
+batterie « non restreint » n'y changent quoi que ce soit. Et rien ne l'annonce : la localisation reste
+allumée, donc l'application ne l'apprend que par le silence (cf. `FixWatchdog`, et
+[`ARCHITECTURE.md`](ARCHITECTURE.md)). Symptômes sur le terrain : curseur figé jusqu'au rallumage,
+kilomètres manquants au compteur, alerte d'éloignement muette jusqu'à ce qu'on regarde l'écran.
+
+Lire la politique en vigueur :
+
+```bash
+adb shell dumpsys power | sed -n "/Policy 'current full'/,/Interactive File/p"
+```
+
+Le volet localisation se désarme, sans root et sans toucher au reste de l'économie d'énergie :
+
+```bash
+adb shell settings put global battery_saver_constants "location_mode=0"
+```
+
+La valeur des réglages prime sur le défaut du constructeur ; les clés absentes gardent le leur, si bien
+que seule la localisation change (vérifié : les dix-sept autres clés de la politique sont restées
+identiques, et `low_power` comme `mPolicyLevel` n'ont pas bougé). **Elle survit au redémarrage** et est à
+repasser après une mise à jour système. Retour au comportement d'origine :
+
+```bash
+adb shell settings delete global battery_saver_constants
+```
+
+Deux choses à savoir avant de diagnostiquer : **brancher l'USB peut désactiver l'économie d'énergie** sur
+certains appareils, et le défaut disparaît alors avec elle - sur ce S10e, elle reste active en charge, ce
+qui permet de tout mesurer par USB ; et **le mode avion prive le fournisseur réseau de tout**, donc le
+repli multi-fournisseurs du service n'y offre aucun filet. Il n'y reste que le réglage ci-dessus, et le
+chien de garde pour dire que les positions ont cessé.
+
 **Le build debug est une autre application.** `applicationIdSuffix = ".debug"` et une autre signature :
 il ne peut pas être remplacé par un APK de release, d'où l'inertie de la vérification des mises à jour
 en debug.

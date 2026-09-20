@@ -30,7 +30,11 @@ object TripWatch {
     fun add(fix: LocationHub.Fix): Boolean {
         touched = true
         val avant = _trip.value
-        val apres = TripStats.add(avant, fix.lat, fix.lon, fix.accuracyM, fix.altitudeM, fix.receivedAtMs)
+        // L'instant de la MESURE, et non celui de sa reception : le systeme peut livrer d'un coup, au
+        // reveil, des positions mesurees a plusieurs minutes d'intervalle. Datees de leur livraison,
+        // elles passeraient sous le trou de TripStats.MAX_GAP_MS et seraient reliees en ligne droite -
+        // des kilometres de chemin sinueux ramenes a leur corde.
+        val apres = TripStats.add(avant, fix.lat, fix.lon, fix.accuracyM, fix.altitudeM, fix.elapsedAtMs)
         _trip.value = apres
         return apres.distanceM != avant.distanceM || apres.ascentM != avant.ascentM ||
             apres.descentM != avant.descentM || apres.movingMs != avant.movingMs

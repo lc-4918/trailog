@@ -520,6 +520,11 @@
     <string name="location_stopped_sensor">Kokapena telefonoan itzalita: ez dago markarik. Jarraipena berrekingo da itzultzen denean.</string>
     <string name="location_stopped_system">Kokapenaren jarraipena bere kabuz gelditu da. Ez duzu markarik mapan.</string>
     <string name="location_stopped_resume">Berrekin</string>
+    <string name="location_notice_silent">Jarraipenak ez du kokapenik jasotzen jada.</string>
+    <string name="location_notice_silent_power">Bateria aurrezteak GPSa itzaltzen du pantaila itzalita dagoenean.</string>
+    <string name="location_stopped_silent">Jarraipenak ez du kokapenik jasotzen jada: maparen marka ez dago eguneratuta.</string>
+    <string name="location_stopped_silent_power">Bateria aurrezteak GPSa itzaltzen du pantaila itzaltzean: jarraipenak ez du kokapenik jasotzen jada, eta maparen marka ez dago eguneratuta.</string>
+    <string name="location_stopped_power_settings">Bateria aurreztea</string>
     <string name="settings_section_route_prefs">Ibilbide-hobespenak</string>
     <string name="settings_label_route_ways">Bideak</string>
     <string name="settings_label_route_hills">Erliebea</string>
