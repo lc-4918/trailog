@@ -9,8 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Reconnaitre qu'on suit une trace, et qu'on l'a quittee. Traverser une trace n'est pas la suivre, et
- * s'accrocher a la mauvaise annoncerait un restant faux sans que rien ne le dise.
+ * Reconnaitre qu'on suit une trace, et qu'on l'a quittee. Etre dessus suffit - a l'arret comme en marche -,
+ * mais s'accrocher a la mauvaise annoncerait un restant faux sans que rien ne le dise.
  */
 class AutoFollowTest {
 
@@ -37,20 +37,49 @@ class AutoFollowTest {
     }
 
     @Test fun `marcher sur une trace la fait reconnaitre`() {
-        val m = marche(6.0, listOf(100.0, 150.0, 200.0, 250.0), listOf(trace(1)))
+        val m = marche(6.0, listOf(100.0, 150.0, 200.0), listOf(trace(1)))
         assertNotNull(m)
         assertEquals(1L, m!!.candidate.id)
         assertEquals(1, m.direction)
     }
 
     @Test fun `la parcourir a l'envers se reconnait dans l'autre sens`() {
-        val m = marche(6.0, listOf(800.0, 750.0, 700.0, 650.0), listOf(trace(1)))
+        val m = marche(6.0, listOf(800.0, 750.0, 700.0), listOf(trace(1)))
         assertEquals(-1, m!!.direction)
     }
 
-    /** Trois positions sur place, sur la trace : on n'a pas avance dessus, on ne la suit pas encore. */
-    @Test fun `rester sur place ne suffit pas`() {
-        assertNull(marche(6.0, listOf(100.0, 102.0, 101.0, 103.0, 100.0), listOf(trace(1))))
+    /**
+     * Pose sur la trace, sans avancer : elle s'accroche quand meme.
+     *
+     * C'est le cas qui a fait changer la regle - il fallait cent metres le long de la trace, et personne
+     * ne les fait en attendant au depart. Le sens part a +1, faute de deplacement qui le dise.
+     */
+    @Test fun `rester sur place sur une trace la fait reconnaitre`() {
+        val m = marche(6.0, listOf(100.0, 102.0, 101.0), listOf(trace(1)))
+        assertNotNull(m)
+        assertEquals(1L, m!!.candidate.id)
+        assertEquals(1, m.direction)
+    }
+
+    /** Trois positions, pas deux : une mesure aberrante sur une trace voisine n'accroche rien. */
+    @Test fun `deux positions ne suffisent pas`() {
+        assertNull(marche(6.0, listOf(100.0, 110.0), listOf(trace(1))))
+    }
+
+    /** Changer de trace la plus proche repart de zero : les positions comptees l'etaient sur une autre. */
+    @Test fun `passer d'une trace a l'autre remet le compte a zero`() {
+        val decalage = 50.0 / (111_195.0 * Math.cos(Math.toRadians(45.0)))
+        val a = trace(1)
+        val b = trace(2, 6.0 + decalage)
+        var etat = AutoFollow.Detection()
+        // Deux positions sur a, puis une sur b : ni l'une ni l'autre n'a ses trois positions.
+        for (lon in listOf(6.0, 6.0, 6.0 + decalage)) {
+            val (suivant, trouve) = AutoFollow.detect(etat, nord(100.0), lon, listOf(a, b))
+            assertNull(trouve)
+            etat = suivant
+        }
+        assertEquals(1, etat.fixes)
+        assertEquals(b.key, etat.key)
     }
 
     /** Loin de toute trace : rien. */

@@ -1,14 +1,13 @@
 package fr.lc4918.trailog.domain.geo
 
 import fr.lc4918.trailog.domain.model.Sample
-import kotlin.math.abs
 
 /**
  * Le suivi AUTOMATIQUE d'une trace : reconnaitre qu'on la parcourt, et qu'on l'a quittee.
  *
  * Il remplace le choix a la main, dans une liste de traces proches : l'application sait ou l'on est, et
- * sait quelles traces passent la. Encore faut-il ne pas se tromper - traverser une trace n'est pas la
- * suivre, et une route empruntee cent metres par un GR ne fait pas de lui la trace du jour.
+ * sait quelles traces passent la. Etre SUR une trace suffit a la suivre, sans avoir a marcher pour le
+ * prouver (cf. [ENTER_FIXES]) : ce qu'il faut ecarter n'est pas l'arret, c'est la position aberrante.
  *
  * Sans Android : ce sont des regles de seuil, et une faute y serait silencieuse - un suivi qui s'accroche
  * a la mauvaise trace annoncerait un restant faux sans que rien ne le dise.
@@ -18,12 +17,23 @@ object AutoFollow {
     /** A moins de cela d'une trace, on est dessus - au bruit d'un GPS de telephone pres. */
     const val ON_TRACK_M = 30.0
 
-    /** Positions consecutives sur la meme trace avant de la tenir pour suivie : un croisement n'en donne
-     *  qu'une ou deux. */
+    /**
+     * Positions consecutives sur la meme trace avant de la tenir pour suivie.
+     *
+     * C'est la SEULE condition, et elle se remplit sans bouger : trois positions a moins de [ON_TRACK_M],
+     * six secondes a la cadence de marche, et la trace est accrochee. Etre sur une trace suffit a la
+     * suivre - c'est ce qu'on attend en arrivant au depart, telephone en main, avant d'avoir fait un pas.
+     *
+     * Il fallait aussi, avant, avoir avance de cent metres LE LONG de la trace. La regle ecartait bien les
+     * croisements - traverser une trace ne progresse pas dessus -, mais elle ecartait du meme coup l'arret :
+     * pose au depart, ou en pause, on n'accrochait rien, et il fallait marcher cent metres pour que le
+     * tableau de bord se decide. Trois positions restent ce qui separe une trace d'une mesure aberrante.
+     *
+     * Ce qu'on paie : un croisement accroche brievement la trace traversee. Cela ne sonne pas - une trace
+     * reconnue part cloche ETEINTE (cf. TrackWatch.follow) - et le suivi la lache de lui-meme des qu'on
+     * s'en eloigne (cf. [leave]).
+     */
     const val ENTER_FIXES = 3
-
-    /** Chemin parcouru LE LONG de la trace avant de la tenir pour suivie : la traverser n'avance pas sur elle. */
-    const val ENTER_ALONG_M = 100.0
 
     /** Positions consecutives au-dela du seuil avant de lacher la trace, cloche eteinte : une seule mesure
      *  aberrante ne doit pas faire perdre le suivi. */
@@ -45,7 +55,12 @@ object AutoFollow {
         val key: String get() = "$id/$trackIndex"
     }
 
-    /** Ce qu'on accumule en attendant de reconnaitre une trace. */
+    /**
+     * Ce qu'on accumule en attendant de reconnaitre une trace.
+     *
+     * [startAlongM] ne commande plus l'accrochage ; il sert encore a le faire dans le bon SENS : compare
+     * au kilometrage de la position qui accroche, il dit de quel cote on va (cf. [detect]).
+     */
     data class Detection(
         val key: String? = null,
         val fixes: Int = 0,
@@ -59,8 +74,8 @@ object AutoFollow {
      * Une position de plus, hors de tout suivi : rend l'etat de detection suivant, et la trace reconnue
      * quand elle l'est.
      *
-     * La plus proche des traces a moins de [ON_TRACK_M] l'emporte ; changer de trace plus proche remet la
-     * detection a zero, et c'est voulu - on n'a pas encore fait cent metres sur celle-ci.
+     * La plus proche des traces a moins de [ON_TRACK_M] l'emporte ; changer de trace plus proche remet le
+     * compte a zero, et c'est voulu - les positions comptees l'etaient sur une autre.
      */
     fun detect(state: Detection, lat: Double, lon: Double, candidates: List<Candidate>): Pair<Detection, Match?> {
         var best: Candidate? = null
@@ -75,9 +90,11 @@ object AutoFollow {
         if (best == null || bestProj == null) return Detection() to null
         val next = if (state.key == best.key) state.copy(fixes = state.fixes + 1)
             else Detection(best.key, 1, bestProj.alongM)
-        val avance = bestProj.alongM - next.startAlongM
-        if (next.fixes >= ENTER_FIXES && abs(avance) >= ENTER_ALONG_M) {
-            return Detection() to Match(best, bestProj.alongM, bestProj.awayM, if (avance >= 0) 1 else -1)
+        if (next.fixes >= ENTER_FIXES) {
+            // Le sens, s'il se lit : sur place, le kilometrage tremble sans rien dire, et la trace part
+            // alors dans son propre sens (+1) - la premiere avancee franche le corrigera (cf. [direction]).
+            val sens = direction(1, next.startAlongM, bestProj.alongM)
+            return Detection() to Match(best, bestProj.alongM, bestProj.awayM, sens)
         }
         return next to null
     }

@@ -15,6 +15,7 @@ import android.content.pm.PackageManager
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.SystemClock
 import android.os.PowerManager
@@ -83,6 +84,9 @@ class LocationService : Service() {
     /** L'arret en cours, ou non (cf. [RestDetector]) : sur le fil principal, celui du listener. */
     private var rest = RestDetector.State()
 
+    /** Le fil principal, pour les changements de cadence venus d'ailleurs (cf. [watchDetectionPace]). */
+    private val mainHandler by lazy { Handler(mainLooper) }
+
     /** Les demandes sont espacees : on est a l'arret depuis une minute. */
     private var resting = false
 
@@ -93,11 +97,25 @@ class LocationService : Service() {
      * jour, meme a pas lent. A l'arret depuis une minute : une position seulement apres [REST_DISTANCE_M]
      * de deplacement. Plus rien n'arrive tant qu'on ne bouge pas, et la premiere position qui arrive dit
      * qu'on est reparti : la cadence de marche revient aussitot.
+     *
+     * **Sauf quand une trace reste a reconnaitre** (cf. [awaitingTrack]) : la detection se nourrit de
+     * positions, et la cadence de repos n'en rend plus aucune tant qu'on n'a pas fait dix metres. Accrocher
+     * une trace a l'arret - ce qui est justement ce qu'on attend, pose au depart - serait alors impossible.
      */
     @SuppressLint("MissingPermission")
     private fun pace(lat: Double, lon: Double, accuracyM: Float) {
-        val (etat, repos) = RestDetector.step(rest, lat, lon, accuracyM, SystemClock.elapsedRealtime())
+        val (etat, brut) = RestDetector.step(rest, lat, lon, accuracyM, SystemClock.elapsedRealtime())
         rest = etat
+        applyPace(brut && !awaitingTrack())
+    }
+
+    /** Une trace reste a reconnaitre : le tableau de bord est ouvert, et rien n'est encore suivi. */
+    private fun awaitingTrack(): Boolean =
+        TrackWatch.dashboard.value && TrackWatch.followed.value == null
+
+    /** Passe a la cadence demandee, si ce n'est pas deja celle en cours. Sur le fil principal. */
+    @SuppressLint("MissingPermission")
+    private fun applyPace(repos: Boolean) {
         if (repos == resting || !subscribed) return
         resting = repos
         val provider = enabledProvider() ?: return
@@ -105,6 +123,23 @@ class LocationService : Service() {
             if (repos) locationManager.requestLocationUpdates(provider, REST_INTERVAL_MS, REST_DISTANCE_M, listener, mainLooper)
             else locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
         }
+    }
+
+    /**
+     * La detection reprend la main sur la cadence de repos.
+     *
+     * [pace] ne se prononce qu'a l'arrivee d'une position, et au repos il n'en arrive plus : ouvrir le
+     * tableau de bord alors qu'on est deja pose depuis une minute laisserait la detection sans matiere,
+     * indefiniment. C'est donc l'ETAT - tableau de bord, trace suivie - qui rend la cadence de marche,
+     * sans attendre une position qui ne viendra pas.
+     *
+     * Sur le fil principal : [rest] et [resting] sont ceux du listener, et deux fils qui redemandent des
+     * positions en meme temps en laisseraient une demande derriere eux.
+     */
+    private fun watchDetectionPace() = scope.launch {
+        combine(TrackWatch.dashboard, TrackWatch.followed) { ouvert, suivie -> ouvert && suivie == null }
+            .distinctUntilChanged()
+            .collect { attente -> if (attente) mainHandler.post { applyPace(false) } }
     }
 
     /** Les couches de la bibliotheque (cf. [watchLayers]). */
@@ -154,6 +189,7 @@ class LocationService : Service() {
         watchLayers()
         watchTrip()
         watchTrack()
+        watchDetectionPace()
         watchAlertRing()
         watchNotice()
     }
