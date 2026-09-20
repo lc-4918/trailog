@@ -557,12 +557,17 @@ internal object MigrationSql {
      *
      * La colonne entiere qui la portait ne savait dire que deux d'entre eux. Le reglage en place se
      * recopie : zero valait "remplir la hauteur", qui devient le plafond par defaut.
+     *
+     * Elle s'appelle `verticalExaggeration` EN BASE, et non du nom qu'elle porte dans l'entite : le
+     * reglage fut d'abord une exageration, puis des metres par centimetre, et seul le champ Kotlin a ete
+     * renomme (cf. SettingsEntity). Ecrire ici le nom de l'entite faisait planter le demarrage sur une
+     * colonne qui n'existe pas - ce que seule la vraie base revele, une migration s'ecrivant en SQL.
      */
     const val ADD_PROFILE_VERTICAL_SCALE =
         "ALTER TABLE settings ADD COLUMN profileVerticalScale TEXT NOT NULL DEFAULT 'cap:25'"
     const val COPY_PROFILE_VERTICAL_SCALE =
-        "UPDATE settings SET profileVerticalScale = CASE WHEN profileVerticalScaleMPerCm <= 0 " +
-            "THEN 'cap:25' ELSE 'm:' || profileVerticalScaleMPerCm END"
+        "UPDATE settings SET profileVerticalScale = CASE WHEN verticalExaggeration <= 0 " +
+            "THEN 'cap:25' ELSE 'm:' || verticalExaggeration END"
 
     /** Le mode expert des reglages : eteint, les reglages fins restent caches (cf. ExpertTaps). */
     const val ADD_EXPERT_MODE = "ALTER TABLE settings ADD COLUMN expertMode INTEGER NOT NULL DEFAULT 0"

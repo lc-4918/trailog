@@ -906,22 +906,31 @@ class MigrationsTest {
         db.close()
     }
 
-    /** L'echelle reglee en metres par centimetre se retrouve telle quelle ; "remplir la hauteur" devient
-     *  le plafond d'exageration, qui remplit la hauteur sans dresser une pente douce en muraille. */
+    /**
+     * L'echelle reglee en metres par centimetre se retrouve telle quelle ; "remplir la hauteur" devient le
+     * plafond d'exageration, qui remplit la hauteur sans dresser une pente douce en muraille.
+     *
+     * Sur la VRAIE table des reglages, et non sur une table qu'on se donne colonne par colonne : la
+     * colonne de l'echelle s'appelle `verticalExaggeration` en base - le reglage fut d'abord une
+     * exageration - et seul le champ Kotlin a ete renomme. Une table batie a la main sous le nom du champ
+     * laissait passer une migration qui plantait au demarrage.
+     */
     @Test fun `70 vers 71 garde l'echelle verticale reglee`() {
-        val db = freshDb("m7071"); settingsV16(db)
-        db.execSQL("ALTER TABLE settings ADD COLUMN profileVerticalScaleMPerCm INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("UPDATE settings SET profileVerticalScaleMPerCm = 150")
+        val db = freshDb("m7071")
+        db.execSQL(MigrationSql.settingsTableV39("settings"))
+        fillSettings(db, mapOf("verticalExaggeration" to "150"))
         db.execSQL(MigrationSql.ADD_PROFILE_VERTICAL_SCALE)
         db.execSQL(MigrationSql.COPY_PROFILE_VERTICAL_SCALE)
         assertEquals("m:150", scalar(db, "SELECT profileVerticalScale FROM settings") { it.getString(0) })
+        db.close()
 
-        val auto = freshDb("m7071bis"); settingsV16(auto)
-        auto.execSQL("ALTER TABLE settings ADD COLUMN profileVerticalScaleMPerCm INTEGER NOT NULL DEFAULT 0")
+        val auto = freshDb("m7071bis")
+        auto.execSQL(MigrationSql.settingsTableV39("settings"))
+        fillSettings(auto, mapOf("verticalExaggeration" to "0"))
         auto.execSQL(MigrationSql.ADD_PROFILE_VERTICAL_SCALE)
         auto.execSQL(MigrationSql.COPY_PROFILE_VERTICAL_SCALE)
         assertEquals("cap:25", scalar(auto, "SELECT profileVerticalScale FROM settings") { it.getString(0) })
-        db.close(); auto.close()
+        auto.close()
     }
 
     // ---------- La base reelle s'ouvre et porte le schema courant ----------

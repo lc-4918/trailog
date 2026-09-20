@@ -367,8 +367,9 @@ data class SettingsEntity(
     val expertMode: Boolean = false,
     // Echelle verticale du profil, en trois regimes (cf. ProfileScale) : "cap:25" (remplir la hauteur sans
     // depasser ce rapport entre les axes), "m:100" (metres par centimetre), "x:10" (exageration fixe).
-    // L'entier qui la portait - profileVerticalScaleMPerCm - reste en base, recopie ici par la migration
-    // 70 -> 71, mais n'est plus lu : une colonne ne se retire pas sans reconstruire la table.
+    // L'entier qui la portait - `verticalExaggeration` en base, profileVerticalScaleMPerCm ici - reste en
+    // place, recopie par la migration 70 -> 71, mais n'est plus lu : une colonne ne se retire pas sans
+    // reconstruire la table.
     val profileVerticalScale: String = "cap:25",
 )
 
