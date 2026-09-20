@@ -4,7 +4,11 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -55,5 +59,22 @@ class ExpertModeUiTest {
         septAppuis()
         compose.waitUntil(5_000) { !present(expert) }
         assertTrue(present(R.string.settings_expert_off))
+    }
+
+    /**
+     * Le titre du groupe courant se pose sous les onglets des que son titre est passe en haut, et se
+     * retire quand on remonte. Sans lui, on regle des curseurs sans savoir a quoi ils se rapportent.
+     */
+    @Test fun `le groupe courant reste affiche en defilant`() {
+        runBlocking { app.repository.ensureSeed() }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+        compose.waitUntil(5_000) { present(R.string.settings_section_position) }
+        compose.onAllNodesWithTag("settings_group_bar").assertCountEquals(0)
+
+        // On descend jusqu'a un reglage du groupe GPS : son titre est alors passe au-dessus du bord.
+        compose.onNodeWithText(app.getString(R.string.settings_section_gps_marker).uppercase()).performScrollTo()
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("settings_group_bar").assertCountEquals(1)
     }
 }

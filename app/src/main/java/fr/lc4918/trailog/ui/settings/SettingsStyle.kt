@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -154,9 +157,15 @@ private val SubSp = 10.5f
 /** Titre de groupe : le premier niveau, en gras, sans capitales. */
 @Composable
 fun GroupTitle(text: String, first: Boolean = false) {
+    // Chaque titre dit ou il se trouve : c'est ce qui permet de reafficher le groupe courant sous les
+    // onglets quand son titre est deja passe en haut (cf. GroupBarState). Le nettoyage au depart compte
+    // autant : le mode expert fait disparaitre des groupes entiers.
+    val barre = LocalGroupBar.current
+    DisposableEffect(barre, text) { onDispose { barre?.forget(text) } }
     Text(
         text, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
-        modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = if (first) 14.dp else 26.dp, bottom = 2.dp),
+        modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = if (first) 14.dp else 26.dp, bottom = 2.dp)
+            .onGloballyPositioned { barre?.report(text, it.positionInWindow().y + it.size.height) },
     )
 }
 

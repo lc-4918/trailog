@@ -1,5 +1,10 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.AnimatedVisibility
 import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.SnackbarDuration
@@ -10,6 +15,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -266,6 +276,25 @@ fun SettingsScreen(
                     }
                 }
             }
+            /*
+             * Le groupe en cours de lecture, quand son titre est deja passe en haut : un onglet porte
+             * quatre ou cinq groupes et une trentaine de lignes, et l'on reglait des curseurs sans plus
+             * savoir a quoi ils se rapportaient (cf. GroupBarState). Un etat par onglet : chacun a ses
+             * groupes, et changer d'onglet ne doit pas garder le titre du precedent.
+             */
+            val barreGroupe = remember(tab) { GroupBarState() }
+            // La bande que la barre occupe : le relais se fait des que le titre passe dessous.
+            barreGroupe.barHeight = with(LocalDensity.current) { GroupBarHeight.toPx() }
+            val groupeCourant = barreGroupe.current
+            /*
+             * La barre est POSEE PAR-DESSUS le contenu, et non intercalee au-dessus de lui.
+             *
+             * Intercalee, son apparition rendait sa hauteur au contenu, qui sautait d'une trentaine de
+             * pixels sous le doigt : le defilement rebondissait au moment meme ou l'on commencait a lire.
+             * Par-dessus, rien ne bouge - le contenu passe dessous, comme sous n'importe quel en-tete
+             * collant - et il ne reste qu'un fondu.
+             */
+            Box(Modifier.fillMaxSize()) {
             AnimatedContent(
                 targetState = tab,
                 transitionSpec = {
@@ -276,9 +305,14 @@ fun SettingsScreen(
                 label = "settings_tab"
             ) { currentTab ->
                 Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    Modifier.fillMaxSize()
+                        // Le haut de la zone qui defile, mesure AVANT le defilement : pose apres, le
+                        // repere suivait le contenu vers le haut, et plus aucun titre ne le franchissait.
+                        .onGloballyPositioned { barreGroupe.viewportTop = it.positionInWindow().y }
+                        .verticalScroll(rememberScrollState())
                         .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp),
                 ) {
+                    CompositionLocalProvider(LocalGroupBar provides barreGroupe) {
                     when (currentTab) {
                         0 -> MapTab(cur, vm)
                         1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") },
@@ -292,7 +326,27 @@ fun SettingsScreen(
                             onBackup = { backupWriter.launch(BackupFileName.of(System.currentTimeMillis())) },
                             onRestore = { restoreTarget = true })
                     }
+                    }
                 }
+            }
+            // Un simple fondu, et une barre toujours posee : l'apparition ne mesure rien et ne deplace
+            // rien. Le texte garde le dernier groupe le temps de s'effacer, sans quoi il disparaitrait
+            // d'un coup au milieu du fondu.
+            val opacite by animateFloatAsState(if (groupeCourant != null) 1f else 0f, tween(150), label = "groupe")
+            val groupeAffiche = remember { mutableStateOf("") }
+            if (groupeCourant != null) groupeAffiche.value = groupeCourant
+            if (opacite > 0f) {
+                Text(
+                    groupeAffiche.value,
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = palette.label,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().alpha(opacite)
+                        .background(palette.card)
+                        .heightIn(min = GroupBarHeight)
+                        .padding(start = 16.dp, end = 16.dp, top = 5.dp, bottom = 6.dp)
+                        .testTag("settings_group_bar"),
+                )
+            }
             }
         }
     }
@@ -303,3 +357,6 @@ fun SettingsScreen(
 
 /** Duree de l'alerte du mode expert : trois secondes, le temps de la lire sans avoir a la fermer. */
 private const val ExpertAlertMs = 3_000L
+
+/** Hauteur de la barre du groupe courant : le titre lui passe dessous, elle prend alors le relais. */
+private val GroupBarHeight = 26.dp

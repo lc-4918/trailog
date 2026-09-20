@@ -206,79 +206,83 @@ import kotlinx.coroutines.launch
     // Le lissage et l'echelle verticale ont quitte l'onglet "Carte" pour celui-ci : ils ne decrivent pas
     // ce qui s'affiche mais comment le profil se CALCULE, la ligne de partage que les deux onglets
     // revendiquent depuis toujours.
-    SectionTitle(stringResource(R.string.settings_section_profile_calc))
-    SettingsCard {
-        // Valeurs autorisees : 1 m, puis pas de 5 jusqu'a 100 m (souvent ~1 point GPS tous les 80 m). Non
-        // equidistantes (1->5) : le curseur parcourt un index et rend la valeur, plutot qu'une plage
-        // continue. Un reglage existant hors liste est ramene a la valeur la plus proche.
-        val smoothing = remember { listOf(1) + (5..100 step 5).toList() }
-        val smoothingIdx = smoothing.indexOf(cur.profileSmoothingM).let { exact ->
-            if (exact >= 0) exact
-            else smoothing.indices.minByOrNull { kotlin.math.abs(smoothing[it] - cur.profileSmoothingM) } ?: 0
-        }
-        SliderRow(
-            stringResource(R.string.settings_label_smoothing), "${cur.profileSmoothingM} m",
-            fractionOf(smoothingIdx, 0, smoothing.lastIndex), steps = smoothing.size - 2,
-            onFraction = { vm.save(cur.copy(profileSmoothingM = smoothing[valueOf(it, 0, smoothing.lastIndex)])) },
-            info = stringResource(R.string.settings_profile_smoothing_hint),
-        )
-        RowDivider()
-        // Echelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (metres d'altitude par cm
-        // physique). Bornes choisies d'apres la hauteur du graphe (~1,6 cm). Valeurs non equidistantes,
-        // donc curseur indexe, comme le lissage.
-        /*
-         * L'echelle verticale, en deux lignes : le REGIME, puis sa valeur.
-         *
-         * Les trois ne repondent pas a la meme question (cf. ProfileScale) : remplir la hauteur sans
-         * dresser une pente douce en muraille, comparer des AMPLITUDES a la regle, ou comparer des PENTES.
-         * L'exageration ne se propose qu'en mode expert : elle suppose qu'on sache ce qu'on compare.
-         */
-        val vertical = remember(cur.profileVerticalScale) { ProfileScale.parse(cur.profileVerticalScale) }
-        val modes = buildList {
-            add(ProfileScale.Mode.CAP)
-            add(ProfileScale.Mode.M_PER_CM)
-            if (cur.expertMode) add(ProfileScale.Mode.EXAGGERATION)
-        }
-        PickRow(
-            stringResource(R.string.settings_label_vertical_scale), vertical.mode, modes,
-            optionLabel = { verticalModeLabel(it) },
-            info = stringResource(R.string.settings_vertical_scale_hint),
-        ) { mode ->
-            val v = when (mode) {
-                ProfileScale.Mode.CAP -> ProfileScale.Vertical(mode, ProfileScale.DEFAULT_CAP)
-                ProfileScale.Mode.M_PER_CM -> ProfileScale.Vertical(mode, 100.0)
-                ProfileScale.Mode.EXAGGERATION -> ProfileScale.Vertical(mode, 10.0)
+    // Lissage et echelle verticale : mode expert seulement. Ce sont des reglages de CALCUL, dont la bonne
+    // valeur ne se devine pas a l'oeil, et dont les defauts conviennent a qui ne les cherche pas.
+    if (cur.expertMode) {
+        SectionTitle(stringResource(R.string.settings_section_profile_calc))
+        SettingsCard {
+            // Valeurs autorisees : 1 m, puis pas de 5 jusqu'a 100 m (souvent ~1 point GPS tous les 80 m). Non
+            // equidistantes (1->5) : le curseur parcourt un index et rend la valeur, plutot qu'une plage
+            // continue. Un reglage existant hors liste est ramene a la valeur la plus proche.
+            val smoothing = remember { listOf(1) + (5..100 step 5).toList() }
+            val smoothingIdx = smoothing.indexOf(cur.profileSmoothingM).let { exact ->
+                if (exact >= 0) exact
+                else smoothing.indices.minByOrNull { kotlin.math.abs(smoothing[it] - cur.profileSmoothingM) } ?: 0
             }
-            vm.save(cur.copy(profileVerticalScale = ProfileScale.store(v)))
-        }
-        if (vertical.mode != ProfileScale.Mode.CAP) {
-            RowDivider()
-            val metres = vertical.mode == ProfileScale.Mode.M_PER_CM
-            val crans = if (metres) VerticalScaleSteps else ExaggerationSteps
-            val cran = crans.indexOf(vertical.value.toInt())
-                .let { if (it >= 0) it else crans.indices.minBy { i -> kotlin.math.abs(crans[i] - vertical.value) } }
             SliderRow(
-                if (metres) stringResource(R.string.settings_label_vertical_scale_value)
-                else stringResource(R.string.settings_label_exaggeration),
-                if (metres) stringResource(R.string.settings_vertical_scale_value, vertical.value.toInt())
-                else stringResource(R.string.settings_exaggeration_value, vertical.value.toInt()),
-                fractionOf(cran, 0, crans.lastIndex), steps = crans.size - 2,
-                onFraction = {
-                    val v = crans[valueOf(it, 0, crans.lastIndex)].toDouble()
-                    vm.save(cur.copy(profileVerticalScale = ProfileScale.store(vertical.copy(value = v))))
-                },
+                stringResource(R.string.settings_label_smoothing), "${cur.profileSmoothingM} m",
+                fractionOf(smoothingIdx, 0, smoothing.lastIndex), steps = smoothing.size - 2,
+                onFraction = { vm.save(cur.copy(profileSmoothingM = smoothing[valueOf(it, 0, smoothing.lastIndex)])) },
+                info = stringResource(R.string.settings_profile_smoothing_hint),
             )
-        }
-        // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas
-        // a l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre
-        // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(
-                profileSmoothingM = 5,
-                profileVerticalScale = ProfileScale.store(
-                    ProfileScale.Vertical(ProfileScale.Mode.CAP, ProfileScale.DEFAULT_CAP),
-                ),
-            ))
+            RowDivider()
+            // Echelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (metres d'altitude par cm
+            // physique). Bornes choisies d'apres la hauteur du graphe (~1,6 cm). Valeurs non equidistantes,
+            // donc curseur indexe, comme le lissage.
+            /*
+             * L'echelle verticale, en deux lignes : le REGIME, puis sa valeur.
+             *
+             * Les trois ne repondent pas a la meme question (cf. ProfileScale) : remplir la hauteur sans
+             * dresser une pente douce en muraille, comparer des AMPLITUDES a la regle, ou comparer des PENTES.
+             * L'exageration ne se propose qu'en mode expert : elle suppose qu'on sache ce qu'on compare.
+             */
+            val vertical = remember(cur.profileVerticalScale) { ProfileScale.parse(cur.profileVerticalScale) }
+            val modes = buildList {
+                add(ProfileScale.Mode.CAP)
+                add(ProfileScale.Mode.M_PER_CM)
+                if (cur.expertMode) add(ProfileScale.Mode.EXAGGERATION)
+            }
+            PickRow(
+                stringResource(R.string.settings_label_vertical_scale), vertical.mode, modes,
+                optionLabel = { verticalModeLabel(it) },
+                info = stringResource(R.string.settings_vertical_scale_hint),
+            ) { mode ->
+                val v = when (mode) {
+                    ProfileScale.Mode.CAP -> ProfileScale.Vertical(mode, ProfileScale.DEFAULT_CAP)
+                    ProfileScale.Mode.M_PER_CM -> ProfileScale.Vertical(mode, 100.0)
+                    ProfileScale.Mode.EXAGGERATION -> ProfileScale.Vertical(mode, 10.0)
+                }
+                vm.save(cur.copy(profileVerticalScale = ProfileScale.store(v)))
+            }
+            if (vertical.mode != ProfileScale.Mode.CAP) {
+                RowDivider()
+                val metres = vertical.mode == ProfileScale.Mode.M_PER_CM
+                val crans = if (metres) VerticalScaleSteps else ExaggerationSteps
+                val cran = crans.indexOf(vertical.value.toInt())
+                    .let { if (it >= 0) it else crans.indices.minBy { i -> kotlin.math.abs(crans[i] - vertical.value) } }
+                SliderRow(
+                    if (metres) stringResource(R.string.settings_label_vertical_scale_value)
+                    else stringResource(R.string.settings_label_exaggeration),
+                    if (metres) stringResource(R.string.settings_vertical_scale_value, vertical.value.toInt())
+                    else stringResource(R.string.settings_exaggeration_value, vertical.value.toInt()),
+                    fractionOf(cran, 0, crans.lastIndex), steps = crans.size - 2,
+                    onFraction = {
+                        val v = crans[valueOf(it, 0, crans.lastIndex)].toDouble()
+                        vm.save(cur.copy(profileVerticalScale = ProfileScale.store(vertical.copy(value = v))))
+                    },
+                )
+            }
+            // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas
+            // a l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre
+            // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
+            CardAction(stringResource(R.string.action_reset_defaults)) {
+                vm.save(cur.copy(
+                    profileSmoothingM = 5,
+                    profileVerticalScale = ProfileScale.store(
+                        ProfileScale.Vertical(ProfileScale.Mode.CAP, ProfileScale.DEFAULT_CAP),
+                    ),
+                ))
+            }
         }
     }
 
@@ -291,7 +295,9 @@ import kotlinx.coroutines.launch
             stringResource(R.string.settings_label_fill_elevation), cur.fillMissingElevation,
             info = stringResource(R.string.settings_fill_elevation_hint),
         ) { vm.save(cur.copy(fillMissingElevation = it)) }
-        if (cur.fillMissingElevation) {
+        // Les adresses des services : mode expert seulement. Le completement se demande d'un interrupteur,
+        // et ses serveurs par defaut conviennent a qui ne les a jamais regardes.
+        if (cur.fillMissingElevation && cur.expertMode) {
             RowDivider()
             FieldRow(stringResource(R.string.settings_label_elevation_france)) {
                 SettingsTextField(cur.elevationIgnUrl, IgnElevation.DEFAULT_URL) {
