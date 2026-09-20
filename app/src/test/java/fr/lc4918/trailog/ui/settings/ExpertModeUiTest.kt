@@ -39,7 +39,33 @@ class ExpertModeUiTest {
     private fun present(res: Int) =
         compose.onAllNodesWithText(app.getString(res)).fetchSemanticsNodes().isNotEmpty()
 
-    private fun septAppuis() = repeat(ExpertTaps.TAPS) { compose.onNodeWithTag("settings_avatar").performClick() }
+    /**
+     * Sept appuis sur l'avatar.
+     *
+     * **L'avatar s'attend avant de le viser.** `setContent` puis `waitForIdle` ne garantissent pas que
+     * l'ecran soit la : ses reglages viennent de la base, et la barre du haut - donc l'avatar - ne parait
+     * qu'a leur arrivee. Taper aussitot visait donc un noeud qui n'existait pas encore, une fois sur deux :
+     * c'est ce qui faisait tomber le test dans la passe complete, ou la base met un peu plus de temps a
+     * repondre, alors qu'il passait seul.
+     *
+     * **Sur l'arbre NON fusionne** : le premier appui ouvre le menu, et une fenetre ouverte retire de
+     * l'arbre fusionne ce qu'elle recouvre - l'avatar y devient introuvable des le deuxieme appui.
+     */
+    private fun septAppuis() {
+        compose.waitUntil(5_000) { avatars().isNotEmpty() }
+        repeat(ExpertTaps.TAPS) {
+            compose.onNodeWithTag("settings_avatar", useUnmergedTree = true).performClick()
+        }
+    }
+
+    private fun avatars() =
+        compose.onAllNodesWithTag("settings_avatar", useUnmergedTree = true).fetchSemanticsNodes()
+
+    /** Un appui sur l'avatar, une fois l'ecran compose : meme attente, meme raison (cf. [septAppuis]). */
+    private fun unAppui() {
+        compose.waitUntil(5_000) { avatars().isNotEmpty() }
+        compose.onNodeWithTag("settings_avatar", useUnmergedTree = true).performClick()
+    }
 
     @Test fun `sept appuis sur l'avatar montrent puis cachent les options expertes`() {
         runBlocking {
@@ -87,7 +113,7 @@ class ExpertModeUiTest {
         compose.waitForIdle()
         compose.onAllNodesWithTag("menu_about").assertCountEquals(0)
 
-        compose.onNodeWithTag("settings_avatar").performClick()
+        unAppui()
         compose.waitForIdle()
         compose.onAllNodesWithTag("menu_about").assertCountEquals(1)
         compose.onAllNodesWithTag("menu_help").assertCountEquals(1)
@@ -98,7 +124,7 @@ class ExpertModeUiTest {
         runBlocking { app.repository.ensureSeed() }
         compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
         compose.waitForIdle()
-        compose.onNodeWithTag("settings_avatar").performClick()
+        unAppui()
         compose.onNodeWithTag("menu_about").performClick()
         compose.waitForIdle()
         compose.onNodeWithText(app.getString(R.string.about_version, BuildConfig.VERSION_NAME)).assertIsDisplayed()
