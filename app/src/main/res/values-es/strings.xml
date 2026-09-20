@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">El mapa base «%1$s» no permite la descarga. Elige un mapa en línea: ni compuesto, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Descarga una ZONA RECTANGULAR del mapa base mostrado actualmente, que encuadras en el mapa. Algunos mapas no lo permiten: los compuestos, los archivos MBTiles ya en el teléfono y OpenStreetMap, cuyas condiciones de uso prohíben la descarga masiva.</string>
+    <string name="about_title">Acerca de</string>
+    <string name="help_title">Ayuda</string>
+    <string name="about_version">Versión %1$s</string>
+    <string name="about_report_intro">Informar de un problema o proponer una mejora:</string>
 </resources>

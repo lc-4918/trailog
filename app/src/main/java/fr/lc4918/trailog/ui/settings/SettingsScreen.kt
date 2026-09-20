@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.core.net.toUri
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -134,6 +137,10 @@ fun SettingsScreen(
     // ---------- sauvegarde et restauration ----------
     val scope = rememberCoroutineScope()
     val expertTaps = remember { ExpertTaps() }
+    // Le menu de l'avatar : "A propos" et "Aide". Il vit a cote du geste des sept appuis, qui continue de
+    // se compter par-dessous (cf. ExpertTaps).
+    var menuAvatar by remember { mutableStateOf(false) }
+    var aboutOuvert by remember { mutableStateOf(false) }
     val expertOn = stringResource(R.string.settings_expert_on)
     val expertOff = stringResource(R.string.settings_expert_off)
     val backupOk = stringResource(R.string.backup_written)
@@ -219,12 +226,17 @@ fun SettingsScreen(
                  * Sans ondulation : ce n'est pas un bouton qu'on propose.
                  */
                 actions = {
+                    Box {
                     Avatar(
                         cur.avatarSource, size = 26.dp,
                         modifier = Modifier.padding(end = 14.dp).testTag("settings_avatar").clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null,
                         ) {
+                            // Un tap ouvre le menu et le LAISSE ouvert : les sept appuis se comptent
+                            // dessous sans le faire clignoter, et le septieme le referme.
+                            menuAvatar = true
                             if (expertTaps.tap(SystemClock.elapsedRealtime())) {
+                                menuAvatar = false
                                 val on = !cur.expertMode
                                 vm.save(cur.copy(expertMode = on))
                                 val texte = if (on) expertOn else expertOff
@@ -237,6 +249,22 @@ fun SettingsScreen(
                             }
                         },
                     )
+                    DropdownMenu(expanded = menuAvatar, onDismissRequest = { menuAvatar = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.about_title)) },
+                            onClick = { menuAvatar = false; aboutOuvert = true },
+                            modifier = Modifier.testTag("menu_about"),
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.help_title)) },
+                            onClick = {
+                                menuAvatar = false
+                                runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, HelpUrl.toUri())) }
+                            },
+                            modifier = Modifier.testTag("menu_help"),
+                        )
+                    }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = palette.card, titleContentColor = palette.label,
@@ -350,6 +378,7 @@ fun SettingsScreen(
             }
         }
     }
+    if (aboutOuvert) AboutDialog(onDismiss = { aboutOuvert = false })
     }
 }
 

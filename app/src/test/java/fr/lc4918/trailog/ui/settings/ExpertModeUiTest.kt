@@ -5,12 +5,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
+import fr.lc4918.trailog.BuildConfig
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.ui.routes.TestTrailogApp
@@ -76,5 +78,44 @@ class ExpertModeUiTest {
         compose.onNodeWithText(app.getString(R.string.settings_section_gps_marker).uppercase()).performScrollTo()
         compose.waitForIdle()
         compose.onAllNodesWithTag("settings_group_bar").assertCountEquals(1)
+    }
+
+    /** Un tap sur l'avatar ouvre son menu : "A propos" et "Aide". */
+    @Test fun `l'avatar porte un menu`() {
+        runBlocking { app.repository.ensureSeed() }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("menu_about").assertCountEquals(0)
+
+        compose.onNodeWithTag("settings_avatar").performClick()
+        compose.waitForIdle()
+        compose.onAllNodesWithTag("menu_about").assertCountEquals(1)
+        compose.onAllNodesWithTag("menu_help").assertCountEquals(1)
+    }
+
+    /** "A propos" dit la version installee et ou signaler un probleme. */
+    @Test fun `a propos dit la version et le lien`() {
+        runBlocking { app.repository.ensureSeed() }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings_avatar").performClick()
+        compose.onNodeWithTag("menu_about").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(app.getString(R.string.about_version, BuildConfig.VERSION_NAME)).assertIsDisplayed()
+        compose.onNodeWithTag("about_issues_link").assertIsDisplayed()
+    }
+
+    /** Les sept appuis continuent de se compter sous le menu, qui se referme a la bascule. */
+    @Test fun `le menu ouvert n'empeche pas le mode expert`() {
+        runBlocking {
+            app.repository.ensureSeed()
+            val s = app.repository.settings.get() ?: SettingsEntity()
+            app.repository.settings.upsert(s.copy(expertMode = false))
+        }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+        septAppuis()
+        compose.waitUntil(5_000) { runBlocking { app.repository.settings.get()!!.expertMode } }
+        compose.onAllNodesWithTag("menu_about").assertCountEquals(0)
     }
 }

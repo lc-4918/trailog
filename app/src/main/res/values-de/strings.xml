@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">Die Hintergrundkarte „%1$s“ erlaubt kein Herunterladen. Wählen Sie eine Online-Karte: weder Komposit, noch MBTiles, noch OpenStreetMap.</string>
     <string name="offline_download_area_info">Lädt einen RECHTECKIGEN BEREICH der aktuell angezeigten Hintergrundkarte herunter, den Sie auf der Karte aufziehen. Manche Karten erlauben das nicht: Komposite, bereits auf dem Telefon liegende MBTiles-Dateien und OpenStreetMap, dessen Nutzungsbedingungen Massen-Downloads untersagen.</string>
+    <string name="about_title">Über</string>
+    <string name="help_title">Hilfe</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_report_intro">Ein Problem melden oder eine Verbesserung vorschlagen:</string>
 </resources>

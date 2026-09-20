@@ -671,4 +671,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">Le fond de plan « %1$s » n\'autorise pas le téléchargement. Choisissez un fond en ligne : ni composite, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Télécharge une ZONE RECTANGULAIRE du fond de plan actuellement affiché, que vous cadrez sur la carte. Certains fonds ne l\'autorisent pas : les composites, les fichiers MBTiles déjà sur le téléphone, et OpenStreetMap, dont les conditions d\'usage interdisent le téléchargement en masse.</string>
+    <string name="about_title">À propos</string>
+    <string name="help_title">Aide</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_report_intro">Signaler un problème ou proposer une amélioration :</string>
 </resources>

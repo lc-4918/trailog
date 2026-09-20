@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">O mapa de fundo «%1$s» não permite a transferência. Escolha um mapa online: nem composto, nem MBTiles, nem OpenStreetMap.</string>
     <string name="offline_download_area_info">Transfere uma ÁREA RETANGULAR do mapa de fundo atualmente apresentado, que enquadra no mapa. Alguns mapas não o permitem: os compostos, os ficheiros MBTiles já no telemóvel e o OpenStreetMap, cujas condições de utilização proíbem a transferência em massa.</string>
+    <string name="about_title">Acerca de</string>
+    <string name="help_title">Ajuda</string>
+    <string name="about_version">Versão %1$s</string>
+    <string name="about_report_intro">Comunicar um problema ou propor uma melhoria:</string>
 </resources>

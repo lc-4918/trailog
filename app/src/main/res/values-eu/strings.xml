@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">«%1$s» oinarri-mapak ez du deskargatzea baimentzen. Aukeratu lineako mapa bat: ez konposatua, ez MBTiles, ez OpenStreetMap.</string>
     <string name="offline_download_area_info">Une ikusgai dagoen oinarri-maparen AREA LAUKIZUZENA deskargatzen du, mapan enkoadratzen duzuna. Mapa batzuek ez dute baimentzen: konposatuek, telefonoan dauden MBTiles fitxategiek eta OpenStreetMap-ek, zeinen erabilera-baldintzek masiboki deskargatzea debekatzen duten.</string>
+    <string name="about_title">Honi buruz</string>
+    <string name="help_title">Laguntza</string>
+    <string name="about_version">%1$s bertsioa</string>
+    <string name="about_report_intro">Arazo bat jakinarazi edo hobekuntza bat proposatu:</string>
 </resources>

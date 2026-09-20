@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">El mapa de fons «%1$s» no permet la descàrrega. Tria un mapa en línia: ni compost, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Descarrega una ZONA RECTANGULAR del mapa de fons mostrat actualment, que enquadres al mapa. Alguns mapes no ho permeten: els compostos, els fitxers MBTiles ja al telèfon i OpenStreetMap, les condicions d\'ús del qual prohibeixen la descàrrega massiva.</string>
+    <string name="about_title">Quant a</string>
+    <string name="help_title">Ajuda</string>
+    <string name="about_version">Versió %1$s</string>
+    <string name="about_report_intro">Informa d\u0027un problema o proposa una millora:</string>
 </resources>

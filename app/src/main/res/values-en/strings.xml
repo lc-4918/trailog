@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">The basemap \u0022%1$s\u0022 does not allow downloading. Choose an online basemap: neither composite, nor MBTiles, nor OpenStreetMap.</string>
     <string name="offline_download_area_info">Downloads a RECTANGULAR AREA of the basemap currently displayed, which you frame on the map. Some basemaps do not allow it: composites, MBTiles files already on the phone, and OpenStreetMap, whose usage policy forbids bulk downloading.</string>
+    <string name="about_title">About</string>
+    <string name="help_title">Help</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_report_intro">Report a problem or suggest an improvement:</string>
 </resources>

@@ -669,4 +669,8 @@
     <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">La mappa di base «%1$s» non consente il download. Scegli una mappa online: né composita, né MBTiles, né OpenStreetMap.</string>
     <string name="offline_download_area_info">Scarica un\'AREA RETTANGOLARE della mappa di base attualmente visualizzata, che inquadri sulla mappa. Alcune mappe non lo consentono: le composite, i file MBTiles già sul telefono e OpenStreetMap, le cui condizioni d\'uso vietano il download di massa.</string>
+    <string name="about_title">Informazioni</string>
+    <string name="help_title">Guida</string>
+    <string name="about_version">Versione %1$s</string>
+    <string name="about_report_intro">Segnalare un problema o proporre un miglioramento:</string>
 </resources>
