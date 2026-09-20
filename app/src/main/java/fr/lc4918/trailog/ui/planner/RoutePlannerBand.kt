@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.planner
 
+import fr.lc4918.trailog.ui.profile.profileChartHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.filled.DragIndicator
@@ -768,7 +771,13 @@ private fun ResultsZone(
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),
                         bold = settings.profLegendBold)
                 }
-                Box(Modifier.fillMaxWidth().height(110.dp), contentAlignment = Alignment.Center) {
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val hauteurGraphe = profileChartHeight(
+                    settings.profileVerticalScale, stats.min, stats.max,
+                    samples.last().x - samples.first().x,
+                    constraints.maxWidth, PlannerChartMaxHeight, settings.profAxisFont,
+                )
+                Box(Modifier.fillMaxWidth().height(hauteurGraphe), contentAlignment = Alignment.Center) {
                     ElevationProfile(
                         samples = samples, stats = stats,
                         grid = settings.profileGrid,
@@ -782,9 +791,10 @@ private fun ResultsZone(
                         // Double-tap : un grossissement franc au point vise, la ou le pincement dose.
                         onDoubleTap = { fraction -> state.zoomBy(2f, fraction, r.track.samples.size) },
                         lastLabelInsetPx = lastLabelInsetPx,
-                        verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
-                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        verticalScale = settings.profileVerticalScale,
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                     )
+                }
                 }
             }
         }
@@ -898,3 +908,6 @@ internal class StepDrag {
         return if (f != null && t != null && f != t) f to t else null
     }
 }
+
+/** Hauteur maximale du profil dans la bande du planificateur. */
+private val PlannerChartMaxHeight = 110.dp

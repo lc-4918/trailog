@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Échelle verticale : %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto ajuste l\'échelle verticale au dénivelé (le profil remplit la hauteur). Une échelle fixe (ex. 1 cm = 100 m) donne un rendu absolu et honnête : le même dénivelé occupe toujours la même hauteur, une pente de 2 %% n\'apparaît plus comme un mur.</string>
+    <string name="settings_vertical_scale_hint">Auto remplit la hauteur, sans dresser en muraille une pente douce : au-delà d\'un certain rapport entre les deux axes, c\'est le graphe qui se réduit. Mètres par centimètre rend les dénivelés comparables d\'une trace à l\'autre, à la règle. Exagération rend les pentes comparables : la pente lue est la pente réelle, multipliée par le même facteur partout.</string>
 
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>
@@ -665,4 +665,8 @@
     <string name="settings_clear_map_cache">Effacer le cache de carte</string>
     <string name="settings_map_cache_empty">Vide</string>
     <string name="settings_map_cache_hint">Les tuiles vues une fois sont gardées pour un affichage plus rapide, dans la limite réglée. Les effacer les fera retélécharger. Les cartes hors ligne ne sont pas touchées.</string>
+    <string name="settings_vertical_scale_absolute">Mètres par centimètre</string>
+    <string name="settings_label_vertical_scale_value">Échelle</string>
+    <string name="settings_label_exaggeration">Exagération</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

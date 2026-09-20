@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto ajusta a escala vertical ao desnível (o perfil preenche a altura). Uma escala fixa (p. ex. 1 cm = 100 m) dá uma representação absoluta e honesta: o mesmo desnível ocupa sempre a mesma altura, e um declive de 2 %% deixa de parecer um muro.</string>
+    <string name="settings_vertical_scale_hint">Auto preenche a altura sem transformar um declive suave num muro: a partir de certa relação entre os dois eixos, é o gráfico que se reduz. Metros por centímetro torna os desníveis comparáveis de um trilho para outro, com a régua. Exagero torna os declives comparáveis: o declive lido é o real, multiplicado pelo mesmo fator em toda a parte.</string>
 
     <!-- Definições: Perfil -->
     <string name="settings_section_display">Visualização</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Limpar a cache do mapa</string>
     <string name="settings_map_cache_empty">Vazia</string>
     <string name="settings_map_cache_hint">Os mosaicos vistos uma vez são guardados para uma apresentação mais rápida, dentro do limite definido. Limpá-los fará com que sejam transferidos de novo. Os mapas offline não são afetados.</string>
+    <string name="settings_vertical_scale_absolute">Metros por centímetro</string>
+    <string name="settings_label_vertical_scale_value">Escala</string>
+    <string name="settings_label_exaggeration">Exagero</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

@@ -1,5 +1,7 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.ui.profile.profileChartHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -204,7 +206,15 @@ internal fun RouteProfilePanel(
         } else {
             Spacer(Modifier.height(ProfileGraphGap))
         }
-        Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+        // La hauteur du graphe suit l'echelle : sous un plafond d'exageration, le dessin n'a pas besoin de
+        // tout le cadre, et le panneau rend la place (cf. profileChartHeight).
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val hauteurGraphe = profileChartHeight(
+            settings.profileVerticalScale, track.stats.min, track.stats.max,
+            track.samples.last().x - track.samples.first().x,
+            constraints.maxWidth, ProfileChartMaxHeight, settings.profAxisFont,
+        )
+        Box(Modifier.fillMaxWidth().height(hauteurGraphe), contentAlignment = Alignment.Center) {
             ElevationProfile(
                 samples = track.samples, stats = track.stats,
                 grid = settings.profileGrid,
@@ -214,9 +224,10 @@ internal fun RouteProfilePanel(
                 axisBold = settings.profAxisBold,
                 cursorX = cursorX, onScrub = onScrub,
                 lastLabelInsetPx = lastLabelInsetPx,
-                verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
+                verticalScale = settings.profileVerticalScale,
                 modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             )
+        }
         }
     }
 }
@@ -428,7 +439,15 @@ internal fun BoxScope.TrackProfileLayer(
                 // les deux.
                 Spacer(Modifier.height(ProfileGraphGap))
             }
-            Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val hauteurGraphe = if (windowSamples != null && windowStats != null && windowSamples.size >= 2) {
+                profileChartHeight(
+                    settings.profileVerticalScale, windowStats.min, windowStats.max,
+                    windowSamples.last().x - windowSamples.first().x,
+                    constraints.maxWidth, ProfileChartMaxHeight, settings.profAxisFont,
+                )
+            } else ProfileChartMaxHeight
+            Box(Modifier.fillMaxWidth().height(hauteurGraphe), contentAlignment = Alignment.Center) {
                 // Trace sans altitude : le profil serait une ligne plate et muette. On le remplace par un
                 // avertissement, plutôt que de laisser croire à un parcours plat.
                 if (shown != null && !shown.hasZ && !loading) {
@@ -445,13 +464,17 @@ internal fun BoxScope.TrackProfileLayer(
                         onZoom = onZoom,
                         onDoubleTap = onDoubleTapZoom,
                         lastLabelInsetPx = lastLabelInsetPx,
-                        verticalScaleMPerCm = settings.profileVerticalScaleMPerCm,
+                        verticalScale = settings.profileVerticalScale,
                         modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                     )
                 } else {
                     CircularProgressIndicator()
                 }
             }
+            }
         }
     }
 }
+
+/** Hauteur maximale du graphe d'un profil : ce qu'il prend quand il remplit le cadre. */
+private val ProfileChartMaxHeight = 120.dp

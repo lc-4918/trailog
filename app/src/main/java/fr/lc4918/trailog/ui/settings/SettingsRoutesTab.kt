@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.settings
 
+import fr.lc4918.trailog.domain.geo.ProfileScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -225,21 +226,59 @@ import kotlinx.coroutines.launch
         // Echelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (metres d'altitude par cm
         // physique). Bornes choisies d'apres la hauteur du graphe (~1,6 cm). Valeurs non equidistantes,
         // donc curseur indexe, comme le lissage.
-        val scales = remember { listOf(0, 50, 100, 150, 200, 250, 300, 500, 800, 1200) }
-        val scaleIdx = scales.indexOf(cur.profileVerticalScaleMPerCm).let { if (it >= 0) it else 0 }
-        SliderRow(
-            stringResource(R.string.settings_label_vertical_scale),
-            if (cur.profileVerticalScaleMPerCm <= 0) stringResource(R.string.settings_vertical_scale_auto)
-            else stringResource(R.string.settings_vertical_scale_value, cur.profileVerticalScaleMPerCm),
-            fractionOf(scaleIdx, 0, scales.lastIndex), steps = scales.size - 2,
-            onFraction = { vm.save(cur.copy(profileVerticalScaleMPerCm = scales[valueOf(it, 0, scales.lastIndex)])) },
+        /*
+         * L'echelle verticale, en deux lignes : le REGIME, puis sa valeur.
+         *
+         * Les trois ne repondent pas a la meme question (cf. ProfileScale) : remplir la hauteur sans
+         * dresser une pente douce en muraille, comparer des AMPLITUDES a la regle, ou comparer des PENTES.
+         * L'exageration ne se propose qu'en mode expert : elle suppose qu'on sache ce qu'on compare.
+         */
+        val vertical = remember(cur.profileVerticalScale) { ProfileScale.parse(cur.profileVerticalScale) }
+        val modes = buildList {
+            add(ProfileScale.Mode.CAP)
+            add(ProfileScale.Mode.M_PER_CM)
+            if (cur.expertMode) add(ProfileScale.Mode.EXAGGERATION)
+        }
+        PickRow(
+            stringResource(R.string.settings_label_vertical_scale), vertical.mode, modes,
+            optionLabel = { verticalModeLabel(it) },
             info = stringResource(R.string.settings_vertical_scale_hint),
-        )
+        ) { mode ->
+            val v = when (mode) {
+                ProfileScale.Mode.CAP -> ProfileScale.Vertical(mode, ProfileScale.DEFAULT_CAP)
+                ProfileScale.Mode.M_PER_CM -> ProfileScale.Vertical(mode, 100.0)
+                ProfileScale.Mode.EXAGGERATION -> ProfileScale.Vertical(mode, 10.0)
+            }
+            vm.save(cur.copy(profileVerticalScale = ProfileScale.store(v)))
+        }
+        if (vertical.mode != ProfileScale.Mode.CAP) {
+            RowDivider()
+            val metres = vertical.mode == ProfileScale.Mode.M_PER_CM
+            val crans = if (metres) VerticalScaleSteps else ExaggerationSteps
+            val cran = crans.indexOf(vertical.value.toInt())
+                .let { if (it >= 0) it else crans.indices.minBy { i -> kotlin.math.abs(crans[i] - vertical.value) } }
+            SliderRow(
+                if (metres) stringResource(R.string.settings_label_vertical_scale_value)
+                else stringResource(R.string.settings_label_exaggeration),
+                if (metres) stringResource(R.string.settings_vertical_scale_value, vertical.value.toInt())
+                else stringResource(R.string.settings_exaggeration_value, vertical.value.toInt()),
+                fractionOf(cran, 0, crans.lastIndex), steps = crans.size - 2,
+                onFraction = {
+                    val v = crans[valueOf(it, 0, crans.lastIndex)].toDouble()
+                    vm.save(cur.copy(profileVerticalScale = ProfileScale.store(vertical.copy(value = v))))
+                },
+            )
+        }
         // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas
         // a l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre
         // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
         CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(profileSmoothingM = 5, profileVerticalScaleMPerCm = 0))
+            vm.save(cur.copy(
+                profileSmoothingM = 5,
+                profileVerticalScale = ProfileScale.store(
+                    ProfileScale.Vertical(ProfileScale.Mode.CAP, ProfileScale.DEFAULT_CAP),
+                ),
+            ))
         }
     }
 
@@ -582,3 +621,18 @@ private fun poiCorridorLabel(m: Int): String = when {
     m % 1_000 == 0 -> "${m / 1_000} km"
     else -> "${m / 1_000},${(m % 1_000) / 100} km"
 }
+
+/** Metres d'altitude par centimetre proposes : de la trace de vallee au massif entier. */
+private val VerticalScaleSteps = listOf(50, 100, 150, 200, 250, 300, 500, 800, 1200)
+
+/** Exagerations proposees : au-dela d'une vingtaine, le relief ne se lit plus, il se devine. */
+private val ExaggerationSteps = listOf(2, 5, 10, 15, 25, 50)
+
+/** Libelle traduit d'un regime d'echelle verticale (cf. ProfileScale.Mode). */
+@Composable private fun verticalModeLabel(m: ProfileScale.Mode): String = stringResource(
+    when (m) {
+        ProfileScale.Mode.CAP -> R.string.settings_vertical_scale_auto
+        ProfileScale.Mode.M_PER_CM -> R.string.settings_vertical_scale_absolute
+        ProfileScale.Mode.EXAGGERATION -> R.string.settings_label_exaggeration
+    }
+)

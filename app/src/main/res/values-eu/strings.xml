@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Eskala bertikala: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto-k eskala bertikala desnibelera egokitzen du (profilak altuera betetzen du). Eskala finko batek (adib. 1 cm = 100 m) errendatze absolutu eta zintzoa ematen du: desnibel berak beti altuera bera hartzen du, eta %% 2ko malda batek ez du jada horma baten itxurarik.</string>
+    <string name="settings_vertical_scale_hint">Autoak altuera betetzen du, malda leun bat horma bihurtu gabe: bi ardatzen arteko erlazio jakin batetik aurrera, grafikoa txikitzen da. Zentimetroko metroek desnibelak arrasto batetik bestera konparagarri egiten dituzte, erregelarekin. Handitzeak maldak konparagarri egiten ditu: irakurritako malda benetakoa da, nonahi faktore berberaz biderkatuta.</string>
 
     <!-- Ezarpenak: Profila -->
     <string name="settings_section_display">Bistaratzea</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Maparen cachea ezabatu</string>
     <string name="settings_map_cache_empty">Hutsik</string>
     <string name="settings_map_cache_hint">Behin ikusitako lauzak azkarrago erakusteko gordetzen dira, ezarritako mugaren barruan. Ezabatzeak berriro deskargatzea eragingo du. Lineaz kanpoko mapak ez dira ukitzen.</string>
+    <string name="settings_vertical_scale_absolute">Zentimetroko metroak</string>
+    <string name="settings_label_vertical_scale_value">Eskala</string>
+    <string name="settings_label_exaggeration">Handitzea</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto ajusta la escala vertical al desnivel (el perfil llena la altura). Una escala fija (p. ej. 1 cm = 100 m) da una representación absoluta y honesta: el mismo desnivel ocupa siempre la misma altura, y una pendiente del 2 %% ya no parece un muro.</string>
+    <string name="settings_vertical_scale_hint">Auto llena la altura sin convertir una pendiente suave en un muro: más allá de cierta relación entre los dos ejes, el gráfico se reduce. Metros por centímetro hace comparables los desniveles de una traza a otra, con una regla. Exageración hace comparables las pendientes: la pendiente leída es la real, multiplicada por el mismo factor en todas partes.</string>
 
     <!-- Ajustes: Perfil -->
     <string name="settings_section_display">Visualización</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Borrar la caché del mapa</string>
     <string name="settings_map_cache_empty">Vacía</string>
     <string name="settings_map_cache_hint">Las teselas vistas una vez se guardan para mostrarlas más rápido, dentro del límite configurado. Borrarlas hará que se descarguen de nuevo. Los mapas sin conexión no se ven afectados.</string>
+    <string name="settings_vertical_scale_absolute">Metros por centímetro</string>
+    <string name="settings_label_vertical_scale_value">Escala</string>
+    <string name="settings_label_exaggeration">Exageración</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

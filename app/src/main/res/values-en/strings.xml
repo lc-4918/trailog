@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Vertical scale: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto fits the vertical scale to the elevation range (the profile fills the height). A fixed scale (e.g. 1 cm = 100 m) gives an absolute, honest rendering: the same elevation gain always takes the same height, and a 2 %% slope no longer looks like a wall.</string>
+    <string name="settings_vertical_scale_hint">Auto fills the height without turning a gentle slope into a wall: past a given ratio between the two axes, the chart shrinks instead. Metres per centimetre makes elevation ranges comparable from one track to the next, with a ruler. Exaggeration makes slopes comparable: the gradient you read is the real one, multiplied by the same factor everywhere.</string>
 
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Clear map cache</string>
     <string name="settings_map_cache_empty">Empty</string>
     <string name="settings_map_cache_hint">Tiles seen once are kept for faster display, within the configured limit. Clearing them makes them download again. Offline maps are not affected.</string>
+    <string name="settings_vertical_scale_absolute">Metres per centimetre</string>
+    <string name="settings_label_vertical_scale_value">Scale</string>
+    <string name="settings_label_exaggeration">Exaggeration</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.profile
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
+import fr.lc4918.trailog.domain.geo.ProfileScale
 import android.annotation.SuppressLint
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
@@ -40,7 +43,7 @@ private class ProfileDrawCache {
     var axisColor: Color? = null
     var gridColor: Color? = null
     var textColor: Color? = null
-    var vscale: Int? = null
+    var vscale: String? = null
     var w: Float = -1f
     var h: Float = -1f
 
@@ -74,11 +77,10 @@ fun ElevationProfile(
     // Marge (px) dont on rentre le dernier label de l'axe X, pour dégager la courbure de l'angle bas-droit
     // de l'écran. 0 si l'écran n'a pas d'angle arrondi (détecté par l'appelant via l'API RoundedCorner).
     lastLabelInsetPx: Float = 0f,
-    // Échelle verticale du profil : mètres d'altitude par centimètre physique de l'écran. 0 = Auto (le profil
-    // remplit la hauteur, échelle ajustée au dénivelé). Une valeur fixe (ex. 100 = 1 cm pour 100 m) donne un
-    // rendu absolu et honnête : le même dénivelé occupe toujours la même hauteur, une pente de 2% ne ressemble
-    // plus à un mur. Le profil est alors ancré sur la ligne de base (borné au remplissage pour ne pas déborder).
-    verticalScaleMPerCm: Int = 0,
+    // Échelle verticale, telle qu'elle est réglée : plafond d'exagération, mètres par centimètre, ou
+    // exagération fixe (cf. ProfileScale). C'est elle qui décide de ce que l'axe couvre, de la hauteur
+    // que le dessin occupe, et des graduations.
+    verticalScale: String = "",
     // Zoom par pincement et double-tap, facultatif : seul le profil du planificateur l'utilise, celui
     // d'une trace gardant sa selection de bornes. Null = aucun geste de zoom, comportement inchange.
     // [onZoom] recoit le facteur de grossissement et la fraction horizontale visee (0 a gauche, 1 a droite).
@@ -91,6 +93,7 @@ fun ElevationProfile(
     val minZ = stats.min; val maxZ = stats.max
     val spanX = (maxX - minX).coerceAtLeast(1.0)
     val spanZ = (maxZ - minZ).coerceAtLeast(1.0)
+    val vertical = remember(verticalScale) { ProfileScale.parse(verticalScale) }
     val padLpx = padL(axisFontSp)
 
     /** L'abscisse visee par un doigt pose a [px] : la position exacte sous le doigt, sans se rabattre sur
@@ -153,38 +156,48 @@ fun ElevationProfile(
     ) {
         val padBpx = axisFontSp.sp.toPx() + 12f
         val w = size.width; val h = size.height
-        val plotW = w - padLpx - padR; val plotH = h - padT - padBpx
-        val baseY = padT + plotH
+        val plotW = w - padLpx - padR; val plotHMax = h - padT - padBpx
         // Échelle horizontale (px/m). Échelle verticale (px/m) : Auto (<=0) remplit la hauteur (plotH/spanZ) ;
         // sinon échelle absolue = cmPx / (m par cm), bornée par le remplissage pour ne pas déborder du cadre.
         // Dans les deux cas le profil est ancré sur la ligne de base (minZ en bas) ; à échelle fixe fine il
         // n'occupe alors qu'une partie de la hauteur (relief honnête, pas étiré).
         val cmPx = (160f / 2.54f).dp.toPx()      // 1 cm physique en px (dp de base = 1/160 pouce)
         val xScale = plotW / spanX
-        val yScale = if (verticalScaleMPerCm <= 0) (plotH / spanZ).toDouble()
-            else minOf((plotH / spanZ).toDouble(), (cmPx / verticalScaleMPerCm).toDouble())
-        val drawnH = (spanZ * yScale).toFloat()
+        // Ce que l'axe couvre, la hauteur que le dessin prend, et les graduations : tout vient de la même
+        // règle, éprouvée hors d'Android (cf. ProfileScale). Sous un plafond d'exagération, la hauteur
+        // rendue est plus petite que celle disponible - c'est le panneau qui se réduit, pas l'axe qui
+        // s'envole (l'appelant l'a déjà mesurée, cf. profileChartHeightPx).
+        val win = ProfileScale.window(vertical, minZ, maxZ, spanX, plotW, plotHMax, cmPx)
+        val plotH = win.heightPx
+        val baseY = padT + plotH
+        val yScale = plotH / win.spanZ
         fun sx(x: Double) = padLpx + ((x - minX) * xScale).toFloat()
-        fun sy(z: Double) = baseY - ((z - minZ) * yScale).toFloat()
+        fun sy(z: Double) = baseY - ((z - win.minZ) * yScale).toFloat()
 
         val stale = cache.samplesRef !== samples || cache.stats != stats || cache.grid != grid ||
             cache.slope != slope || cache.lineColor != lineColor || cache.axisFontSp != axisFontSp ||
             cache.axisBold != axisBold || cache.axisColor != axisColor || cache.gridColor != gridColor ||
-            cache.textColor != textColor || cache.vscale != verticalScaleMPerCm || cache.w != w || cache.h != h
+            cache.textColor != textColor || cache.vscale != verticalScale || cache.w != w || cache.h != h
         if (stale) {
             labelPaint.textSize = axisFontSp.sp.toPx(); labelPaint.isFakeBoldText = axisBold; labelPaint.color = textColor.toArgb()
 
             val gridLines = ArrayList<Pair<Offset, Offset>>()
             val yLabels = ArrayList<Triple<String, Float, Float>>()
             val xLabels = ArrayList<Triple<String, Float, Float>>()
-            // À échelle fixe le profil peut n'occuper qu'une faible hauteur : on réduit le nombre de
-            // graduations Y pour que les labels ne se chevauchent pas.
-            val yTicks = if (verticalScaleMPerCm <= 0) 3
-                else (drawnH / (axisFontSp.sp.toPx() * 2.2f)).toInt().coerceIn(1, 3)
-            for (i in 0..yTicks) {
-                val z = minZ + spanZ * i / yTicks; val y = sy(z)
+            // Les graduations viennent de l'échelle : des altitudes RONDES, et non les bornes de la
+            // trace - "1 149 m" en haut d'un axe n'apprend rien de plus que "1 200 m", et coûte une
+            // lecture. Celles qui ne tiendraient pas dans la hauteur sont sautées une sur deux.
+            val hauteurLabel = axisFontSp.sp.toPx() * 2.2f
+            val saut = if (win.ticks.size > 1) {
+                val ecart = plotH / (win.ticks.size - 1)
+                if (ecart >= hauteurLabel) 1 else (hauteurLabel / ecart).toInt().coerceAtLeast(1)
+            } else 1
+            win.ticks.forEachIndexed { i, z ->
+                val y = sy(z)
                 if (grid) gridLines.add(Offset(padLpx, y) to Offset(padLpx + plotW, y))
-                yLabels.add(Triple("${z.roundToInt()}", padLpx - 5f, y + axisFontSp.sp.toPx() / 3f))
+                if (i % saut == 0 || i == win.ticks.lastIndex) {
+                    yLabels.add(Triple("${z.roundToInt()}", padLpx - 5f, y + axisFontSp.sp.toPx() / 3f))
+                }
             }
             val xTicks = 4
             for (i in 0..xTicks) {
@@ -216,7 +229,7 @@ fun ElevationProfile(
             cache.samplesRef = samples; cache.stats = stats; cache.grid = grid; cache.slope = slope
             cache.lineColor = lineColor; cache.axisFontSp = axisFontSp; cache.axisBold = axisBold
             cache.axisColor = axisColor; cache.gridColor = gridColor; cache.textColor = textColor
-            cache.vscale = verticalScaleMPerCm; cache.w = w; cache.h = h
+            cache.vscale = verticalScale; cache.w = w; cache.h = h
         }
 
         cache.gridLines.forEach { (a, b) -> drawLine(gridColor, a, b, strokeWidth = 1f) }
@@ -288,3 +301,41 @@ private fun padL(axisFontSp: Int) = axisFontSp * 3.6f + 14f
 
 @SuppressLint("DefaultLocale")
 private fun fmtKm(km: Double): String = if (km < 10) String.format("%.1f", km) else "${km.roundToInt()}"
+
+/**
+ * La hauteur (px) dont le graphe a besoin, marges comprises, pour une trace donnee.
+ *
+ * L'appelant l'utilise pour DIMENSIONNER le panneau : sous un plafond d'exageration, le dessin n'a pas
+ * besoin de toute la hauteur - a echelle imposee, ce qu'on ajoute au-dessus n'est que du vide - et le
+ * panneau se reduit d'autant, rendant la carte qu'il recouvrait (cf. ProfileScale.window).
+ */
+internal fun profileChartHeightPx(
+    verticalScale: String, zMin: Double, zMax: Double, distanceM: Double,
+    widthPx: Float, maxHeightPx: Float, pxPerCm: Float, axisFontSp: Int, axisFontPx: Float,
+): Float {
+    val padB = axisFontPx + 12f
+    val plotW = (widthPx - padL(axisFontSp) - padR).coerceAtLeast(1f)
+    val plotH = (maxHeightPx - padT - padB).coerceAtLeast(1f)
+    val win = ProfileScale.window(ProfileScale.parse(verticalScale), zMin, zMax, distanceM, plotW, plotH, pxPerCm)
+    return padT + win.heightPx + padB
+}
+
+/**
+ * La hauteur que le graphe demande, en dp, bornee par [maxHeight].
+ *
+ * Le panneau s'y ajuste : sous un plafond d'exageration, un profil long et doux n'a pas besoin de toute
+ * la hauteur, et ce qu'on lui rendrait ne serait que du vide au-dessus du dessin (cf. ProfileScale).
+ */
+@Composable
+internal fun profileChartHeight(
+    verticalScale: String, zMin: Double, zMax: Double, distanceM: Double,
+    widthPx: Int, maxHeight: Dp, axisFontSp: Int,
+): Dp {
+    val density = LocalDensity.current
+    return with(density) {
+        profileChartHeightPx(
+            verticalScale, zMin, zMax, distanceM, widthPx.toFloat(), maxHeight.toPx(),
+            (160f / 2.54f).dp.toPx(), axisFontSp, axisFontSp.sp.toPx(),
+        ).toDp().coerceIn(0.dp, maxHeight)
+    }
+}

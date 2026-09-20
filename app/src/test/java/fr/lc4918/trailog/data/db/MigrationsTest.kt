@@ -906,6 +906,24 @@ class MigrationsTest {
         db.close()
     }
 
+    /** L'echelle reglee en metres par centimetre se retrouve telle quelle ; "remplir la hauteur" devient
+     *  le plafond d'exageration, qui remplit la hauteur sans dresser une pente douce en muraille. */
+    @Test fun `70 vers 71 garde l'echelle verticale reglee`() {
+        val db = freshDb("m7071"); settingsV16(db)
+        db.execSQL("ALTER TABLE settings ADD COLUMN profileVerticalScaleMPerCm INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE settings SET profileVerticalScaleMPerCm = 150")
+        db.execSQL(MigrationSql.ADD_PROFILE_VERTICAL_SCALE)
+        db.execSQL(MigrationSql.COPY_PROFILE_VERTICAL_SCALE)
+        assertEquals("m:150", scalar(db, "SELECT profileVerticalScale FROM settings") { it.getString(0) })
+
+        val auto = freshDb("m7071bis"); settingsV16(auto)
+        auto.execSQL("ALTER TABLE settings ADD COLUMN profileVerticalScaleMPerCm INTEGER NOT NULL DEFAULT 0")
+        auto.execSQL(MigrationSql.ADD_PROFILE_VERTICAL_SCALE)
+        auto.execSQL(MigrationSql.COPY_PROFILE_VERTICAL_SCALE)
+        assertEquals("cap:25", scalar(auto, "SELECT profileVerticalScale FROM settings") { it.getString(0) })
+        db.close(); auto.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -1106,7 +1124,7 @@ class MigrationsTest {
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
             "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart", "poiMasked",
-            "dashboardHidden", "expertMode")
+            "dashboardHidden", "expertMode", "profileVerticalScale")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

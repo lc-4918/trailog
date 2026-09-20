@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Scala verticale: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto adatta la scala verticale al dislivello (il profilo riempie l\'altezza). Una scala fissa (es. 1 cm = 100 m) dà una resa assoluta e onesta: lo stesso dislivello occupa sempre la stessa altezza, e una pendenza del 2 %% non sembra più un muro.</string>
+    <string name="settings_vertical_scale_hint">Auto riempie l\'altezza senza trasformare una pendenza dolce in un muro: oltre un certo rapporto tra i due assi, è il grafico che si riduce. Metri per centimetro rende i dislivelli confrontabili da una traccia all\'altra, con il righello. Esagerazione rende confrontabili le pendenze: la pendenza letta è quella reale, moltiplicata per lo stesso fattore ovunque.</string>
 
     <!-- Impostazioni: Profilo -->
     <string name="settings_section_display">Visualizzazione</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Svuota la cache della mappa</string>
     <string name="settings_map_cache_empty">Vuota</string>
     <string name="settings_map_cache_hint">Le tessere viste una volta sono conservate per una visualizzazione più rapida, entro il limite impostato. Svuotarle le farà riscaricare. Le mappe offline non sono toccate.</string>
+    <string name="settings_vertical_scale_absolute">Metri per centimetro</string>
+    <string name="settings_label_vertical_scale_value">Scala</string>
+    <string name="settings_label_exaggeration">Esagerazione</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>

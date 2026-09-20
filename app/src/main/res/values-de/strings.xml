@@ -248,7 +248,7 @@
     <string name="settings_section_vertical_scale">Vertikaler Maßstab: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto passt den vertikalen Maßstab an den Höhenunterschied an (das Profil füllt die Höhe). Ein fester Maßstab (z. B. 1 cm = 100 m) ergibt eine absolute, ehrliche Darstellung: derselbe Höhenunterschied nimmt immer dieselbe Höhe ein, und eine Steigung von 2 %% sieht nicht mehr wie eine Wand aus.</string>
+    <string name="settings_vertical_scale_hint">Auto füllt die Höhe, ohne eine sanfte Steigung zur Mauer zu machen: ab einem bestimmten Verhältnis der beiden Achsen verkleinert sich das Diagramm. Meter pro Zentimeter macht Höhenunterschiede von Spur zu Spur vergleichbar, mit dem Lineal. Überhöhung macht Steigungen vergleichbar: die abgelesene Steigung ist die echte, überall mit demselben Faktor multipliziert.</string>
 
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>
@@ -663,4 +663,8 @@
     <string name="settings_clear_map_cache">Kartenspeicher leeren</string>
     <string name="settings_map_cache_empty">Leer</string>
     <string name="settings_map_cache_hint">Einmal gesehene Kacheln werden im eingestellten Rahmen für eine schnellere Anzeige behalten. Beim Leeren werden sie erneut heruntergeladen. Offline-Karten sind nicht betroffen.</string>
+    <string name="settings_vertical_scale_absolute">Meter pro Zentimeter</string>
+    <string name="settings_label_vertical_scale_value">Maßstab</string>
+    <string name="settings_label_exaggeration">Überhöhung</string>
+    <string name="settings_exaggeration_value">×%1$d</string>
 </resources>
