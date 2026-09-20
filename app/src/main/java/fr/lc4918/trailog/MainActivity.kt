@@ -14,7 +14,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.ThemePrefs
 import fr.lc4918.trailog.data.imp.ImportInbox
-import fr.lc4918.trailog.location.LocationService
+import fr.lc4918.trailog.location.AlertAnswer
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.ui.nav.AppRoot
 import fr.lc4918.trailog.ui.theme.TrailogTheme
@@ -65,20 +65,26 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * La notification de l'alerte d'eloignement, tapee : on a repondu.
+     * L'alerte d'eloignement amene la carte a l'ecran - et de deux facons, qui ne veulent pas dire la
+     * meme chose (cf. AlertAnswer).
      *
-     * **L'alerte se tait**, exactement comme au tap sur la banniere de la carte : la sonnerie boucle jusqu'a
-     * ce qu'on reponde, et ouvrir l'application EST la reponse - on regarde la carte, on sait qu'on est
-     * loin. Le suivi, lui, continue : le prochain ecart se dira (cf. TrackWatch.silence).
+     * **L'ecran s'allume et l'application se pose par-dessus le verrouillage**, dans les deux cas :
+     * l'alerte arrive telephone en poche, ecran eteint, et une alerte qu'il faut deverrouiller pour lire
+     * arrive apres le mauvais embranchement. C'est l'intention plein ecran de la notification qui nous
+     * amene ici (cf. LocationService.postOffTrackAlert) ; ces deux drapeaux sont ce qui, de notre cote,
+     * permet a Android de le faire. Un verrouillage securise reste securise : il montre son ecran, pas la
+     * carte.
      *
-     * **L'ecran s'allume et l'application se pose par-dessus le verrouillage** : l'alerte arrive telephone
-     * en poche, ecran eteint, et une alerte qu'il faut deverrouiller pour lire arrive apres le mauvais
-     * embranchement. C'est l'intention plein ecran de la notification qui nous amene ici
-     * (cf. LocationService.postOffTrackAlert) ; ces deux drapeaux sont ce qui, de notre cote, permet a
-     * Android de le faire. Un verrouillage securise reste securise : il montre son ecran, pas la carte.
+     * **L'alerte ne se tait qu'au TAP.** La sonnerie boucle jusqu'a ce qu'on reponde, et taper la
+     * notification EST la reponse - on regarde la carte, on sait qu'on est loin (cf. TrackWatch.silence).
+     * Le reveil automatique, lui, ne repond rien : c'est l'alerte qui allume l'ecran, et se taire la
+     * reviendrait a se repondre a soi-meme - l'ecran s'allumait sur une carte sans banniere et sans
+     * sonnerie, la cloche rouge pour seul indice. La sonnerie continue donc, sous les yeux de celui
+     * qu'elle appelle, jusqu'a la banniere, la notification, "Taire", ou le retour sur la trace.
      */
     private fun answerOffTrackAlert(intent: Intent?) {
-        if (intent?.action != LocationService.ACTION_SHOW_ALERT) return
+        val action = intent?.action
+        if (!AlertAnswer.wakesScreen(action)) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
@@ -89,6 +95,6 @@ class MainActivity : ComponentActivity() {
                     WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
             )
         }
-        TrackWatch.silence()
+        if (AlertAnswer.silences(action)) TrackWatch.silence()
     }
 }

@@ -571,14 +571,12 @@ class LocationService : Service() {
             Format.shortDistance(ecart, reglages?.units == "imperial"),
             suivie.layerName,
         )
-        val ouvrir = PendingIntent.getActivity(
-            this, 3,
-            Intent(this, MainActivity::class.java).apply {
-                action = ACTION_SHOW_ALERT
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+        // Deux intentions vers la meme carte, et deux actions differentes : le tap REPOND a l'alerte, le
+        // plein ecran ne fait que l'amener sous les yeux (cf. AlertAnswer). Deux codes de requete, sans
+        // quoi la seconde ecraserait la premiere - PendingIntent ne distingue pas les intentions par leur
+        // action.
+        val ouvrir = alertActivityIntent(3, ACTION_SHOW_ALERT)
+        val reveiller = alertActivityIntent(5, ACTION_WAKE_ALERT)
         val taire = PendingIntent.getService(
             this, 4, Intent(this, LocationService::class.java).setAction(ACTION_SILENCE_ALERT),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
@@ -590,7 +588,7 @@ class LocationService : Service() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(texte))
             .setContentIntent(ouvrir)
             .addAction(0, getString(R.string.alert_off_track_silence), taire)
-            .setFullScreenIntent(ouvrir, true)
+            .setFullScreenIntent(reveiller, true)
             .setAutoCancel(true)
             // Elle ne se balaie pas : une alerte a laquelle on n'a pas repondu sonne toujours, et la faire
             // disparaitre d'un geste qui ne l'arrete pas laisserait un telephone qui sonne sans raison lisible.
@@ -604,6 +602,17 @@ class LocationService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         runCatching { nm.notify(OFF_TRACK_NOTIF_ID, notif) }
     }
+
+    /** La carte, ouverte depuis la notification de l'ecart, sous l'action qui dit comment on y arrive. */
+    private fun alertActivityIntent(requestCode: Int, action: String): PendingIntent =
+        PendingIntent.getActivity(
+            this, requestCode,
+            Intent(this, MainActivity::class.java).apply {
+                this.action = action
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
     private fun cancelOffTrackAlert() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
@@ -684,6 +693,13 @@ class LocationService : Service() {
          * on a repondu (cf. MainActivity).
          */
         const val ACTION_SHOW_ALERT = "fr.lc4918.trailog.SHOW_OFF_TRACK_ALERT"
+
+        /**
+         * L'intention plein ecran de la notification de l'ecart : Android l'a declenchee tout seul pour
+         * allumer l'ecran. L'application se pose par-dessus le verrouillage, et l'alerte CONTINUE - elle
+         * n'a encore ete lue de personne (cf. AlertAnswer).
+         */
+        const val ACTION_WAKE_ALERT = "fr.lc4918.trailog.WAKE_OFF_TRACK_ALERT"
 
         /**
          * Une position toutes les deux secondes, SANS distance minimale.
