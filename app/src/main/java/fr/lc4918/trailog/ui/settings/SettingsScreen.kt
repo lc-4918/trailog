@@ -1,5 +1,10 @@
 package fr.lc4918.trailog.ui.settings
 
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import android.os.SystemClock
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -118,6 +123,9 @@ fun SettingsScreen(
 
     // ---------- sauvegarde et restauration ----------
     val scope = rememberCoroutineScope()
+    val expertTaps = remember { ExpertTaps() }
+    val expertOn = stringResource(R.string.settings_expert_on)
+    val expertOff = stringResource(R.string.settings_expert_off)
     val backupOk = stringResource(R.string.backup_written)
     val backupFailed = stringResource(R.string.backup_failed)
     val backupWriter = rememberLauncherForActivityResult(
@@ -195,7 +203,31 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(19.dp)) } },
-                actions = { Avatar(cur.avatarSource, size = 26.dp, modifier = Modifier.padding(end = 14.dp)) },
+                /*
+                 * Sept appuis rapproches sur l'avatar allument ou eteignent le mode expert (cf. ExpertTaps),
+                 * et une alerte le dit trois secondes : un geste cache doit au moins dire ce qu'il a fait.
+                 * Sans ondulation : ce n'est pas un bouton qu'on propose.
+                 */
+                actions = {
+                    Avatar(
+                        cur.avatarSource, size = 26.dp,
+                        modifier = Modifier.padding(end = 14.dp).testTag("settings_avatar").clickable(
+                            interactionSource = remember { MutableInteractionSource() }, indication = null,
+                        ) {
+                            if (expertTaps.tap(SystemClock.elapsedRealtime())) {
+                                val on = !cur.expertMode
+                                vm.save(cur.copy(expertMode = on))
+                                val texte = if (on) expertOn else expertOff
+                                scope.launch {
+                                    snackbar.currentSnackbarData?.dismiss()
+                                    withTimeoutOrNull(ExpertAlertMs) {
+                                        snackbar.showSnackbar(texte, duration = SnackbarDuration.Indefinite)
+                                    }
+                                }
+                            }
+                        },
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = palette.card, titleContentColor = palette.label,
                     navigationIconContentColor = palette.label),
@@ -268,3 +300,6 @@ fun SettingsScreen(
 }
 
 /* --------------- Onglets --------------- */
+
+/** Duree de l'alerte du mode expert : trois secondes, le temps de la lire sans avoir a la fermer. */
+private const val ExpertAlertMs = 3_000L

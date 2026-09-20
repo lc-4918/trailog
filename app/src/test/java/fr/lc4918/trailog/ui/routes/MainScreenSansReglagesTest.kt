@@ -101,6 +101,6 @@ class MainScreenSansReglagesTest {
         assertFalse("la regle", affiche(R.string.measure_title))
         assertFalse("le crayon", affiche(R.string.edit_toolbar))
         assertFalse("les points d'interet", affiche(R.string.poi_layer_title))
-        assertFalse("la cloche d'alerte", affiche(R.string.content_desc_off_track_alert))
+        assertFalse("le tableau de bord", affiche(R.string.content_desc_dashboard))
     }
 }

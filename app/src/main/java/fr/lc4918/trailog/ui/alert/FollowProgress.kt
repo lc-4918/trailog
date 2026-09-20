@@ -65,6 +65,11 @@ object FollowProgressMath {
         speedMps: Float?,
         startedAtMs: Long,
         nowMs: Long,
+        /**
+         * Le sens de parcours : +1 du debut vers la fin, -1 a l'envers. A l'envers, la trace se termine a
+         * son DEBUT, et ce qu'elle a de montee en sens normal est de la descente pour qui la remonte.
+         */
+        direction: Int = 1,
     ): FollowProgress {
         val elapsed = (nowMs - startedAtMs).coerceAtLeast(0L)
         if (samples.size < 2) {
@@ -75,8 +80,27 @@ object FollowProgressMath {
         val ici = alongM.coerceIn(debut, fin)
         val fait = ici - debut
         val reste = fin - ici
-        val (dPlusFait, dMoinsFait) = denivele(samples, debut, ici)
-        val (dPlusReste, dMoinsReste) = denivele(samples, ici, fin)
+        val (dPlusAvant, dMoinsAvant) = denivele(samples, debut, ici)
+        val (dPlusApres, dMoinsApres) = denivele(samples, ici, fin)
+        if (direction < 0) {
+            // A l'envers : ce qui est fait est la partie APRES la position, parcourue en sens inverse - ses
+            // montees sont des descentes -, et ce qui reste est la partie AVANT, jusqu'au debut.
+            return FollowProgress(
+                speedMps = speedMps,
+                doneM = reste,
+                remainingM = fait,
+                doneAscentM = dMoinsApres,
+                doneDescentM = dPlusApres,
+                remainingAscentM = dMoinsAvant,
+                remainingDescentM = dPlusAvant,
+                elapsedMs = elapsed,
+                etaMs = eta(reste, fait, elapsed),
+            )
+        }
+        val dPlusFait = dPlusAvant
+        val dMoinsFait = dMoinsAvant
+        val dPlusReste = dPlusApres
+        val dMoinsReste = dMoinsApres
         return FollowProgress(
             speedMps = speedMps,
             doneM = fait,

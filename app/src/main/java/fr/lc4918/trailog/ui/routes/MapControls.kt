@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -303,8 +303,9 @@ internal const val GeocodeMinZoom = 12.0
  * Posees AVANT ce qui occupe le bas, donc DESSOUS : la bande du planificateur, les consignes de saisie et
  * le profil les recouvrent au lieu de les pousser.
  *
- * @param alerting la trace suivie est perdue de vue : la cloche passe au rouge.
- * @param followedTrack une trace est suivie : la cloche passe au bleu.
+ * @param dashboardOpen le tableau de bord est affiche : son bouton passe au bleu.
+ * @param alerting la trace suivie est perdue de vue : le bouton passe au rouge.
+ * @param dashboardPx la hauteur du tableau de bord affiche : la colonne se pose au-dessus.
  */
 @Composable
 internal fun BoxScope.MapBottomRightControls(
@@ -316,9 +317,10 @@ internal fun BoxScope.MapBottomRightControls(
     planner: RoutePlannerState,
     vm: MainViewModel,
     routingUrl: String,
-    alertEnabled: Boolean,
+    dashboardEnabled: Boolean,
+    dashboardOpen: Boolean,
     alerting: Boolean,
-    followedTrack: Boolean,
+    dashboardPx: Int,
     /** Les categories de points d'interet retenues, et de quoi les changer : la bulle du bouton POI. */
     poiFilters: PoiFilters,
     onPoiFilters: (PoiFilters) -> Unit,
@@ -328,7 +330,7 @@ internal fun BoxScope.MapBottomRightControls(
     idleTick: Int,
     maxWidthPx: Int,
     maxHeightPx: Int,
-    onBellTap: () -> Unit,
+    onDashboardTap: () -> Unit,
     onNoConnection: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -380,7 +382,11 @@ internal fun BoxScope.MapBottomRightControls(
      */
     if (!planner.expanded) Column(
         Modifier.align(Alignment.BottomEnd)
-            .padding(end = 8.dp, bottom = maxOf(MapControlSpacing, navBottomDp)),
+            // Au-dessus du tableau de bord quand il est la : il est affiche en permanence, et des boutons
+            // poses dessous seraient invisibles et pourtant touchables. Il porte deja la barre de
+            // navigation.
+            .padding(end = 8.dp, bottom = if (dashboardPx > 0) with(density) { dashboardPx.toDp() } + MapControlSpacing
+                else maxOf(MapControlSpacing, navBottomDp)),
         verticalArrangement = Arrangement.spacedBy(MapControlSpacing),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -476,26 +482,24 @@ internal fun BoxScope.MapBottomRightControls(
             }
         }
         /*
-         * Suivi de trace, juste au-dessus du planificateur : la fonction sert PENDANT la sortie, et le
-         * pouce la trouve au même endroit que le reste.
+         * Le tableau de bord, juste au-dessus du planificateur : il sert PENDANT la sortie, et le pouce
+         * le trouve au même endroit que le reste.
          *
-         * **Le dessin est celui de la route**, celui-là même que l'onglet Trajets des réglages portait
-         * avant de prendre celui du calcul d'itinéraire. La cloche disait l'ALERTE - un son, un
-         * avertissement - alors que le bouton ouvre le suivi d'une trace, dont l'alerte n'est qu'une
-         * conséquence. Une route dit ce qu'on suit ; une cloche disait ce qui pourrait sonner.
+         * **Le dessin est celui d'un compteur** : le bouton ouvre les chiffres de la sortie - vitesse,
+         * distance, dénivelé -, et le suivi d'une trace n'en est plus qu'une partie, qui se fait seule.
          *
-         * Il se lit à la couleur de son dessin, comme les autres commandes de la carte : gris tant
-         * qu'aucune trace n'est suivie, bleu dès qu'on en suit une, rouge quand on s'en est écarté - la
-         * bannière du haut dit alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
+         * Il se lit à la couleur de son dessin, comme les autres commandes de la carte : gris fermé, bleu
+         * ouvert, rouge quand on s'est écarté de la trace suivie, cloche armée - la bannière du haut dit
+         * alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
          */
-        if (alertEnabled) {
-            IconButton(onClick = { onBellTap() }, modifier = chrome.buttonBackground) {
+        if (dashboardEnabled) {
+            IconButton(onClick = { onDashboardTap() }, modifier = chrome.buttonBackground) {
                 Icon(
-                    Icons.Filled.Route,
-                    stringResource(R.string.content_desc_off_track_alert),
+                    Icons.Filled.Speed,
+                    stringResource(R.string.content_desc_dashboard),
                     tint = when {
                         alerting -> OffTrackAlertColor
-                        followedTrack -> MapChromeActive
+                        dashboardOpen -> MapChromeActive
                         else -> chrome.fg
                     },
                 )

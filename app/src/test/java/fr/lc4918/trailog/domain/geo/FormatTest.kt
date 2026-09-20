@@ -78,4 +78,20 @@ class FormatTest {
         assertEquals("", Format.shortDistance(Double.NaN))
         assertEquals("", Format.shortDistance(-1.0))
     }
+
+    /** Le chronometre du tableau de bord : heures et minutes, de largeur stable. */
+    @Test fun `chrono en heures et minutes`() {
+        assertEquals("0:00", Format.chrono(0))
+        assertEquals("0:07", Format.chrono(7 * 60_000L + 59_000L))
+        assertEquals("1:48", Format.chrono((108 * 60_000L)))
+        assertEquals("12:05", Format.chrono(725 * 60_000L))
+        assertEquals("0:00", Format.chrono(-5_000L))
+    }
+
+    /** La vitesse du tableau de bord garde sa decimale au-dela de 10 km/h. */
+    @Test fun `vitesse a une decimale fixe`() {
+        assertEquals("12,3 km/h", Format.speedFixed(12.3 / 3.6).replace('.', ','))
+        assertEquals("0,0 km/h", Format.speedFixed(0.0).replace('.', ','))
+        assertEquals("", Format.speedFixed(-1.0))
+    }
 }

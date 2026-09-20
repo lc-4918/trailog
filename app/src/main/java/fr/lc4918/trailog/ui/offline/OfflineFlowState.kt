@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.map.offline.Bbox
 
 /**
@@ -32,6 +33,18 @@ class OfflineFlowState {
     fun closeFlow() {
         configBbox = null
         corridor = null
+    }
+
+    /**
+     * Ouvre le reglage d'une zone. Le profil altimetrique et le tableau de bord se referment : ils
+     * occupaient le bas de l'ecran, la ou le cadre doit se regler. [closeProfile] ferme le profil, qui
+     * vit dans le ViewModel de la carte.
+     */
+    fun startDrawing(closeProfile: () -> Unit) {
+        closeFlow()
+        closeProfile()
+        TrackWatch.setDashboard(false)
+        drawingActive = true
     }
 
     /** Quitte le reglage de l'emprise (bouton "Annuler" ou retour systeme). */

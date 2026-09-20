@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.location
 
+import fr.lc4918.trailog.domain.geo.AutoFollow
 import fr.lc4918.trailog.domain.geo.OffTrack
 import fr.lc4918.trailog.domain.model.Sample
 import kotlinx.serialization.Serializable
@@ -16,8 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * telephone en poche qu'on veut voir sonner.
  *
  * L'etat vit donc ici, [LocationService] le nourrit a chaque position, et l'ecran n'en lit que le
- * resultat. Le choix de la trace, lui, reste a l'ecran (cf. `OffTrackAlertState`) : c'est une
- * conversation, pas une mesure.
+ * resultat. La trace, elle, n'est plus choisie a la main : elle se reconnait toute seule, tableau de bord
+ * ouvert, parmi celles que l'ecran a deposees (cf. [FollowCatalog], [detect]).
  */
 object TrackWatch {
 
@@ -92,8 +93,13 @@ object TrackWatch {
         _alongM.value = alongM
         // Le chronometre repart : suivre une autre trace, c'est commencer autre chose.
         _startedAtMs.value = nowMs
-        _alerting.value = awayM >= thresholdM
+        // Une trace qu'on vient de reconnaitre part cloche eteinte : c'est a soi de l'armer. Sauf si c'est
+        // celle sur laquelle on l'avait armee, avant une coupure de la localisation (cf. bellKey).
+        _armed.value = keyOf(f) == _bellKey.value
+        _alerting.value = false
         _silenced.value = false
+        _direction.value = 1
+        horsSeuil = 0
     }
 
     /**
@@ -107,6 +113,7 @@ object TrackWatch {
     fun restore(f: Followed?, nowMs: Long = 0L) {
         if (f == null || _followed.value != null) return
         _followed.value = f
+        _armed.value = keyOf(f) == _bellKey.value
         _awayM.value = null
         _alongM.value = null
         // Le chronometre repart de la reprise, faute de mieux : on ne sait plus depuis quand on roulait, et
@@ -117,8 +124,18 @@ object TrackWatch {
         _silenced.value = false
     }
 
-    /** Fin du suivi : plus de trace, plus d'ecart, plus d'alerte. */
-    fun stop() {
+    /**
+     * Fin du suivi : plus de trace, plus d'ecart, plus d'alerte.
+     *
+     * [forgetBell] faux : la localisation a ete coupee, et la cloche attend la meme trace au rallumage
+     * (cf. [bellKey]). Tous les autres arrets sont des gestes, et l'oublient.
+     */
+    fun stop(forgetBell: Boolean = true) {
+        if (forgetBell) _bellKey.value = null
+        _armed.value = false
+        _direction.value = 1
+        horsSeuil = 0
+        detection = AutoFollow.Detection()
         _followed.value = null
         _awayM.value = null
         _alongM.value = null
@@ -146,4 +163,99 @@ object TrackWatch {
 
     /** Croix de la banniere. */
     fun silence() { _silenced.value = true }
+
+    // ---------- Le suivi automatique et la cloche ----------
+
+    private val _dashboard = MutableStateFlow(false)
+
+    /**
+     * Le tableau de bord est ouvert : c'est lui qui fait chercher une trace a suivre. Ferme, le suivi
+     * s'arrete - il n'aurait plus nulle part ou se dire.
+     */
+    val dashboard: StateFlow<Boolean> = _dashboard.asStateFlow()
+
+    fun setDashboard(open: Boolean) {
+        _dashboard.value = open
+        if (!open) stop()
+    }
+
+    private val _armed = MutableStateFlow(false)
+
+    /**
+     * La cloche du tableau de bord : l'alerte d'eloignement est armee sur la trace suivie.
+     *
+     * Eteinte, s'ecarter de la trace ne sonne pas - on la LACHE, en silence : on a change de chemin, et le
+     * tableau de bord cesse d'en annoncer le restant (cf. [update]). Allumee, s'ecarter est l'alerte.
+     */
+    val armed: StateFlow<Boolean> = _armed.asStateFlow()
+
+    private val _direction = MutableStateFlow(1)
+
+    /** Le sens de parcours de la trace suivie : +1 du debut vers la fin, -1 a l'envers. */
+    val direction: StateFlow<Int> = _direction.asStateFlow()
+
+    /** Ce que la detection a vu jusqu'ici, hors de tout suivi (cf. [AutoFollow.detect]). */
+    @Volatile private var detection = AutoFollow.Detection()
+
+    /** Positions consecutives au-dela du seuil, cloche eteinte (cf. [AutoFollow.leave]). */
+    @Volatile private var horsSeuil = 0
+
+    private val _bellKey = MutableStateFlow<String?>(null)
+
+    /**
+     * La trace sur laquelle la cloche a ete armee ("couche/segment"), ou null.
+     *
+     * Elle survit a une coupure de la localisation : le suivi s'arrete, faute de positions, mais la meme
+     * trace reconnue au rallumage retrouve sa cloche armee (cf. [follow]) - on l'avait armee pour etre
+     * prevenu, et une coupure ne change rien a ce qu'on voulait. Gardee sur le disque avec la trace suivie
+     * (cf. FollowedStore). Seul un geste l'oublie : desarmer, fermer le tableau de bord, masquer la trace.
+     */
+    val bellKey: StateFlow<String?> = _bellKey.asStateFlow()
+
+    private fun keyOf(f: Followed?): String? = f?.let { "${it.layerId}/${it.trackIndex}" }
+
+    /** La cloche reprise du disque : elle ne s'impose pas a une cloche deja reglee dans ce processus. */
+    fun restoreBell(key: String?) {
+        if (key == null || _bellKey.value != null) return
+        _bellKey.value = key
+        if (keyOf(_followed.value) == key) _armed.value = true
+    }
+
+    fun setArmed(on: Boolean) {
+        _armed.value = on
+        _bellKey.value = if (on) keyOf(_followed.value) else null
+        // Desarmee : l'alerte en cours se tait, et l'on recompte les ecarts depuis zero.
+        if (!on) { _alerting.value = false; _silenced.value = false }
+        horsSeuil = 0
+    }
+
+    /**
+     * Une position de plus, hors de tout suivi : rend la trace reconnue quand elle l'est, et en commence le
+     * suivi - cloche eteinte, dans le sens ou on la parcourt.
+     */
+    fun detect(lat: Double, lon: Double, candidates: List<AutoFollow.Candidate>, thresholdM: Double, nowMs: Long): Boolean {
+        val (etat, trouve) = AutoFollow.detect(detection, lat, lon, candidates)
+        detection = etat
+        val m = trouve ?: return false
+        val c = m.candidate
+        follow(Followed(c.id, c.name, c.trackIndex, c.trackCount, c.samples), m.awayM, thresholdM, m.alongM, nowMs)
+        _direction.value = m.direction
+        return true
+    }
+
+    /**
+     * Une position de plus sur la trace suivie. Rend ce qu'il faut en faire : [Step.Alert] a l'entree en
+     * alerte (le son), [Step.Leave] quand, cloche eteinte, on a quitte la trace.
+     */
+    fun step(away: Double, thresholdM: Double, alongM: Double): Step {
+        _direction.value = AutoFollow.direction(_direction.value, _alongM.value, alongM)
+        if (_armed.value) return if (update(away, thresholdM, alongM)) Step.Alert else Step.Stay
+        _awayM.value = away
+        _alongM.value = alongM
+        val (n, lacher) = AutoFollow.leave(horsSeuil, away, thresholdM)
+        horsSeuil = n
+        return if (lacher) Step.Leave else Step.Stay
+    }
+
+    enum class Step { Stay, Alert, Leave }
 }

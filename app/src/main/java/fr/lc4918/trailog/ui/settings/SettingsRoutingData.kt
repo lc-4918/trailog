@@ -95,7 +95,12 @@ internal fun OfflineRoutingZones(vm: SettingsViewModel) {
     LaunchedEffect(Unit) { style = vm.zoneMapStyle() }
     var catalogueOuvert by remember { mutableStateOf(false) }
 
-    SectionTitle(stringResource(R.string.settings_section_offline_routing))
+    // Le "i" leve la confusion la plus probable : ce ne sont ni des fonds de plan ni des traces, seulement
+    // ce qu'il faut au moteur pour calculer sans reseau.
+    SectionTitle(
+        stringResource(R.string.settings_section_offline_routing),
+        info = stringResource(R.string.settings_offline_routing_info),
+    )
     val telechargees = BrouterZones.all.filter { it.id in s.zones }
     if (telechargees.isEmpty()) {
         SettingsCard {

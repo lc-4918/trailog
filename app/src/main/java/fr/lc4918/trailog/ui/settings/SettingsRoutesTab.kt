@@ -104,25 +104,28 @@ import kotlinx.coroutines.launch
      * celle-ci désigne le jeu de préférences qu'on modifie. On peut donc régler le VTT sans rouler en VTT.
      * Elle s'ouvre néanmoins sur la discipline par défaut, la plus probable, et la suit si on la change.
      */
-    SectionTitle(stringResource(R.string.settings_section_route_prefs))
-    var tuned by remember(cur.routingProfile) { mutableStateOf(RoutingProfile.of(cur.routingProfile)) }
-    SettingsCard {
-        RoutingProfilePicker(tuned) { tuned = it }
-        RowDivider()
-        val prefs = cur.routePrefs(tuned)
-        PickRow(stringResource(R.string.settings_label_route_ways), prefs.ways,
-            WayPref.entries, optionLabel = { wayPrefLabel(it) }) {
-            vm.save(cur.withRoutePrefs(tuned, prefs.copy(ways = it)))
-        }
-        RowDivider()
-        PickRow(stringResource(R.string.settings_label_route_hills), prefs.hills,
-            HillPref.entries, optionLabel = { hillPrefLabel(it) }) {
-            vm.save(cur.withRoutePrefs(tuned, prefs.copy(hills = it)))
-        }
-        RowDivider()
-        PickRow(stringResource(R.string.settings_label_route_surface), prefs.surface,
-            SurfacePref.entries, optionLabel = { surfacePrefLabel(it) }) {
-            vm.save(cur.withRoutePrefs(tuned, prefs.copy(surface = it)))
+    // Mode expert seulement, comme le moteur et les services plus bas (cf. SettingsEntity.expertMode).
+    if (cur.expertMode) {
+        SectionTitle(stringResource(R.string.settings_section_route_prefs))
+        var tuned by remember(cur.routingProfile) { mutableStateOf(RoutingProfile.of(cur.routingProfile)) }
+        SettingsCard {
+            RoutingProfilePicker(tuned) { tuned = it }
+            RowDivider()
+            val prefs = cur.routePrefs(tuned)
+            PickRow(stringResource(R.string.settings_label_route_ways), prefs.ways,
+                WayPref.entries, optionLabel = { wayPrefLabel(it) }) {
+                vm.save(cur.withRoutePrefs(tuned, prefs.copy(ways = it)))
+            }
+            RowDivider()
+            PickRow(stringResource(R.string.settings_label_route_hills), prefs.hills,
+                HillPref.entries, optionLabel = { hillPrefLabel(it) }) {
+                vm.save(cur.withRoutePrefs(tuned, prefs.copy(hills = it)))
+            }
+            RowDivider()
+            PickRow(stringResource(R.string.settings_label_route_surface), prefs.surface,
+                SurfacePref.entries, optionLabel = { surfacePrefLabel(it) }) {
+                vm.save(cur.withRoutePrefs(tuned, prefs.copy(surface = it)))
+            }
         }
     }
 
@@ -156,7 +159,7 @@ import kotlinx.coroutines.launch
         if (cur.poiEnabled) {
             SwitchLine(
                 stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
-                sub = stringResource(R.string.settings_sw_poi_osm_sub),
+                info = stringResource(R.string.settings_sw_poi_osm_sub),
             ) {
                 // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
                 // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
@@ -192,8 +195,8 @@ import kotlinx.coroutines.launch
                 onFraction = {
                     vm.save(cur.copy(poiTrackCorridorM = crans[valueOf(it, 0, crans.lastIndex)]))
                 },
+                info = stringResource(R.string.settings_poi_corridor_hint),
             )
-            Hint(stringResource(R.string.settings_poi_corridor_hint))
             RowDivider()
         }
         Hint(stringResource(R.string.settings_poi_attribution))
@@ -216,8 +219,8 @@ import kotlinx.coroutines.launch
             stringResource(R.string.settings_label_smoothing), "${cur.profileSmoothingM} m",
             fractionOf(smoothingIdx, 0, smoothing.lastIndex), steps = smoothing.size - 2,
             onFraction = { vm.save(cur.copy(profileSmoothingM = smoothing[valueOf(it, 0, smoothing.lastIndex)])) },
+            info = stringResource(R.string.settings_profile_smoothing_hint),
         )
-        Hint(stringResource(R.string.settings_profile_smoothing_hint))
         RowDivider()
         // Echelle verticale : Auto (0 = remplit la hauteur) ou "1 cm = N m" (metres d'altitude par cm
         // physique). Bornes choisies d'apres la hauteur du graphe (~1,6 cm). Valeurs non equidistantes,
@@ -230,8 +233,8 @@ import kotlinx.coroutines.launch
             else stringResource(R.string.settings_vertical_scale_value, cur.profileVerticalScaleMPerCm),
             fractionOf(scaleIdx, 0, scales.lastIndex), steps = scales.size - 2,
             onFraction = { vm.save(cur.copy(profileVerticalScaleMPerCm = scales[valueOf(it, 0, scales.lastIndex)])) },
+            info = stringResource(R.string.settings_vertical_scale_hint),
         )
-        Hint(stringResource(R.string.settings_vertical_scale_hint))
         // Ne remet a zero que les DEUX reglages ci-dessus, les seuls dont la bonne valeur ne se devine pas
         // a l'oeil : un lissage ou une echelle mal regles se remarquent longtemps apres, sur une autre
         // trace. Les autres reglages du profil se jugent immediatement et se defont seuls.
@@ -247,8 +250,8 @@ import kotlinx.coroutines.launch
     SettingsCard {
         SwitchLine(
             stringResource(R.string.settings_label_fill_elevation), cur.fillMissingElevation,
+            info = stringResource(R.string.settings_fill_elevation_hint),
         ) { vm.save(cur.copy(fillMissingElevation = it)) }
-        Hint(stringResource(R.string.settings_fill_elevation_hint))
         if (cur.fillMissingElevation) {
             RowDivider()
             FieldRow(stringResource(R.string.settings_label_elevation_france)) {
@@ -278,50 +281,58 @@ import kotlinx.coroutines.launch
      * chaque sortie. Le moteur juste avant les services, puisque c'est lui qui decide QUELLE des deux
      * adresses en dessous est la sienne.
      */
-    SectionTitle(stringResource(R.string.settings_section_route_engine))
-    SettingsCard {
-        SegChips(RouteEngine.entries.map { it.key to routeEngineLabel(it) }, cur.routeEngine) {
-            vm.save(cur.copy(routeEngine = it))
+    if (cur.expertMode) {
+        SectionTitle(
+            stringResource(R.string.settings_section_route_engine),
+            info = stringResource(R.string.settings_route_engine_hint),
+        )
+        SettingsCard {
+            SegChips(RouteEngine.entries.map { it.key to routeEngineLabel(it) }, cur.routeEngine) {
+                vm.save(cur.copy(routeEngine = it))
+            }
         }
-        Hint(stringResource(R.string.settings_route_engine_hint))
     }
 
     // Juste apres le moteur : ce sont les donnees de l'un des deux, et c'est la qu'on vient voir s'il
     // saura calculer sans reseau.
     OfflineRoutingZones(vm)
 
-    SectionTitle(stringResource(R.string.settings_section_services))
-    SettingsCard {
-        FieldRow(stringResource(R.string.settings_section_geocoding_service)) {
-            SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
-        }
-        RowDivider()
-        /*
-         * L'instance Overpass, aupres du geocodeur et du moteur d'itineraire : c'est le troisieme service
-         * tiers que l'application interroge, et le seul qui n'etait pas reglable.
-         *
-         * Ce n'est pas un raffinement : releve sur cinq tentatives identiques, l'instance publique a rendu
-         * deux 504 et trois reponses, entre 1,6 et 9,3 s. Une instance de repli est la seule parade a la
-         * disposition de l'utilisateur quand celle-ci sature.
-         */
-        if (cur.poiEnabled) {
-            FieldRow(stringResource(R.string.settings_section_poi_osm_service)) {
-                SettingsTextField(cur.poiOsmUrl, Overpass.DEFAULT_URL) {
-                    vm.save(cur.copy(poiOsmUrl = it.trim()))
-                }
+    if (cur.expertMode) {
+        SectionTitle(
+            stringResource(R.string.settings_section_services),
+            info = stringResource(R.string.settings_services_hint),
+        )
+        SettingsCard {
+            FieldRow(stringResource(R.string.settings_section_geocoding_service)) {
+                SettingsTextField(cur.geocodingUrl, Photon.DEFAULT_URL) { vm.save(cur.copy(geocodingUrl = it.trim())) }
             }
             RowDivider()
-        }
-        FieldRow(stringResource(R.string.settings_section_routing_service)) {
-            // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
-            // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie
-            // jamais la requete d'un moteur au serveur du voisin, faute qui echouerait en silence.
-            val moteur = RouteEngine.of(cur.routeEngine)
-            SettingsTextField(cur.routeUrl(moteur), Router.defaultUrlOf(moteur)) {
-                vm.save(cur.withRouteUrl(moteur, it.trim()))
+            /*
+             * L'instance Overpass, aupres du geocodeur et du moteur d'itineraire : c'est le troisieme service
+             * tiers que l'application interroge, et le seul qui n'etait pas reglable.
+             *
+             * Ce n'est pas un raffinement : releve sur cinq tentatives identiques, l'instance publique a rendu
+             * deux 504 et trois reponses, entre 1,6 et 9,3 s. Une instance de repli est la seule parade a la
+             * disposition de l'utilisateur quand celle-ci sature.
+             */
+            if (cur.poiEnabled) {
+                FieldRow(stringResource(R.string.settings_section_poi_osm_service)) {
+                    SettingsTextField(cur.poiOsmUrl, Overpass.DEFAULT_URL) {
+                        vm.save(cur.copy(poiOsmUrl = it.trim()))
+                    }
+                }
+                RowDivider()
+            }
+            FieldRow(stringResource(R.string.settings_section_routing_service)) {
+                // Le champ ENTIER suit le moteur retenu, valeur et gabarit : chaque moteur garde son adresse,
+                // si bien que basculer pour comparer ne fait pas perdre celle de l'autre - et qu'on n'envoie
+                // jamais la requete d'un moteur au serveur du voisin, faute qui echouerait en silence.
+                val moteur = RouteEngine.of(cur.routeEngine)
+                SettingsTextField(cur.routeUrl(moteur), Router.defaultUrlOf(moteur)) {
+                    vm.save(cur.withRouteUrl(moteur, it.trim()))
+                }
             }
         }
-        Hint(stringResource(R.string.settings_services_hint))
     }
 }
 
@@ -341,7 +352,7 @@ import kotlinx.coroutines.launch
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_profile_remaining), cur.profileRemaining,
-            sub = stringResource(R.string.settings_profile_remaining_sub),
+            info = stringResource(R.string.settings_profile_remaining_sub),
         ) { vm.save(cur.copy(profileRemaining = it)) }
     }
 
@@ -410,7 +421,7 @@ import kotlinx.coroutines.launch
     val upToDate = stringResource(R.string.update_none_available)
     val failed = stringResource(R.string.update_check_failed)
 
-    SetRow(stringResource(R.string.settings_label_updates)) {
+    SetRow(stringResource(R.string.settings_label_updates), info = stringResource(R.string.settings_updates_info)) {
         SettingsChip(stringResource(R.string.update_mode_auto), cur.updateCheckMode != "manual") {
             vm.save(cur.copy(updateCheckMode = "auto"))
         }

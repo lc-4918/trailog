@@ -34,7 +34,6 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadResult
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
-import fr.lc4918.trailog.ui.alert.TrackCandidate
 import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.ui.measure.MeasurePoint
 import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
@@ -364,40 +363,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } ?: return@launch
         val (p, path) = computed
         onResult(start.copy(lon = p.lon, lat = p.lat, alongM = p.alongM), path)
-    }
-
-    /**
-     * Les traces visibles qui passent le plus pres de (lat, lon) : de quoi choisir celle qu'on suit.
-     *
-     * Deux passes, parce qu'une seule serait intenable. La premiere ne lit RIEN : elle classe les couches
-     * sur la distance a leur rectangle englobant (cf. OffTrack.bboxDistanceM), qui est en base. La seconde
-     * ne lit que les [NEAREST_SCAN_LAYERS] premieres et projette la position sur chacun de leurs segments.
-     * Une bibliotheque de deux cents traces coute donc douze fichiers de profils, et non deux cents.
-     *
-     * Le pre-tri est SUR : la distance au rectangle minore celle a la trace qu'il contient, une couche
-     * ecartee ne pouvait donc pas gagner sur une couche lue... sauf a etre a la fois lointaine et immense.
-     * Le cas existe (une trace qui traverse un pays), et c'est le prix de ne pas tout relire.
-     *
-     * Les couches masquees sont hors jeu : suivre une trace qu'on ne voit pas sur la carte n'aurait pas de
-     * sens - c'est le meme parti pris que le premier point de la mesure sur trace.
-     */
-    fun nearestTracks(lat: Double, lon: Double, onResult: (List<TrackCandidate>) -> Unit) = viewModelScope.launch {
-        // Premiere passe : on ne lit rien, on classe par la distance a l'emprise (cf. layersToScan).
-        val near = layersToScan(layers.value, lat, lon)
-        if (near.isEmpty()) { onResult(emptyList()); return@launch }
-        val found = near.map { ly ->
-            async {
-                val profiles = repo.loadProfiles(ly)
-                withContext(Dispatchers.Default) {
-                    profiles.mapIndexedNotNull { i, ct ->
-                        TrackMeasure.project(ct.samples, lon, lat)?.let { p ->
-                            TrackCandidate(ly.id, ly.name, i, profiles.size, p.awayM, ct.samples, p.alongM)
-                        }
-                    }
-                }
-            }
-        }.awaitAll().flatten()
-        onResult(closestCandidates(found))
     }
 
     fun closeProfile() {

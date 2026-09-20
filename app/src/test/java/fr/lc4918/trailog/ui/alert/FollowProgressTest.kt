@@ -127,4 +127,17 @@ class FollowProgressTest {
         val p = FollowProgressMath.of(trace, 0.0, null, startedAtMs = 5_000L, nowMs = 1_000L)
         assertTrue(p.elapsedMs >= 0L)
     }
+
+    /**
+     * Parcourue a l'envers, la trace se termine a son debut : a 750 m, il reste 750 m, et la grande montee
+     * de la premiere moitie devient une descente - il reste a monter ce qui descendait en sens normal.
+     */
+    @Test fun `a l'envers, le restant va vers le debut et les deniveles s'inversent`() {
+        val p = FollowProgressMath.of(trace, 750.0, 3f, startedAtMs = 0L, nowMs = 600_000L, direction = -1)
+        assertEquals(750.0, p.remainingM, 1e-6)
+        assertEquals(250.0, p.doneM, 1e-6)
+        // De 750 a 0, a l'envers : de 225 m (milieu de la descente) remonte a 300, puis descend a 100.
+        assertEquals(75.0, p.remainingAscentM, 1e-6)
+        assertEquals(200.0, p.remainingDescentM, 1e-6)
+    }
 }

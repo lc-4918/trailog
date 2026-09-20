@@ -60,4 +60,19 @@ object FollowedStore {
         if (!cible.exists()) return@withContext null
         runCatching { json.decodeFromString<TrackWatch.Followed>(cible.readText()) }.getOrNull()
     }
+
+    private const val BELL_FILE = "followed-bell.txt"
+
+    /** La cloche (cf. TrackWatch.bellKey) : la cle de la trace sur laquelle elle est armee, ou rien. */
+    suspend fun saveBell(ctx: Context, key: String?) = withContext(Dispatchers.IO) {
+        val cible = File(ctx.filesDir, BELL_FILE)
+        runCatching { if (key == null) cible.delete() else cible.writeText(key) }
+        Unit
+    }
+
+    suspend fun loadBell(ctx: Context): String? = withContext(Dispatchers.IO) {
+        val cible = File(ctx.filesDir, BELL_FILE)
+        if (!cible.exists()) return@withContext null
+        runCatching { cible.readText().trim().ifEmpty { null } }.getOrNull()
+    }
 }

@@ -26,8 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material.icons.Icons
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -158,12 +163,28 @@ fun GroupTitle(text: String, first: Boolean = false) {
 /** Titre de rubrique : petites capitales espacees, la ou un groupe est en gras - deux niveaux, deux
  *  traitements franchement differents, sans quoi la hierarchie ne se lit pas en defilant. */
 @Composable
-fun SectionTitle(text: String, tight: Boolean = false) {
-    Text(
-        text.uppercase(), fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.em,
-        color = settingsPalette.section,
-        modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = if (tight) 10.dp else 18.dp, bottom = 7.dp),
-    )
+fun SectionTitle(
+    text: String, tight: Boolean = false,
+    /** Une explication de toute la rubrique, derriere un "i" a cote du titre (cf. [InfoTip]). */
+    info: String? = null,
+) {
+    val titre = @Composable { m: Modifier ->
+        Text(
+            text.uppercase(), fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.em,
+            color = settingsPalette.section, modifier = m,
+        )
+    }
+    val marges = Modifier.padding(start = 2.dp, end = 2.dp, top = if (tight) 10.dp else 18.dp, bottom = 7.dp)
+    if (info == null) titre(marges)
+    else Row(
+        // Le "i" a sa propre hauteur : on reprend sur les marges ce qu'il ajoute, pour que le titre reste
+        // a la meme distance de sa carte que les autres.
+        Modifier.padding(start = 2.dp, end = 2.dp, top = if (tight) 4.dp else 12.dp, bottom = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        titre(Modifier)
+        InfoTip(info)
+    }
 }
 
 /* ---------------- Carte et lignes ---------------- */
@@ -195,6 +216,8 @@ fun ColumnScopeMarker.RowDivider() {
 @Composable
 fun ColumnScopeMarker.SetRow(
     label: String, sub: String? = null, onClick: (() -> Unit)? = null, role: Role? = null,
+    /** Une explication, derriere un petit "i" a cote du libelle (cf. [InfoTip]) ; rien quand null. */
+    info: String? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -206,7 +229,15 @@ fun ColumnScopeMarker.SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label)
+            if (info == null) {
+                Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label,
+                        modifier = Modifier.weight(1f, fill = false))
+                    InfoTip(info)
+                }
+            }
             if (sub != null) {
                 Text(sub, fontSize = SubSp.sp, lineHeight = (SubSp * 1.4f).sp, color = settingsPalette.subtle,
                     modifier = Modifier.padding(top = 2.dp))
@@ -262,14 +293,50 @@ fun ColumnScopeMarker.Hint(text: String) {
 fun ColumnScopeMarker.SliderRow(
     label: String, value: String, fraction: Float,
     onFraction: (Float) -> Unit, steps: Int = 0,
+    /** Une explication, derriere un petit "i" a cote du libelle (cf. [InfoTip]) ; rien quand null. */
+    info: String? = null,
 ) {
     Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = 13.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(label, fontSize = LabelSp.sp, color = settingsPalette.label, modifier = Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(label, fontSize = LabelSp.sp, color = settingsPalette.label, modifier = Modifier.weight(1f, fill = false))
+                if (info != null) InfoTip(info)
+            }
             ValueText(value)
         }
         Spacer(Modifier.height(9.dp))
         SettingsSlider(fraction = fraction, onFraction = onFraction, steps = steps)
+    }
+}
+
+/**
+ * Un petit "i" qui montre une explication dans une bulle, au toucher.
+ *
+ * Pour ce qui se lit une fois et gene ensuite : une explication ecrite en toutes lettres sous un reglage
+ * s'y lit a chaque passage, alors qu'on ne la cherche que la premiere fois.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+fun InfoTip(text: String) {
+    val state = androidx.compose.material3.rememberTooltipState(isPersistent = true)
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.material3.TooltipBox(
+        positionProvider = androidx.compose.material3.TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = {
+            PlainTooltip(caretSize = androidx.compose.material3.TooltipDefaults.caretSize) {
+                Text(text, modifier = Modifier.padding(4.dp).testTag("info_tip_text"))
+            }
+        },
+        state = state,
+    ) {
+        Box(
+            Modifier.size(28.dp).clip(CircleShape)
+                .clickable(onClickLabel = null) { scope.launch { state.show() } }
+                .testTag("info_tip"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.Info, contentDescription = text, Modifier.size(16.dp), tint = settingsPalette.subtle)
+        }
     }
 }
 
@@ -619,10 +686,12 @@ fun disciplineBorder(selected: Boolean): BorderStroke =
 @Composable
 fun <T> ColumnScopeMarker.PickRow(
     label: String, current: T, options: List<T>, optionLabel: @Composable (T) -> String,
+    /** Une explication derriere un "i" a cote du libelle (cf. [InfoTip]). */
+    info: String? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    SetRow(label, onClick = { open = true }) {
+    SetRow(label, onClick = { open = true }, info = info) {
         PickValue(optionLabel(current), open, { open = false }) {
             options.forEach { o ->
                 androidx.compose.material3.DropdownMenuItem(

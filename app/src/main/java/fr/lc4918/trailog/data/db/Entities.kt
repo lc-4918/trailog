@@ -357,6 +357,14 @@ data class SettingsEntity(
     // Son retenu, parmi les notifications du telephone (URI du selecteur systeme). Vide = celui que le
     // telephone donne pour ses notifications : un son n'a pas a etre choisi pour etre entendu.
     val offTrackAlertSoundUri: String = "",
+    // Champs du tableau de bord qu'on a masques, par leur cle, separes par des virgules (cf. DashboardField).
+    // Vide : tous s'affichent. Les MASQUES plutot que les affiches, pour qu'un champ ajoute plus tard
+    // paraisse de lui-meme au lieu d'attendre qu'on aille le cocher.
+    val dashboardHidden: String = "",
+    // Mode expert des reglages : les reglages fins (panneau des fonds, preferences de trace, services,
+    // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur l'avatar des reglages
+    // l'allument et l'eteignent (cf. ExpertTaps).
+    val expertMode: Boolean = false,
 )
 
 /** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */

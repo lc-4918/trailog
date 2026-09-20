@@ -877,6 +877,20 @@ class MigrationsTest {
         db.close()
     }
 
+    @Test fun `67 vers 68 affiche tous les champs du tableau de bord`() {
+        val db = freshDb("m6768"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_DASHBOARD_HIDDEN)
+        assertEquals("", scalar(db, "SELECT dashboardHidden FROM settings") { it.getString(0) })
+        db.close()
+    }
+
+    @Test fun `68 vers 69 laisse le mode expert eteint`() {
+        val db = freshDb("m6869"); settingsV16(db)
+        db.execSQL(MigrationSql.ADD_EXPERT_MODE)
+        assertEquals(0, scalar(db, "SELECT expertMode FROM settings") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -1076,7 +1090,8 @@ class MigrationsTest {
             "offTrackAlertSound", "offTrackAlertSoundUri",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
-            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart", "poiMasked")
+            "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart", "poiMasked",
+            "dashboardHidden", "expertMode")
             .forEach { assertTrue("colonne $it absente", it in cols) }
         // La bande du planificateur ayant perdu son theme propre, sa colonne ne doit plus etre la : c'est
         // ce que verifie aussi, cote SQL, la migration 38 -> 39.

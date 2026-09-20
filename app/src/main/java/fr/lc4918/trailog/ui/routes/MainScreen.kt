@@ -68,6 +68,11 @@ import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.TrackWatch
+import fr.lc4918.trailog.location.TripStore
+import fr.lc4918.trailog.location.TripWatch
+import fr.lc4918.trailog.ui.alert.Dashboard
+import fr.lc4918.trailog.ui.alert.DashboardField
+import fr.lc4918.trailog.ui.alert.DashboardMath
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.net.ServiceUrl
@@ -144,12 +149,10 @@ fun MainScreen(
     // Le telechargement pour le hors-ligne n'est propose que pour un fond qui s'y prete (cf.
     // offlineDownloadAvailable) : le menu d'une trace n'offre "Telecharger la carte" qu'a cette condition.
     val offlineButtonVisible = offlineDownloadAvailable(settings.defaultBasemapId, providers)
-    // Une zone a telecharger, demandee depuis les reglages : le cadrage s'ouvre sur la carte.
+    // Une zone a telecharger, demandee depuis les reglages : le cadrage s'ouvre sur la carte, profil et
+    // tableau de bord refermes (cf. OfflineFlowState.startDrawing).
     LaunchedEffect(downloadAreaRequest) {
-        if (downloadAreaRequest > 0) {
-            offline.closeFlow()
-            offline.drawingActive = true
-        }
+        if (downloadAreaRequest > 0) offline.startDrawing { vm.closeProfile() }
     }
 
     val renderLayers by vm.renderLayers.collectAsState()
@@ -247,36 +250,43 @@ fun MainScreen(
      * celui qu'elle doit prevenir n'alerte personne. L'ecran n'en lit que le resultat.
      */
     val followed by TrackWatch.followed.collectAsState()
-    // La vitesse du moment, lue a part : c'est la seule des neuf valeurs du tableau de bord qui vienne du
-    // capteur et non de la trace.
-    val lastFixSpeed = location.lastFix?.speedMps
     val alerting by TrackWatch.alerting.collectAsState()
     val silenced by TrackWatch.silenced.collectAsState()
     val awayM by TrackWatch.awayM.collectAsState()
     val alongM by TrackWatch.alongM.collectAsState()
-    val followStartedAt by TrackWatch.startedAtMs.collectAsState()
+    // Le tableau de bord : ouvert ou non, la cloche, le sens de parcours, et les compteurs de la sortie.
+    val dashboardOpen by TrackWatch.dashboard.collectAsState()
+    val armed by TrackWatch.armed.collectAsState()
+    val direction by TrackWatch.direction.collectAsState()
+    val trip by TripWatch.trip.collectAsState()
     /*
-     * L'avancement sur la trace suivie, recalcule a la seconde tant que la popup de suivi est OUVERTE.
-     *
-     * A la seconde parce que deux de ses neuf chiffres - le temps ecoule, le temps restant - avancent sans
-     * qu'aucune position n'arrive : les calculer sur le seul flux du capteur les figerait entre deux
-     * mesures, soit deux secondes d'horloge arretee sous les yeux.
-     *
-     * Et seulement la popup ouverte : c'est un parcours de la trace entiere, quelques milliers
-     * d'echantillons, et le faire tourner en fond pendant toute une sortie ne servirait personne.
+     * Ce qui reste de la trace suivie, dans le sens ou on la parcourt : recalcule a chaque position, le
+     * tableau de bord ouvert seulement - c'est un parcours de la trace entiere, et le faire tourner
+     * pendant toute une sortie pour un tableau ferme ne servirait personne.
      */
-    var followTick by remember { mutableStateOf(0L) }
-    LaunchedEffect(alert.chooserOpen) {
-        while (alert.chooserOpen) {
-            followTick = SystemClock.elapsedRealtime()
+    /*
+     * L'horloge du tableau de bord, a la seconde et tableau ouvert seulement : c'est elle qui ramene la
+     * vitesse a zero quand les positions cessent d'arriver (cf. DashboardMath.speed).
+     */
+    var dashboardNow by remember { mutableStateOf(0L) }
+    LaunchedEffect(dashboardOpen) {
+        while (dashboardOpen) {
+            dashboardNow = SystemClock.elapsedRealtime()
             delay(1_000)
         }
     }
-    val followProgress = remember(followed, alongM, followStartedAt, followTick, lastFixSpeed) {
+    val dashboardSpeed = location.lastFix.let { fix ->
+        DashboardMath.speed(
+            fix?.speedMps, fix?.speedAccuracyMps,
+            fix?.let { (dashboardNow - it.receivedAtMs).coerceAtLeast(0L) },
+            trip.anchorTimeMs?.let { (maxOf(dashboardNow, fix?.receivedAtMs ?: 0L) - it).coerceAtLeast(0L) },
+        )
+    }
+    val followProgress = remember(followed, alongM, direction, dashboardOpen) {
         val f = followed ?: return@remember null
         val along = alongM ?: return@remember null
-        val depuis = followStartedAt ?: return@remember null
-        FollowProgressMath.of(f.samples, along, lastFixSpeed, depuis, SystemClock.elapsedRealtime())
+        if (!dashboardOpen) return@remember null
+        FollowProgressMath.of(f.samples, along, null, 0L, 0L, direction)
     }
     val alertBanner = alerting && !silenced
 
@@ -423,12 +433,15 @@ fun MainScreen(
     OffTrackAlertEffects(
         alert = alert,
         location = location,
-        vm = vm,
         layers = layers,
         followed = followed,
+        dashboardOpen = dashboardOpen,
         alertEnabled = alertEnabled,
         routeSamples = planner.done?.track?.samples,
-        routeLabel = stringResource(R.string.alert_track_planned),
+        // Le nom que le parcours prendrait a l'import - "Position actuelle - Saint-Girons" -, celui qu'on
+        // lui connait deja ; le libelle generique seulement quand il n'a pas encore d'etapes nommees.
+        routeLabel = defaultRouteName(planner.targets, stringResource(R.string.planner_current_position))
+            .ifBlank { stringResource(R.string.alert_track_planned) },
     )
     // Bande repliée ou fermée : elle ne pose plus rien, et la hauteur relevée à sa dernière pose ne vaut
     // plus. Sans cette remise à zéro, le cadrage d'un parcours dégagerait un bas d'écran désormais vide -
@@ -884,7 +897,7 @@ fun MainScreen(
                 if (activeLayerId == null && !planner.expanded && settings.showScale) {
                     // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
                     // navigationBarsPadding quand il n'y en a aucune.
-                    val bottomBarPx = insets.promptBarPx
+                    val bottomBarPx = insets.bottomBarPx
                     val base = Modifier.align(Alignment.BottomStart)
                     ScaleBar(controller, idleTick, maxWidthPx = constraints.maxWidth * 0.40f,
                         bg = chromeBg, fg = chromeFg,
@@ -938,9 +951,10 @@ fun MainScreen(
                     planner = planner,
                     vm = vm,
                     routingUrl = routingUrl,
-                    alertEnabled = alertEnabled,
+                    dashboardEnabled = alertEnabled,
+                    dashboardOpen = dashboardOpen,
                     alerting = alerting,
-                    followedTrack = followed != null,
+                    dashboardPx = insets.dashboardPx,
                     poiFilters = poiFilters,
                     onPoiFilters = { vm.savePoiFilters(it) },
                     onPoiMasked = { vm.savePoiMasked(it) },
@@ -948,9 +962,20 @@ fun MainScreen(
                     idleTick = idleTick,
                     maxWidthPx = constraints.maxWidth,
                     maxHeightPx = constraints.maxHeight,
-                    // Le CAPTEUR du telephone, et non le bouton de la carte : celui-ci ne commande que
-                    // l'affichage du repere, et n'a pas a barrer la liste des traces a suivre.
-                    onBellTap = { alert.onBellTap(location.sensorEnabled) },
+                    /*
+                     * Le bouton du tableau de bord l'ouvre et le ferme. L'ouvrir allume le capteur s'il
+                     * dort - les compteurs n'ont que la position pour matiere -, et c'est la fermeture qui
+                     * le rendra (cf. OffTrackAlertEffects). Le CAPTEUR du telephone coupe, on propose
+                     * d'aller l'allumer.
+                     */
+                    onDashboardTap = {
+                        if (dashboardOpen) TrackWatch.setDashboard(false)
+                        else {
+                            TrackWatch.setDashboard(true)
+                            alert.onOpen(location.sensorEnabled)
+                            if (location.sensorEnabled && !location.gpsActive) location.startGps(forFollow = true)
+                        }
+                    },
                     onNoConnection = { dialogs.noConnection = true },
                 )
 
@@ -1118,6 +1143,39 @@ fun MainScreen(
                     // La barre partie, l'echelle redescend (cf. MapInsetsState.promptBarPx).
                     DisposableEffect(Unit) { onDispose { insets.offlineBarPx = 0 } }
                 }
+                /*
+                 * Le tableau de bord, en bas de la carte. Il s'efface tant que le bas est occupe - le
+                 * profil, la bande deployee du planificateur, une consigne de saisie - et revient ensuite ;
+                 * sa hauteur remonte l'echelle et les boutons du coin (cf. MapInsetsState.dashboardPx).
+                 */
+                if (alertEnabled && dashboardOpen && activeLayerId == null && !planner.expanded &&
+                    insets.promptBarPx == 0
+                ) {
+                    val nomSuivi = followed?.let {
+                        if (it.trackCount <= 1) it.layerName
+                        else stringResource(R.string.alert_track_segment, it.layerName, it.trackIndex + 1, it.trackCount)
+                    }
+                    Dashboard(
+                        trip = trip,
+                        speedMps = dashboardSpeed,
+                        progress = followProgress,
+                        trackName = nomSuivi,
+                        armed = armed,
+                        alerting = alerting,
+                        hidden = remember(settings.dashboardHidden) { DashboardField.hidden(settings.dashboardHidden) },
+                        imperial = imperialUnits,
+                        bg = chromeBg,
+                        fg = chromeFg,
+                        onBell = { TrackWatch.setArmed(!armed) },
+                        onReset = {
+                            TripWatch.reset()
+                            scope.launch { TripStore.save(ctx, TripWatch.trip.value) }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .onGloballyPositioned { insets.dashboardPx = it.size.height },
+                    )
+                    DisposableEffect(Unit) { onDispose { insets.dashboardPx = 0 } }
+                }
                 TrackProfileLayer(
                     activeLayerId = activeLayerId,
                     computed = computed,
@@ -1233,11 +1291,6 @@ fun MainScreen(
         vm = vm,
         selectedFeature = selectedFeature,
         schema = markerLayerData?.schema ?: emptyList(),
-        followed = followed,
-        followProgress = followProgress,
-        imperial = imperialUnits,
-        alertDistanceM = alertDistanceM,
-        alertSoundEnabled = settings.offTrackAlertSound,
         currentPositionLabel = currentPositionLabel,
         onPickImage = { onImported -> dialogs.awaitImage(onImported); imagePicker.launch("image/*") },
         routeGpx = { name -> routeGpx(name) },

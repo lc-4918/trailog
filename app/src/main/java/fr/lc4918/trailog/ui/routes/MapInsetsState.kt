@@ -59,6 +59,15 @@ class MapInsetsState {
      */
     val promptBarPx: Int get() = maxOf(offlineBarPx, measureBarPx, pointBarPx)
 
+    /**
+     * Le tableau de bord, barre de navigation comprise, ou 0 s'il n'est pas affiche. Il s'efface devant
+     * une barre de consigne (cf. MainScreen) : les deux ne se superposent jamais.
+     */
+    var dashboardPx by mutableIntStateOf(0)
+
+    /** Ce qui occupe le bas de la carte, consigne ou tableau de bord : l'echelle se pose au-dessus. */
+    val bottomBarPx: Int get() = maxOf(promptBarPx, dashboardPx)
+
     /** Ce qu'il faut degager en haut d'un cadrage : les boutons, ou la barre de statut si elle depasse. */
     fun topCoverPx(statusBarPx: Int): Int = maxOf(statusBarPx, topControlsPx)
 }

@@ -54,9 +54,12 @@ import kotlin.math.roundToInt
 
 /** Ligne a interrupteur : la ligne entiere bascule, pas seulement l'interrupteur. */
 @Composable internal fun ColumnScopeMarker.SwitchLine(
-    label: String, checked: Boolean, sub: String? = null, onChange: (Boolean) -> Unit,
+    label: String, checked: Boolean, sub: String? = null,
+    /** Une explication derriere un "i" a cote du libelle, plutot qu'ecrite dessous (cf. InfoTip). */
+    info: String? = null,
+    onChange: (Boolean) -> Unit,
 ) {
-    SetRow(label, sub = sub, onClick = { onChange(!checked) }, role = Role.Switch) {
+    SetRow(label, sub = sub, onClick = { onChange(!checked) }, role = Role.Switch, info = info) {
         SettingsSwitch(checked)
     }
 }

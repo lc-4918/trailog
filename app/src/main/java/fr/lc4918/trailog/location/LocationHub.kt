@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.location
 
 import android.location.Location
+import android.os.Build
 import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,9 @@ object LocationHub {
         val altitudeM: Double?,
         val timeMs: Long,
         val receivedAtMs: Long,
+        /** Incertitude sur la vitesse (m/s), quand le capteur la donne : une vitesse plus petite qu'elle
+         *  n'est que du bruit (cf. DashboardMath.speed). */
+        val speedAccuracyMps: Float? = null,
     )
 
     /**
@@ -91,6 +95,8 @@ object LocationHub {
             // Temps depuis le demarrage de l'appareil, et non heure murale : c'est l'AGE de la mesure qui
             // dira si le repere ment encore, et une remise a l'heure du reseau ne doit pas le rajeunir.
             receivedAtMs = SystemClock.elapsedRealtime(),
+            speedAccuracyMps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && loc.hasSpeedAccuracy())
+                loc.speedAccuracyMetersPerSecond else null,
         )
     }
 

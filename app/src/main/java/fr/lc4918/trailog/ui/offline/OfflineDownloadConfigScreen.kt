@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.offline
 
+import androidx.compose.animation.AnimatedVisibility
 import fr.lc4918.trailog.map.offline.CorridorShape
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.filled.Fullscreen
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflineCorridor
+import fr.lc4918.trailog.map.offline.TrackSection
 import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.MapController
@@ -61,7 +63,6 @@ import fr.lc4918.trailog.ui.settings.RangeSliderRow
 import fr.lc4918.trailog.ui.settings.RowDivider
 import fr.lc4918.trailog.ui.settings.SetRow
 import fr.lc4918.trailog.ui.settings.SliderRow
-import fr.lc4918.trailog.ui.settings.Hint
 import fr.lc4918.trailog.ui.settings.SettingsCard
 import fr.lc4918.trailog.ui.settings.SettingsSwitch
 import fr.lc4918.trailog.ui.settings.SettingsTextField
@@ -110,6 +111,12 @@ fun OfflineDownloadConfigScreen(
     /** Parcours a border, quand le telechargement suit une trace ; null pour une emprise rectangulaire. */
     corridorPoints: List<Pair<Double, Double>>? = null,
     corridorName: String = "",
+    /**
+     * L'apercu de ce qu'on emporte : une vraie carte MapLibre, dont les bibliotheques natives n'existent
+     * pas sur la JVM des tests - ceux-ci la remplacent (cf. MainScreenUiTest, meme frontiere).
+     */
+    overview: @Composable (Bbox, List<Pair<Double, Double>>?, List<Pair<Double, Double>>?, Double) -> Unit =
+        { b, t, c, r -> BboxOverview(b, styleJson, styleUrl, t, c, r) },
 ) {
     val zoomBounds = providerMinZoom.toFloat()..providerMaxZoom.toFloat().coerceAtLeast(providerMinZoom.toFloat())
     // plage par défaut raisonnable : [min, min+6] bornée à la plage du provider (cf. SPEC section 3, "Détermination des niveaux").
@@ -124,6 +131,26 @@ fun OfflineDownloadConfigScreen(
     // on se represente un ecart de route : "500 m autour" ne dit pas grand-chose, "un kilometre de chaque
     // cote" se voit.
     var halfWidthKm by remember { mutableStateOf<Double>(CorridorWidthKm.first()) }
+    /*
+     * La portion de la trace a emporter, en kilometres, toute la trace par defaut. On ne part pas toujours
+     * pour tout un GR : la semaine qui vient en couvre une partie, et emporter le reste coute du poids pour
+     * rien. Les bouts sont arrondis au kilometre, sauf le dernier, qui vaut la longueur exacte.
+     */
+    val totalKm = remember(corridorPoints) { corridorPoints?.let { (TrackSection.length(it) / 1000.0).toFloat() } ?: 0f }
+    var sectionKm by remember(corridorPoints) { mutableStateOf(0f..totalKm) }
+    val portion = remember(corridorPoints, sectionKm) {
+        // Les bouts du curseur valent les bouts de la trace, exactement : la longueur passe par un Float, et
+        // "toute la trace" s'arretait sinon a quelques millimetres de sa fin.
+        corridorPoints?.let {
+            TrackSection.slice(
+                it,
+                if (sectionKm.start <= 0f) 0.0 else sectionKm.start * 1000.0,
+                if (sectionKm.endInclusive >= totalKm) Double.MAX_VALUE else sectionKm.endInclusive * 1000.0,
+            )
+        }
+    }
+    // L'emprise suit la portion : c'est elle que decrit le fichier, et que les points d'interet couvrent.
+    val emprise = remember(portion, bbox) { portion?.takeIf { it.size >= 2 }?.let { TrackSection.bboxOf(it) } ?: bbox }
 
     val minZ = zoomRange.start.toInt()
     val maxZ = zoomRange.endInclusive.toInt()
@@ -139,17 +166,18 @@ fun OfflineDownloadConfigScreen(
     // Le calcul en cours se voit a la place de la taille, par un rond qui tourne : la valeur d'avant reste
     // gardee - le bouton en depend -, mais l'afficher laisserait croire qu'elle vaut pour le nouveau reglage.
     var calcul by remember { mutableStateOf(true) }
-    LaunchedEffect(bbox, minZ, maxZ, corridorPoints, halfWidthKm) {
+    LaunchedEffect(bbox, minZ, maxZ, portion, halfWidthKm) {
         calcul = true
         delay(300)
         tileCount = withContext(Dispatchers.Default) {
-            if (corridorPoints != null) TileMath.totalTileCountAlong(corridorPoints, minZ, maxZ, halfWidthKm * 1000.0)
+            if (portion != null) TileMath.totalTileCountAlong(portion, minZ, maxZ, halfWidthKm * 1000.0)
             else TileMath.totalTileCount(bbox, minZ, maxZ)
         }
         calcul = false
     }
     val sizeLabel = tileCount?.let { TileMath.formatSize(TileMath.estimateSizeBytes(it)) } ?: "..."
 
+    val defilement = rememberScrollState()
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
         Surface(Modifier.fillMaxSize(), color = p.screen) {
@@ -159,23 +187,41 @@ fun OfflineDownloadConfigScreen(
                 Row(
                     Modifier.fillMaxWidth().background(p.card).statusBarsPadding()
                         .padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    // En haut, et non centre : sous un titre de plusieurs lignes, la croix descendait au
+                    // milieu du bloc. Elle reste au coin, ou l'on cherche a fermer.
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        stringResource(R.string.offline_config_title), fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold, color = p.label, modifier = Modifier.weight(1f),
-                    )
+                    // Le long d'une trace, le titre le dit, et une ligne en petit dit ce qu'on regle ici.
+                    // Decale d'un demi-bouton : la premiere ligne du titre reste alignee sur la croix.
+                    Column(Modifier.weight(1f).padding(top = 12.dp)) {
+                        Text(
+                            stringResource(
+                                if (corridorPoints != null) R.string.offline_config_title_track
+                                else R.string.offline_config_title,
+                            ),
+                            fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = p.label,
+                        )
+                        // Seulement tout en haut : des qu'on descend, la ligne se retire et rend sa hauteur
+                        // aux reglages - elle a ete lue en arrivant.
+                        AnimatedVisibility(corridorPoints != null && defilement.value == 0) {
+                            Text(
+                                stringResource(R.string.offline_config_track_hint), fontSize = 12.sp,
+                                lineHeight = 15.sp, color = p.subtle, modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(19.dp),
                             tint = p.label)
                     }
                 }
                 Column(
-                    Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                    Modifier.weight(1f).fillMaxWidth().verticalScroll(defilement)
                         .padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 14.dp),
                 ) {
-                    // Pas de titre de rubrique : chaque ligne porte son libellé, et les deux cartes
-                    // séparent déjà ce qu'on règle de ce qui s'ensuit.
+                    // Dans l'ordre ou l'on decide : le zoom, la portion de la trace, la largeur - et le
+                    // poids qui en decoule -, puis la carte de ce qu'on emporte, enfin le nom et les
+                    // points d'interet. Pas de titre de rubrique : chaque ligne porte son libelle.
                     SettingsCard {
                         RangeSliderRow(
                             label = stringResource(R.string.offline_config_zoom_label),
@@ -184,6 +230,21 @@ fun OfflineDownloadConfigScreen(
                             onRange = { zoomRange = it },
                             steps = (providerMaxZoom - providerMinZoom - 1).coerceAtLeast(0),
                         )
+                        if (corridorPoints != null && totalKm > 0f) {
+                            RowDivider()
+                            RangeSliderRow(
+                                label = stringResource(R.string.offline_config_section_label),
+                                value = stringResource(R.string.offline_config_section_value,
+                                    Math.round(sectionKm.start), Math.round(sectionKm.endInclusive)),
+                                range = sectionKm, bounds = 0f..totalKm,
+                                onRange = { r ->
+                                    // Au kilometre ; le bout de la trace reste le bout, meme a 281,4 km.
+                                    fun km(v: Float) = if (v >= totalKm - 0.5f) totalKm else Math.round(v).toFloat()
+                                    val a = km(r.start)
+                                    sectionKm = a..maxOf(a, km(r.endInclusive))
+                                },
+                            )
+                        }
                         if (corridorPoints != null) {
                             RowDivider()
                             // La largeur est dans la MEME carte que le zoom : les deux commandent le poids
@@ -198,8 +259,10 @@ fun OfflineDownloadConfigScreen(
                                     val i = Math.round(f * (CorridorWidthKm.size - 1)).coerceIn(0, CorridorWidthKm.lastIndex)
                                     halfWidthKm = CorridorWidthKm[i]
                                 },
+                                // L'explication derriere un "i" : lue une fois, elle n'a pas a occuper
+                                // l'ecran a chaque telechargement.
+                                info = stringResource(R.string.offline_config_width_hint),
                             )
-                            Hint(stringResource(R.string.offline_config_width_hint))
                         }
                         RowDivider()
                         // L'estimation suit le curseur dans la même carte : c'est sa conséquence, pas
@@ -211,6 +274,10 @@ fun OfflineDownloadConfigScreen(
                             else ValueText(sizeLabel)
                         }
                     }
+                    Spacer(Modifier.height(12.dp))
+                    // Cadree sur la trace ENTIERE, qui s'y dessine toute : seule la zone tampon suit la
+                    // portion, et la carte ne saute pas a chaque cran du curseur.
+                    overview(bbox, corridorPoints, portion, halfWidthKm * 1000.0)
                     Spacer(Modifier.height(12.dp))
                     SettingsCard {
                         FieldRow(stringResource(R.string.offline_config_name_label)) {
@@ -224,14 +291,13 @@ fun OfflineDownloadConfigScreen(
                             RowDivider()
                             SetRow(
                                 stringResource(R.string.offline_config_pois_label),
-                                sub = stringResource(R.string.offline_config_pois_desc),
+                                // Comme la largeur : l'explication derriere un "i", lue une fois.
+                                info = stringResource(R.string.offline_config_pois_desc),
                             ) {
                                 SettingsSwitch(withPois) { withPois = it }
                             }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    BboxOverview(bbox, styleJson, styleUrl, corridorPoints, halfWidthKm * 1000.0)
                 }
                 // Action principale, hors du défilement : un aplat d'accent plein, là où les boutons de
                 // carte des réglages se contentent du container - c'est la seule action de l'écran.
@@ -246,8 +312,8 @@ fun OfflineDownloadConfigScreen(
                             onDownload(OfflineDownloadRequest(
                                 // Toujours : une tuile manquante laisse un trou dans la carte, quand
                                 // l'arret jetait tout ce qui avait ete telecharge. Ce n'est plus un choix.
-                                bbox, minZ, maxZ, name, continueOnError = true,
-                                corridor = corridorPoints?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
+                                emprise, minZ, maxZ, name, continueOnError = true,
+                                corridor = portion?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
                                 withPois = poiAvailable && withPois,
                             ))
                         },
@@ -280,6 +346,7 @@ fun OfflineDownloadConfigScreen(
 @Composable
 private fun BboxOverview(
     bbox: Bbox, styleJson: String?, styleUrl: String?,
+    track: List<Pair<Double, Double>>? = null,
     corridor: List<Pair<Double, Double>>? = null, radiusM: Double = 0.0,
 ) {
     var enGrand by remember { mutableStateOf(false) }
@@ -287,7 +354,7 @@ private fun BboxOverview(
         Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(16.dp))
             .background(settingsPalette.card),
     ) {
-        EmpriseMap(bbox, styleJson, styleUrl, corridor, radiusM, interactive = false)
+        EmpriseMap(bbox, styleJson, styleUrl, track, corridor, radiusM, interactive = false)
         Box(
             Modifier.align(Alignment.BottomEnd).padding(8.dp).size(32.dp)
                 .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f))
@@ -304,7 +371,7 @@ private fun BboxOverview(
                 Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.88f).clip(RoundedCornerShape(16.dp))
                     .background(settingsPalette.card),
             ) {
-                EmpriseMap(bbox, styleJson, styleUrl, corridor, radiusM, interactive = true)
+                EmpriseMap(bbox, styleJson, styleUrl, track, corridor, radiusM, interactive = true)
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp)
                         .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.9f))
@@ -324,17 +391,20 @@ private fun BboxOverview(
  *
  * La trace est allegee a deux mille points au plus : elle ne sert qu'a se voir, et une EuroVelo en porte des
  * dizaines de milliers.
+ *
+ * [track] est la trace entiere, dessinee toute ; [corridor] la portion qu'on emporte, autour de laquelle
+ * seule la zone tampon se dessine.
  */
 @Composable
 private fun EmpriseMap(
     bbox: Bbox, styleJson: String?, styleUrl: String?,
+    track: List<Pair<Double, Double>>?,
     corridor: List<Pair<Double, Double>>?, radiusM: Double, interactive: Boolean,
 ) {
     val mini = remember { MapController() }
     var ready by remember { mutableIntStateOf(0) }
-    val allegee = remember(corridor) {
-        corridor?.let { c -> val pas = c.size / 2000 + 1; c.filterIndexed { i, _ -> i % pas == 0 || i == c.lastIndex } }
-    }
+    val allegee = remember(corridor) { corridor?.let { allege(it) } }
+    val trace = remember(track, allegee) { track?.let { allege(it) } ?: allegee }
     // Le cadrage ne suit que l'emprise, pas la largeur : deplacer le curseur ne doit pas faire sauter la
     // carte, seulement epaissir la zone tampon.
     LaunchedEffect(ready, bbox) {
@@ -351,10 +421,10 @@ private fun EmpriseMap(
     }
     // La zone tampon se calcule hors du fil de l'interface, comme le poids : sur une longue trace, elle se
     // chiffre en milliers de bandes.
-    LaunchedEffect(ready, allegee, radiusM) {
+    LaunchedEffect(ready, allegee, trace, radiusM) {
         if (mini.style == null || allegee == null) return@LaunchedEffect
         val bandes = withContext(Dispatchers.Default) { CorridorShape.bands(allegee, radiusM) }
-        mini.setCorridorPreview(allegee, bandes)
+        mini.setCorridorPreview(trace ?: allegee, bandes)
     }
     MapLibreView(
         modifier = Modifier.fillMaxSize(), controller = mini,
@@ -362,4 +432,10 @@ private fun EmpriseMap(
         gesturesEnabled = interactive, destroyOnDispose = true,
         onReady = { ready++ },
     )
+}
+
+/** Deux mille points au plus, le dernier toujours garde : l'apercu ne sert qu'a se voir. */
+private fun allege(c: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
+    val pas = c.size / 2000 + 1
+    return c.filterIndexed { i, _ -> i % pas == 0 || i == c.lastIndex }
 }

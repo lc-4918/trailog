@@ -123,20 +123,23 @@ import kotlinx.coroutines.launch
     SectionTitle(stringResource(R.string.settings_section_default_basemap), tight = true)
     SettingsCard {
         BasemapPickRow(mapProviders, mapComposites, cur.defaultBasemapId) { vm.save(cur.copy(defaultBasemapId = it)) }
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_panel_width), "${cur.basemapControlWidthPct} %",
-            fractionOf(cur.basemapControlWidthPct, 20, 90),
-            { vm.save(cur.copy(basemapControlWidthPct = valueOf(it, 20, 90))) },
-        )
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_panel_opacity), "${cur.basemapControlOpacityPct} %",
-            fractionOf(cur.basemapControlOpacityPct, 30, 100),
-            { vm.save(cur.copy(basemapControlOpacityPct = valueOf(it, 30, 100))) },
-        )
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(basemapControlWidthPct = 70, basemapControlOpacityPct = 90))
+        // L'aspect du panneau : reglage fin, mode expert seulement.
+        if (cur.expertMode) {
+            RowDivider()
+            SliderRow(
+                stringResource(R.string.settings_label_panel_width), "${cur.basemapControlWidthPct} %",
+                fractionOf(cur.basemapControlWidthPct, 20, 90),
+                { vm.save(cur.copy(basemapControlWidthPct = valueOf(it, 20, 90))) },
+            )
+            RowDivider()
+            SliderRow(
+                stringResource(R.string.settings_label_panel_opacity), "${cur.basemapControlOpacityPct} %",
+                fractionOf(cur.basemapControlOpacityPct, 30, 100),
+                { vm.save(cur.copy(basemapControlOpacityPct = valueOf(it, 30, 100))) },
+            )
+            CardAction(stringResource(R.string.action_reset_defaults)) {
+                vm.save(cur.copy(basemapControlWidthPct = 70, basemapControlOpacityPct = 90))
+            }
         }
     }
 
@@ -147,7 +150,7 @@ import kotlinx.coroutines.launch
     SettingsCard {
         SetRow(
             stringResource(R.string.action_manage_providers),
-            sub = stringResource(R.string.settings_providers_subtitle),
+            info = stringResource(R.string.settings_providers_subtitle),
             onClick = { providersDialogOpen = true },
         ) {
             RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_manage_providers))

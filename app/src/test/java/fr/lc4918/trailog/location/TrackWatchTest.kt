@@ -35,10 +35,11 @@ class TrackWatchTest {
         assertFalse(TrackWatch.alerting.value)
     }
 
-    /** Retenue deja loin, l'alerte est immediate : on ne va pas attendre de s'eloigner davantage. */
-    @Test fun `une trace retenue au-dela du seuil alerte tout de suite`() {
+    /** Une trace reconnue part cloche eteinte : rien ne sonne tant qu'on ne l'a pas armee soi-meme. */
+    @Test fun `une trace reconnue part sans alerte`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)
-        assertTrue(TrackWatch.alerting.value)
+        assertFalse(TrackWatch.armed.value)
+        assertFalse(TrackWatch.alerting.value)
     }
 
     /** Le son accompagne l'ENTREE en alerte, une fois : il annonce le franchissement, il ne sonne pas tant
@@ -55,6 +56,7 @@ class TrackWatchTest {
      */
     @Test fun `la zone morte empeche le clignotement`() {
         TrackWatch.follow(trace, awayM = 60.0, thresholdM = 50.0)
+        TrackWatch.update(60.0, 50.0)
         TrackWatch.update(45.0, 50.0)
         assertTrue("entre 40 et 50 m, rien ne change", TrackWatch.alerting.value)
         TrackWatch.update(39.0, 50.0)
@@ -64,6 +66,7 @@ class TrackWatchTest {
     /** La croix tait l'ecart du moment, elle n'arrete pas le suivi. */
     @Test fun `le silence laisse le suivi en place`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)
+        TrackWatch.update(80.0, 50.0)
         TrackWatch.silence()
         assertTrue(TrackWatch.silenced.value)
         assertTrue(TrackWatch.alerting.value)
@@ -73,6 +76,7 @@ class TrackWatchTest {
     /** Revenir sur la trace leve le silence : l'alerte suivante se dira. */
     @Test fun `revenir sous le seuil rearme l'annonce`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)
+        TrackWatch.update(80.0, 50.0)
         TrackWatch.silence()
         TrackWatch.update(10.0, 50.0)
         assertFalse(TrackWatch.silenced.value)
@@ -82,6 +86,7 @@ class TrackWatchTest {
     /** Fin du suivi : plus de trace, plus d'ecart, plus d'alerte, plus de silence. */
     @Test fun `l'arret efface tout`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)
+        TrackWatch.update(80.0, 50.0)
         TrackWatch.silence()
         TrackWatch.stop()
         assertEquals(null, TrackWatch.followed.value)
@@ -136,10 +141,123 @@ class TrackWatchTest {
     /** Changer de trace repart d'une alerte vierge : l'ecart de la precedente n'a rien a dire de celle-ci. */
     @Test fun `changer de trace repart d'une alerte vierge`() {
         TrackWatch.follow(trace, awayM = 80.0, thresholdM = 50.0)
+        TrackWatch.update(80.0, 50.0)
         TrackWatch.silence()
         TrackWatch.follow(trace.copy(layerId = 2, layerName = "GR 5"), awayM = 5.0, thresholdM = 50.0)
         assertFalse(TrackWatch.alerting.value)
         assertFalse(TrackWatch.silenced.value)
         assertEquals("GR 5", TrackWatch.followed.value?.layerName)
+    }
+
+    // ---------- La cloche et le suivi automatique ----------
+
+    /** Cloche armee : s'ecarter est l'alerte, annoncee a l'entree, et le suivi continue. */
+    @Test fun `cloche armee, s'ecarter alerte`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0, alongM = 100.0)
+        TrackWatch.setArmed(true)
+        assertEquals(TrackWatch.Step.Alert, TrackWatch.step(80.0, 50.0, 110.0))
+        assertEquals(TrackWatch.Step.Stay, TrackWatch.step(90.0, 50.0, 120.0))
+        assertTrue(TrackWatch.alerting.value)
+        assertEquals(trace, TrackWatch.followed.value)
+    }
+
+    /** Cloche eteinte : s'ecarter ne sonne pas, et deux positions au-dela du seuil lachent la trace. */
+    @Test fun `cloche eteinte, s'ecarter lache la trace sans alerte`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0, alongM = 100.0)
+        assertEquals(TrackWatch.Step.Stay, TrackWatch.step(80.0, 50.0, 110.0))
+        assertFalse(TrackWatch.alerting.value)
+        assertEquals(TrackWatch.Step.Leave, TrackWatch.step(90.0, 50.0, 120.0))
+    }
+
+    /** Une seule mesure aberrante, puis retour sur la trace : on la garde. */
+    @Test fun `un ecart isole ne lache pas la trace`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0, alongM = 100.0)
+        TrackWatch.step(80.0, 50.0, 110.0)
+        TrackWatch.step(10.0, 50.0, 120.0)
+        assertEquals(TrackWatch.Step.Stay, TrackWatch.step(80.0, 50.0, 130.0))
+    }
+
+    /** Desarmer la cloche en pleine alerte tait l'alerte. */
+    @Test fun `desarmer tait l'alerte en cours`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0, alongM = 100.0)
+        TrackWatch.setArmed(true)
+        TrackWatch.step(80.0, 50.0, 110.0)
+        TrackWatch.setArmed(false)
+        assertFalse(TrackWatch.alerting.value)
+    }
+
+    /** Le sens de parcours suit le kilometrage : reculer franchement sur la trace, c'est la remonter. */
+    @Test fun `le sens suit le kilometrage`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0, alongM = 100.0)
+        TrackWatch.step(5.0, 50.0, 90.0)
+        assertEquals(-1, TrackWatch.direction.value)
+        TrackWatch.step(5.0, 50.0, 92.0)
+        assertEquals("un pas de deux metres ne dit rien", -1, TrackWatch.direction.value)
+    }
+
+    /** Fermer le tableau de bord arrete le suivi : il n'aurait plus nulle part ou se dire. */
+    @Test fun `fermer le tableau de bord arrete le suivi`() {
+        TrackWatch.setDashboard(true)
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        TrackWatch.setArmed(true)
+        TrackWatch.setDashboard(false)
+        assertEquals(null, TrackWatch.followed.value)
+        assertFalse(TrackWatch.armed.value)
+    }
+
+    /** Marcher sur une trace candidate la fait suivre, dans le sens de la marche, cloche eteinte. */
+    @Test fun `la detection commence le suivi`() {
+        val pts = (0..100).map { i -> Sample(i * 10.0, 0.0, 0.0, null, 6.0, 45.0 + i * 10.0 / 111_195.0) }
+        val c = FollowCatalog.candidate(7, "GR 5", 0, 1, pts)
+        var suivi = false
+        for (m in listOf(800.0, 750.0, 700.0, 650.0)) {
+            suivi = suivi || TrackWatch.detect(45.0 + m / 111_195.0, 6.0, listOf(c), 50.0, 0L)
+        }
+        assertTrue(suivi)
+        assertEquals("GR 5", TrackWatch.followed.value?.layerName)
+        assertEquals(-1, TrackWatch.direction.value)
+        assertFalse(TrackWatch.armed.value)
+    }
+
+    // ---------- La cloche a travers une coupure ----------
+
+    /** Localisation coupee puis rallumee : la meme trace, reconnue a nouveau, retrouve sa cloche armee. */
+    @Test fun `la cloche survit a une coupure`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        TrackWatch.setArmed(true)
+        TrackWatch.stop(forgetBell = false)
+        assertFalse(TrackWatch.armed.value)
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        assertTrue(TrackWatch.armed.value)
+    }
+
+    /** Une autre trace reconnue apres la coupure ne s'arme pas pour autant. */
+    @Test fun `la cloche ne passe pas a une autre trace`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        TrackWatch.setArmed(true)
+        TrackWatch.stop(forgetBell = false)
+        TrackWatch.follow(trace.copy(layerId = 2, layerName = "GR 5"), awayM = 5.0, thresholdM = 50.0)
+        assertFalse(TrackWatch.armed.value)
+    }
+
+    /** Un arret voulu - fermer le tableau de bord, desarmer - oublie la cloche. */
+    @Test fun `un arret voulu oublie la cloche`() {
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        TrackWatch.setArmed(true)
+        TrackWatch.stop()
+        TrackWatch.follow(trace, awayM = 5.0, thresholdM = 50.0)
+        assertFalse(TrackWatch.armed.value)
+        assertEquals(null, TrackWatch.bellKey.value)
+    }
+
+    /** Apres une mort du processus : la trace et sa cloche reprises du disque, dans un ordre ou l'autre. */
+    @Test fun `la cloche reprise du disque arme la trace reprise`() {
+        TrackWatch.restoreBell("1/0")
+        TrackWatch.restore(trace)
+        assertTrue(TrackWatch.armed.value)
+        TrackWatch.stop()
+        TrackWatch.restore(trace)
+        TrackWatch.restoreBell("1/0")
+        assertTrue(TrackWatch.armed.value)
     }
 }

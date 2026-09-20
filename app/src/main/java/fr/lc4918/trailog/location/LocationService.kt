@@ -24,14 +24,18 @@ import androidx.core.location.LocationManagerCompat
 import fr.lc4918.trailog.MainActivity
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.TrailogApp
+import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.offTrackAlertVisible
+import fr.lc4918.trailog.domain.geo.AutoFollow
 import fr.lc4918.trailog.domain.geo.Format
+import fr.lc4918.trailog.domain.geo.RestDetector
 import fr.lc4918.trailog.domain.geo.TrackMeasure
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -66,7 +70,43 @@ class LocationService : Service() {
     /** Ce que la notification annonce, recalcule a chaque position et a chaque changement de trace. */
     private val notice = MutableStateFlow<String?>(null)
 
-    private val listener = LocationListener { loc -> LocationHub.publish(loc) }
+    private val listener = LocationListener { loc ->
+        LocationHub.publish(loc)
+        pace(loc.latitude, loc.longitude, if (loc.hasAccuracy()) loc.accuracy else 0f)
+    }
+
+    /** L'arret en cours, ou non (cf. [RestDetector]) : sur le fil principal, celui du listener. */
+    private var rest = RestDetector.State()
+
+    /** Les demandes sont espacees : on est a l'arret depuis une minute. */
+    private var resting = false
+
+    /**
+     * La cadence des demandes, selon qu'on bouge ou non.
+     *
+     * En marche : toutes les deux secondes, sans distance minimale - la vitesse du tableau de bord reste a
+     * jour, meme a pas lent. A l'arret depuis une minute : une position seulement apres [REST_DISTANCE_M]
+     * de deplacement. Plus rien n'arrive tant qu'on ne bouge pas, et la premiere position qui arrive dit
+     * qu'on est reparti : la cadence de marche revient aussitot.
+     */
+    @SuppressLint("MissingPermission")
+    private fun pace(lat: Double, lon: Double, accuracyM: Float) {
+        val (etat, repos) = RestDetector.step(rest, lat, lon, accuracyM, SystemClock.elapsedRealtime())
+        rest = etat
+        if (repos == resting || !subscribed) return
+        resting = repos
+        val provider = enabledProvider() ?: return
+        runCatching {
+            if (repos) locationManager.requestLocationUpdates(provider, REST_INTERVAL_MS, REST_DISTANCE_M, listener, mainLooper)
+            else locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
+        }
+    }
+
+    /** Les couches de la bibliotheque (cf. [watchLayers]). */
+    @Volatile private var visibleLayers: List<LayerEntity> = emptyList()
+
+    /** Les traces deja lues, par couche, avec l'entite qui les a donnees (cf. [candidatesNear]). */
+    private val layerCache = HashMap<Long, Pair<LayerEntity, List<AutoFollow.Candidate>>>()
 
     /** Derniere version connue des reglages (seuil d'alerte, son, unites). */
     @Volatile private var settings: SettingsEntity? = null
@@ -105,6 +145,9 @@ class LocationService : Service() {
         ContextCompat.registerReceiver(this, providerReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         watchSettings()
         watchFollowed()
+        watchBell()
+        watchLayers()
+        watchTrip()
         watchTrack()
         watchNotice()
     }
@@ -243,6 +286,8 @@ class LocationService : Service() {
         // la fonction faite pour dire "tu quittes le chemin" - etait demontee par l'evenement meme qui la
         // rendait necessaire, et sans un mot. Elle attend desormais que les positions reviennent.
         scope.cancel()
+        // Les compteurs, eux, s'ecrivent au plus toutes les quinze secondes : ce qui a couru depuis.
+        TripStore.write(this, TripWatch.trip.value)
         super.onDestroy()
     }
 
@@ -268,6 +313,8 @@ class LocationService : Service() {
         val provider = enabledProvider() ?: return false
         return runCatching {
             locationManager.requestLocationUpdates(provider, INTERVAL_MS, MIN_DISTANCE_M, listener, mainLooper)
+            rest = RestDetector.State()
+            resting = false
             subscribed = true
             // La derniere position connue tout de suite : le systeme la tient deja, et l'attendre laisserait
             // la carte sans repere pendant les secondes que le GPS met a se fixer.
@@ -316,32 +363,89 @@ class LocationService : Service() {
     // ---------- veille sur la trace suivie ----------
 
     /**
-     * L'ecart a la trace suivie, une position de plus, et le son a l'entree en alerte.
+     * Une position de plus : les compteurs de la sortie, la trace qu'on se met a suivre, l'ecart a celle
+     * qu'on suit, et le son a l'entree en alerte.
      *
-     * Sur [Dispatchers.Default] : c'est un balayage de toute la trace, celui-la meme que fait la ligne du
-     * restant du profil, et il n'a rien a faire sur le fil principal.
+     * Sur [Dispatchers.Default] : ce sont des balayages de traces entieres, celui-la meme que fait la ligne
+     * du restant du profil, et ils n'ont rien a faire sur le fil principal.
      */
     private fun watchTrack() = scope.launch {
         LocationHub.fix.filterNotNull().collect { fix ->
-            val followed = TrackWatch.followed.value
-            if (followed == null) { notice.value = null; return@collect }
+            // Les compteurs d'abord, et quoi qu'il arrive ensuite : ils tournent tant que la localisation
+            // tourne, tableau de bord ouvert ou non.
+            TripWatch.add(fix)
             val reglages = settings
+            // Le reglage eteint, ou le tableau de bord ferme : aucune trace n'est plus suivie de personne.
+            if ((reglages != null && !reglages.offTrackAlertVisible) || !TrackWatch.dashboard.value) {
+                if (TrackWatch.followed.value != null) TrackWatch.stop()
+                notice.value = null
+                return@collect
+            }
             val seuil = (reglages?.offTrackAlertDistanceM ?: DEFAULT_ALERT_M).toDouble()
-            // La projection rend l'ecart ET le kilometrage : le second etait jete, alors que c'est lui qui
-            // dit ou l'on en est de la trace (cf. FollowProgressMath).
-            val projete = TrackMeasure.project(followed.samples, fix.lon, fix.lat) ?: return@collect
+            val suivie = TrackWatch.followed.value
+            if (suivie == null) {
+                notice.value = null
+                val candidates = listOfNotNull(FollowCatalog.route.value) + candidatesNear(fix.lat, fix.lon)
+                TrackWatch.detect(fix.lat, fix.lon, candidates, seuil, SystemClock.elapsedRealtime())
+                return@collect
+            }
+            // La projection rend l'ecart ET le kilometrage : c'est le second qui dit ou l'on en est de la
+            // trace (cf. FollowProgressMath), et dans quel sens on la parcourt.
+            val projete = TrackMeasure.project(suivie.samples, fix.lon, fix.lat) ?: return@collect
             val away = projete.awayM
-            val entree = TrackWatch.update(away, seuil, projete.alongM)
+            when (TrackWatch.step(away, seuil, projete.alongM)) {
+                TrackWatch.Step.Leave -> { TrackWatch.stop(); notice.value = null; return@collect }
+                TrackWatch.Step.Alert -> if (reglages?.offTrackAlertSound == true) {
+                    playAlertSound(this@LocationService, reglages.offTrackAlertSoundUri)
+                }
+                TrackWatch.Step.Stay -> Unit
+            }
             notice.value = getString(
                 R.string.location_notice_following,
-                followed.layerName,
+                suivie.layerName,
                 Format.shortDistance(away, reglages?.units == "imperial"),
             )
-            if (entree && reglages?.offTrackAlertSound == true) {
-                playAlertSound(this@LocationService, reglages.offTrackAlertSoundUri)
-            }
-            // Le reglage eteint pendant le suivi : la trace n'est plus suivie de personne.
-            if (reglages != null && !reglages.offTrackAlertVisible) TrackWatch.stop()
+        }
+    }
+
+    /**
+     * Les traces des couches a portee de la position, lues a la premiere occasion puis gardees : on passe
+     * des heures sur les memes, et relire leur profil a chaque position serait refaire sans cesse le meme
+     * travail. Une couche modifiee - son entite change - se relit ; une couche sortie de portee s'oublie.
+     *
+     * Appelee du seul collecteur des positions : le cache n'a qu'un lecteur, et pas de verrou.
+     */
+    private suspend fun candidatesNear(lat: Double, lon: Double): List<AutoFollow.Candidate> {
+        val near = FollowCatalog.layersNear(visibleLayers, lat, lon)
+        layerCache.keys.retainAll(near.mapTo(HashSet()) { it.id })
+        val repo = (application as TrailogApp).repository
+        return near.flatMap { ly ->
+            layerCache[ly.id]?.takeIf { it.first == ly }?.second ?: runCatching {
+                val profils = repo.loadProfiles(ly)
+                profils.mapIndexedNotNull { i, ct ->
+                    ct.samples.takeIf { it.size >= 2 }?.let { FollowCatalog.candidate(ly.id, ly.name, i, profils.size, it) }
+                }
+            }.getOrDefault(emptyList()).also { layerCache[ly.id] = ly to it }
+        }
+    }
+
+    /** Les couches de la bibliotheque, tenues a jour pour la detection (cf. [candidatesNear]). */
+    private fun watchLayers() = scope.launch {
+        (application as TrailogApp).repository.layers.all().collect { visibleLayers = it }
+    }
+
+    /**
+     * Les compteurs de la sortie, repris du disque puis ecrits dessus - au plus toutes les quinze
+     * secondes : une ecriture par position serait un fichier reecrit toutes les deux secondes, pour une
+     * perte, a la mort du processus, de quelques metres au pire.
+     *
+     * Le flux ne garde que sa derniere valeur : apres l'attente, c'est l'etat le plus recent qui s'ecrit.
+     */
+    private fun watchTrip() = scope.launch {
+        TripWatch.restore(TripStore.load(this@LocationService))
+        TripWatch.trip.collect { t ->
+            TripStore.save(this@LocationService, t)
+            delay(TRIP_SAVE_MS)
         }
     }
 
@@ -365,6 +469,12 @@ class LocationService : Service() {
             // nouvelle, elle pouvait le faire longtemps.
             if (suivie == null) notice.value = null
         }
+    }
+
+    /** La cloche, reprise du disque puis tenue a jour dessus - dans cet ordre, comme la trace suivie. */
+    private fun watchBell() = scope.launch {
+        TrackWatch.restoreBell(FollowedStore.loadBell(this@LocationService))
+        TrackWatch.bellKey.collect { FollowedStore.saveBell(this@LocationService, it) }
     }
 
     /**
@@ -430,12 +540,24 @@ class LocationService : Service() {
         private const val WAKE_LOCK_TAG = "trailog:suivi-position"
         const val ACTION_STOP = "fr.lc4918.trailog.STOP_LOCATION"
 
-        /** Les memes cadences qu'avant le service : deux secondes, cinq metres. */
+        /**
+         * Une position toutes les deux secondes, SANS distance minimale.
+         *
+         * Il y en avait une, de cinq metres : a pied lent, les positions s'espacaient, et la vitesse du
+         * tableau de bord restait figee sur la derniere mesuree. Le tremblement des positions a l'arret,
+         * lui, ne compte pas dans les compteurs (cf. TripStats). A l'arret prolonge, la cadence s'espace
+         * d'elle-meme (cf. [pace]).
+         */
         private const val INTERVAL_MS = 2000L
-        private const val MIN_DISTANCE_M = 5f
+        private const val MIN_DISTANCE_M = 0f
+
+        /** La cadence de repos : une position toutes les dix secondes au plus, et seulement apres 10 m. */
+        private const val REST_INTERVAL_MS = 10_000L
+        private const val REST_DISTANCE_M = 10f
 
         /** Repli quand les reglages ne sont pas encore lus - la meme valeur que leur defaut. */
         private const val DEFAULT_ALERT_M = 50
+        private const val TRIP_SAVE_MS = 15_000L
 
         /**
          * Demarre le suivi. Sans effet si le service tourne deja : un second demarrage ne fait que

@@ -20,6 +20,16 @@ object Format {
         return if (h != 0) "$d j $h h" else "$d j"
     }
 
+    /**
+     * Duree de compteur, en heures et minutes : "0:07", "1:48", "12:05". Le format d'un chronometre, de
+     * largeur stable - celui de [duration] passe de "26 min" a "1 h 48 min" et ferait sauter le champ du
+     * tableau de bord a chaque heure.
+     */
+    fun chrono(ms: Long): String {
+        val min = (ms.coerceAtLeast(0) / 60_000)
+        return "${min / 60}:${"%02d".format(min % 60)}"
+    }
+
     fun distance(meters: Double, imperial: Boolean = false): String =
         if (imperial) "${"%.2f".format(meters / 1609.344)} mi"
         else "${"%.2f".format(meters / 1000.0)} km"
@@ -47,6 +57,16 @@ object Format {
      * Une decimale sous 10, aucune au-dela : a 4 km/h le dixieme distingue la marche de la flanerie, a
      * 27 km/h il ne fait que battre la mesure sans rien apprendre.
      */
+    /**
+     * Vitesse a une decimale, toujours : celle du tableau de bord, ou le chiffre ne doit pas changer de
+     * largeur en passant les 10 km/h.
+     */
+    fun speedFixed(mps: Double, imperial: Boolean = false): String {
+        if (!mps.isFinite() || mps < 0) return ""
+        val v = if (imperial) mps * 2.236936 else mps * 3.6
+        return "${"%.1f".format(v)} ${if (imperial) "mph" else "km/h"}"
+    }
+
     fun speed(mps: Double, imperial: Boolean = false): String {
         if (!mps.isFinite() || mps < 0) return ""
         val v = if (imperial) mps * 2.236936 else mps * 3.6

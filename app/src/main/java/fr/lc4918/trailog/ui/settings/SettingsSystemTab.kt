@@ -89,7 +89,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
     SettingsCard {
         SwitchLine(
             stringResource(R.string.settings_sw_keep_screen_on), cur.keepScreenOn,
-            sub = stringResource(R.string.settings_sw_keep_screen_on_sub),
+            info = stringResource(R.string.settings_sw_keep_screen_on_sub),
         ) { vm.save(cur.copy(keepScreenOn = it)) }
         RowDivider()
         // Venue de la rubrique juste dessous : elle ne choisit pas une apparence, elle dit si la carte se
@@ -97,7 +97,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
         // le systeme plutot que par l'application.
         SwitchLine(
             stringResource(R.string.settings_status_bar_transparent), cur.statusBarTransparent,
-            sub = stringResource(R.string.settings_sw_status_bar_sub),
+            info = stringResource(R.string.settings_sw_status_bar_sub),
         ) { vm.save(cur.copy(statusBarTransparent = it)) }
     }
 
@@ -138,26 +138,29 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
      * rien a voir : l'une dit CE QU'ON POSE sur la carte - et se regle donc la-bas, avec les gestes -,
      * celle-ci dit a quoi cela ressemble, comme le theme et la barre d'etat juste au-dessus.
      */
-    SectionTitle(stringResource(R.string.settings_section_map_buttons))
-    SettingsCard {
-        // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
-        // zone tactile, il deborderait dessus.
-        SliderRow(
-            label = stringResource(R.string.settings_label_map_button_size),
-            value = "${cur.mapButtonSizeDp} dp",
-            fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
-            steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
-            onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
-        )
-        RowDivider()
-        SliderRow(
-            label = stringResource(R.string.settings_label_buttons_bg_opacity),
-            value = "${cur.controlButtonsOpacityPct} %",
-            fraction = fractionOf(cur.controlButtonsOpacityPct, 0, 100),
-            onFraction = { vm.save(cur.copy(controlButtonsOpacityPct = valueOf(it, 0, 100))) },
-        )
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(mapButtonSizeDp = MaxMapButtonSizeDp, controlButtonsOpacityPct = 100))
+    // Reglages fins : mode expert seulement (cf. SettingsEntity.expertMode).
+    if (cur.expertMode) {
+        SectionTitle(stringResource(R.string.settings_section_map_buttons))
+        SettingsCard {
+            // Le curseur ne va pas au-dela du bouton Material plein : plus grand, il ne depasserait pas sa
+            // zone tactile, il deborderait dessus.
+            SliderRow(
+                label = stringResource(R.string.settings_label_map_button_size),
+                value = "${cur.mapButtonSizeDp} dp",
+                fraction = fractionOf(cur.mapButtonSizeDp, MinMapButtonSizeDp, MaxMapButtonSizeDp),
+                steps = MaxMapButtonSizeDp - MinMapButtonSizeDp - 1,
+                onFraction = { vm.save(cur.copy(mapButtonSizeDp = valueOf(it, MinMapButtonSizeDp, MaxMapButtonSizeDp))) },
+            )
+            RowDivider()
+            SliderRow(
+                label = stringResource(R.string.settings_label_buttons_bg_opacity),
+                value = "${cur.controlButtonsOpacityPct} %",
+                fraction = fractionOf(cur.controlButtonsOpacityPct, 0, 100),
+                onFraction = { vm.save(cur.copy(controlButtonsOpacityPct = valueOf(it, 0, 100))) },
+            )
+            CardAction(stringResource(R.string.action_reset_defaults)) {
+                vm.save(cur.copy(mapButtonSizeDp = MaxMapButtonSizeDp, controlButtonsOpacityPct = 100))
+            }
         }
     }
 
@@ -173,21 +176,23 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
     }
     // Deux tolerances : les marqueurs sont interroges avant les traces et l'emportent, une valeur large
     // sur eux rend une trace qui passe a cote difficile a atteindre.
-    SectionTitle(stringResource(R.string.settings_section_tap_tolerance))
-    SettingsCard {
-        SliderRow(
-            stringResource(R.string.settings_label_waypoints), "${cur.tapToleranceDp} dp",
-            fractionOf(cur.tapToleranceDp, 4, 40), steps = 35,
-            onFraction = { vm.save(cur.copy(tapToleranceDp = valueOf(it, 4, 40))) },
-        )
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_tracks), "${cur.lineTapToleranceDp} dp",
-            fractionOf(cur.lineTapToleranceDp, 4, 40), steps = 35,
-            onFraction = { vm.save(cur.copy(lineTapToleranceDp = valueOf(it, 4, 40))) },
-        )
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(tapToleranceDp = 10, lineTapToleranceDp = 16))
+    if (cur.expertMode) {
+        SectionTitle(stringResource(R.string.settings_section_tap_tolerance))
+        SettingsCard {
+            SliderRow(
+                stringResource(R.string.settings_label_waypoints), "${cur.tapToleranceDp} dp",
+                fractionOf(cur.tapToleranceDp, 4, 40), steps = 35,
+                onFraction = { vm.save(cur.copy(tapToleranceDp = valueOf(it, 4, 40))) },
+            )
+            RowDivider()
+            SliderRow(
+                stringResource(R.string.settings_label_tracks), "${cur.lineTapToleranceDp} dp",
+                fractionOf(cur.lineTapToleranceDp, 4, 40), steps = 35,
+                onFraction = { vm.save(cur.copy(lineTapToleranceDp = valueOf(it, 4, 40))) },
+            )
+            CardAction(stringResource(R.string.action_reset_defaults)) {
+                vm.save(cur.copy(tapToleranceDp = 10, lineTapToleranceDp = 16))
+            }
         }
     }
 
@@ -219,6 +224,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             else stringResource(R.string.settings_poi_cache_count, poiEnCache),
             onClick = if (poiEnCache == 0) null else ({ vm.clearPoiCache() }),
             role = Role.Button,
+            info = stringResource(R.string.settings_poi_cache_hint),
         ) {
             Icon(
                 Icons.Filled.DeleteOutline, null,
@@ -227,7 +233,6 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
         }
         // Ce que le bouton ne touche pas, dit seulement quand il y a quelque chose a ne pas toucher.
         if (poiEmportes > 0) Hint(stringResource(R.string.settings_poi_cache_pinned, poiEmportes))
-        Hint(stringResource(R.string.settings_poi_cache_hint))
         RowDivider()
         SetRow(
             stringResource(R.string.settings_clear_planner_history),
@@ -235,13 +240,13 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             else stringResource(R.string.settings_planner_history_count, lieux.size),
             onClick = if (lieux.isEmpty()) null else ({ vm.save(cur.copy(plannerHistory = "")) }),
             role = Role.Button,
+            info = stringResource(R.string.settings_planner_history_hint),
         ) {
             Icon(
                 Icons.Filled.DeleteOutline, null,
                 tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
             )
         }
-        Hint(stringResource(R.string.settings_planner_history_hint))
     }
 
     SectionTitle(stringResource(R.string.settings_section_folders))
@@ -285,19 +290,18 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             InlineButton(stringResource(R.string.action_save), Icons.Filled.FileDownload, onBackup)
         }
         RowDivider()
-        SetRow(stringResource(R.string.settings_backup_restore)) {
+        SetRow(stringResource(R.string.settings_backup_restore), info = stringResource(R.string.settings_backup_hint)) {
             InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileUpload, onRestore)
         }
-        Hint(stringResource(R.string.settings_backup_hint))
     }
 
     GroupTitle(stringResource(R.string.settings_group_application))
-    SettingsCard {
+    if (cur.expertMode) SettingsCard {
         SwitchLine(
             stringResource(R.string.settings_simplify_render), cur.simplifyRender,
             sub = stringResource(R.string.settings_sw_simplify_sub),
+            info = stringResource(R.string.settings_simplify_render_hint),
         ) { vm.save(cur.copy(simplifyRender = it)) }
-        Hint(stringResource(R.string.settings_simplify_render_hint))
     }
 
     SectionTitle(stringResource(R.string.settings_section_personalisation))

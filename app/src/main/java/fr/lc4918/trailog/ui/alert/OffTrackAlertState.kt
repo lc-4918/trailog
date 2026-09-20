@@ -4,151 +4,67 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import fr.lc4918.trailog.domain.model.Sample
-import android.os.SystemClock
-import fr.lc4918.trailog.location.TrackWatch
-
-/**
- * Une trace proposee au suivi : d'ou elle vient, et a quelle distance de la position elle passe.
- *
- * [trackIndex] designe le segment dans sa couche - une couche importee peut en porter plusieurs, sans
- * continuite entre eux -, et [trackCount] combien elle en a : au-dela d'un seul, la liste les numerote,
- * sans quoi trois lignes porteraient le meme nom.
- *
- * Les echantillons voyagent AVEC le candidat : ils viennent d'etre lus pour calculer [awayM], et les
- * relire au moment du choix ferait attendre une seconde fois ce qu'on tient deja.
- */
-data class TrackCandidate(
-    val layerId: Long,
-    val layerName: String,
-    val trackIndex: Int,
-    val trackCount: Int,
-    val awayM: Double,
-    val samples: List<Sample>,
-    /** Kilometrage du projete sur la trace (m) : deja calcule pour classer les candidates, et c'est lui
-     *  qui amorce le tableau de bord des le choix (cf. FollowProgressMath). */
-    val alongM: Double = 0.0,
-)
+import fr.lc4918.trailog.location.FollowCatalog
 
 /**
  * L'itineraire du planificateur, qui n'est encore dans aucune couche.
  *
  * Un parcours calcule se suit comme n'importe quelle trace - c'est meme le cas le plus courant : on
- * compose son trajet, on part, et on veut etre prevenu si on le quitte. L'importer d'abord dans la
+ * compose son trajet, on part, et le tableau de bord le reconnait. L'importer d'abord dans la
  * bibliotheque serait un detour, et laisserait derriere soi une couche dont on ne voulait pas.
  *
  * Un identifiant NEGATIF, donc hors de portee des identifiants de couches (Room les attribue a partir de
- * 1) : la trace suivie se designe partout par [TrackCandidate.layerId], et il fallait une valeur qui ne
- * puisse jamais tomber sur une couche reelle. C'est aussi ce qui permet de reconnaitre le parcours
- * temporaire la ou l'on verifie que la couche suivie est toujours a l'ecran (cf. OffTrackAlertEffects).
+ * 1) : c'est ce qui permet de reconnaitre le parcours temporaire la ou l'on verifie que la couche suivie
+ * est toujours a l'ecran (cf. OffTrackAlertEffects).
  */
-const val PlannedRouteLayerId = -1L
+const val PlannedRouteLayerId = FollowCatalog.ROUTE_ID
 
 /**
- * Le CHOIX d'une trace a suivre : la liste ouverte, et les candidates qu'on y propose.
+ * Ce qui, du tableau de bord, est une affaire d'ecran : la question posee quand la localisation du
+ * telephone est coupee.
  *
- * **Ce qui n'est plus ici.** La trace suivie, l'ecart mesure et l'alerte qui en decoule vivaient dans cet
- * etat d'ecran ; ils sont passes dans [TrackWatch], hors de la composition, parce que l'ecran eteint
- * arretait la mesure - et une alerte qui ne se declenche que sous les yeux de celui qu'elle doit prevenir
- * n'alerte personne. Ne reste donc ici que ce qui EST une affaire d'ecran : une question posee, une liste
- * qu'on ouvre et qu'on referme.
+ * Le tableau de bord OUVERT, lui, vit hors de la composition (cf. `TrackWatch.dashboard`) : c'est lui qui
+ * fait chercher une trace au service, ecran eteint compris.
  */
 @Stable
 class OffTrackAlertState {
 
-    /** Choix d'une trace ouvert. */
-    var chooserOpen by mutableStateOf(false)
-        private set
-
-    /** Traces proposees, les plus proches d'abord. Null tant que la recherche n'a pas rendu sa reponse. */
-    var candidates by mutableStateOf<List<TrackCandidate>?>(null)
-
     /**
-     * Le suivi a ete demande alors que **la localisation du telephone est eteinte** : on propose d'aller
-     * l'allumer dans les reglages du systeme.
-     *
-     * C'est la seule situation qui empeche vraiment : sans capteur, il n'y a aucune position a projeter
-     * sur une trace, et la liste ne pourrait que proposer des traces classees par une distance qu'on ne
-     * sait pas mesurer.
-     *
-     * **Le bouton de localisation de la CARTE, lui, n'entre plus en compte.** Il ne commande que
-     * l'affichage du repere, et l'on s'en voyait pourtant refuser la liste des traces - alors que le
-     * telephone savait parfaitement ou l'on etait. Choisir une trace allume desormais le suivi tout seul
-     * (cf. `MainDialogs`) : c'est ce qu'on venait demander.
+     * Le tableau de bord a ete ouvert alors que **la localisation du telephone est eteinte** : on propose
+     * d'aller l'allumer dans les reglages du systeme. Sans capteur, il n'aurait rien a compter.
      */
     var needsGpsDialog by mutableStateOf(false)
         private set
 
     /**
-     * La liste est demandee, et elle attend que le capteur reponde.
-     *
-     * Elle ne s'ouvre pas au retour de la boite de dialogue mais a l'allumage : l'utilisateur passe par
-     * les reglages du systeme entre-temps, et le temps qu'il en revienne, la question qu'il a posee doit
-     * tenir toute seule.
+     * Le capteur est demande, et le tableau de bord attend qu'il reponde pour l'allumer : l'utilisateur
+     * passe par les reglages du systeme entre-temps, et la demande doit tenir toute seule a son retour.
      */
-    var chooserPending by mutableStateOf(false)
+    var gpsPending by mutableStateOf(false)
         private set
 
-    /** Tap sur la cloche : la liste repart vide, les distances d'il y a une heure ne valent plus rien. */
-    fun openChooser() {
-        chooserOpen = true
-        candidates = null
+    /** Le tableau de bord s'ouvre : il demande la localisation du telephone quand elle est coupee. */
+    fun onOpen(sensorEnabled: Boolean) {
+        if (!sensorEnabled) needsGpsDialog = true
     }
 
-    /**
-     * Le geste du bouton de suivi : la liste des traces, ou la proposition d'allumer la localisation du
-     * telephone quand elle est coupee.
-     *
-     * [sensorEnabled] est la localisation du SYSTEME, et non le bouton de la carte : c'est la seule des
-     * deux dont l'absence rend la liste impossible a construire.
-     */
-    fun onBellTap(sensorEnabled: Boolean) {
-        if (sensorEnabled) openChooser() else needsGpsDialog = true
-    }
-
-    /** "Allumer" : la boite se referme, et la liste attend la premiere position. */
+    /** "Allumer" : la boite se referme, et l'allumage attend le capteur. */
     fun awaitGps() {
         needsGpsDialog = false
-        chooserPending = true
+        gpsPending = true
     }
 
     fun dismissNeedsGps() { needsGpsDialog = false }
 
-    /** Le capteur repond : la liste mise en attente s'ouvre enfin. */
-    fun openPendingChooser(sensorEnabled: Boolean) {
-        if (chooserPending && sensorEnabled) {
-            chooserPending = false
-            openChooser()
-        }
+    /** Le capteur repond : rend vrai une fois, quand l'allumage mis en attente doit se faire. */
+    fun consumePending(sensorEnabled: Boolean): Boolean {
+        if (!gpsPending || !sensorEnabled) return false
+        gpsPending = false
+        return true
     }
 
-    /** Plus rien a suivre - reglage eteint, ou capteur coupe : tout ce qui etait en cours se referme. */
     fun reset() {
-        closeChooser()
-        chooserPending = false
         needsGpsDialog = false
-    }
-
-    fun closeChooser() {
-        chooserOpen = false
-        candidates = null
-    }
-
-    /**
-     * Trace retenue : la veille en prend charge, et la liste se referme.
-     *
-     * L'ecart est connu d'emblee - c'est celui qui a servi a classer les candidates - et evite d'afficher
-     * une cloche sans distance le temps de la premiere mesure.
-     */
-    fun follow(c: TrackCandidate, thresholdM: Double) {
-        TrackWatch.follow(
-            TrackWatch.Followed(c.layerId, c.layerName, c.trackIndex, c.trackCount, c.samples),
-            c.awayM, thresholdM,
-            // Le kilometrage de la candidate est celui de sa projection, deja calcule pour la classer : le
-            // tableau de bord a donc ses chiffres des la premiere image, sans attendre une position.
-            alongM = c.alongM,
-            nowMs = SystemClock.elapsedRealtime(),
-        )
-        closeChooser()
+        gpsPending = false
     }
 }

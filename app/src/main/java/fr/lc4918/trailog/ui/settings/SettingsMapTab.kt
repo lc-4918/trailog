@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.alert.DashboardField
 import fr.lc4918.trailog.data.db.MaxGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MaxOffTrackAlertM
@@ -85,23 +86,19 @@ import kotlinx.coroutines.launch
     GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
     SectionTitle(stringResource(R.string.settings_section_position), tight = true)
     SettingsCard {
-        // Éteindre la localisation éteint le suivi de trace avec lui : celui-ci n'a que la position pour
+        // Éteindre la localisation éteint le tableau de bord avec elle : celui-ci n'a que la position pour
         // matière, et son bouton resterait sur la carte sans rien pour allumer ni couper le capteur.
-        // Le lien inverse est tenu par le réglage du suivi, plus bas.
+        // Le lien inverse est tenu par la ligne du tableau de bord, juste dessous.
         SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
             vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
         }
         RowDivider()
         /*
-         * Suivi de trace : le bouton qui ouvre le choix d'une trace, et previent qu'on s'en ecarte.
+         * Le bouton du tableau de bord, juste sous la localisation dont il se nourrit : c'est un bouton de
+         * position comme celui du dessus. Ses champs et son alerte ont leur groupe, plus bas.
          *
-         * Juste sous la localisation, dont il depend : c'est un bouton de position comme celui du dessus,
-         * et le nom qu'il portait avant - "Afficher le bouton" - ne disait rien de ce qu'il allume. Ses
-         * reglages - distance, son - restent ensemble plus bas, avec le reste du groupe GPS.
-         *
-         * Elle allume AUSSI le bouton de localisation, sans le demander : une alerte se nourrit de la
-         * position, et le suivi sans le bouton GPS serait un capteur qu'on ne peut ni voir ni couper.
-         * Le lien inverse est tenu par la ligne du bouton GPS, juste au-dessus.
+         * Il allume AUSSI le bouton de localisation, sans le demander : sans lui, ce serait un capteur
+         * qu'on ne peut ni voir ni couper. Le lien inverse est tenu par la ligne du dessus.
          */
         SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
             vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
@@ -116,7 +113,7 @@ import kotlinx.coroutines.launch
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_sw_poi), cur.poiEnabled,
-            sub = stringResource(R.string.settings_sw_poi_sub),
+            info = stringResource(R.string.settings_sw_poi_sub),
         ) { vm.save(cur.copy(poiEnabled = it)) }
     }
 
@@ -126,7 +123,7 @@ import kotlinx.coroutines.launch
         RowDivider()
         SwitchLine(
             stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
-            sub = stringResource(R.string.settings_sw_track_edit_sub),
+            info = stringResource(R.string.settings_sw_track_edit_sub),
         ) { vm.save(cur.copy(trackEditEnabled = it)) }
     }
 
@@ -158,7 +155,15 @@ import kotlinx.coroutines.launch
 
     GpsMarkerSettings(cur, vm)
 
-    OffTrackAlertSettings(cur, vm)
+    /*
+     * Le tableau de bord : son bouton, ses champs, et l'alerte d'eloignement que sa cloche arme - en un
+     * groupe, puisque c'est lui, desormais, qui porte le suivi de trace.
+     */
+    GroupTitle(stringResource(R.string.settings_group_dashboard))
+
+    DashboardSettings(cur, vm)
+
+    if (cur.offTrackAlertEnabled) OffTrackAlertSettings(cur, vm)
 
     GroupTitle(stringResource(R.string.settings_group_pois))
     SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
@@ -199,12 +204,32 @@ import kotlinx.coroutines.launch
 }
 
 /**
- * Alerte d'eloignement : l'ecart qui la declenche, et le son qui l'accompagne. Elle se commande depuis
- * le bouton de suivi de trace, pose sur la carte.
+ * Les champs du tableau de bord, un interrupteur chacun.
  *
- * L'interrupteur qui la POSE sur la carte n'est plus ici : il a rejoint "Boutons et gestes" sous le nom
- * de ce qu'il allume, "Suivi de trace" - il s'appelait "Afficher le bouton", et seul le titre de cette
- * rubrique disait de quel bouton il s'agissait. Ne restent ici que ses reglages a elle.
+ * Son bouton, lui, est dans "Boutons et gestes", rubrique Position, avec les autres boutons de la carte.
+ * Eteint, le groupe ne montre que ce renvoi : des reglages qui ne servent a rien valent mieux absents que
+ * grises, mais il faut dire ou les allumer.
+ */
+@Composable private fun DashboardSettings(cur: SettingsEntity, vm: SettingsViewModel) {
+    if (!cur.offTrackAlertEnabled) {
+        SettingsCard { Hint(stringResource(R.string.settings_dashboard_off)) }
+        return
+    }
+    SectionTitle(stringResource(R.string.settings_section_dashboard_fields), tight = true)
+    SettingsCard {
+        val masques = DashboardField.hidden(cur.dashboardHidden)
+        DashboardField.entries.forEachIndexed { i, f ->
+            if (i > 0) RowDivider()
+            SwitchLine(stringResource(f.settingsLabel), f !in masques) { on ->
+                vm.save(cur.copy(dashboardHidden = DashboardField.withHidden(cur.dashboardHidden, f, hide = !on)))
+            }
+        }
+    }
+}
+
+/**
+ * Alerte d'eloignement : l'ecart qui la declenche, et le son qui l'accompagne. Elle se commande depuis
+ * la cloche du tableau de bord, qui ne parait que sur une trace suivie.
  *
  * Le son ne montre son choix que s'il est actif : une ligne de reglage qui ne sert a rien vaut mieux
  * absente que grisee.
@@ -302,22 +327,25 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
          */
         SwitchLine(
             stringResource(R.string.settings_sw_gps_recenter), cur.gpsRecenterOnStart,
-            sub = stringResource(R.string.settings_sw_gps_recenter_sub),
+            info = stringResource(R.string.settings_sw_gps_recenter_sub),
         ) { vm.save(cur.copy(gpsRecenterOnStart = it)) }
-        RowDivider()
-        /*
-         * La derniere position mesuree, gardee sur la carte quand le suivi s'arrete.
-         *
-         * Elle y reste en GRIS et immobile - la teinte qui servait a dire "cette position est vieille", et
-         * qui dit desormais quelque chose de sur : ce point n'est plus suivi. On retrouve d'ou l'on vient
-         * sans confondre avec un repere vivant.
-         *
-         * Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme toujours.
-         */
-        SwitchLine(
-            stringResource(R.string.settings_sw_gps_last_fix), cur.gpsShowLastFix,
-            sub = stringResource(R.string.settings_sw_gps_last_fix_sub),
-        ) { vm.save(cur.copy(gpsShowLastFix = it)) }
+        // Reglage fin : mode expert seulement (cf. SettingsEntity.expertMode).
+        if (cur.expertMode) {
+            RowDivider()
+            /*
+             * La derniere position mesuree, gardee sur la carte quand le suivi s'arrete.
+             *
+             * Elle y reste en GRIS et immobile - la teinte qui servait a dire "cette position est vieille", et
+             * qui dit desormais quelque chose de sur : ce point n'est plus suivi. On retrouve d'ou l'on vient
+             * sans confondre avec un repere vivant.
+             *
+             * Eteint par defaut : la carte se rend nue a qui vient de couper le suivi, comme toujours.
+             */
+            SwitchLine(
+                stringResource(R.string.settings_sw_gps_last_fix), cur.gpsShowLastFix,
+                info = stringResource(R.string.settings_sw_gps_last_fix_sub),
+            ) { vm.save(cur.copy(gpsShowLastFix = it)) }
+        }
     }
 }
 
@@ -334,6 +362,8 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
         PickRow(
             stringResource(R.string.settings_label_gps_marker_style),
             marker, GpsMarkerStyle.entries, optionLabel = { gpsMarkerLabel(it) },
+            // L'orientation des fleches, dite au "i" du symbole plutot qu'en bas de la carte.
+            info = stringResource(R.string.settings_gps_marker_heading_hint),
         ) {
             vm.save(cur.copy(
                 gpsMarkerStyle = it.key, gpsMarkerColor = "", gpsMarkerSizeDp = it.defaultSizeDp,
@@ -351,7 +381,6 @@ private fun ringtonePickerIntent(ctx: android.content.Context, current: String):
             steps = MaxGpsMarkerSizeDp - MinGpsMarkerSizeDp - 1,
             onFraction = { vm.save(cur.copy(gpsMarkerSizeDp = valueOf(it, MinGpsMarkerSizeDp, MaxGpsMarkerSizeDp))) },
         )
-        if (marker.oriented) Hint(stringResource(R.string.settings_gps_marker_heading_hint))
     }
     if (pickColor) {
         ColorPickerDialog(

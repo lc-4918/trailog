@@ -6,99 +6,83 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.location.FollowCatalog
 import fr.lc4918.trailog.location.TrackWatch
+import fr.lc4918.trailog.location.TripStore
+import fr.lc4918.trailog.location.TripWatch
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.PlannedRouteLayerId
 import fr.lc4918.trailog.ui.location.LocationControls
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
- * Ce qui allume et ce qui eteint la veille sur la trace suivie.
+ * Ce qui allume et ce qui eteint le tableau de bord et le suivi de trace.
  *
- * **Tout est suspendu au capteur.** Sans position, il n'y a rien a projeter sur la trace : la liste des
- * candidates attend la premiere mesure pour se remplir, et la veille s'arrete d'elle-meme des que le
- * capteur s'eteint. Une trace suivie sans position ne dirait plus rien, et se reveillerait au hasard d'un
- * rallumage, des jours plus tard.
+ * La mesure elle-meme - les compteurs, la trace reconnue, l'ecart et le son - ne se fait pas ici mais
+ * dans le service (cf. LocationService.watchTrack) : l'ecran eteint, la composition s'arrete, et une
+ * alerte qui ne se declenche que sous les yeux de celui qu'elle doit prevenir n'alerte personne. Ce qui
+ * reste ici est ce qui EST une affaire d'ecran : ce que la carte affiche, et ce que les reglages permettent.
  *
- * L'ecart et le son ne se calculent pas ici mais dans le service (cf. LocationService.watchTrack) :
- * l'ecran eteint, la composition s'arrete, et une alerte qui ne se declenche que sous les yeux de celui
- * qu'elle doit prevenir n'alerte personne. Ce qui reste ici est ce qui EST une affaire d'ecran.
- *
- * @param alertEnabled le reglage "alerte d'eloignement" est allume.
+ * @param alertEnabled le reglage "tableau de bord" est allume.
+ * @param dashboardOpen le tableau de bord est affiche (cf. TrackWatch.dashboard).
  * @param followed la trace actuellement suivie, telle que la veille la publie.
  * @param routeSamples la geometrie du parcours que le planificateur affiche, s'il y en a un : elle se
- *   propose au suivi comme une trace de la bibliotheque (cf. [PlannedRouteLayerId]).
- * @param routeLabel le nom sous lequel ce parcours se propose et s'annonce.
+ *   reconnait comme une trace de la bibliotheque (cf. [PlannedRouteLayerId]).
+ * @param routeLabel le nom sous lequel ce parcours s'annonce.
  */
 @Composable
 internal fun OffTrackAlertEffects(
     alert: OffTrackAlertState,
     location: LocationControls,
-    vm: MainViewModel,
     layers: List<LayerEntity>,
     followed: TrackWatch.Followed?,
+    dashboardOpen: Boolean,
     alertEnabled: Boolean,
     routeSamples: List<Sample>?,
     routeLabel: String,
 ) {
-    LaunchedEffect(location.sensorEnabled, alert.chooserPending) {
-        alert.openPendingChooser(location.sensorEnabled)
+    val ctx = LocalContext.current
+    // Les compteurs de la sortie, repris du disque des l'ouverture de l'ecran : le tableau de bord les
+    // montre avant meme que le capteur ait rendu une position.
+    LaunchedEffect(Unit) { TripWatch.restore(TripStore.load(ctx)) }
+    // Le capteur demande depuis la boite "localisation coupee" repond : le tableau de bord l'allume.
+    LaunchedEffect(location.sensorEnabled, alert.gpsPending) {
+        if (alert.consumePending(location.sensorEnabled) && dashboardOpen && !location.gpsActive) {
+            location.startGps(forFollow = true)
+        }
     }
-    /*
-     * Recherche des traces les plus proches : relancée tant que le choix est ouvert et sans réponse, ce qui
-     * couvre le cas du capteur allumé mais pas encore fixé - la liste arrive avec la première position.
-     *
-     * **La position est DEMANDÉE au capteur**, et non lue du repère affiché : celui-ci n'existe que si le
-     * suivi tourne, et l'on se voyait donc refuser la liste des traces alors que le téléphone savait
-     * parfaitement où l'on était. `currentPosition` lit la dernière position connue du système avant
-     * d'interroger le capteur, et répond donc le plus souvent sur-le-champ (cf. LocationControls).
-     */
-    LaunchedEffect(alert.chooserOpen, alert.candidates, location.lastUserLocation) {
-        if (!alert.chooserOpen || alert.candidates != null) return@LaunchedEffect
-        val (la, lo) = location.currentPosition() ?: return@LaunchedEffect
-        // Le parcours du planificateur passe EN TETE, hors classement : c'est celui qu'on vient de
-        // composer, et une trace de la bibliotheque qui passerait plus pres ne repond pas a la question
-        // qu'on pose en touchant la cloche. Projete a l'ecart de la composition - un itineraire fait
-        // couramment plusieurs milliers de points.
-        val enCours = withContext(Dispatchers.Default) { plannedCandidate(routeSamples, routeLabel, la, lo) }
-        vm.nearestTracks(la, lo) { alert.candidates = listOfNotNull(enCours) + it }
-    }
-    /*
-     * Le réglage éteint, ou la localisation du téléphone coupée : plus rien à suivre. La liste ouverte se
-     * referme avec.
-     *
-     * **Le capteur du système, et non le bouton de la carte** : celui-ci ne commande que l'affichage du
-     * repère, et l'éteindre ne doit pas arrêter une trace qu'on suit - le service continue de veiller, la
-     * bannière et le bouton disent toujours où l'on en est. Sans capteur, en revanche, plus rien ne se
-     * calcule, et une trace suivie se réveillerait au hasard d'un rallumage, des jours plus tard.
-     */
-    LaunchedEffect(alertEnabled, location.sensorEnabled) {
-        if (!alertEnabled || !location.sensorEnabled) {
-            TrackWatch.stop()
+    // Le parcours du planificateur, depose pour la detection : le service le lit a chaque position.
+    LaunchedEffect(routeSamples, routeLabel) { FollowCatalog.setRoute(routeSamples, routeLabel) }
+    // Le reglage eteint : le tableau de bord se ferme, et le suivi avec lui.
+    LaunchedEffect(alertEnabled) {
+        if (!alertEnabled) {
+            TrackWatch.setDashboard(false)
             alert.reset()
         }
     }
     /*
-     * **La trace suivie s'arrete : le capteur qu'elle avait allume se rend.**
-     *
-     * Choisir une trace allume le suivi tout seul (cf. MainDialogs) - c'est ce qu'on vient demander. Mais
-     * l'arret ne rendait rien : le service continuait de tourner, et sa notification "Suivi de position"
-     * restait dans le volet avec son bouton "Arreter", seul moyen de s'en defaire. On avait allume sans le
-     * demander, et il fallait eteindre a la main.
-     *
-     * Ici plutot qu'au bouton d'arret de la fenetre : une trace cesse d'etre suivie par cinq chemins - le
-     * bouton, la couche masquee ou supprimee, le parcours du planificateur referme, le reglage eteint, la
-     * localisation coupee - et quatre d'entre eux auraient oublie de rendre le capteur.
-     *
-     * Le capteur allume par le BOUTON de localisation, lui, survit : il n'a pas ete allume pour cette
-     * trace, et le repere qu'on regarde n'a pas a disparaitre parce qu'on cesse de suivre un itineraire
-     * (cf. LocationControls.startedForFollow).
+     * La localisation du téléphone coupée : plus rien à suivre. Une trace suivie sans position ne dirait
+     * plus rien, et se réveillerait au hasard d'un rallumage, des jours plus tard. Le tableau de bord,
+     * lui, reste : ses compteurs valent toujours ce qu'ils ont compté. Et la cloche se souvient de sa
+     * trace : reconnue au rallumage, elle la retrouve armée (cf. TrackWatch.bellKey).
      */
-    LaunchedEffect(followed, location.startedForFollow) {
-        if (followed == null && location.startedForFollow) location.stopGps()
+    LaunchedEffect(location.sensorEnabled) {
+        if (!location.sensorEnabled) TrackWatch.stop(forgetBell = false)
+    }
+    /*
+     * **Le tableau de bord se ferme : le capteur qu'il avait allumé se rend.**
+     *
+     * L'ouvrir allume le capteur s'il était éteint - ses compteurs n'ont que la position pour matière. Le
+     * fermer le rend, sans quoi la notification "Suivi de position" resterait dans le volet, seul moyen
+     * de s'en défaire.
+     *
+     * Le capteur allumé par le BOUTON de localisation, lui, survit : il n'a pas été allumé pour le tableau
+     * de bord (cf. LocationControls.startedForFollow).
+     */
+    LaunchedEffect(dashboardOpen, location.startedForFollow) {
+        if (!dashboardOpen && location.startedForFollow) location.stopGps()
     }
     // Couche supprimée ou masquée en cours de suivi : elle n'est plus sur la carte, on ne la suit plus.
     // Le parcours du planificateur n'a pas de couche : c'est l'effet suivant qui veille sur lui.
