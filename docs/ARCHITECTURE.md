@@ -902,7 +902,8 @@ et une alerte d'éloignement qui n'a sonné qu'au rallumage de l'écran, à dix 
 
 Trois règles en découlent. **Le service s'abonne à tous les fournisseurs actifs**, pas au meilleur du
 moment : le réseau prend le relais quand le GPS s'éteint, et le GPS reprend la main au rallumage sans que
-personne n'ait rien à faire ; `FixPicker` départage les positions qui arrivent alors en double. **Ce qu'on
+personne n'ait rien à faire ; `FixPicker` départage les positions qui arrivent alors en double - à fournisseur égal une dégradation de
+précision est tolérée, d'un fournisseur à l'autre il faut faire mieux. **Ce qu'on
 conclut d'une position est borné par sa précision** : une position réseau se donne à quelques centaines de
 mètres près, et n'ouvre ni ne lève une alerte que son incertitude à elle seule expliquerait. **Le silence
 se surveille à l'horloge**, puisque aucun événement ne l'annonce : `FixWatchdog` tente d'abord un

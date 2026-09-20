@@ -91,6 +91,7 @@ class LocationService : Service() {
 
     /** La position tenue a cet instant : de quoi departager celle qui arrive (cf. [FixPicker]). */
     private var held = false
+    private var heldProvider = ""
     private var heldAccuracyM = 0f
     private var heldAtMs = 0L
 
@@ -108,11 +109,13 @@ class LocationService : Service() {
     private fun onFix(loc: Location) {
         val mesureeA = loc.elapsedRealtimeNanos / 1_000_000L
         val precision = if (loc.hasAccuracy()) loc.accuracy else 0f
-        if (held && !FixPicker.better(heldAccuracyM, heldAtMs, precision, mesureeA)) {
-            FixLog.write(this) { "ecartee ${loc.provider} prec=${precision.toInt()}m" }
+        val fournisseur = loc.provider ?: ""
+        if (held && !FixPicker.better(heldProvider, heldAccuracyM, heldAtMs, fournisseur, precision, mesureeA)) {
+            FixLog.write(this) { "ecartee $fournisseur prec=${precision.toInt()}m" }
             return
         }
         held = true
+        heldProvider = fournisseur
         heldAccuracyM = precision
         heldAtMs = mesureeA
         // Les positions sont revenues : ce qui annoncait leur silence n'a plus d'objet.
@@ -423,7 +426,9 @@ class LocationService : Service() {
             awaitProvider()
             return
         }
-        if (!subscribe()) {
+        // La liste deja calculee, et non une seconde lecture : les fournisseurs peuvent changer entre
+        // les deux, et le journal annoncerait alors un abonnement qui n'est pas celui qu'il decrit.
+        if (!subscribe(actifs)) {
             awaitProvider()
             return
         }
@@ -496,9 +501,8 @@ class LocationService : Service() {
      * pour autant - un fournisseur muet est muet - et rend le suivi continu partout ailleurs.
      */
     @SuppressLint("MissingPermission")
-    private fun subscribe(): Boolean {
+    private fun subscribe(actifs: List<String> = enabledProviders()): Boolean {
         if (!hasPermission()) return false
-        val actifs = enabledProviders()
         if (actifs.isEmpty()) return false
         val pris = actifs.filter { provider ->
             runCatching {
@@ -511,6 +515,7 @@ class LocationService : Service() {
         rest = RestDetector.State()
         resting = false
         held = false
+        heldProvider = ""
         // La derniere position connue tout de suite : le systeme la tient deja, et l'attendre laisserait
         // la carte sans repere pendant les secondes que le GPS met a se fixer.
         pris.firstNotNullOfOrNull { runCatching { locationManager.getLastKnownLocation(it) }.getOrNull() }
@@ -658,7 +663,9 @@ class LocationService : Service() {
                 // accrocherait aussi bien la trace d'a cote, et c'est ce qu'on suivrait ensuite.
                 if (fix.accuracyM > AutoFollow.ON_TRACK_M) return@collect
                 val candidates = listOfNotNull(FollowCatalog.route.value) + candidatesNear(fix.lat, fix.lon)
-                TrackWatch.detect(fix.lat, fix.lon, candidates, seuil, SystemClock.elapsedRealtime())
+                if (TrackWatch.detect(fix.lat, fix.lon, candidates, seuil, SystemClock.elapsedRealtime())) {
+                    FixLog.write(this@LocationService) { "trace accrochee \"${TrackWatch.followed.value?.layerName}\"" }
+                }
                 return@collect
             }
             // La projection rend l'ecart ET le kilometrage : c'est le second qui dit ou l'on en est de la
@@ -666,10 +673,16 @@ class LocationService : Service() {
             val projete = TrackMeasure.project(suivie.samples, fix.lon, fix.lat) ?: return@collect
             val away = projete.awayM
             when (TrackWatch.step(away, seuil, projete.alongM, fix.accuracyM.toDouble())) {
-                TrackWatch.Step.Leave -> { TrackWatch.stop(); notice.value = null; return@collect }
+                TrackWatch.Step.Leave -> {
+                    FixLog.write(this@LocationService) { "trace lachee a ${away.toInt()}m (seuil ${seuil.toInt()}m)" }
+                    TrackWatch.stop(); notice.value = null; return@collect
+                }
                 // L'entree en alerte ne joue plus le son elle-meme : la sonnerie boucle tant que l'ecart
                 // dure, et c'est donc l'ETAT de l'alerte qui la commande (cf. [watchAlertRing]).
-                TrackWatch.Step.Alert, TrackWatch.Step.Stay -> Unit
+                TrackWatch.Step.Alert -> FixLog.write(this@LocationService) {
+                    "ecart : entree en alerte a ${away.toInt()}m (seuil ${seuil.toInt()}m, prec=${fix.accuracyM.toInt()}m)"
+                }
+                TrackWatch.Step.Stay -> Unit
             }
             notice.value = getString(
                 R.string.location_notice_following,
@@ -794,6 +807,9 @@ class LocationService : Service() {
                 uri = uri,
             )
         }.distinctUntilChanged().collect { etat ->
+            FixLog.write(this@LocationService) {
+                "ecart : notification=${etat.notifier} sonnerie=${etat.sonner}"
+            }
             if (etat.notifier) postOffTrackAlert() else cancelOffTrackAlert()
             if (etat.sonner) AlertSound.start(this@LocationService, etat.uri) else AlertSound.stop()
         }

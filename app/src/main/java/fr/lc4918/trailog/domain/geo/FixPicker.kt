@@ -24,11 +24,18 @@ object FixPicker {
     const val STALE_MS = 10_000L
 
     /**
-     * Degradation de precision toleree pour une position plus recente : cinquante metres.
+     * Degradation de precision toleree pour une position plus recente DU MEME fournisseur :
+     * cinquante metres.
      *
      * En deca, on prefere la fraicheur - un GPS qui se degrade en passant sous les arbres reste le
-     * bon repere. Au-dela, c'est un autre fournisseur, bien plus grossier, qui parle : il n'a rien a
-     * dire tant que le premier repond.
+     * bon repere, et exiger de lui qu'il s'ameliore sans cesse figerait le curseur sur sa meilleure
+     * mesure de la journee.
+     *
+     * **D'un fournisseur a l'autre, cette tolerance n'a pas de sens**, et un journal de sortie l'a
+     * montre : le GPS tenait un repere a huit metres, et deux positions reseau a trente-quatre et
+     * trente-neuf metres sont passees - le curseur a pu bouger d'une trentaine de metres sans que
+     * rien ne bouge. Le reseau n'est pas un GPS qui faiblit, il est structurellement plus grossier :
+     * il ne prend la main qu'en faisant mieux, ou quand le GPS s'est tu (cf. [STALE_MS]).
      */
     const val WORSE_M = 50f
 
@@ -43,14 +50,18 @@ object FixPicker {
      * La position candidate remplace-t-elle celle qu'on tient ?
      *
      * [heldAtMs] et [newAtMs] sont les instants de mesure, [heldAccuracyM] et [newAccuracyM] les
-     * precisions annoncees.
+     * precisions annoncees, [heldProvider] et [newProvider] ceux qui les ont rendues - c'est d'eux
+     * que depend la degradation toleree (cf. [WORSE_M]).
      */
-    fun better(heldAccuracyM: Float, heldAtMs: Long, newAccuracyM: Float, newAtMs: Long): Boolean {
+    fun better(
+        heldProvider: String, heldAccuracyM: Float, heldAtMs: Long,
+        newProvider: String, newAccuracyM: Float, newAtMs: Long,
+    ): Boolean {
         if (newAtMs < heldAtMs) return false
         if (newAtMs - heldAtMs >= STALE_MS) return true
         val tenue = weight(heldAccuracyM)
         val candidate = weight(newAccuracyM)
         if (candidate <= tenue) return true
-        return candidate - tenue <= WORSE_M
+        return newProvider == heldProvider && candidate - tenue <= WORSE_M
     }
 }

@@ -110,7 +110,7 @@ test unitaire.
 
 ## Tests unitaires
 
-**1195 tests, 114 fichiers**, tous verts.
+**1200 tests, 115 fichiers**, tous verts.
 
 ### `domain/geo` - calculs
 
@@ -121,7 +121,7 @@ test unitaire.
 | `FormatTest` | 14 | formatage des durées, distances et altitudes affichées dans le profil et sur les mesures de géocodage |
 | `TrackMeasureTest` | 12 | rabattement d'un tap sur la trace la plus proche, échantillonnage du parcours mesuré |
 | `OffTrackTest` | 18 | pré-tri des couches sur leur emprise, bascule de l'alerte d'éloignement, et ce qu'une position floue n'autorise pas à conclure |
-| `FixPickerTest` | 6 | le tri des positions quand plusieurs fournisseurs répondent ensemble |
+| `FixPickerTest` | 7 | le tri des positions quand plusieurs fournisseurs répondent ensemble |
 | `FixWatchdogTest` | 3 | le suivi abonné au capteur qui ne reçoit plus rien : quand se rabonner, quand le dire |
 
 `TrackMeasureTest` verrouille les deux bouts de la mesure sur trace : un tap n'a pas à viser la ligne
@@ -149,6 +149,12 @@ trier les positions qui arrivent alors en double (`FixPickerTest`), et surveille
 personne ne l'annonce (`FixWatchdogTest`). `OffTrackTest` en tire la quatrième : une position réseau se
 donne à quelques centaines de mètres près, et n'a donc le droit ni d'ouvrir ni de lever une alerte que
 son incertitude à elle seule expliquerait.
+
+Une sortie journalisée a ensuite corrigé `FixPicker` sur un point que le raisonnement seul n'avait pas
+vu : la tolérance de 50 m accordée à une position plus récente valait **d'un fournisseur à l'autre**, et
+des positions réseau à 34 m passaient devant un GPS à 8 m - le curseur bougeait d'une trentaine de mètres
+sans que rien ne bouge. Le réseau n'est pas un GPS qui faiblit : la tolérance ne vaut plus qu'à
+fournisseur égal, et un autre doit faire mieux, ou attendre que le premier se taise.
 
 `TrackEditTest` couvre les seules opérations qui **modifient** une trace reçue : une faute n'y est pas
 réparable, le fichier d'origine n'est plus là. Il verrouille que le point de coupe appartient aux **deux**
@@ -541,6 +547,7 @@ apparaît d'elle-même au lieu de rester invisible jusqu'à ce que l'utilisateur
 | `FollowedStoreTest` | 5 | la trace suivie gardée sur le disque : ce qui traverse la mort du processus |
 | `LocationHubTest` | 10 | la différence entre un suivi qu'on arrête, un suivi qui s'arrête, et un suivi qui se tait |
 | `TripWatchTest` | 3 | les compteurs de la sortie entre le service, le bouton de remise à zéro et le disque |
+| `FixLogTest` | 4 | le journal de sortie (build debug) : sa mise en forme, et sa rotation |
 | `LastFixShownTest` | 5 | la dernière position mesurée, gardée en gris quand le suivi s'arrête |
 
 `LocationHubTest` **vient du terrain.** Un testeur a fait vingt kilomètres dans le mauvais sens : son
