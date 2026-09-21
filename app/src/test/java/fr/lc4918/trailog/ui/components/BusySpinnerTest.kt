@@ -19,6 +19,12 @@ import org.robolectric.RobolectricTestRunner
  *
  * Il parait pendant les quelques dixiemes de seconde - parfois deux - ou l'application prepare un ecran
  * lourd sans que rien ne bouge : l'attente etait muette, et l'on retapait sur le bouton.
+ *
+ * **Ce que ces tests ne couvrent PAS** : l'encre. Ils mesurent la place occupee, et c'est
+ * precisement ce qui ne suffisait pas - l'indicateur de Material 3 en 1.4 prenait bien ses 40 % et
+ * n'en dessinait qu'une pastille dans un coin. La capture d'image, qui seule le dirait, n'aboutit
+ * pas sous Robolectric (le dessin de fenetre ne se termine jamais). Le rond est donc trace au
+ * compas plutot que pris a Material, et son dessin se verifie a l'oeil.
  */
 @RunWith(RobolectricTestRunner::class)
 class BusySpinnerTest {
