@@ -43,6 +43,21 @@ class BusySpinnerTest {
         assertEquals(attendu, n.size.height)
     }
 
+    /**
+     * L'angle fait un tour complet, puis recommence.
+     *
+     * L'arc tourne sur l'horloge des images et non sur une animation : une animation depend de
+     * l'echelle d'animation du telephone, et a zero elle saute a sa valeur finale - un temoin
+     * d'attente fige, ce qui est le contraire de ce qu'il doit faire.
+     */
+    @Test fun `l'angle tourne avec le temps, et boucle`() {
+        val tour = 1_100L
+        assertEquals(0f, spinnerAngle(0L), 0.01f)
+        assertEquals(180f, spinnerAngle(tour / 2 * 1_000_000L), 0.5f)
+        assertEquals("un tour plus tard, on repart de zero", 0f, spinnerAngle(tour * 1_000_000L), 0.01f)
+        assertEquals("et le suivant aussi", 180f, spinnerAngle((tour * 3 / 2) * 1_000_000L), 0.5f)
+    }
+
     /** Il se centre sur ce qui l'accueille, et non sur un coin. */
     @Test fun `le rond se pose au milieu`() {
         compose.setContent { Box(Modifier.size(200.dp)) { BusySpinner() } }
