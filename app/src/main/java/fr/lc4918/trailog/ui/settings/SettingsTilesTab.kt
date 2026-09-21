@@ -170,7 +170,10 @@ import kotlinx.coroutines.launch
         // une zone qu'on cadre sur la carte. Composer vient en dessous : il assemble ce qu'on a deja.
         val telechargeable = offlineDownloadAvailable(cur.defaultBasemapId, providers)
         var refusFond by remember { mutableStateOf(false) }
-        Row(Modifier.fillMaxWidth()) {
+        // Le haut de la carte au meme retrait que ses cotes : les boutons portent deja six points de
+        // marge verticale, contre quatorze de marge laterale, et la rangee s'en trouvait collee au bord
+        // haut. Les huit points manquants sont poses ici.
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             CardButton(
                 stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_import),
                 modifier = Modifier.weight(1f), onClick = onPickMbtiles,

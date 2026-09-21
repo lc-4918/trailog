@@ -159,6 +159,9 @@ private val RowGap = 12.dp
 
 /** Ecart entre les trois elements d'un pas-a-pas, et largeur de sa valeur. */
 private val StepGap = 4.dp
+
+/** Le retrait qui rend au libelle d'un bouton une part de ce que son "i" lui prend (cf. [CardButton]). */
+private val InfoLead = 8.dp
 private val StepValueWidth = 26.dp
 
 /** L'interrupteur redessine (cf. [SettingsSwitch]) : sa largeur sert a placer ce qui le precede. */
@@ -681,7 +684,12 @@ fun ColumnScopeMarker.CardButton(
     Row(
         modifier.padding(horizontal = RowPadH, vertical = 6.dp)
             .height(42.dp).clip(RoundedCornerShape(12.dp)).background(p.accentContainer)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            // Le "i" occupe la droite du bouton et pousse vers la gauche le groupe icone + libelle, qui
+            // se centre avec lui : ce retrait rend au libelle une partie de ce que le "i" lui prend.
+            // Huit points et pas davantage - le contenu remplit deja le bouton, et ce qui deborderait
+            // serait rogne. Un libelle plus long qu'en francais n'aurait pas cette marge.
+            .padding(start = if (info != null) InfoLead else 0.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
