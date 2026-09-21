@@ -163,6 +163,36 @@ class DashboardUiTest {
     // ---------- le corps des compteurs ----------
 
     /**
+     * Chaque champ porte SA taille : celle qu'on regle pour la vitesse ne touche pas aux autres.
+     *
+     * C'est la demande qui a remplace le corps unique - ce qu'on veut lire d'un coup d'oeil sur un
+     * guidon n'est pas la meme chose d'un champ a l'autre, et un corps unique obligeait a choisir
+     * pour tous.
+     */
+    @Test fun `la taille d'un champ ne touche pas a celle des autres`() {
+        val csv = DashboardField.withFontSize("", DashboardField.SPEED, 32)
+        assertEquals("speed:32", csv)
+        val tailles = DashboardField.fontSizes(csv)
+        assertEquals(32, tailles[DashboardField.SPEED])
+        assertEquals(null, tailles[DashboardField.DISTANCE])
+    }
+
+    /** Remise a la taille par defaut : l'entree disparait plutot que de porter la valeur d'origine. */
+    @Test fun `revenir a la taille par defaut retire l'entree`() {
+        val csv = DashboardField.withFontSize("speed:32,ascent:12", DashboardField.SPEED, DashboardFontDefaultSp)
+        assertEquals("ascent:12", csv)
+    }
+
+    /** Une base abimee ne doit pas rendre un compteur illisible ni demesure. */
+    @Test fun `une taille aberrante se ramene dans ses bornes`() {
+        val tailles = DashboardField.fontSizes("speed:999,distance:1,duration:abc,inconnu:20,ascent")
+        assertEquals(DashboardFontMaxSp, tailles[DashboardField.SPEED])
+        assertEquals(DashboardFontMinSp, tailles[DashboardField.DISTANCE])
+        assertEquals(null, tailles[DashboardField.DURATION])
+        assertEquals(null, tailles[DashboardField.ASCENT])
+    }
+
+    /**
      * Le corps se regle, et le panneau suit.
      *
      * **Ce que ce test protege.** Les compteurs se resserrent d'eux-memes pour tenir dans leur colonne
@@ -175,8 +205,9 @@ class DashboardUiTest {
         compose.setContent {
             Dashboard(
                 trip = trip, speedMps = 2.5f, progress = null, trackName = null, armed = false,
-                alerting = false, hidden = emptySet(), fontSp = corps, imperial = false,
-                bg = Color.White, fg = Color.Black, onBell = {}, onReset = {},
+                alerting = false, hidden = emptySet(),
+                fontSizes = DashboardField.entries.associateWith { corps },
+                imperial = false, bg = Color.White, fg = Color.Black, onBell = {}, onReset = {},
             )
         }
         val petit = compose.onNodeWithTag("dashboard").fetchSemanticsNode().size.height

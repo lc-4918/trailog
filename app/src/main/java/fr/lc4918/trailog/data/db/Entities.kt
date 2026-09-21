@@ -361,9 +361,14 @@ data class SettingsEntity(
     // Vide : tous s'affichent. Les MASQUES plutot que les affiches, pour qu'un champ ajoute plus tard
     // paraisse de lui-meme au lieu d'attendre qu'on aille le cocher.
     val dashboardHidden: String = "",
-    // Corps du texte des compteurs du tableau de bord, en points. Les libelles suivent, proportionnellement
-    // (cf. Dashboard). Seize : la taille d'origine, et celle qui convient a qui ne se pose pas la question.
-    // Un corps plus grand fait passer les champs a la ligne, et le panneau grandit avec eux.
+    // Corps du texte des compteurs, CHAMP PAR CHAMP : "speed:22,ascent:14" (cf. DashboardField.fontSizes).
+    // Les libelles suivent, proportionnellement. Un champ absent garde la taille par defaut - les tailles
+    // REGLEES plutot que toutes, comme les champs masques, pour qu'un champ ajoute plus tard s'affiche
+    // correctement sans entree a lui. Un corps plus grand fait passer les champs a la ligne, et le panneau
+    // grandit avec eux.
+    val dashboardFontSizes: String = "",
+    // Le corps unique qui precedait, garde le temps que Room retrouve sa colonne : il n'est plus lu (une
+    // colonne ne se retire pas sans reconstruire la table, cf. profileVerticalScale).
     val dashboardFontSize: Int = 16,
     // Mode expert des reglages : les reglages fins (panneau des fonds, preferences de trace, services,
     // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur l'avatar des reglages

@@ -660,7 +660,6 @@
     <string name="settings_group_dashboard">Tauler</string>
     <string name="content_desc_dashboard">Tauler</string>
     <string name="settings_section_dashboard_fields">Camps mostrats</string>
-    <string name="settings_label_dashboard_font">Mida del text</string>
     <string name="dash_eta">Temps restant</string>
     <string name="dash_set_eta">Temps restant estimat</string>
     <string name="settings_dashboard_off">Activa el botó del tauler a Botons i gestos, secció Posició.</string>

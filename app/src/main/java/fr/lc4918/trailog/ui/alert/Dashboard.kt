@@ -90,6 +90,31 @@ enum class DashboardField(
             return entries.filter { it in set }.joinToString(",") { it.key }
         }
 
+        /**
+         * Les tailles reglees, par champ : `"speed:22,ascent:14"`. Un champ absent garde la taille par
+         * defaut, une cle inconnue s'ignore, une valeur aberrante se ramene dans ses bornes.
+         *
+         * Les REGLEES plutot que toutes, comme les champs masques : un champ ajoute plus tard n'a pas
+         * besoin d'une entree pour s'afficher correctement, et une base ancienne reste lisible.
+         */
+        fun fontSizes(csv: String): Map<DashboardField, Int> {
+            val parCle = entries.associateBy { it.key }
+            return csv.split(',').mapNotNull { part ->
+                val i = part.indexOf(':')
+                if (i <= 0) return@mapNotNull null
+                val f = parCle[part.take(i).trim()] ?: return@mapNotNull null
+                val sp = part.substring(i + 1).trim().toIntOrNull() ?: return@mapNotNull null
+                f to sp.coerceIn(DashboardFontMinSp, DashboardFontMaxSp)
+            }.toMap()
+        }
+
+        /** La taille de [field] apres l'avoir mise a [sp], dans l'ordre des champs. */
+        fun withFontSize(csv: String, field: DashboardField, sp: Int): String {
+            val tailles = fontSizes(csv).toMutableMap()
+            if (sp == DashboardFontDefaultSp) tailles -= field else tailles[field] = sp
+            return entries.filter { it in tailles }.joinToString(",") { "${it.key}:${tailles[it]}" }
+        }
+
         /** Les champs a afficher de la rangee [onTrack], dans leur ordre. */
         fun shown(hidden: Set<DashboardField>, onTrack: Boolean): List<DashboardField> =
             entries.filter { it !in hidden && it.onTrack == onTrack }
@@ -155,12 +180,17 @@ private const val SpeedWeight = 1.25f
 private val SectionGap = 12.dp
 
 /**
- * Le corps des compteurs, en points, quand rien n'est regle : celui qu'ils ont toujours eu.
+ * Le corps d'un compteur, en points, quand rien n'est regle : celui qu'ils ont toujours eu.
  *
- * Il se regle desormais (cf. `SettingsEntity.dashboardFontSize`) : un guidon se lit a bout de bras, et
- * seize points a cette distance ne valent pas seize points dans la main.
+ * Il se regle desormais, **champ par champ** (cf. [DashboardField.fontSizes]) : ce qu'on veut lire d'un
+ * coup d'oeil sur un guidon n'est pas la meme chose pour tout le monde ni pour toutes les sorties - la
+ * vitesse en grand et le reste en petit, ou l'inverse -, et un corps unique obligeait a choisir pour tous.
  */
 const val DashboardFontDefaultSp = 16
+
+/** Les bornes du reglage : en deca on ne lit plus, au-dela un seul champ prend la carte. */
+const val DashboardFontMinSp = 10
+const val DashboardFontMaxSp = 40
 
 /**
  * Le libelle par rapport a la valeur : onze points pour seize, et cette proportion se garde.
@@ -185,7 +215,7 @@ private const val LabelRatio = 11f / 16f
  *
  * @param progress l'avancement sur la trace suivie, null hors trace.
  * @param trackName le nom de la trace suivie, null hors trace.
- * @param fontSp le corps des compteurs (cf. [DashboardFontDefaultSp]) ; les libelles suivent.
+ * @param fontSizes le corps de chaque compteur (cf. [DashboardField.fontSizes]) ; les libelles suivent.
  */
 @Composable
 fun Dashboard(
@@ -196,7 +226,7 @@ fun Dashboard(
     armed: Boolean,
     alerting: Boolean,
     hidden: Set<DashboardField>,
-    fontSp: Int = DashboardFontDefaultSp,
+    fontSizes: Map<DashboardField, Int> = emptyMap(),
     imperial: Boolean,
     bg: Color,
     fg: Color,
@@ -214,7 +244,7 @@ fun Dashboard(
             .padding(start = 8.dp, end = 8.dp, top = 8.dp)
             .testTag("dashboard"),
     ) {
-        FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fg, fontSp)
+        FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fg, fontSizes)
         if (following) {
             Spacer(Modifier.height(SectionGap))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -235,7 +265,7 @@ fun Dashboard(
                     modifier = Modifier.weight(1f).testTag("dashboard_track"),
                 )
             }
-            FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fg, fontSp)
+            FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fg, fontSizes)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = { confirmReset = true }, modifier = Modifier.size(40.dp).testTag("dashboard_reset")) {
@@ -273,7 +303,7 @@ fun Dashboard(
 @Composable
 private fun FieldRow(
     fields: List<DashboardField>, trip: Trip, speedMps: Float?, progress: FollowProgress?, imperial: Boolean,
-    fg: Color, fontSp: Int,
+    fg: Color, fontSizes: Map<DashboardField, Int>,
 ) {
     if (fields.isEmpty()) return
     FlowRow(
@@ -283,7 +313,8 @@ private fun FieldRow(
     ) {
         fields.forEach { f ->
             Field(
-                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial), fg, fontSp,
+                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial), fg,
+                fontSizes[f] ?: DashboardFontDefaultSp,
                 Modifier.weight(if (f == DashboardField.SPEED) SpeedWeight else 1f),
             )
         }

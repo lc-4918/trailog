@@ -1,5 +1,9 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.DisposableEffect
@@ -149,6 +153,13 @@ private val RowPadH = 14.dp
 private val RowPadV = 9.dp
 private val RowMinHeight = 46.dp
 private val RowGap = 12.dp
+
+/** Ecart entre les trois elements d'un pas-a-pas, et largeur de sa valeur. */
+private val StepGap = 4.dp
+private val StepValueWidth = 26.dp
+
+/** L'interrupteur redessine (cf. [SettingsSwitch]) : sa largeur sert a placer ce qui le precede. */
+private val SwitchWidth = 38.dp
 private val LabelSp = 12.5f
 private val SubSp = 10.5f
 
@@ -395,6 +406,81 @@ fun ColumnScopeMarker.StepperRow(
         Text("$value", fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
             textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 26.dp))
         StepButton("+", increaseLabel) { if (value < max) onChange(value + 1) }
+    }
+}
+
+/**
+ * Une serie de lignes "libelle - taille - interrupteur", dont les pas-a-pas sont TOUS a la meme
+ * abscisse.
+ *
+ * **Pourquoi une geometrie calculee et non un simple alignement a droite.** Le pas-a-pas se glisse entre
+ * le libelle et l'interrupteur, dans l'espace qui reste. Cet espace n'est pas le meme d'une ligne a
+ * l'autre - "Vitesse instantanee" est court, "Denivele negatif restant" long -, et laisser chaque ligne
+ * s'arranger donnerait une colonne de commandes en escalier, que l'oeil ne suit plus. C'est donc la ligne
+ * la plus serree, celle du plus long libelle, qui decide pour toutes : le pas-a-pas se centre dans SON
+ * espace libre, et les autres se posent a la meme abscisse.
+ *
+ * [width] est la largeur de la carte, telle qu'un `BoxWithConstraints` la donne.
+ */
+data class AlignedStepperMetrics(val labelWidth: Dp, val lead: Dp)
+
+/** Largeur du pas-a-pas : deux boutons de 28, la valeur au milieu, et leurs ecarts. */
+private val StepperWidth = 28.dp + StepGap + StepValueWidth + StepGap + 28.dp
+
+/** Ce qu'on laisse au minimum entre le libelle et le pas-a-pas, meme quand l'espace manque. */
+private val MinLead = 8.dp
+
+@Composable
+fun alignedStepperMetrics(labels: List<String>, width: Dp): AlignedStepperMetrics {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val style = TextStyle(fontSize = LabelSp.sp)
+    // Le plus long libelle, mesure et non estime : il change avec la langue, et une largeur en dur
+    // tiendrait en francais pour deborder en allemand.
+    val widest = remember(labels, density, measurer) {
+        labels.maxOfOrNull { with(density) { measurer.measure(AnnotatedString(it), style).size.width.toDp() } }
+            ?: 0.dp
+    }
+    val inner = width - RowPadH * 2
+    val libelle = widest.coerceAtMost((inner - SwitchWidth - StepperWidth - MinLead * 2).coerceAtLeast(0.dp))
+    val libre = (inner - libelle - SwitchWidth).coerceAtLeast(0.dp)
+    return AlignedStepperMetrics(libelle, ((libre - StepperWidth) / 2).coerceAtLeast(MinLead))
+}
+
+/**
+ * Une ligne de champ du tableau de bord : son nom, la taille de son texte, et son interrupteur.
+ *
+ * La ligne entiere bascule l'interrupteur, comme toute [SwitchLine] ; les deux boutons du pas-a-pas
+ * gardent leur propre tap.
+ */
+@Composable
+fun ColumnScopeMarker.SwitchStepperRow(
+    label: String, value: Int, min: Int, max: Int, checked: Boolean,
+    metrics: AlignedStepperMetrics, decreaseLabel: String, increaseLabel: String,
+    onValue: (Int) -> Unit, onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .clickable(role = Role.Switch) { onToggle(!checked) }
+            .defaultMinSize(minHeight = RowMinHeight)
+            .padding(horizontal = RowPadH, vertical = RowPadV),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label,
+            modifier = Modifier.width(metrics.labelWidth),
+        )
+        Spacer(Modifier.width(metrics.lead))
+        StepButton("−", decreaseLabel) { if (value > min) onValue(value - 1) }
+        Spacer(Modifier.width(StepGap))
+        Text(
+            "$value", fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+            textAlign = TextAlign.Center, modifier = Modifier.width(StepValueWidth),
+        )
+        Spacer(Modifier.width(StepGap))
+        StepButton("+", increaseLabel) { if (value < max) onValue(value + 1) }
+        Spacer(Modifier.weight(1f))
+        SettingsSwitch(checked)
     }
 }
 

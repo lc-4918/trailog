@@ -662,7 +662,6 @@
     <string name="settings_group_dashboard">Tableau de bord</string>
     <string name="content_desc_dashboard">Tableau de bord</string>
     <string name="settings_section_dashboard_fields">Champs affichés</string>
-    <string name="settings_label_dashboard_font">Taille du texte</string>
     <string name="dash_eta">Temps restant</string>
     <string name="dash_set_eta">Temps restant estimé</string>
     <string name="settings_dashboard_off">Activez le bouton du tableau de bord dans Boutons et gestes, rubrique Position.</string>

@@ -660,7 +660,6 @@
     <string name="settings_group_dashboard">Dashboard</string>
     <string name="content_desc_dashboard">Dashboard</string>
     <string name="settings_section_dashboard_fields">Angezeigte Felder</string>
-    <string name="settings_label_dashboard_font">Textgröße</string>
     <string name="dash_eta">Restzeit</string>
     <string name="dash_set_eta">Geschätzte Restzeit</string>
     <string name="settings_dashboard_off">Schalten Sie die Dashboard-Schaltfläche unter Schaltflächen und Gesten, Abschnitt Position, ein.</string>

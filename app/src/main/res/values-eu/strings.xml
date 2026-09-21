@@ -660,7 +660,6 @@
     <string name="settings_group_dashboard">Aginte-panela</string>
     <string name="content_desc_dashboard">Aginte-panela</string>
     <string name="settings_section_dashboard_fields">Erakutsitako eremuak</string>
-    <string name="settings_label_dashboard_font">Testuaren tamaina</string>
     <string name="dash_eta">Geratzeko denb.</string>
     <string name="dash_set_eta">Geratzen den denbora</string>
     <string name="settings_dashboard_off">Aktibatu aginte-panelaren botoia Botoiak eta keinuak atalean, Kokapena azpiatalean.</string>

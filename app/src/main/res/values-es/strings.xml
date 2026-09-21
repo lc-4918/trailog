@@ -660,7 +660,6 @@
     <string name="settings_group_dashboard">Panel</string>
     <string name="content_desc_dashboard">Panel</string>
     <string name="settings_section_dashboard_fields">Campos mostrados</string>
-    <string name="settings_label_dashboard_font">Tamaño del texto</string>
     <string name="dash_eta">Tiempo rest.</string>
     <string name="dash_set_eta">Tiempo restante estimado</string>
     <string name="settings_dashboard_off">Activa el botón del panel en Botones y gestos, sección Posición.</string>

@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,6 +43,9 @@ import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.ui.alert.DashboardField
+import fr.lc4918.trailog.ui.alert.DashboardFontDefaultSp
+import fr.lc4918.trailog.ui.alert.DashboardFontMaxSp
+import fr.lc4918.trailog.ui.alert.DashboardFontMinSp
 import fr.lc4918.trailog.data.db.MaxGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MaxOffTrackAlertM
@@ -222,9 +227,6 @@ import kotlinx.coroutines.launch
  * Eteint, le groupe ne montre que ce renvoi : des reglages qui ne servent a rien valent mieux absents que
  * grises, mais il faut dire ou les allumer.
  */
-private const val DashboardFontMin = 10
-private const val DashboardFontMax = 40
-
 @Composable private fun DashboardSettings(cur: SettingsEntity, vm: SettingsViewModel) {
     if (!cur.offTrackAlertEnabled) {
         SettingsCard { Hint(stringResource(R.string.settings_dashboard_off)) }
@@ -232,18 +234,32 @@ private const val DashboardFontMax = 40
     }
     SectionTitle(stringResource(R.string.settings_section_dashboard_fields), tight = true)
     SettingsCard {
-        // Le corps EN TETE des champs qu'il regle : c'est un reglage de la rangee entiere, et le chercher
-        // apres neuf interrupteurs reviendrait a le cacher. Pas de graisse - les compteurs en ont deja une,
-        // et un chiffre qu'on lit a bout de bras se regle par sa taille.
-        StepperLine(
-            stringResource(R.string.settings_label_dashboard_font),
-            cur.dashboardFontSize, DashboardFontMin, DashboardFontMax,
-        ) { vm.save(cur.copy(dashboardFontSize = it)) }
         val masques = DashboardField.hidden(cur.dashboardHidden)
-        DashboardField.entries.forEach { f ->
-            RowDivider()
-            SwitchLine(stringResource(f.settingsLabel), f !in masques) { on ->
-                vm.save(cur.copy(dashboardHidden = DashboardField.withHidden(cur.dashboardHidden, f, hide = !on)))
+        val tailles = DashboardField.fontSizes(cur.dashboardFontSizes)
+        val libelles = DashboardField.entries.map { stringResource(it.settingsLabel) }
+        val moins = stringResource(R.string.action_decrease)
+        val plus = stringResource(R.string.action_increase)
+        // La largeur de la carte, pour aligner les pas-a-pas d'une ligne a l'autre : c'est la ligne au
+        // plus long libelle qui decide pour toutes (cf. alignedStepperMetrics).
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val metrics = alignedStepperMetrics(libelles, maxWidth)
+            Column {
+                DashboardField.entries.forEachIndexed { i, f ->
+                    if (i > 0) RowDivider()
+                    SwitchStepperRow(
+                        label = libelles[i],
+                        value = tailles[f] ?: DashboardFontDefaultSp,
+                        min = DashboardFontMinSp, max = DashboardFontMaxSp,
+                        checked = f !in masques, metrics = metrics,
+                        decreaseLabel = moins, increaseLabel = plus,
+                        onValue = { sp ->
+                            vm.save(cur.copy(dashboardFontSizes = DashboardField.withFontSize(cur.dashboardFontSizes, f, sp)))
+                        },
+                        onToggle = { on ->
+                            vm.save(cur.copy(dashboardHidden = DashboardField.withHidden(cur.dashboardHidden, f, hide = !on)))
+                        },
+                    )
+                }
             }
         }
     }

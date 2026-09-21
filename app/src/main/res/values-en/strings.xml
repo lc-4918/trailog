@@ -660,7 +660,6 @@
     <string name="settings_group_dashboard">Dashboard</string>
     <string name="content_desc_dashboard">Dashboard</string>
     <string name="settings_section_dashboard_fields">Fields shown</string>
-    <string name="settings_label_dashboard_font">Text size</string>
     <string name="dash_eta">Time left</string>
     <string name="dash_set_eta">Estimated time left</string>
     <string name="settings_dashboard_off">Turn on the dashboard button in Buttons and gestures, Position section.</string>
