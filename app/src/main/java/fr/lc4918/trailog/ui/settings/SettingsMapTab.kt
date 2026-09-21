@@ -262,6 +262,14 @@ import kotlinx.coroutines.launch
                 }
             }
         }
+        /*
+         * Le defaire de la carte entiere : les neuf champs reaffiches, et leurs tailles revenues a celle
+         * d'origine. Les deux ensemble et non deux liens - ce sont les deux reglages de cette carte, et
+         * l'un sans l'autre laisserait une moitie de retour en arriere.
+         */
+        CardAction(stringResource(R.string.action_reset_defaults)) {
+            vm.save(cur.copy(dashboardHidden = "", dashboardFontSizes = ""))
+        }
     }
 }
 

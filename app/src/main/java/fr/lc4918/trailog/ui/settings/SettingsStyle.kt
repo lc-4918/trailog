@@ -57,6 +57,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -563,7 +566,11 @@ fun SettingsRangeSlider(
 private fun StepButton(glyph: String, label: String, onClick: () -> Unit) {
     val p = settingsPalette
     Box(
-        Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).background(p.fieldBg).clickable(onClick = onClick),
+        Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).background(p.fieldBg)
+            .clickable(onClick = onClick)
+            // Le libelle etait passe depuis toujours et n'etait applique nulle part : un lecteur d'ecran
+            // n'annoncait donc que le glyphe - "moins", "plus" - sans dire de quoi. Il le porte desormais.
+            .semantics { contentDescription = label; role = Role.Button },
         contentAlignment = Alignment.Center,
     ) {
         Text(glyph, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = p.accent)

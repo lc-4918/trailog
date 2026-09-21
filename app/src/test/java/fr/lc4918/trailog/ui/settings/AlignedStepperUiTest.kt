@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
@@ -73,6 +75,20 @@ class AlignedStepperUiTest {
             .fetchSemanticsNodes().first()
         val finDuLibelle = libelleLePlusLong.positionInRoot.x + libelleLePlusLong.size.width
         assertTrue("le pas-a-pas commence apres le plus long libelle", moins.positionInRoot.x >= finDuLibelle)
+    }
+
+    /**
+     * Un lecteur d'ecran doit pouvoir dire ce que font ces deux boutons.
+     *
+     * Le libelle etait passe depuis toujours par tous les appelants, et `StepButton` ne l'appliquait
+     * nulle part : ne restait que le glyphe, "moins" et "plus", sans dire de quoi.
+     */
+    @Test fun `les boutons du pas-a-pas portent leur libelle`() {
+        lignes()
+        compose.onAllNodesWithContentDescription("Augmenter", useUnmergedTree = true)
+            .assertCountEquals(libelles.size)
+        compose.onAllNodesWithContentDescription("Diminuer", useUnmergedTree = true)
+            .assertCountEquals(libelles.size)
     }
 
     /** Les boutons gardent leur propre tap : regler une taille ne doit pas masquer le champ. */
