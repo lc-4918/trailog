@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.data.db.routeUrl
@@ -130,6 +132,25 @@ import kotlinx.coroutines.launch
         }
     }
 
+
+    /*
+     * La coloration par pente de l'itineraire CALCULE, et de lui seul : son trace sur la carte et l'aire de
+     * son profil. Celle des traces se regle ailleurs - trace par trace dans le menu de chaque couche, et
+     * pour leur profil dans l'onglet Carte - parce qu'on la veut souvent pour l'une et non pour l'autre.
+     */
+    SectionTitle(
+        stringResource(R.string.settings_section_route_slope),
+        info = stringResource(R.string.settings_route_slope_info),
+    )
+    SettingsCard {
+        SwitchLine(stringResource(R.string.settings_route_slope_line), cur.routeSlopeLine) {
+            vm.save(cur.copy(routeSlopeLine = it))
+        }
+        RowDivider()
+        SwitchLine(stringResource(R.string.settings_route_slope_profile), cur.routeSlopeProfile) {
+            vm.save(cur.copy(routeSlopeProfile = it))
+        }
+    }
 
     /*
      * Les CATEGORIES de points d'interet ne sont plus ici : elles se choisissent dans une bulle ouverte
@@ -397,12 +418,23 @@ import kotlinx.coroutines.launch
         RowDivider()
         // Pas d'interrupteur pour la legende des pentes : elle se demande d'un "i" pose sur le bandeau du
         // profil, la ou elle sert, et se referme du meme geste (cf. SlopeLegendButton).
-        SwitchLine(stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope) { vm.save(cur.copy(profileSlope = it)) }
-        RowDivider()
+        // Le profil des TRACES seulement : celui de l'itineraire calcule a son reglage, onglet Trajets.
         SwitchLine(
-            stringResource(R.string.settings_profile_remaining), cur.profileRemaining,
-            info = stringResource(R.string.settings_profile_remaining_sub),
-        ) { vm.save(cur.copy(profileRemaining = it)) }
+            stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope,
+            info = stringResource(R.string.settings_profile_color_by_slope_info),
+        ) { vm.save(cur.copy(profileSlope = it)) }
+        RowDivider()
+        // La largeur des classes vaut partout ou la pente colore : profils, traces et itineraire. Le "i"
+        // montre la trame elle-meme, dans la largeur choisie.
+        PickRow(
+            stringResource(R.string.settings_slope_classes), cur.slopeClassTenths, SlopeRamp.ClassSteps,
+            optionLabel = { slopeClassLabel(it) },
+            infoContent = {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    SlopeLegend(cur.slopeClassTenths, fontSp = 14, vertical = true, length = 360.dp)
+                }
+            },
+        ) { vm.save(cur.copy(slopeClassTenths = it)) }
     }
 
     SectionTitle(stringResource(R.string.settings_section_title_line_info))
@@ -653,3 +685,11 @@ private val ExaggerationSteps = listOf(2, 5, 10, 15, 25, 50)
         ProfileScale.Mode.EXAGGERATION -> R.string.settings_label_exaggeration
     }
 )
+
+/** "0,5 %", "1 %", "2,5 %", "5 %" : la largeur d'une classe de pente, ecrite comme on la lit. */
+@Composable internal fun slopeClassLabel(tenths: Int): String {
+    // Le separateur decimal de la langue de l'application, et non celle du telephone.
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    val valeur = if (tenths % 10 == 0) "${tenths / 10}" else String.format(locale, "%.1f", tenths / 10.0)
+    return stringResource(R.string.settings_slope_class_format, valeur)
+}

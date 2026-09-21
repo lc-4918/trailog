@@ -44,6 +44,8 @@ data class LayerEntity(
     val visible: Boolean = true,
     val sortOrder: Int = 0,
     val west: Double = 0.0, val south: Double = 0.0, val east: Double = 0.0, val north: Double = 0.0,
+    // Trait colorie selon la pente plutot que de la couleur de la couche (menu de la couche).
+    val slopeColored: Boolean = false,
 )
 
 /** Dossier de l'arborescence du gestionnaire de fonds de plan (Basemap Control), distinct de `folders`. */
@@ -144,13 +146,14 @@ data class SettingsEntity(
     // telephone regle en sombre la posait sous des bandeaux noirs.
     val theme: String = "light",           // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil
-    val profileSlope: Boolean = false,     // colorer l'aire par pente
+    // Colorer l'aire du profil d'une TRACE par pente. Le profil de l'itineraire calcule a son propre
+    // reglage (cf. routeSlopeProfile).
+    val profileSlope: Boolean = false,
     // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
     // n'est plus une preference mais un etat d'affichage, qui se referme du meme geste.
     val profileSlopeLegend: Boolean = false,
-    // Ligne du restant sous les totaux du profil : distance et D+ jusqu'au bout, depuis la position GPS
-    // projetee sur la trace. Active par defaut - elle ne s'affiche que capteur allume ET profil ouvert,
-    // c'est-a-dire dans la seule situation ou on la cherche.
+    // Ligne du restant sous les totaux du profil, retiree : elle n'est plus lue, la colonne reste (une
+    // colonne ne se retire pas sans reconstruire la table). Le tableau de bord a son propre restant.
     val profileRemaining: Boolean = true,
     val bubbleFont: Int = 14,              // taille police infobulle (sp)
     val profAxisFont: Int = 9,             // axes du profil
@@ -367,11 +370,23 @@ data class SettingsEntity(
     // correctement sans entree a lui. Un corps plus grand fait passer les champs a la ligne, et le panneau
     // grandit avec eux.
     val dashboardFontSizes: String = "",
+    // Coloration par pente de l'itineraire calcule : son trace sur la carte, et l'aire de son profil. A
+    // part de celle des traces (profileSlope, et le menu de chaque couche) : on veut souvent l'une sans
+    // l'autre.
+    val routeSlopeLine: Boolean = true,
+    val routeSlopeProfile: Boolean = true,
+    // Largeur des classes de pente, en dixiemes de point (cf. SlopeRamp.ClassSteps) : 5 = 0,5 %, la
+    // trame d'OruxMaps.
+    val slopeClassTenths: Int = 5,
+    // Largeur du trait des traces et des itineraires sur la carte (dp).
+    val trackLineWidth: Int = DefaultTrackLineWidthDp,
+    // Chevrons du sens de parcours le long des traces : reglage expert, eteint par defaut.
+    val trackDirectionArrows: Boolean = false,
     // Le corps unique qui precedait, garde le temps que Room retrouve sa colonne : il n'est plus lu (une
     // colonne ne se retire pas sans reconstruire la table, cf. profileVerticalScale).
     val dashboardFontSize: Int = 16,
     // Mode expert des reglages : les reglages fins (panneau des fonds, preferences de trace, services,
-    // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur l'avatar des reglages
+    // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur le titre des reglages
     // l'allument et l'eteignent (cf. ExpertTaps).
     val expertMode: Boolean = false,
     // Echelle verticale du profil, en trois regimes (cf. ProfileScale) : "cap:25" (remplir la hauteur sans
@@ -392,6 +407,11 @@ const val DefaultMapButtonSizeDp = 48
 /** Opacite par defaut du fond des boutons de carte (%) : celle, fixe, que l'interrupteur dessinait avant
  *  lui (cf. MIGRATION_59_60). */
 const val DefaultControlButtonsOpacityPct = 90
+
+/** Largeur du trait des traces (dp) : celle qu'elles avaient avant d'etre reglable, et ses bornes. */
+const val DefaultTrackLineWidthDp = 4
+const val MinTrackLineWidthDp = 2
+const val MaxTrackLineWidthDp = 12
 
 /** Bornes du symbole de position (dp) : du point discret au repere qu'on retrouve d'un coup d'oeil. */
 const val MinGpsMarkerSizeDp = 12

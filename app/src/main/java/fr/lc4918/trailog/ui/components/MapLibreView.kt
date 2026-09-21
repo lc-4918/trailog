@@ -28,7 +28,6 @@ import fr.lc4918.trailog.data.db.DefaultGpsMarkerSizeDp
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.map.offline.Bbox
-import fr.lc4918.trailog.ui.profile.SlopeRamp
 import fr.lc4918.trailog.map.AmbientCache
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -53,7 +52,15 @@ import androidx.core.graphics.toColorInt
 import kotlin.math.hypot
 import kotlin.math.pow
 
-data class RenderLayer(val key: String, val uri: String, val revision: Long, val color: String)
+/**
+ * Une couche a poser sur la carte. [slopeGeoJson], quand la couche est coloriee par pente : ses troncons
+ * de meme classe, chacun portant sa couleur (cf. SlopeLines) - le trait de la couleur de la couche
+ * s'efface alors derriere.
+ */
+data class RenderLayer(
+    val key: String, val uri: String, val revision: Long, val color: String,
+    val slopeGeoJson: String? = null,
+)
 
 /** Elargissements successifs de la fenetre de recherche d'une trace autour du doigt (cf. lineKeysNear) :
  *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
@@ -105,6 +112,12 @@ class MapController {
     // dont le fichier .map n'a pas change. La geometrie est chargee par MapLibre depuis une URI file:// sur
     // son propre thread de travail, jamais conservee en String cote JVM (revision = horodatage ^ taille).
     private val applied = HashMap<String, Pair<Long, String>>()
+    // Contenu de la source de pente reellement pose, par cle de couche (cf. [RenderLayer.slopeGeoJson]).
+    private val appliedSlope = HashMap<String, String>()
+    // Largeur du trait (dp) et chevrons du sens de parcours, communs aux traces et aux itineraires.
+    private var trackWidthDp = fr.lc4918.trailog.data.db.DefaultTrackLineWidthDp.toFloat()
+    private var trackArrows = false
+    private val chevronImages = hashSetOf<String>()
     private val pinImages = hashSetOf<String>()
     private val poiImages = hashSetOf<String>()
     private val gpsImages = hashSetOf<String>()
@@ -205,7 +218,7 @@ class MapController {
         val m = map ?: return null
         val tol = lineTapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
-        return layerKeys.firstOrNull { m.queryRenderedFeatures(rect, lineLayerId(it)).isNotEmpty() }
+        return layerKeys.firstOrNull { m.queryRenderedFeatures(rect, *lineLayerIds(it)).isNotEmpty() }
     }
 
     /**
@@ -226,7 +239,7 @@ class MapController {
         for (factor in LineSearchFactors) {
             val tol = lineTapToleranceDp * density * factor
             val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
-            val keys = layerKeys.filter { m.queryRenderedFeatures(rect, lineLayerId(it)).isNotEmpty() }
+            val keys = layerKeys.filter { m.queryRenderedFeatures(rect, *lineLayerIds(it)).isNotEmpty() }
             if (keys.isNotEmpty()) return keys
         }
         return emptyList()
@@ -289,7 +302,7 @@ class MapController {
              * style ne la portait plus, et la couche renvoyait a une image absente. Les marqueurs
              * disparaissaient sans que rien ne le signale, et aucun geste ne les ramenait.
              */
-            layerKeys.clear(); applied.clear()
+            layerKeys.clear(); applied.clear(); appliedSlope.clear(); chevronImages.clear()
             pinImages.clear(); gpsImages.clear(); poiImages.clear(); shadowImages.clear()
             appliedUserMarker = null
             onStyleApplied?.invoke()
@@ -299,6 +312,12 @@ class MapController {
     private fun src(key: String) = "src-$key"
     private fun lineLayerId(key: String) = "$key-ln"
     private fun pointLayerId(key: String) = "$key-pt"
+    private fun slopeSrc(key: String) = "src-$key-slope"
+    private fun slopeLayerId(key: String) = "$key-sl"
+    private fun arrowLayerId(key: String) = "$key-dir"
+    /** Les calques qui dessinent la ligne d'une couche : le trait de sa couleur, ou celui de ses pentes. */
+    private fun lineLayerIds(key: String): Array<String> =
+        if (appliedSlope.containsKey(key)) arrayOf(lineLayerId(key), slopeLayerId(key)) else arrayOf(lineLayerId(key))
     /** Identifiants des calques/source du marqueur sélectionné : ombre portée, pin au sommet, source commune
      *  (cf. [setSelectedMarker]). */
     private val SEL_SHADOW = "sel-marker-shadow"
@@ -328,6 +347,8 @@ class MapController {
         val s = style ?: return
         val wanted = list.associateBy { it.key }
         (layerKeys - wanted.keys).forEach { k ->
+            removeSlope(s, k)
+            s.getLayer(arrowLayerId(k))?.let { s.removeLayer(it) }
             s.getLayer(pointLayerId(k))?.let { s.removeLayer(it) }
             s.getLayer(lineLayerId(k))?.let { s.removeLayer(it) }
             s.getSource(src(k))?.let { s.removeSource(it) }
@@ -343,6 +364,8 @@ class MapController {
                 // Si la revision a change (edition de points), on retire d'abord l'ancienne source : reutiliser
                 // la meme URI ne garantit pas un rechargement du contenu.
                 if (source != null) {
+                    removeSlope(s, r.key)
+                    s.getLayer(arrowLayerId(r.key))?.let { s.removeLayer(it) }
                     s.getLayer(pointLayerId(r.key))?.let { s.removeLayer(it) }
                     s.getLayer(lineLayerId(r.key))?.let { s.removeLayer(it) }
                     s.getSource(src(r.key))?.let { s.removeSource(it) }
@@ -351,7 +374,7 @@ class MapController {
                 val img = ensurePin(s, appContext, r.color, markerHeightPx)
                 s.addSource(GeoJsonSource(src(r.key), java.net.URI(r.uri)))
                 addLayerSafe(LineLayer(lineLayerId(r.key), src(r.key)).withProperties(
-                    PropertyFactory.lineColor(r.color), PropertyFactory.lineWidth(4f),
+                    PropertyFactory.lineColor(r.color), PropertyFactory.lineWidth(trackWidthDp),
                     PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
                     .withFilter(lineGeometryFilter))
                 addLayerSafe(SymbolLayer(pointLayerId(r.key), src(r.key)).withProperties(
@@ -368,7 +391,129 @@ class MapController {
                 (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
             }
             applied[r.key] = r.revision to r.color
+            applySlope(s, r)
+            applyArrows(s, r.key, src(r.key), pointLayerId(r.key))
         }
+    }
+
+    /**
+     * Le trait colorie par pente d'une couche, pose juste au-dessus de son trait ordinaire, qui s'efface.
+     *
+     * Le trait ordinaire est MASQUE et non retire : il garde la source et la geometrie completes, et c'est
+     * lui qu'on retrouve des que la couleur est retablie. Le toucher, lui, interroge les deux calques (cf.
+     * [lineLayerIds]) - un calque masque ne repond plus a la recherche de MapLibre.
+     */
+    private fun applySlope(s: Style, r: RenderLayer) {
+        val geo = r.slopeGeoJson
+        if (geo == null) {
+            if (appliedSlope.containsKey(r.key)) {
+                removeSlope(s, r.key)
+                s.getLayer(lineLayerId(r.key))?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            }
+            return
+        }
+        if (appliedSlope[r.key] == geo) return
+        val existing = s.getSourceAs<GeoJsonSource>(slopeSrc(r.key))
+        if (existing != null) existing.setGeoJson(geo)
+        else {
+            s.addSource(GeoJsonSource(slopeSrc(r.key), geo))
+            val layer = slopeLineLayer(slopeLayerId(r.key), slopeSrc(r.key))
+            if (s.getLayer(lineLayerId(r.key)) != null) s.addLayerAbove(layer, lineLayerId(r.key)) else addLayerSafe(layer)
+        }
+        s.getLayer(lineLayerId(r.key))?.setProperties(PropertyFactory.visibility(Property.NONE))
+        appliedSlope[r.key] = geo
+    }
+
+    private fun removeSlope(s: Style, key: String) {
+        s.getLayer(slopeLayerId(key))?.let { s.removeLayer(it) }
+        s.getSource(slopeSrc(key))?.let { s.removeSource(it) }
+        appliedSlope.remove(key)
+    }
+
+    /** Un trait dont chaque troncon porte sa couleur, dans sa propriete "color" (cf. SlopeLines). */
+    private fun slopeLineLayer(id: String, source: String): LineLayer =
+        LineLayer(id, source).withProperties(
+            PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+            PropertyFactory.lineWidth(trackWidthDp),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+            .withFilter(lineGeometryFilter)
+
+    /**
+     * Largeur du trait et chevrons du sens de parcours, pour toutes les traces et les itineraires.
+     *
+     * Applique aux calques deja poses : la largeur se change sur place, les chevrons se posent ou se
+     * retirent. Les couches posees ensuite les prennent a leur creation.
+     */
+    fun setTrackStyle(widthDp: Int, arrows: Boolean) {
+        val w = widthDp.toFloat()
+        if (w == trackWidthDp && arrows == trackArrows) return
+        trackWidthDp = w; trackArrows = arrows
+        val s = style ?: return
+        val lines = layerKeys.flatMap { listOf(lineLayerId(it), slopeLayerId(it)) } + ROUTE_LINE
+        lines.forEach { id -> (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(w)) }
+        layerKeys.forEach { k -> applyArrows(s, k, src(k), pointLayerId(k)) }
+        if (s.getSource(ROUTE_SRC) != null) applyArrows(s, ROUTE_KEY, ROUTE_SRC, null)
+    }
+
+    /**
+     * Les chevrons du sens de parcours d'une ligne : une image repetee le long du trait, tournee avec lui.
+     *
+     * Poses sous les epingles de la couche ([belowId]) : un marqueur ne doit pas disparaitre derriere une
+     * fleche. L'image depend de la largeur du trait, qu'elle ne doit guere deborder (cf. [chevronBitmap]) :
+     * une nouvelle largeur remplace donc l'image du calque.
+     */
+    private fun applyArrows(s: Style, key: String, source: String, belowId: String?) {
+        val id = arrowLayerId(key)
+        if (!trackArrows) { s.getLayer(id)?.let { s.removeLayer(it) }; return }
+        val img = ensureChevron(s)
+        val existing = s.getLayer(id) as? SymbolLayer
+        if (existing != null) {
+            existing.setProperties(PropertyFactory.iconImage(img), PropertyFactory.symbolSpacing(chevronSpacing()))
+            return
+        }
+        val layer = SymbolLayer(id, source).withProperties(
+            PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+            PropertyFactory.symbolSpacing(chevronSpacing()),
+            PropertyFactory.iconImage(img),
+            PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+            PropertyFactory.iconKeepUpright(false),
+            PropertyFactory.iconAllowOverlap(true),
+            PropertyFactory.iconIgnorePlacement(true))
+            .withFilter(lineGeometryFilter)
+        if (belowId != null && s.getLayer(belowId) != null) s.addLayerBelow(layer, belowId) else addLayerSafe(layer)
+    }
+
+    /** Ecart entre deux chevrons (dp) : serres comme chez OruxMaps, sans se toucher sur un trait large. */
+    private fun chevronSpacing(): Float = (trackWidthDp * 7f).coerceAtLeast(36f)
+
+    private fun ensureChevron(s: Style): String {
+        val h = TrackChevron.heightPx(trackWidthDp, density)
+        val name = "chevron_$h"
+        if (chevronImages.add(name)) s.addImage(name, chevronBitmap(h))
+        return name
+    }
+
+    /**
+     * Un chevron ">" pointant dans le sens de la ligne (l'axe x de l'image suit le trait), noir cerne de
+     * blanc : il se lit sur un trait clair comme sur le trait noir d'un itineraire. Sa hauteur deborde a
+     * peine la largeur du trait (cf. [TrackChevron]).
+     */
+    private fun chevronBitmap(h: Int): Bitmap {
+        val w = TrackChevron.widthPx(h)
+        val bmp = createBitmap(w, h)
+        val c = AndroidCanvas(bmp)
+        val stroke = TrackChevron.strokePx(h)
+        val path = android.graphics.Path().apply {
+            val m = stroke
+            moveTo(m, m); lineTo(w - m, h / 2f); lineTo(m, h - m)
+        }
+        val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = stroke * 1.9f; color = android.graphics.Color.WHITE
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        }
+        val ink = Paint(halo).apply { strokeWidth = stroke; color = android.graphics.Color.BLACK }
+        c.drawPath(path, halo); c.drawPath(path, ink)
+        return bmp
     }
 
     private val shadowImages = mutableSetOf<String>()
@@ -673,6 +818,8 @@ class MapController {
     /** Calque et source des tracés d'itinéraire mesurés (cf. [setRouteLines]). */
     private val ROUTE_LINE = "geocode-route"
     private val ROUTE_SRC = "geocode-route-src"
+    /** Cle des chevrons de l'itineraire (cf. [applyArrows]). */
+    private val ROUTE_KEY = "geocode-route"
 
     /**
      * Épingle noire du géocodage : le lieu trouvé ([GEO_PLACE]) ou le point de référence d'une mesure de
@@ -795,56 +942,30 @@ class MapController {
      * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
      * doit pas passer devant le marqueur qui le termine.
      */
-    fun setRouteLines(tracks: List<ComputedTrack>, colorBySlope: Boolean) {
+    fun setRouteLines(tracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int) {
         val s = style ?: return
         val drawable = tracks.filter { it.samples.size >= 2 }
         if (drawable.isEmpty()) {
+            s.getLayer(arrowLayerId(ROUTE_KEY))?.let { s.removeLayer(it) }
             s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
             s.getSource(ROUTE_SRC)?.let { s.removeSource(it) }
             return
         }
-        val features = drawable.joinToString(",") { routeFeatures(it, colorBySlope) }
+        val features = drawable.joinToString(",") {
+            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000")
+        }
         val geojson = """{"type":"FeatureCollection","features":[$features]}"""
         val existing = s.getSourceAs<GeoJsonSource>(ROUTE_SRC)
         if (existing == null) {
             s.addSource(GeoJsonSource(ROUTE_SRC, geojson))
-            val layer = LineLayer(ROUTE_LINE, ROUTE_SRC).withProperties(
-                PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
-                PropertyFactory.lineWidth(4f),
-                PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
-                .withFilter(lineGeometryFilter)
+            val layer = slopeLineLayer(ROUTE_LINE, ROUTE_SRC)
             val belowPin = listOf(GEO_PLACE, GEO_REF, MAP_POINTS).firstOrNull { s.getLayer(it) != null }
             if (belowPin != null) s.addLayerBelow(layer, belowPin) else addLayerSafe(layer)
         } else {
             existing.setGeoJson(geojson)
         }
-    }
-
-    /**
-     * Tronçons d'un itinéraire : un seul quand il est d'une teinte, sinon un par plage de pente de même
-     * classe. Les plages **partagent leur point de jonction**, sans quoi la ligne s'ouvrirait d'un trou à
-     * chaque changement de couleur.
-     */
-    private fun routeFeatures(track: ComputedTrack, colorBySlope: Boolean): String {
-        val pts = track.samples
-        fun feature(from: Int, to: Int, color: String): String {
-            val coords = (from..to).joinToString(",") { "[${pts[it].lon},${pts[it].lat}]" }
-            return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},""" +
-                """"properties":{"color":"$color"}}"""
-        }
-        if (!colorBySlope || !track.hasZ) return feature(0, pts.lastIndex, "#000000")
-        val max = track.stats.maxAbsSlope
-        val out = StringBuilder()
-        var i = 0
-        while (i < pts.lastIndex) {
-            val color = SlopeRamp.hexFor(pts[i + 1].slope, max)
-            var j = i + 1
-            while (j < pts.lastIndex && SlopeRamp.hexFor(pts[j + 1].slope, max) == color) j++
-            if (out.isNotEmpty()) out.append(',')
-            out.append(feature(i, j, color))
-            i = j
-        }
-        return out.toString()
+        val belowPin = listOf(GEO_PLACE, GEO_REF, MAP_POINTS).firstOrNull { s.getLayer(it) != null }
+        applyArrows(s, ROUTE_KEY, ROUTE_SRC, belowPin)
     }
 
     /** Croix "+" traversante, cerclée en son centre : les deux traits se croisent exactement au point posé

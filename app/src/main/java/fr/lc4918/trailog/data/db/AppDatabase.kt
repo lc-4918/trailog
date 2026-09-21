@@ -577,6 +577,27 @@ internal object MigrationSql {
         "UPDATE settings SET profileVerticalScale = CASE WHEN verticalExaggeration <= 0 " +
             "THEN 'cap:25' ELSE 'm:' || verticalExaggeration END"
 
+    /**
+     * La coloration par pente de l'itineraire calcule, son trace et son profil, a part de celle des traces.
+     * Elle suivait jusqu'ici le reglage du profil : la valeur en place se recopie dans les deux, pour que
+     * rien ne change a l'ecran le jour de la mise a jour.
+     */
+    val ADD_ROUTE_SLOPE = listOf(
+        "ALTER TABLE settings ADD COLUMN routeSlopeLine INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE settings ADD COLUMN routeSlopeProfile INTEGER NOT NULL DEFAULT 1",
+        "UPDATE settings SET routeSlopeLine = profileSlope, routeSlopeProfile = profileSlope",
+    )
+
+    /** La trame des pentes (0,5 %), le trait des traces (4 dp, celui d'avant), les chevrons (eteints). */
+    val ADD_TRACK_DISPLAY = listOf(
+        "ALTER TABLE settings ADD COLUMN slopeClassTenths INTEGER NOT NULL DEFAULT 5",
+        "ALTER TABLE settings ADD COLUMN trackLineWidth INTEGER NOT NULL DEFAULT 4",
+        "ALTER TABLE settings ADD COLUMN trackDirectionArrows INTEGER NOT NULL DEFAULT 0",
+    )
+
+    /** Une couche coloriee par pente : aucune au depart. */
+    const val ADD_LAYER_SLOPE_COLORED = "ALTER TABLE layers ADD COLUMN slopeColored INTEGER NOT NULL DEFAULT 0"
+
     /** Le mode expert des reglages : eteint, les reglages fins restent caches (cf. ExpertTaps). */
     const val ADD_EXPERT_MODE = "ALTER TABLE settings ADD COLUMN expertMode INTEGER NOT NULL DEFAULT 0"
 
@@ -601,7 +622,7 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 73
+internal const val DB_VERSION = 74
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
@@ -1047,6 +1068,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // La coloration par pente de l'itineraire a part, l'affichage des traces, la pente par couche.
+        private val MIGRATION_73_74 = object : Migration(73, 74) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.ADD_ROUTE_SLOPE.forEach { db.execSQL(it) }
+                MigrationSql.ADD_TRACK_DISPLAY.forEach { db.execSQL(it) }
+                db.execSQL(MigrationSql.ADD_LAYER_SLOPE_COLORED)
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -1057,7 +1087,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65, MIGRATION_65_66, MIGRATION_66_67, MIGRATION_67_68, MIGRATION_68_69, MIGRATION_69_70, MIGRATION_70_71, MIGRATION_71_72, MIGRATION_72_73)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65, MIGRATION_65_66, MIGRATION_66_67, MIGRATION_67_68, MIGRATION_68_69, MIGRATION_69_70, MIGRATION_70_71, MIGRATION_71_72, MIGRATION_72_73, MIGRATION_73_74)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

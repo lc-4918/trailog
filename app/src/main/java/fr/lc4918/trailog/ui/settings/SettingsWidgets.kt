@@ -67,10 +67,10 @@ import kotlin.math.roundToInt
 /** Ligne a pas-a-pas, avec sa bascule de graisse quand le reglage en porte une. */
 @Composable internal fun ColumnScopeMarker.StepperLine(
     label: String, value: Int, min: Int, max: Int,
-    bold: Boolean? = null, onBold: ((Boolean) -> Unit)? = null, onChange: (Int) -> Unit,
+    bold: Boolean? = null, onBold: ((Boolean) -> Unit)? = null, info: String? = null, onChange: (Int) -> Unit,
 ) {
     StepperRow(
-        label = label, value = value, min = min, max = max, bold = bold, onBold = onBold,
+        label = label, value = value, min = min, max = max, bold = bold, onBold = onBold, info = info,
         boldLabel = stringResource(R.string.settings_bold_abbrev),
         decreaseLabel = stringResource(R.string.action_decrease),
         increaseLabel = stringResource(R.string.action_increase),

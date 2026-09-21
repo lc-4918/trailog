@@ -48,6 +48,9 @@ internal fun MapOverlayEffects(
     /** Hauteur d'une epingle a l'ecran, telle que les reglages la veulent. */
     markerPx: Float,
     renderLayers: List<RenderLayer>,
+    /** Largeur du trait des traces (dp) et chevrons du sens de parcours (cf. MapController.setTrackStyle). */
+    trackWidthDp: Int,
+    trackArrows: Boolean,
     geo: GeocodeSearchState,
     measure: TrackMeasureState,
     mapPoint: MapPointState,
@@ -57,7 +60,9 @@ internal fun MapOverlayEffects(
     gpsMarkerSizeDp: Float,
 ) {
     // les couches importees
-    LaunchedEffect(renderLayers, styleTick, markerPx) {
+    // La largeur et les chevrons d'abord : les couches posees ensuite les prennent a leur creation.
+    LaunchedEffect(renderLayers, styleTick, markerPx, trackWidthDp, trackArrows) {
+        controller.setTrackStyle(trackWidthDp, trackArrows)
         if (controller.style != null) controller.setLayers(renderLayers, markerPx)
     }
     // Marqueur noir du géocodage : le lieu trouvé. Calque carte (comme le marqueur sélectionné) : il suit

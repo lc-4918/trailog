@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,9 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
-import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.TrackMath
-import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.ui.geocode.GeocodeBubble
 import fr.lc4918.trailog.ui.profile.ElevationProfile
@@ -73,44 +70,6 @@ internal fun ProfileZoomButton(
 }
 
 /* ----------------------- Légende ----------------------- */
-
-/**
- * Ou l'on en est sur la trace affichee : ce qui reste a parcourir, et a monter.
- *
- * L'ecart a la trace n'est dit qu'au-dela de [OffTrackThresholdM] : sur la trace, il vaut la precision du
- * capteur et ne veut rien dire ; loin d'elle, il est la seule information qui compte - le "restant" ne
- * decrit alors plus le chemin qu'on suit.
- */
-@Composable
-internal fun RemainingOnTrackRow(
-    projection: TrackMeasure.Projection, remaining: TrackMath.Remaining, imperial: Boolean, fontSp: Int,
-) {
-    val off = projection.awayM >= OffTrackThresholdM
-    Row(
-        Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(Icons.Filled.Place, null, Modifier.size((fontSp + 3).dp),
-            tint = MaterialTheme.colorScheme.primary)
-        Text(
-            stringResource(R.string.track_remaining,
-                Format.distance(remaining.distance, imperial), Format.elevation(remaining.ascent, imperial)),
-            fontSize = fontSp.sp, fontWeight = FontWeight.Medium, color = Color.Black,
-        )
-        if (off) {
-            Text(
-                stringResource(R.string.track_off_track, Format.distance(projection.awayM, imperial)),
-                fontSize = (fontSp - 1).sp, color = MaterialTheme.colorScheme.error,
-                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/** Au-dela de cet ecart, on ne suit plus la trace : c'est le moment de le dire. Cinquante metres passent
- *  la precision d'un GPS de telephone sous couvert forestier, sans attendre qu'on soit vraiment perdu. */
-internal const val OffTrackThresholdM = 50.0
 
 /** Air autour du titre du bandeau de profil : au-dessus comme au-dessous, dans tous les cas. */
 internal val ProfileTitleGap = 4.dp
@@ -199,8 +158,8 @@ internal fun RouteProfilePanel(
             bold = settings.profBarBold,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (settings.profileSlope && settings.profileSlopeLegend) {
-            SlopeLegend(track.stats.maxAbsSlope, settings.profLegendFont,
+        if (settings.routeSlopeProfile && settings.profileSlopeLegend) {
+            SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
                 Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 bold = settings.profLegendBold)
         } else {
@@ -218,7 +177,8 @@ internal fun RouteProfilePanel(
             ElevationProfile(
                 samples = track.samples, stats = track.stats,
                 grid = settings.profileGrid,
-                slope = settings.profileSlope,
+                slope = settings.routeSlopeProfile,
+                slopeClassTenths = settings.slopeClassTenths,
                 lineColor = lineColor,
                 axisFontSp = settings.profAxisFont,
                 axisBold = settings.profAxisBold,
@@ -260,8 +220,6 @@ internal fun BoxScope.TrackProfileLayer(
     lineColor: Color,
     settings: SettingsEntity,
     imperial: Boolean,
-    gpsActive: Boolean,
-    userLocation: Pair<Double, Double>?,
     onHeightChange: (Int) -> Unit,
     onExpandZoom: () -> Unit,
     onToggleSlopeLegend: (Boolean) -> Unit,
@@ -412,26 +370,8 @@ internal fun BoxScope.TrackProfileLayer(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            // Ou l'on en est SUR CETTE TRACE, capteur allume : ce qui reste a parcourir, et le denivele qui
-            // reste a monter. C'est la seule ligne de l'application qui serve PENDANT la sortie et non avant
-            // ou apres - d'ou sa place, sous les totaux du parcours entier, qu'elle vient nuancer.
-            //
-            // Calculee sur la trace COMPLETE et non sur la fenetre zoomee : la question est "combien me
-            // reste-t-il jusqu'au bout", pas "jusqu'au bord du graphique".
-            val whole = computed?.samples
-            val onTrack = remember(userLocation, whole) {
-                if (userLocation == null || whole.isNullOrEmpty()) null
-                else TrackMeasure.project(whole, userLocation.second, userLocation.first)
-                    ?.let { it to TrackMath.remaining(whole, it.alongM) }
-            }
-            if (gpsActive && onTrack != null && settings.profileRemaining) {
-                RemainingOnTrackRow(
-                    projection = onTrack.first, remaining = onTrack.second, imperial = imperial,
-                    fontSp = settings.profBarFont,
-                )
-            }
             if (windowStats != null && legendShown) {
-                SlopeLegend(windowStats.maxAbsSlope, settings.profLegendFont,
+                SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
                     Modifier.fillMaxWidth().padding(vertical = 2.dp),
                     bold = settings.profLegendBold)
             } else {
@@ -457,6 +397,7 @@ internal fun BoxScope.TrackProfileLayer(
                         samples = windowSamples, stats = windowStats,
                         grid = settings.profileGrid,
                         slope = settings.profileSlope,
+                        slopeClassTenths = settings.slopeClassTenths,
                         lineColor = if (lineColor != Color.Unspecified) lineColor else MaterialTheme.colorScheme.primary,
                         axisFontSp = settings.profAxisFont,
                         axisBold = settings.profAxisBold,

@@ -33,6 +33,7 @@ interface LayerDao {
     @Query("UPDATE layers SET visible=:v WHERE id=:id") suspend fun setVisible(id: Long, v: Boolean)
     @Query("UPDATE layers SET sortOrder=:o WHERE id=:id") suspend fun setSort(id: Long, o: Int)
     @Query("UPDATE layers SET color=:c WHERE id=:id") suspend fun setColor(id: Long, c: String)
+    @Query("UPDATE layers SET slopeColored=:on WHERE id=:id") suspend fun setSlopeColored(id: Long, on: Boolean)
     @Query("SELECT color FROM layers WHERE folderId IS :folderId") suspend fun colorsInFolder(folderId: Long?): List<String>
     @Query("SELECT COALESCE(MAX(sortOrder),0) FROM layers WHERE folderId IS :folderId") suspend fun maxSort(folderId: Long?): Int
 }

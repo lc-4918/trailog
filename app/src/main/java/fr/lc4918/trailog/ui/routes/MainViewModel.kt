@@ -35,6 +35,7 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
+import fr.lc4918.trailog.ui.components.SlopeLines
 import fr.lc4918.trailog.ui.measure.MeasurePoint
 import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.ui.profile.ProfileZoom
@@ -189,7 +190,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
+            // La largeur des classes de pente en plus : elle redessine les couches coloriees par pente.
+            val classes = settings.map { it.slopeClassTenths }.distinctUntilChanged()
+            combine(layers, renderTick, classes) { l, _, c -> l to c }.collectLatest { (list, classTenths) ->
                 val simplify = settings.value.simplifyRender
                 val rl = withContext(Dispatchers.IO) {
                     list.filter { it.visible }.mapNotNull { ly ->
@@ -198,7 +201,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         // .map sur son thread de travail. La révision (horodatage ^ taille) change quand le
                         // fichier est réécrit (édition de points) et force un rechargement de la source.
                         val revision = f.lastModified() xor (f.length() * 1000003L)
-                        RenderLayer("ly${ly.id}", "file://" + f.absolutePath, revision, ly.color)
+                        // Coloriee par pente : ses troncons viennent des profils precalcules, qui portent la
+                        // pente de chaque echantillon - le .map, lui, n'a que la geometrie.
+                        val slope = if (ly.slopeColored && ly.hasLine && ly.hasZ) {
+                            val profils = repo.loadProfiles(ly)
+                            withContext(Dispatchers.Default) {
+                                SlopeLines.collection(profils.map { it.samples }, classTenths)
+                            }
+                        } else null
+                        RenderLayer("ly${ly.id}", "file://" + f.absolutePath, revision, ly.color, slope)
                     }
                 }
                 _renderLayers.value = rl
@@ -589,6 +600,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (!v && _markerLayerId.value == l.id) closeMarker()
     }
     fun setLayerColor(l: LayerEntity, color: String) = viewModelScope.launch { repo.layers.setColor(l.id, color) }
+
+    /** Colorie le trait d'une couche selon la pente, ou lui rend sa couleur (menu de la couche). */
+    fun setLayerSlopeColored(l: LayerEntity, on: Boolean) =
+        viewModelScope.launch { repo.layers.setSlopeColored(l.id, on) }
 
     /**
      * Applique une même couleur à toutes les couches du dossier, sous-dossiers compris.

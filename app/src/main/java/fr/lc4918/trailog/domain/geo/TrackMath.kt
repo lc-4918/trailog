@@ -171,38 +171,6 @@ object TrackMath {
         )
     }
 
-    /** Ce qui reste a parcourir depuis une abscisse : la distance, et le denivele positif. */
-    data class Remaining(val distance: Double, val ascent: Double)
-
-    /**
-     * Ce qui reste de la trace a partir du kilometrage [alongM] : la distance, et le D+.
-     *
-     * Le D+ restant est ce qu'on vient chercher en cours de sortie ; la distance seule ne dit pas si les
-     * trois derniers kilometres sont une descente ou le mur du col. Le point de depart tombe rarement sur
-     * un echantillon : l'altitude y est interpolee entre ses deux voisins, faute de quoi la montee du
-     * segment en cours serait comptee en entier alors qu'on en a deja fait la moitie.
-     */
-    fun remaining(samples: List<Sample>, alongM: Double): Remaining {
-        if (samples.isEmpty()) return Remaining(0.0, 0.0)
-        val end = samples.last().x
-        if (alongM >= end) return Remaining(0.0, 0.0)
-        val from = alongM.coerceAtLeast(samples.first().x)
-        // Premier echantillon devant nous, et altitude a l'endroit exact ou l'on se trouve.
-        var i = samples.indexOfFirst { it.x >= from }
-        if (i <= 0) i = 1
-        val prev = samples[i - 1]
-        val next = samples[i]
-        val span = next.x - prev.x
-        var z = if (span > 0) prev.z + (next.z - prev.z) * ((from - prev.x) / span) else prev.z
-        var ascent = 0.0
-        for (k in i until samples.size) {
-            val dz = samples[k].z - z
-            if (dz > 0) ascent += dz
-            z = samples[k].z
-        }
-        return Remaining(end - from, ascent)
-    }
-
     private fun smooth(x: DoubleArray, z: DoubleArray, meters: Double) {
         val n = z.size
         if (meters <= 0 || n < 3) return

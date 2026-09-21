@@ -171,8 +171,7 @@ fun SettingsScreen(
     // ---------- sauvegarde et restauration ----------
     val scope = rememberCoroutineScope()
     val expertTaps = remember { ExpertTaps() }
-    // Le menu de l'avatar : "A propos" et "Aide". Il vit a cote du geste des sept appuis, qui continue de
-    // se compter par-dessous (cf. ExpertTaps).
+    // Le menu de l'avatar : "A propos" et "Aide".
     var menuAvatar by remember { mutableStateOf(false) }
     var aboutOuvert by remember { mutableStateOf(false) }
     val expertOn = stringResource(R.string.settings_expert_on)
@@ -252,25 +251,19 @@ fun SettingsScreen(
         containerColor = palette.screen,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(19.dp)) } },
                 /*
-                 * Sept appuis rapproches sur l'avatar allument ou eteignent le mode expert (cf. ExpertTaps),
+                 * Sept appuis rapproches sur le titre allument ou eteignent le mode expert (cf. ExpertTaps),
                  * et une alerte le dit trois secondes : un geste cache doit au moins dire ce qu'il a fait.
-                 * Sans ondulation : ce n'est pas un bouton qu'on propose.
+                 * Sans ondulation : ce n'est pas un bouton qu'on propose. Le geste a quitte l'avatar le jour
+                 * ou celui-ci a porte un menu : chaque appui l'ouvrait.
                  */
-                actions = {
-                    Box {
-                    Avatar(
-                        cur.avatarSource, size = 26.dp,
-                        modifier = Modifier.padding(end = 14.dp).testTag("settings_avatar").clickable(
+                title = {
+                    Text(
+                        stringResource(R.string.settings_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("settings_title").clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null,
                         ) {
-                            // Un tap ouvre le menu et le LAISSE ouvert : les sept appuis se comptent
-                            // dessous sans le faire clignoter, et le septieme le referme.
-                            menuAvatar = true
                             if (expertTaps.tap(SystemClock.elapsedRealtime())) {
-                                menuAvatar = false
                                 val on = !cur.expertMode
                                 vm.save(cur.copy(expertMode = on))
                                 val texte = if (on) expertOn else expertOff
@@ -281,6 +274,18 @@ fun SettingsScreen(
                                     }
                                 }
                             }
+                        },
+                    )
+                },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(19.dp)) } },
+                actions = {
+                    Box {
+                    Avatar(
+                        cur.avatarSource, size = 26.dp,
+                        modifier = Modifier.padding(end = 14.dp).testTag("settings_avatar").clickable(
+                            interactionSource = remember { MutableInteractionSource() }, indication = null,
+                        ) {
+                            menuAvatar = true
                         },
                     )
                     DropdownMenu(expanded = menuAvatar, onDismissRequest = { menuAvatar = false }) {

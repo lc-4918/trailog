@@ -1,7 +1,7 @@
 package fr.lc4918.trailog.ui.settings
 
 /**
- * Les sept appuis sur l'avatar qui allument ou eteignent le mode expert des reglages.
+ * Les sept appuis sur le titre des reglages qui allument ou eteignent le mode expert des reglages.
  *
  * Le geste des options de developpement d'Android : un reglage cache ne doit pas s'ouvrir par megarde, et
  * sept appuis RAPPROCHES ne se font pas sans le vouloir. Un appui plus d'une seconde et demie apres le

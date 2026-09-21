@@ -26,7 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Le mode expert des reglages : ses options restent cachees, sept appuis sur l'avatar les montrent - une
+ * Le mode expert des reglages : ses options restent cachees, sept appuis sur le titre les montrent - une
  * alerte le dit -, et sept autres les cachent de nouveau. Le reglage est enregistre en base.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -41,21 +41,16 @@ class ExpertModeUiTest {
         compose.onAllNodesWithText(app.getString(res)).fetchSemanticsNodes().isNotEmpty()
 
     /**
-     * Sept appuis sur l'avatar.
+     * Sept appuis sur le titre "Reglages".
      *
-     * **L'avatar s'attend avant de le viser.** `setContent` puis `waitForIdle` ne garantissent pas que
-     * l'ecran soit la : ses reglages viennent de la base, et la barre du haut - donc l'avatar - ne parait
-     * qu'a leur arrivee. Taper aussitot visait donc un noeud qui n'existait pas encore, une fois sur deux :
-     * c'est ce qui faisait tomber le test dans la passe complete, ou la base met un peu plus de temps a
-     * repondre, alors qu'il passait seul.
-     *
-     * **Sur l'arbre NON fusionne** : le premier appui ouvre le menu, et une fenetre ouverte retire de
-     * l'arbre fusionne ce qu'elle recouvre - l'avatar y devient introuvable des le deuxieme appui.
+     * **Le titre s'attend avant de le viser.** `setContent` puis `waitForIdle` ne garantissent pas que
+     * l'ecran soit la : ses reglages viennent de la base, et la barre du haut ne parait qu'a leur arrivee.
+     * Taper aussitot visait un noeud qui n'existait pas encore, une fois sur deux.
      */
     private fun septAppuis() {
         compose.waitUntil(5_000) { avatars().isNotEmpty() }
         repeat(ExpertTaps.TAPS) {
-            compose.onNodeWithTag("settings_avatar", useUnmergedTree = true).performClick()
+            compose.onNodeWithTag("settings_title", useUnmergedTree = true).performClick()
         }
     }
 
@@ -81,7 +76,7 @@ class ExpertModeUiTest {
         compose.onNodeWithTag("settings_avatar", useUnmergedTree = true).performClick()
     }
 
-    @Test fun `sept appuis sur l'avatar montrent puis cachent les options expertes`() {
+    @Test fun `sept appuis sur le titre montrent puis cachent les options expertes`() {
         runBlocking {
             app.repository.ensureSeed()
             val s = app.repository.settings.get() ?: SettingsEntity()
@@ -146,8 +141,8 @@ class ExpertModeUiTest {
         compose.onNodeWithTag("about_issues_link").assertIsDisplayed()
     }
 
-    /** Les sept appuis continuent de se compter sous le menu, qui se referme a la bascule. */
-    @Test fun `le menu ouvert n'empeche pas le mode expert`() {
+    /** L'avatar n'allume plus le mode expert : ses appuis ouvrent son menu, et rien d'autre. */
+    @Test fun `sept appuis sur l'avatar ne touchent pas au mode expert`() {
         runBlocking {
             app.repository.ensureSeed()
             val s = app.repository.settings.get() ?: SettingsEntity()
@@ -155,8 +150,9 @@ class ExpertModeUiTest {
         }
         compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
         compose.waitForIdle()
-        septAppuis()
-        compose.waitUntil(5_000) { runBlocking { app.repository.settings.get()!!.expertMode } }
-        compose.onAllNodesWithTag("menu_about").assertCountEquals(0)
+        repeat(ExpertTaps.TAPS) { unAppui() }
+        compose.waitForIdle()
+        assertTrue(!runBlocking { app.repository.settings.get()!!.expertMode })
+        assertTrue(!present(R.string.settings_expert_on))
     }
 }

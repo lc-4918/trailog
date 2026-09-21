@@ -933,6 +933,42 @@ class MigrationsTest {
         auto.close()
     }
 
+    /**
+     * L'itineraire calcule garde la coloration qu'il avait : elle suivait le reglage du profil, dont la
+     * valeur se recopie dans ses deux nouveaux reglages - allumee comme eteinte.
+     */
+    @Test fun `73 vers 74 garde la coloration de l'itineraire telle qu'elle etait`() {
+        for (avant in listOf(0, 1)) {
+            val db = freshDb("m7374-$avant"); settingsV16(db)
+            db.execSQL("ALTER TABLE settings ADD COLUMN profileSlope INTEGER NOT NULL DEFAULT $avant")
+            MigrationSql.ADD_ROUTE_SLOPE.forEach { db.execSQL(it) }
+            assertEquals(avant, scalar(db, "SELECT routeSlopeLine FROM settings") { it.getInt(0) })
+            assertEquals(avant, scalar(db, "SELECT routeSlopeProfile FROM settings") { it.getInt(0) })
+            db.close()
+        }
+    }
+
+    /** Le trait garde sa largeur d'avant, les chevrons arrivent eteints, la trame est celle d'OruxMaps -
+     *  et une installation neuve part des memes valeurs. */
+    @Test fun `73 vers 74 pose l'affichage des traces a ses defauts`() {
+        val db = freshDb("m7374bis"); settingsV16(db)
+        MigrationSql.ADD_TRACK_DISPLAY.forEach { db.execSQL(it) }
+        assertEquals(SettingsEntity().slopeClassTenths, scalar(db, "SELECT slopeClassTenths FROM settings") { it.getInt(0) })
+        assertEquals(SettingsEntity().trackLineWidth, scalar(db, "SELECT trackLineWidth FROM settings") { it.getInt(0) })
+        assertEquals(0, scalar(db, "SELECT trackDirectionArrows FROM settings") { it.getInt(0) })
+        assertFalse(SettingsEntity().trackDirectionArrows)
+        db.close()
+    }
+
+    @Test fun `73 vers 74 ne colorie aucune couche par pente`() {
+        val db = freshDb("m7374ter")
+        db.execSQL("CREATE TABLE layers (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL)")
+        db.execSQL("INSERT INTO layers (id, name) VALUES (1, 'trace')")
+        db.execSQL(MigrationSql.ADD_LAYER_SLOPE_COLORED)
+        assertEquals(0, scalar(db, "SELECT slopeColored FROM layers") { it.getInt(0) })
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

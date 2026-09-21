@@ -37,6 +37,7 @@ private class ProfileDrawCache {
     var stats: TrackStats? = null
     var grid: Boolean? = null
     var slope: Boolean? = null
+    var slopeClass: Int? = null
     var lineColor: Color? = null
     var axisFontSp: Int? = null
     var axisBold: Boolean? = null
@@ -64,6 +65,8 @@ fun ElevationProfile(
     modifier: Modifier = Modifier,
     grid: Boolean = true,
     slope: Boolean = true,
+    // Largeur des classes de pente, en dixiemes de point (cf. SlopeRamp).
+    slopeClassTenths: Int = SlopeRamp.DefaultClassTenths,
     lineColor: Color = Color(0xFF1F6FB2),
     axisFontSp: Int = 9,
     axisBold: Boolean = false,
@@ -175,7 +178,7 @@ fun ElevationProfile(
         fun sy(z: Double) = baseY - ((z - win.minZ) * yScale).toFloat()
 
         val stale = cache.samplesRef !== samples || cache.stats != stats || cache.grid != grid ||
-            cache.slope != slope || cache.lineColor != lineColor || cache.axisFontSp != axisFontSp ||
+            cache.slope != slope || cache.slopeClass != slopeClassTenths || cache.lineColor != lineColor || cache.axisFontSp != axisFontSp ||
             cache.axisBold != axisBold || cache.axisColor != axisColor || cache.gridColor != gridColor ||
             cache.textColor != textColor || cache.vscale != verticalScale || cache.w != w || cache.h != h
         if (stale) {
@@ -214,7 +217,7 @@ fun ElevationProfile(
                 moveTo(padLpx, baseY); lineTo(padLpx + plotW, baseY)
             }
             cache.areaRuns = if (slope) {
-                buildAreaRuns(samples, stats.maxAbsSlope, ::sx, ::sy, baseY)
+                buildAreaRuns(samples, slopeClassTenths, ::sx, ::sy, baseY)
             } else {
                 listOf(
                     Path().apply {
@@ -227,6 +230,7 @@ fun ElevationProfile(
             }
 
             cache.samplesRef = samples; cache.stats = stats; cache.grid = grid; cache.slope = slope
+            cache.slopeClass = slopeClassTenths
             cache.lineColor = lineColor; cache.axisFontSp = axisFontSp; cache.axisBold = axisBold
             cache.axisColor = axisColor; cache.gridColor = gridColor; cache.textColor = textColor
             cache.vscale = verticalScale; cache.w = w; cache.h = h
@@ -271,7 +275,7 @@ fun ElevationProfile(
  *  jusqu'à ~2000 Path/drawPath (un par segment) pour n'en garder qu'un par plage de pente stable. */
 private fun buildAreaRuns(
     samples: List<Sample>,
-    maxAbsSlope: Double,
+    slopeClassTenths: Int,
     sx: (Double) -> Float,
     sy: (Double) -> Float,
     baseY: Float,
@@ -279,9 +283,10 @@ private fun buildAreaRuns(
     val runs = ArrayList<Pair<Path, Color>>()
     var i = 1
     while (i < samples.size) {
-        val col = SlopeRamp.colorFor(samples[i].slope, maxAbsSlope)
+        val cls = SlopeRamp.classOf(samples[i].slope, slopeClassTenths)
         var j = i
-        while (j + 1 < samples.size && SlopeRamp.colorFor(samples[j + 1].slope, maxAbsSlope) == col) j++
+        while (j + 1 < samples.size && SlopeRamp.classOf(samples[j + 1].slope, slopeClassTenths) == cls) j++
+        val col = SlopeRamp.at(cls)
         val path = Path().apply {
             moveTo(sx(samples[i - 1].x), baseY)
             lineTo(sx(samples[i - 1].x), sy(samples[i - 1].z))

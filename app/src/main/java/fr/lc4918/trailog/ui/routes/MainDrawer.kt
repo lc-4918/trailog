@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -725,6 +726,19 @@ internal fun RowMenu(
                     DropdownMenuItem(text = { Text(stringResource(R.string.action_download_map)) },
                         onClick = { open = false; telecharger(layer) })
                 }
+                // Colorier le trait selon la pente, puis lui rendre sa couleur : une entree qui dit ce
+                // qu'elle fera, selon l'etat. Sans altitude, pas de pente, et pas d'entree.
+                if (layer.hasZ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(stringResource(
+                                if (layer.slopeColored) R.string.action_restore_color else R.string.action_color_by_slope
+                            ))
+                        },
+                        onClick = { open = false; layerActions.onSlopeColored(layer, !layer.slopeColored) },
+                        modifier = Modifier.testTag("menu_slope_colored"),
+                    )
+                }
             }
             if (onColor != null) {
                 DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
@@ -760,6 +774,8 @@ class LayerActions(
     val onStats: (LayerEntity) -> Unit = {},
     /** Telecharger la carte le long de la trace ; null si le fond affiche ne s'y prete pas. */
     val onDownloadMap: ((LayerEntity) -> Unit)? = null,
+    /** Colorier le trait selon la pente (vrai), ou lui rendre la couleur de la couche (faux). */
+    val onSlopeColored: (LayerEntity, Boolean) -> Unit = { _, _ -> },
 )
 
 /** Les couches que porte un dossier, sous-dossiers compris : ce sur quoi portent ses actions (oeil,
@@ -913,7 +929,8 @@ internal fun DrawerContent(
     }
     var layerStatsTarget by remember { mutableStateOf<LayerEntity?>(null) }
     val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer,
-        onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap)
+        onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap,
+        onSlopeColored = { l, on -> vm.setLayerSlopeColored(l, on) })
     var searchQuery by remember { mutableStateOf("") }
     var searchOpen by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }

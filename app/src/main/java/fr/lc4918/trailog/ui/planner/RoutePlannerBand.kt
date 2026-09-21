@@ -766,8 +766,8 @@ private fun ResultsZone(
                 )
             }
             if (state.profileShown) {
-                if (settings.profileSlope && settings.profileSlopeLegend) {
-                    SlopeLegend(stats.maxAbsSlope, settings.profLegendFont,
+                if (settings.routeSlopeProfile && settings.profileSlopeLegend) {
+                    SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),
                         bold = settings.profLegendBold)
                 }
@@ -781,7 +781,8 @@ private fun ResultsZone(
                     ElevationProfile(
                         samples = samples, stats = stats,
                         grid = settings.profileGrid,
-                        slope = settings.profileSlope,
+                        slope = settings.routeSlopeProfile,
+                        slopeClassTenths = settings.slopeClassTenths,
                         lineColor = MaterialTheme.colorScheme.primary,
                         axisFontSp = settings.profAxisFont,
                         axisBold = settings.profAxisBold,

@@ -105,35 +105,6 @@ class TrackMathTest {
         }
     }
 
-    // ---------- Ce qui reste a parcourir ----------
-
-    @Test fun `le restant se compte depuis le point ou l'on se trouve`() {
-        val montee = (0..10).map { s(it * 100.0, 500.0 + it * 10.0) }   // 1 km, +100 m
-        val r = TrackMath.remaining(montee, 400.0)
-        assertEquals(600.0, r.distance, 0.001)
-        assertEquals(60.0, r.ascent, 0.001)
-    }
-
-    /** Le point ou l'on se trouve tombe rarement sur un echantillon : sans interpolation, la montee du
-     *  segment en cours serait comptee en entier alors qu'on en a deja fait la moitie. */
-    @Test fun `le denivele du segment en cours n'est compte que pour ce qu'il en reste`() {
-        val montee = listOf(s(0.0, 500.0), s(100.0, 600.0))
-        assertEquals(50.0, TrackMath.remaining(montee, 50.0).ascent, 0.001)
-    }
-
-    /** Seule la montee compte : ce qui reste a descendre n'est pas un effort a prevoir. */
-    @Test fun `les descentes ne comptent pas dans le denivele restant`() {
-        val vallonne = listOf(s(0.0, 500.0), s(100.0, 550.0), s(200.0, 500.0), s(300.0, 530.0))
-        assertEquals(80.0, TrackMath.remaining(vallonne, 0.0).ascent, 0.001)
-    }
-
-    @Test fun `arrive au bout, il ne reste rien`() {
-        val montee = (0..10).map { s(it * 100.0, 500.0 + it * 10.0) }
-        assertEquals(0.0, TrackMath.remaining(montee, 1000.0).distance, 0.001)
-        assertEquals(0.0, TrackMath.remaining(montee, 5000.0).ascent, 0.001)
-        assertEquals(0.0, TrackMath.remaining(emptyList(), 0.0).distance, 0.001)
-    }
-
     @Test fun compute_movingTime_ignoresStops() {
         // 3 points : 2e point quasi immobile pendant 600 s -> ignoré en temps de mouvement
         val pts = listOf(

@@ -245,6 +245,9 @@ fun ColumnScopeMarker.SetRow(
     label: String, sub: String? = null, onClick: (() -> Unit)? = null, role: Role? = null,
     /** Une explication, derriere un petit "i" a cote du libelle (cf. [InfoTip]) ; rien quand null. */
     info: String? = null,
+    /** Ce que montre le "i" quand ce n'est pas un texte - une legende, par exemple (cf. [InfoDialogTip]).
+     *  L'emporte sur [info]. */
+    infoContent: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -256,13 +259,13 @@ fun ColumnScopeMarker.SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            if (info == null) {
+            if (info == null && infoContent == null) {
                 Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label)
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label,
                         modifier = Modifier.weight(1f, fill = false))
-                    InfoTip(info)
+                    if (infoContent != null) InfoDialogTip(label, infoContent) else InfoTip(info!!)
                 }
             }
             if (sub != null) {
@@ -371,6 +374,34 @@ fun InfoTip(text: String) {
 }
 
 /**
+ * Un petit "i" qui ouvre une fenetre, pour ce qu'une bulle de texte ne sait pas montrer : la trame des
+ * pentes se regarde, elle ne se lit pas. Une fenetre et non une bulle : elle est haute, et se referme d'un
+ * OK, comme la legende d'OruxMaps dont elle reprend la forme.
+ */
+@Composable
+fun InfoDialogTip(title: String, content: @Composable () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(
+        Modifier.size(28.dp).clip(CircleShape).clickable { open = true }.testTag("info_tip"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Outlined.Info, contentDescription = title, Modifier.size(16.dp), tint = settingsPalette.subtle)
+    }
+    if (open) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(title) },
+            text = { content() },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { open = false }) {
+                    Text(androidx.compose.ui.res.stringResource(fr.lc4918.trailog.R.string.action_ok))
+                }
+            },
+        )
+    }
+}
+
+/**
  * Ligne a curseur double : meme dessin que [SliderRow], pour un reglage qui a un debut et une fin.
  *
  * La plage se lit dans la valeur, a droite du libelle - "8 - 14" -, et non sous chaque poignee : deux
@@ -398,9 +429,11 @@ fun ColumnScopeMarker.StepperRow(
     label: String, value: Int, min: Int, max: Int,
     bold: Boolean? = null, onBold: ((Boolean) -> Unit)? = null,
     boldLabel: String = "G", decreaseLabel: String, increaseLabel: String,
+    /** Une explication, derriere un petit "i" a cote du libelle (cf. [InfoTip]) ; rien quand null. */
+    info: String? = null,
     onChange: (Int) -> Unit,
 ) {
-    SetRow(label) {
+    SetRow(label, info = info) {
         if (bold != null && onBold != null) {
             SquareButton(
                 onClick = { onBold(!bold) }, selected = bold, contentDescription = null,
@@ -849,10 +882,12 @@ fun <T> ColumnScopeMarker.PickRow(
     label: String, current: T, options: List<T>, optionLabel: @Composable (T) -> String,
     /** Une explication derriere un "i" a cote du libelle (cf. [InfoTip]). */
     info: String? = null,
+    /** Ce que montre le "i" quand ce n'est pas un texte (cf. [InfoDialogTip]). */
+    infoContent: (@Composable () -> Unit)? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    SetRow(label, onClick = { open = true }, info = info) {
+    SetRow(label, onClick = { open = true }, info = info, infoContent = infoContent) {
         PickValue(optionLabel(current), open, { open = false }) {
             options.forEach { o ->
                 androidx.compose.material3.DropdownMenuItem(

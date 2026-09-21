@@ -53,6 +53,8 @@ import fr.lc4918.trailog.data.db.MaxOffTrackAlertM
 import fr.lc4918.trailog.data.db.MinGpsMarkerSizeDp
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MinOffTrackAlertM
+import fr.lc4918.trailog.data.db.MaxTrackLineWidthDp
+import fr.lc4918.trailog.data.db.MinTrackLineWidthDp
 import fr.lc4918.trailog.data.db.OffTrackAlertStepM
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.BubblePosition
@@ -72,8 +74,8 @@ import kotlinx.coroutines.launch
 /**
  * Onglet "Carte" : ce qui s'affiche sur la carte et par-dessus elle.
  *
- * Quatre groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, la position, les points
- * d'interet, puis ce qui decrit le relief parcouru. Tous portent un titre de groupe, y compris le premier
+ * Les groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, la position, le dessin des
+ * traces, le tableau de bord, les points d'interet, puis ce qui decrit le relief parcouru. Tous portent un titre de groupe, y compris le premier
  * desormais - "Boutons et gestes" reunissait naguere neuf interrupteurs sous une seule rubrique plate ; ils
  * se repartissent maintenant en quatre sous-rubriques qui disent chacune a quoi elles servent (Position,
  * Recherche et itineraire, Outils de trace, Affichage).
@@ -189,6 +191,30 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
 
     bloc {
         GpsMarkerSettings(cur, vm)
+    }
+
+    bloc(R.string.settings_group_track) {
+        /*
+         * Trace : comment les traces et l'itineraire se dessinent sur la carte. Le trait de chaque trace
+         * garde sa couleur, reglee dans le menu lateral ; ce qui est reglable ici vaut pour toutes.
+         */
+        GroupTitle(stringResource(R.string.settings_group_track))
+        SectionTitle(stringResource(R.string.settings_section_display), tight = true)
+        SettingsCard {
+            StepperLine(
+                stringResource(R.string.settings_track_line_width), cur.trackLineWidth,
+                MinTrackLineWidthDp, MaxTrackLineWidthDp,
+                info = stringResource(R.string.settings_track_line_width_info),
+            ) { vm.save(cur.copy(trackLineWidth = it)) }
+            // Les chevrons du sens de parcours : reglage expert, eteint par defaut.
+            if (cur.expertMode) {
+                RowDivider()
+                SwitchLine(
+                    stringResource(R.string.settings_track_direction), cur.trackDirectionArrows,
+                    info = stringResource(R.string.settings_track_direction_info),
+                ) { vm.save(cur.copy(trackDirectionArrows = it)) }
+            }
+        }
     }
 
     bloc(R.string.settings_group_dashboard) {
