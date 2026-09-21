@@ -1,5 +1,7 @@
 package fr.lc4918.trailog.ui.settings
 
+import fr.lc4918.trailog.ui.components.BusySpinner
+import fr.lc4918.trailog.ui.components.afterFrame
 import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
 import fr.lc4918.trailog.ui.offline.basemapLabel
 import androidx.compose.material.icons.outlined.FileDownload
@@ -179,12 +181,14 @@ import kotlinx.coroutines.launch
                 stringResource(R.string.offline_action_download),
                 rememberVectorPainter(Icons.Outlined.FileDownload),
                 modifier = Modifier.weight(1f),
+                // Le "i" DANS le bouton, et non pose a cote : il explique ce que ce bouton fait, pas la
+                // rubrique, et il volait a la rangee une largeur que les deux boutons se partagent.
+                info = stringResource(R.string.offline_download_area_info),
             ) {
                 // Un fond qu'on ne peut pas telecharger le dit, en se NOMMANT, plutot que d'ouvrir un
                 // cadrage qui n'aboutira a rien.
                 if (telechargeable) onDownloadArea() else refusFond = true
             }
-            InfoTip(stringResource(R.string.offline_download_area_info))
         }
         if (refusFond) {
             val nom = basemapLabel(cur.defaultBasemapId, providers, composites)
@@ -220,7 +224,15 @@ import kotlinx.coroutines.launch
         }
     }
 
-    if (creatingComposite) {
+    /*
+     * Le composeur est lourd a ouvrir - il liste les fonds et leurs apercus - et l'ecran restait tel quel
+     * en attendant. Il s'ouvre donc UNE IMAGE apres le tap (cf. afterFrame), et cette image-la porte le
+     * rond d'attente : sans ce decalage, l'ecran lourd et le rond composeraient dans la meme passe, et
+     * l'image qui porterait le rond seul n'existerait jamais.
+     */
+    val composeurPret = afterFrame(creatingComposite)
+    if (creatingComposite && !composeurPret) BusySpinner()
+    if (composeurPret) {
         CompositeEditorDialog(null, providers,
             onSave = { vm.saveComposite(it); creatingComposite = false }, onDismiss = { creatingComposite = false })
     }

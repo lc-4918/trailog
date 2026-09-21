@@ -28,11 +28,22 @@ class OfflineFlowState {
     /** L'emprise retenue : sa presence ouvre l'ecran de configuration. */
     var configBbox by mutableStateOf<Bbox?>(null)
 
+    /**
+     * Le flux est demande, et ce qu'il doit ouvrir n'est pas encore la.
+     *
+     * Une trace a border se relit du disque avant que l'ecran de configuration ne puisse s'ouvrir, et
+     * une trace de vingt mille points n'arrive pas dans la seconde. La carte restait alors telle quelle,
+     * sans rien pour dire qu'on avait ete entendu - et l'on retapait. Le rond d'attente le dit
+     * (cf. BusySpinner).
+     */
+    var preparing by mutableStateOf(false)
+
 
     /** Referme completement le flux (annulation ou fin de configuration). */
     fun closeFlow() {
         configBbox = null
         corridor = null
+        preparing = false
     }
 
     /**

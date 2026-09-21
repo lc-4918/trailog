@@ -671,7 +671,11 @@ fun ColumnScopeMarker.ChipRow(scrollable: Boolean = false, content: @Composable 
  *  de rangee via [Modifier.weight]. */
 @Composable
 fun ColumnScopeMarker.CardButton(
-    label: String, icon: Painter? = null, modifier: Modifier = Modifier.fillMaxWidth(), onClick: () -> Unit,
+    label: String, icon: Painter? = null, modifier: Modifier = Modifier.fillMaxWidth(),
+    /** Une explication derriere un "i", DANS le bouton : c'est ce bouton-la qu'elle decrit. Le "i" garde
+     *  son propre tap - l'expliquer ne doit pas le declencher. */
+    info: String? = null,
+    onClick: () -> Unit,
 ) {
     val p = settingsPalette
     Row(
@@ -683,6 +687,9 @@ fun ColumnScopeMarker.CardButton(
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(16.dp), tint = p.accentStrong)
         Text(label, fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = p.accentStrong)
+        // Le "i" apres le libelle, dans le bouton : son propre tap le montre sans declencher le bouton -
+        // c'est un enfant cliquable, et il consomme le geste avant que son parent ne le voie.
+        if (info != null) InfoTip(info)
     }
 }
 

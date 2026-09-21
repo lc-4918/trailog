@@ -80,6 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
+import fr.lc4918.trailog.ui.components.BusySpinner
 import fr.lc4918.trailog.ui.components.Avatar
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.launch
@@ -98,7 +99,12 @@ fun SettingsScreen(
     val providers by vm.providers.collectAsState()
     val composites by vm.composites.collectAsState()
     val status by vm.status.collectAsState()
-    val cur = s ?: return
+    /*
+     * Les reglages arrivent de la base, et l'ecran ne tenait rien a dire en les attendant : le menu
+     * lateral s'etant referme sur le tap de l'engrenage, on voyait la carte pendant quelques dixiemes de
+     * seconde - jusqu'a deux - avant que les reglages ne paraissent, sans rien pour dire qu'ils venaient.
+     */
+    val cur = s ?: run { BusySpinner(); return }
     val ctx = LocalContext.current
 
     val snackbar = remember { SnackbarHostState() }

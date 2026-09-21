@@ -81,6 +81,7 @@ import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.FollowProgressMath
+import fr.lc4918.trailog.ui.components.BusySpinner
 import fr.lc4918.trailog.ui.components.BasemapControlPanel
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapLibreSurface
@@ -121,6 +122,8 @@ fun MainScreen(
     settingsOpen: Boolean = false,
     /** Compteur des demandes de telechargement d'une zone, venues des reglages (cf. AppRoot). */
     downloadAreaRequest: Int = 0,
+    /** Le cadrage d'une zone est ouvert : ce qui l'attendait peut cesser de l'annoncer (cf. AppRoot). */
+    onDownloadAreaReady: () -> Unit = {},
     vm: MainViewModel = viewModel(),
     // La carte, en parametre pour qu'un test puisse composer l'ecran sans les natifs de MapLibre (cf.
     // MapSurface). En production, c'est la vraie : l'appel de AppRoot ne la nomme pas.
@@ -158,7 +161,10 @@ fun MainScreen(
     // Une zone a telecharger, demandee depuis les reglages : le cadrage s'ouvre sur la carte, profil et
     // tableau de bord refermes (cf. OfflineFlowState.startDrawing).
     LaunchedEffect(downloadAreaRequest) {
-        if (downloadAreaRequest > 0) offline.startDrawing { vm.closeProfile() }
+        if (downloadAreaRequest > 0) {
+            offline.startDrawing { vm.closeProfile() }
+            onDownloadAreaReady()
+        }
     }
 
     val renderLayers by vm.renderLayers.collectAsState()
@@ -826,13 +832,19 @@ fun MainScreen(
                     onDownloadMap = ({ l ->
                         scope.launch { drawerState.close() }
                         if (!offlineButtonVisible) dialogs.failedText(refusTelechargement)
-                        else vm.trackPointsOf(l) { pts ->
-                            if (pts.isNotEmpty()) {
-                                offline.corridor = l to pts
-                                offline.configBbox = Bbox.of(
-                                    pts.minOf { it.first }, pts.minOf { it.second },
-                                    pts.maxOf { it.first }, pts.maxOf { it.second },
-                                )
+                        else {
+                            // La geometrie se relit du disque : sur une longue trace, l'ecran de
+                            // configuration se fait attendre, et la carte doit dire qu'il vient.
+                            offline.preparing = true
+                            vm.trackPointsOf(l) { pts ->
+                                offline.preparing = false
+                                if (pts.isNotEmpty()) {
+                                    offline.corridor = l to pts
+                                    offline.configBbox = Bbox.of(
+                                        pts.minOf { it.first }, pts.minOf { it.second },
+                                        pts.maxOf { it.first }, pts.maxOf { it.second },
+                                    )
+                                }
                             }
                         }
                     }),
@@ -1283,6 +1295,9 @@ fun MainScreen(
                 // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
                 poiAvailable = settings.poiEnabled,
             )
+            // Le rond d'attente, en DERNIER dans la pile de la carte : il annonce ce qui se prepare, et
+            // doit se voir par-dessus les calques comme par-dessus les commandes.
+            if (offline.preparing) BusySpinner()
         }
     }
 

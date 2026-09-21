@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import fr.lc4918.trailog.ui.components.BusySpinner
 import fr.lc4918.trailog.ui.routes.MainScreen
 import fr.lc4918.trailog.ui.settings.SettingsScreen
 import fr.lc4918.trailog.update.ReleaseInfo
@@ -28,16 +29,22 @@ fun AppRoot(autoCheckUpdates: Boolean) {
     // Chaque demande de telechargement d'une zone, depuis les reglages : un compteur, que la carte suit.
     // Les reglages se referment, et c'est la carte qui ouvre son cadrage - elle seule sait ou elle en est.
     var downloadArea by rememberSaveable { mutableIntStateOf(0) }
+    // Les reglages se referment, la carte reprend la main, et le cadrage s'ouvre : trois etapes, et entre
+    // le tap et la derniere il se passe un temps que rien n'annoncait.
+    var cadrageEnAttente by remember { mutableStateOf(false) }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         MainScreen(onSettings = { showSettings = true }, settingsOpen = showSettings,
-            downloadAreaRequest = downloadArea)
+            downloadAreaRequest = downloadArea,
+            onDownloadAreaReady = { cadrageEnAttente = false })
         if (showSettings) {
             BackHandler { showSettings = false }
             SettingsScreen(
                 onBack = { showSettings = false },
-                onDownloadArea = { showSettings = false; downloadArea++ },
+                onDownloadArea = { showSettings = false; downloadArea++; cadrageEnAttente = true },
             )
         }
+        // Par-dessus les deux ecrans : c'est leur passage de l'un a l'autre qu'il annonce.
+        if (cadrageEnAttente) BusySpinner()
     }
 
     // Verification au demarrage, une seule fois par lancement : la cle du remember ne depend de rien, donc
