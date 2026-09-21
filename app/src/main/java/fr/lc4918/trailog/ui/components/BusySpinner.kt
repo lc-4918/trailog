@@ -8,10 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,23 +98,3 @@ fun BusySpinner(modifier: Modifier = Modifier) {
  */
 internal fun spinnerAngle(frameNanos: Long): Float =
     (frameNanos / 1_000_000L % TurnMillis) * 360f / TurnMillis
-
-/**
- * Laisse passer UNE image avant d'ouvrir ce qui est lourd a composer.
- *
- * **Pourquoi c'est necessaire.** Un ecran lourd et le rond qui l'annonce composent dans la meme passe :
- * l'image qui porterait le rond seul n'existe jamais, et l'attente reste aussi muette qu'avant. En
- * differant d'une image ce qui est lourd, le rond a le temps de paraitre.
- *
- * Rend faux tant que [demande] est faux, puis faux le temps d'une image, puis vrai.
- */
-@Composable
-fun afterFrame(demande: Boolean): Boolean {
-    var pret by remember(demande) { mutableStateOf(false) }
-    LaunchedEffect(demande) {
-        if (!demande) return@LaunchedEffect
-        withFrameNanos { }
-        pret = true
-    }
-    return demande && pret
-}

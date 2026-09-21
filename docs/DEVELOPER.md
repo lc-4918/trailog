@@ -95,6 +95,16 @@ vues dynamiques, décisions), [`SPEC.md`](SPEC.md) pour la spécification foncti
 ./gradlew :app:installDebug       # build + installe sur device/émulateur connecté
 ```
 
+```bash
+./gradlew :app:installBench      # build de MESURE : non débogable, compilé comme le release
+```
+
+Le type `bench` existe pour une seule raison : **mesurer une lenteur en debug induit en erreur d'un
+facteur trois** (cf. [`CONTEXT.md`](CONTEXT.md#pièges-connus)). Il reprend les réglages du release, garde
+la clé de débogage, et s'installe sous `fr.lc4918.trailog.bench` - à côté de la version officielle et du
+build de dev, sans toucher ni à l'une ni à l'autre. À désinstaller après usage
+(`adb uninstall fr.lc4918.trailog.bench`).
+
 Logs : `adb logcat` ou la fenêtre **Logcat** d'Android Studio.
 
 Suivi de position qui se tait écran éteint sur un appareil en économie d'énergie : c'est un réglage du

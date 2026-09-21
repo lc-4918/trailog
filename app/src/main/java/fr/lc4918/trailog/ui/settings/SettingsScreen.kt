@@ -125,11 +125,14 @@ fun SettingsScreen(
     val composites by vm.composites.collectAsState()
     val status by vm.status.collectAsState()
     /*
-     * Les reglages arrivent de la base, et l'ecran ne tenait rien a dire en les attendant : le menu
-     * lateral s'etant referme sur le tap de l'engrenage, on voyait la carte pendant quelques dixiemes de
-     * seconde - jusqu'a deux - avant que les reglages ne paraissent, sans rien pour dire qu'ils venaient.
+     * Les reglages arrivent de la base, et l'ecran ne tient rien a dire en les attendant.
+     *
+     * Un rond d'attente y a vecu une soiree, puis a ete mesure : la base repond en 40 ms, et les 110 ms
+     * qui suivent sont de la COMPOSITION - fil d'affichage occupe, donc aucune image produite, donc un
+     * rond fige. Un temoin d'attente qui ne tourne pas ment sur ce qu'il annonce, et il ment ici pendant
+     * plus longtemps qu'il n'informe.
      */
-    val cur = s ?: run { BusySpinner(); return }
+    val cur = s ?: return
     val ctx = LocalContext.current
 
     val snackbar = remember { SnackbarHostState() }
@@ -308,6 +311,7 @@ fun SettingsScreen(
         // ecran se lit et se regle au doigt, la densite n'y vaut pas la lisibilite. Le seul endroit qui la
         // neutralise encore est la fiche d'un fournisseur, ou dix lignes se suivent dans une popup.
         Column(Modifier.padding(pad).fillMaxSize()) {
+
             // Onglets en pastilles et non en soulignement : ils partagent la surface blanche de la barre,
             // et c'est l'aplat d'accent qui dit lequel est ouvert - le meme aplat que les puces retenues,
             // plus bas, une seule facon de dire "retenu" sur tout l'ecran.

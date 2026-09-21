@@ -1,7 +1,5 @@
 package fr.lc4918.trailog.ui.settings
 
-import fr.lc4918.trailog.ui.components.BusySpinner
-import fr.lc4918.trailog.ui.components.afterFrame
 import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
 import fr.lc4918.trailog.ui.offline.basemapLabel
 import androidx.compose.material.icons.outlined.FileDownload
@@ -225,14 +223,11 @@ import kotlinx.coroutines.launch
     }
 
     /*
-     * Le composeur est lourd a ouvrir - il liste les fonds et leurs apercus - et l'ecran restait tel quel
-     * en attendant. Il s'ouvre donc UNE IMAGE apres le tap (cf. afterFrame), et cette image-la porte le
-     * rond d'attente : sans ce decalage, l'ecran lourd et le rond composeraient dans la meme passe, et
-     * l'image qui porterait le rond seul n'existerait jamais.
+     * Pas de rond d'attente ici, et c'est une mesure qui l'a tranche : ouvrir le composeur est de la
+     * COMPOSITION, pas une attente - le fil d'affichage est occupe, aucune image n'est produite, et un
+     * temoin pose la resterait fige. Il ne dirait rien que l'ecran fige ne dise deja.
      */
-    val composeurPret = afterFrame(creatingComposite)
-    if (creatingComposite && !composeurPret) BusySpinner()
-    if (composeurPret) {
+    if (creatingComposite) {
         CompositeEditorDialog(null, providers,
             onSave = { vm.saveComposite(it); creatingComposite = false }, onDismiss = { creatingComposite = false })
     }

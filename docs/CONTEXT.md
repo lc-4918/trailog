@@ -449,6 +449,17 @@ qui permet de tout mesurer par USB ; et **le mode avion prive le fournisseur ré
 repli multi-fournisseurs du service n'y offre aucun filet. Il n'y reste que le réglage ci-dessus, et le
 chien de garde pour dire que les positions ont cessé.
 
+**Une mesure de performance faite en debug se trompe d'un facteur trois.** Relevé sur l'ouverture de
+l'écran des réglages, même téléphone, même geste : **425 ms en debug, 150 ms** dans un build non
+débogable. Le build de développement n'est pas compilé comme celui qu'on livre - pas d'AOT sur notre
+propre code - et Compose y compose sensiblement plus lentement. Avant d'optimiser quoi que ce soit sur
+la foi d'un ressenti, refaire la mesure avec le type de build `bench` (cf.
+[`DEVELOPER.md`](DEVELOPER.md)), sous peine d'aller chasser un défaut qui n'existe que chez soi.
+
+Corollaire pour les témoins d'attente : ce qui parait long en debug l'est rarement en release, et une
+attente de composition ne peut de toute façon pas être annoncée par un rond qui tourne - le fil
+d'affichage étant occupé, aucune image n'est produite, et le rond reste figé.
+
 **Le build debug est une autre application.** `applicationIdSuffix = ".debug"` et une autre signature :
 il ne peut pas être remplacé par un APK de release, d'où l'inertie de la vérification des mises à jour
 en debug.

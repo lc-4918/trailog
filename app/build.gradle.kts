@@ -87,6 +87,22 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        /*
+         * Build de MESURE, temporaire : ni debogable, ni suffixe de version, mais installable a cote
+         * des deux autres.
+         *
+         * Un build debug n'est pas compile comme celui qu'on livre - pas d'AOT sur notre propre code,
+         * et Compose y compose sensiblement plus lentement. Mesurer l'ouverture d'un ecran en debug,
+         * c'est donc mesurer en partie l'outil. Celui-ci reprend les reglages du release en gardant la
+         * cle de debogage, pour dire ce que l'attente vaut REELLEMENT.
+         */
+        create("bench") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".bench"
+            versionNameSuffix = "-bench"
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+        }
         debug {
             // applicationId distinct du release (signé avec une autre clé, cf. keystore CI) :
             // permet d'installer le build de dev à côté de la version officielle sans que
