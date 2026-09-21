@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
@@ -80,144 +81,183 @@ import kotlinx.coroutines.launch
  * Les libelles des interrupteurs ont perdu leur "Afficher" : le repeter a chaque ligne ne disait rien de
  * plus que le titre de groupe.
  */
-@Composable internal fun MapTab(cur: SettingsEntity, vm: SettingsViewModel) {
-    /*
-     * Boutons et gestes, en GROUPE et non plus en rubrique unique : onze interrupteurs a la suite ne se
-     * parcouraient qu'en lisant chaque libelle un par un, faute d'un regroupement pour guider l'oeil.
-     *
-     * Le suivi de la carte ("Suivre ma position") a quitte la liste sans retour : il se commande desormais
-     * DEPUIS LA CARTE, au bouton a trois etats du coin bas-droit (cf. MapBottomRightControls), qui allume,
-     * ramene et eteint d'un seul geste la ou ce reglage demandait de rouvrir les reglages. Le reglage
-     * `mapFollowPosition` qu'il portait reste - c'est ce bouton qui l'ecrit desormais - seule la ligne ici
-     * a disparu.
-     */
-    GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
-    SectionTitle(stringResource(R.string.settings_section_position), tight = true)
-    SettingsCard {
-        // Éteindre la localisation éteint le tableau de bord avec elle : celui-ci n'a que la position pour
-        // matière, et son bouton resterait sur la carte sans rien pour allumer ni couper le capteur.
-        // Le lien inverse est tenu par la ligne du tableau de bord, juste dessous.
-        SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
-            vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
-        }
-        RowDivider()
+/**
+ * L'onglet Carte, en elements de liste.
+ *
+ * **Chaque bloc est un element** (cf. [SettingsTabScope]) : la liste ne compose que ce qui se voit, la
+ * ou une colonne unique composait les cinq cents lignes de l'onglet en une seule image - pres d'une
+ * seconde d'ecran fige a chaque ouverture.
+ *
+ * Les blocs qui OUVRENT un groupe le disent en passant leur titre : c'est ainsi que la barre de groupe
+ * sait, a l'indice de l'element en tete, dans quel groupe on se trouve. Rien n'est a tenir a jour a
+ * cote - l'indice se compte ici meme, au fil des blocs.
+ */
+internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, groupes: TabGroups) {
+    val onglet = SettingsTabScope(this, groupes)
+    onglet.run {
+    bloc(R.string.settings_section_map_controls) {
         /*
-         * Le bouton du tableau de bord, juste sous la localisation dont il se nourrit : c'est un bouton de
-         * position comme celui du dessus. Ses champs et son alerte ont leur groupe, plus bas.
+         * Boutons et gestes, en GROUPE et non plus en rubrique unique : onze interrupteurs a la suite ne se
+         * parcouraient qu'en lisant chaque libelle un par un, faute d'un regroupement pour guider l'oeil.
          *
-         * Il allume AUSSI le bouton de localisation, sans le demander : sans lui, ce serait un capteur
-         * qu'on ne peut ni voir ni couper. Le lien inverse est tenu par la ligne du dessus.
+         * Le suivi de la carte ("Suivre ma position") a quitte la liste sans retour : il se commande desormais
+         * DEPUIS LA CARTE, au bouton a trois etats du coin bas-droit (cf. MapBottomRightControls), qui allume,
+         * ramene et eteint d'un seul geste la ou ce reglage demandait de rouvrir les reglages. Le reglage
+         * `mapFollowPosition` qu'il portait reste - c'est ce bouton qui l'ecrit desormais - seule la ligne ici
+         * a disparu.
          */
-        SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
-            vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
-        }
-    }
-
-    SectionTitle(stringResource(R.string.settings_section_search_route))
-    SettingsCard {
-        SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
-        RowDivider()
-        SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
-        RowDivider()
-        SwitchLine(
-            stringResource(R.string.settings_sw_poi), cur.poiEnabled,
-            info = stringResource(R.string.settings_sw_poi_sub),
-        ) { vm.save(cur.copy(poiEnabled = it)) }
-    }
-
-    SectionTitle(stringResource(R.string.settings_section_track_tools))
-    SettingsCard {
-        SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
-        RowDivider()
-        SwitchLine(
-            stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
-            info = stringResource(R.string.settings_sw_track_edit_sub),
-        ) { vm.save(cur.copy(trackEditEnabled = it)) }
-    }
-
-    SectionTitle(stringResource(R.string.settings_section_display))
-    SettingsCard {
-        // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
-        // bouton" en tete de sa propre rubrique, ou le titre portait seul le sens de la ligne. Ce qui
-        // regle le PANNEAU qu'il ouvre - largeur, opacite - a rejoint les fonds de plan, onglet Tuiles.
-        SwitchLine(
-            stringResource(R.string.settings_section_basemap_control), cur.showBasemapControlButton,
-        ) { vm.save(cur.copy(showBasemapControlButton = it)) }
-        RowDivider()
-        SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
-        RowDivider()
-        SwitchLine(stringResource(R.string.settings_sw_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
-    }
-
-    /*
-     * GPS : le repere qu'on voit, puis la veille qui s'en nourrit.
-     *
-     * Les deux rubriques etaient voisines sans rien pour le dire, entre les boutons de la carte et les
-     * points d'interet. Elles parlent pourtant de la meme matiere - la position - et l'une ne sert pas
-     * sans l'autre : le repere d'abord, parce qu'il s'affiche des qu'on allume le capteur, l'alerte
-     * ensuite, parce qu'elle demande en plus une trace a suivre.
-     */
-    GroupTitle(stringResource(R.string.settings_group_gps))
-
-    GpsTrackingSettings(cur, vm)
-
-    GpsMarkerSettings(cur, vm)
-
-    /*
-     * Le tableau de bord : son bouton, ses champs, et l'alerte d'eloignement que sa cloche arme - en un
-     * groupe, puisque c'est lui, desormais, qui porte le suivi de trace.
-     */
-    GroupTitle(stringResource(R.string.settings_group_dashboard))
-
-    /*
-     * L'alerte d'eloignement AVANT les champs : c'est elle qu'on vient regler - l'ecart qui declenche, la
-     * sonnerie -, tandis que les champs se cochent une fois pour toutes. La liste des champs est en outre
-     * longue de neuf lignes, et la releguait en bas d'un defilement.
-     */
-    if (cur.offTrackAlertEnabled) OffTrackAlertSettings(cur, vm)
-
-    DashboardSettings(cur, vm)
-
-    GroupTitle(stringResource(R.string.settings_group_pois))
-    // La taille des marqueurs : reglage fin, mode expert seulement. Celle par defaut convient a qui ne se
-    // pose pas la question, et la rubrique des infobulles suit juste apres.
-    if (cur.expertMode) {
-        SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
+        GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
+        SectionTitle(stringResource(R.string.settings_section_position), tight = true)
         SettingsCard {
-            StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
-                vm.save(cur.copy(markerSize = it))
+            // Éteindre la localisation éteint le tableau de bord avec elle : celui-ci n'a que la position pour
+            // matière, et son bouton resterait sur la carte sans rien pour allumer ni couper le capteur.
+            // Le lien inverse est tenu par la ligne du tableau de bord, juste dessous.
+            SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
+                vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
+            }
+            RowDivider()
+            /*
+             * Le bouton du tableau de bord, juste sous la localisation dont il se nourrit : c'est un bouton de
+             * position comme celui du dessus. Ses champs et son alerte ont leur groupe, plus bas.
+             *
+             * Il allume AUSSI le bouton de localisation, sans le demander : sans lui, ce serait un capteur
+             * qu'on ne peut ni voir ni couper. Le lien inverse est tenu par la ligne du dessus.
+             */
+            SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
+                vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
             }
         }
     }
-    SectionTitle(stringResource(R.string.settings_section_bubbles), tight = !cur.expertMode)
-    SettingsCard {
-        StepperLine(stringResource(R.string.settings_font_size), cur.bubbleFont, 7, 28,
-            bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
-        RowDivider()
-        StepperLine(stringResource(R.string.font_title), cur.bubbleTitleFont, 7, 28,
-            bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
-        RowDivider()
-        PickRow(
-            stringResource(R.string.settings_label_bubble_position),
-            BubblePosition.of(cur.bubblePosition), BubblePosition.entries,
-            optionLabel = { bubblePositionLabel(it) },
-        ) { vm.save(cur.copy(bubblePosition = it.key)) }
-        RowDivider()
-        SliderRow(
-            stringResource(R.string.settings_label_opacity), "${cur.bubbleOpacityPct} %",
-            fractionOf(cur.bubbleOpacityPct, 30, 100),
-            { vm.save(cur.copy(bubbleOpacityPct = valueOf(it, 30, 100))) },
-        )
-        CardAction(stringResource(R.string.action_reset_defaults)) {
-            vm.save(cur.copy(
-                bubbleFont = 14, bubbleTitleFont = 16,
-                bubblePosition = BubblePosition.BOTTOM_LEFT.key, bubbleOpacityPct = 100,
-            ))
+
+    bloc {
+        SectionTitle(stringResource(R.string.settings_section_search_route))
+        SettingsCard {
+            SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
+            RowDivider()
+            SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
+            RowDivider()
+            SwitchLine(
+                stringResource(R.string.settings_sw_poi), cur.poiEnabled,
+                info = stringResource(R.string.settings_sw_poi_sub),
+            ) { vm.save(cur.copy(poiEnabled = it)) }
         }
     }
 
-    GroupTitle(stringResource(R.string.settings_group_elevation_profile))
-    ProfileSettings(cur, vm)
+    bloc {
+        SectionTitle(stringResource(R.string.settings_section_track_tools))
+        SettingsCard {
+            SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
+            RowDivider()
+            SwitchLine(
+                stringResource(R.string.settings_sw_track_edit), cur.trackEditEnabled,
+                info = stringResource(R.string.settings_sw_track_edit_sub),
+            ) { vm.save(cur.copy(trackEditEnabled = it)) }
+        }
+    }
+
+    bloc {
+        SectionTitle(stringResource(R.string.settings_section_display))
+        SettingsCard {
+            // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
+            // bouton" en tete de sa propre rubrique, ou le titre portait seul le sens de la ligne. Ce qui
+            // regle le PANNEAU qu'il ouvre - largeur, opacite - a rejoint les fonds de plan, onglet Tuiles.
+            SwitchLine(
+                stringResource(R.string.settings_section_basemap_control), cur.showBasemapControlButton,
+            ) { vm.save(cur.copy(showBasemapControlButton = it)) }
+            RowDivider()
+            SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
+            RowDivider()
+            SwitchLine(stringResource(R.string.settings_sw_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }
+        }
+    }
+
+    bloc(R.string.settings_group_gps) {
+        /*
+         * GPS : le repere qu'on voit, puis la veille qui s'en nourrit.
+         *
+         * Les deux rubriques etaient voisines sans rien pour le dire, entre les boutons de la carte et les
+         * points d'interet. Elles parlent pourtant de la meme matiere - la position - et l'une ne sert pas
+         * sans l'autre : le repere d'abord, parce qu'il s'affiche des qu'on allume le capteur, l'alerte
+         * ensuite, parce qu'elle demande en plus une trace a suivre.
+         */
+        GroupTitle(stringResource(R.string.settings_group_gps))
+    }
+
+    bloc {
+        GpsTrackingSettings(cur, vm)
+    }
+
+    bloc {
+        GpsMarkerSettings(cur, vm)
+    }
+
+    bloc(R.string.settings_group_dashboard) {
+        /*
+         * Le tableau de bord : son bouton, ses champs, et l'alerte d'eloignement que sa cloche arme - en un
+         * groupe, puisque c'est lui, desormais, qui porte le suivi de trace.
+         */
+        GroupTitle(stringResource(R.string.settings_group_dashboard))
+    }
+
+    bloc {
+        /*
+         * L'alerte d'eloignement AVANT les champs : c'est elle qu'on vient regler - l'ecart qui declenche, la
+         * sonnerie -, tandis que les champs se cochent une fois pour toutes. La liste des champs est en outre
+         * longue de neuf lignes, et la releguait en bas d'un defilement.
+         */
+        if (cur.offTrackAlertEnabled) OffTrackAlertSettings(cur, vm)
+    }
+
+    bloc {
+        DashboardSettings(cur, vm)
+    }
+
+    bloc(R.string.settings_group_pois) {
+        GroupTitle(stringResource(R.string.settings_group_pois))
+        // La taille des marqueurs : reglage fin, mode expert seulement. Celle par defaut convient a qui ne se
+        // pose pas la question, et la rubrique des infobulles suit juste apres.
+        if (cur.expertMode) {
+            SectionTitle(stringResource(R.string.settings_section_markers), tight = true)
+            SettingsCard {
+                StepperLine(stringResource(R.string.settings_label_marker_size), cur.markerSize, 16, 80) {
+                    vm.save(cur.copy(markerSize = it))
+                }
+            }
+        }
+        SectionTitle(stringResource(R.string.settings_section_bubbles), tight = !cur.expertMode)
+        SettingsCard {
+            StepperLine(stringResource(R.string.settings_font_size), cur.bubbleFont, 7, 28,
+                bold = cur.bubbleBold, onBold = { vm.save(cur.copy(bubbleBold = it)) }) { vm.save(cur.copy(bubbleFont = it)) }
+            RowDivider()
+            StepperLine(stringResource(R.string.font_title), cur.bubbleTitleFont, 7, 28,
+                bold = cur.bubbleTitleBold, onBold = { vm.save(cur.copy(bubbleTitleBold = it)) }) { vm.save(cur.copy(bubbleTitleFont = it)) }
+            RowDivider()
+            PickRow(
+                stringResource(R.string.settings_label_bubble_position),
+                BubblePosition.of(cur.bubblePosition), BubblePosition.entries,
+                optionLabel = { bubblePositionLabel(it) },
+            ) { vm.save(cur.copy(bubblePosition = it.key)) }
+            RowDivider()
+            SliderRow(
+                stringResource(R.string.settings_label_opacity), "${cur.bubbleOpacityPct} %",
+                fractionOf(cur.bubbleOpacityPct, 30, 100),
+                { vm.save(cur.copy(bubbleOpacityPct = valueOf(it, 30, 100))) },
+            )
+            CardAction(stringResource(R.string.action_reset_defaults)) {
+                vm.save(cur.copy(
+                    bubbleFont = 14, bubbleTitleFont = 16,
+                    bubblePosition = BubblePosition.BOTTOM_LEFT.key, bubbleOpacityPct = 100,
+                ))
+            }
+        }
+    }
+
+    bloc(R.string.settings_group_elevation_profile) {
+        GroupTitle(stringResource(R.string.settings_group_elevation_profile))
+        ProfileSettings(cur, vm)
+    }
+        publier()
+    }
 }
 
 /**

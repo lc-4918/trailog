@@ -9,7 +9,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.BuildConfig
@@ -61,6 +62,19 @@ class ExpertModeUiTest {
     private fun avatars() =
         compose.onAllNodesWithTag("settings_avatar", useUnmergedTree = true).fetchSemanticsNodes()
 
+    /**
+     * Amene a l'ecran la ligne portant ce texte, et attend qu'elle y soit.
+     *
+     * **Necessaire depuis que le contenu des onglets est une liste paresseuse** : ce qui est hors de
+     * l'ecran n'est pas compose, donc n'existe pas pour un test. Chercher un reglage sans y avoir defile
+     * ne rend plus rien - ce qui est le prix, et le principe, de la liste.
+     */
+    private fun defileVers(texte: String) {
+        compose.waitUntil(5_000) { avatars().isNotEmpty() }
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(texte))
+        compose.waitForIdle()
+    }
+
     /** Un appui sur l'avatar, une fois l'ecran compose : meme attente, meme raison (cf. [septAppuis]). */
     private fun unAppui() {
         compose.waitUntil(5_000) { avatars().isNotEmpty() }
@@ -76,15 +90,17 @@ class ExpertModeUiTest {
         compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
         compose.waitForIdle()
         val expert = R.string.settings_sw_gps_last_fix
-        compose.waitUntil(5_000) { present(R.string.settings_sw_gps_recenter) }
+        defileVers(app.getString(R.string.settings_sw_gps_recenter))
         assertTrue("cachee hors mode expert", !present(expert))
 
         septAppuis()
+        defileVers(app.getString(R.string.settings_sw_gps_recenter))
         compose.waitUntil(5_000) { present(expert) }
         assertTrue("l'alerte le dit", present(R.string.settings_expert_on))
         assertTrue("enregistre en base", runBlocking { app.repository.settings.get()!!.expertMode })
 
         septAppuis()
+        defileVers(app.getString(R.string.settings_sw_gps_recenter))
         compose.waitUntil(5_000) { !present(expert) }
         assertTrue(present(R.string.settings_expert_off))
     }
@@ -97,12 +113,11 @@ class ExpertModeUiTest {
         runBlocking { app.repository.ensureSeed() }
         compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
         compose.waitForIdle()
-        compose.waitUntil(5_000) { present(R.string.settings_section_position) }
+        compose.waitUntil(5_000) { avatars().isNotEmpty() }
         compose.onAllNodesWithTag("settings_group_bar").assertCountEquals(0)
 
         // On descend jusqu'a un reglage du groupe GPS : son titre est alors passe au-dessus du bord.
-        compose.onNodeWithText(app.getString(R.string.settings_section_gps_marker).uppercase()).performScrollTo()
-        compose.waitForIdle()
+        defileVers(app.getString(R.string.settings_section_gps_marker).uppercase())
         compose.onAllNodesWithTag("settings_group_bar").assertCountEquals(1)
     }
 

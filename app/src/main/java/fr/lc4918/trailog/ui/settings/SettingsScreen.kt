@@ -37,6 +37,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -86,6 +90,27 @@ import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.launch
 
 
+
+/**
+ * Le groupe dont on lit les lignes, d'apres l'element de liste en tete.
+ *
+ * [starts] donne, pour chaque groupe, l'indice de l'element ou il commence. Le groupe courant est donc
+ * le dernier dont l'element est deja passe en tete - ou avant lui.
+ *
+ * **La barre se tait tant que le titre se lit encore.** Elle est posee PAR-DESSUS le contenu : tant que
+ * l'element qui porte le titre n'a pas defile de la hauteur de la barre, le titre reste visible, et
+ * l'afficher en double ne ferait que le repeter.
+ */
+@Composable
+internal fun groupeEnTete(etat: LazyListState, starts: List<Pair<Int, String>>, barHeightPx: Float): String? {
+    val enTete = etat.firstVisibleItemIndex
+    val decale = etat.firstVisibleItemScrollOffset
+    val i = starts.indexOfLast { it.first <= enTete }
+    if (i < 0) return null
+    val (debut, nom) = starts[i]
+    if (debut == enTete && decale < barHeightPx) return null
+    return nom
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -316,10 +341,35 @@ fun SettingsScreen(
              * savoir a quoi ils se rapportaient (cf. GroupBarState). Un etat par onglet : chacun a ses
              * groupes, et changer d'onglet ne doit pas garder le titre du precedent.
              */
-            val barreGroupe = remember(tab) { GroupBarState() }
+            /*
+             * Un etat PAR ONGLET, garde dans une table plutot que recree : pendant la transition d'un
+             * onglet a l'autre, les deux contenus coexistent, et celui qui s'en va continue de signaler
+             * ses titres. Avec un seul etat, ils se seraient deposes dans celui du nouvel onglet, qui
+             * aurait affiche le nom d'un groupe appartenant a l'ancien.
+             */
+            val etatsGroupes = remember { mutableStateMapOf<Int, GroupBarState>() }
+            val barreGroupe = etatsGroupes.getOrPut(tab) { GroupBarState() }
+            // L'etat de defilement de chaque onglet, garde ici : c'est lui qui dit quel element est en
+            // tete, et donc dans quel groupe on se trouve (cf. mapTabGroupStarts).
+            val etatsListe = remember { mutableStateMapOf<Int, LazyListState>() }
+            val etatListe = etatsListe.getOrPut(tab) { LazyListState() }
+            // Les groupes de l'onglet, tels que son contenu les a comptes (cf. TabGroups).
+            val groupesParOnglet = remember { mutableStateMapOf<Int, TabGroups>() }
             // La bande que la barre occupe : le relais se fait des que le titre passe dessous.
             barreGroupe.barHeight = with(LocalDensity.current) { GroupBarHeight.toPx() }
-            val groupeCourant = barreGroupe.current
+            /*
+             * Le groupe courant se lit dans la LISTE pour l'onglet paresseux, et dans les positions des
+             * titres pour les autres, qui se composent encore d'un bloc. Les deux repondent a la meme
+             * question, mais un titre hors de l'ecran n'existe plus dans une liste paresseuse : au milieu
+             * d'un groupe, aucune position ne dirait plus ou l'on est.
+             */
+            val hauteurBarre = with(LocalDensity.current) { GroupBarHeight.toPx() }
+            val debuts = groupesParOnglet[tab]?.starts.orEmpty()
+            val groupeCourant = if (tab == 0) {
+                groupeEnTete(etatListe, debuts.map { (i, res) -> i to stringResource(res) }, hauteurBarre)
+            } else {
+                barreGroupe.current
+            }
             /*
              * La barre est POSEE PAR-DESSUS le contenu, et non intercalee au-dessus de lui.
              *
@@ -338,28 +388,46 @@ fun SettingsScreen(
                 },
                 label = "settings_tab"
             ) { currentTab ->
-                Column(
-                    Modifier.fillMaxSize()
-                        // Le haut de la zone qui defile, mesure AVANT le defilement : pose apres, le
-                        // repere suivait le contenu vers le haut, et plus aucun titre ne le franchissait.
-                        .onGloballyPositioned { barreGroupe.viewportTop = it.positionInWindow().y }
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp),
-                ) {
-                    CompositionLocalProvider(LocalGroupBar provides barreGroupe) {
-                    when (currentTab) {
-                        0 -> MapTab(cur, vm)
-                        1 -> TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") },
-                            onDownloadArea = onDownloadArea)
-                        2 -> RoutesTab(cur, vm)
-                        else -> SystemTab(cur, vm,
-                            onPickImportDir = { importDirPicker.launch(null) },
-                            onPickMbtilesFolder = { treePicker.launch(null) },
-                            onPickBrouterFolder = { brouterDirPicker.launch(null) },
-                            onPickAvatar = { avatarPicker.launch("image/*") },
-                            onBackup = { backupWriter.launch(BackupFileName.of(System.currentTimeMillis())) },
-                            onRestore = { restoreTarget = true })
-                    }
+                /*
+                 * Une liste PARESSEUSE, et non plus une colonne qui defile.
+                 *
+                 * Un onglet fait cinq cents lignes de composables, et la colonne les composait toutes
+                 * d'un coup, sur le fil d'affichage, en une seule image : le telephone sautait 38 a 57
+                 * images a chaque ouverture - pres d'une seconde d'ecran fige, pendant laquelle aucun
+                 * temoin d'attente ne pouvait meme tourner. La liste ne compose que ce qui se voit.
+                 *
+                 * L'etat de la barre de groupe et celui du defilement appartiennent au contenu AFFICHE
+                 * et non a l'onglet vise : pendant la transition, les deux se chevauchent.
+                 */
+                val barreDuContenu = etatsGroupes.getOrPut(currentTab) { GroupBarState() }
+                CompositionLocalProvider(LocalGroupBar provides barreDuContenu) {
+                    LazyColumn(
+                        state = etatsListe.getOrPut(currentTab) { LazyListState() },
+                        modifier = Modifier.fillMaxSize().testTag("settings_list")
+                            // Le haut de la zone qui defile, mesure AVANT le defilement : pose apres, le
+                            // repere suivait le contenu vers le haut, et plus aucun titre ne le franchissait.
+                            .onGloballyPositioned { barreDuContenu.viewportTop = it.positionInWindow().y },
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp),
+                    ) {
+                        when (currentTab) {
+                            0 -> mapTab(cur, vm, groupesParOnglet.getOrPut(currentTab) { TabGroups() })
+                            // Les trois autres onglets restent d'une piece pour l'instant : un seul
+                            // element de liste, donc composes en entier comme avant.
+                            1 -> item {
+                                TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") },
+                                    onDownloadArea = onDownloadArea)
+                            }
+                            2 -> item { RoutesTab(cur, vm) }
+                            else -> item {
+                                SystemTab(cur, vm,
+                                    onPickImportDir = { importDirPicker.launch(null) },
+                                    onPickMbtilesFolder = { treePicker.launch(null) },
+                                    onPickBrouterFolder = { brouterDirPicker.launch(null) },
+                                    onPickAvatar = { avatarPicker.launch("image/*") },
+                                    onBackup = { backupWriter.launch(BackupFileName.of(System.currentTimeMillis())) },
+                                    onRestore = { restoreTarget = true })
+                            }
+                        }
                     }
                 }
             }

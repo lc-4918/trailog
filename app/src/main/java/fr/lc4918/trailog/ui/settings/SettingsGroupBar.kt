@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -59,3 +62,44 @@ class GroupBarState {
 
 /** L'etat de la barre pour l'onglet affiche, s'il y en a un (cf. [GroupTitle]). */
 val LocalGroupBar = compositionLocalOf<GroupBarState?> { null }
+
+/**
+ * Les groupes d'un onglet en liste : a quel element chacun commence.
+ *
+ * **Derive du contenu, jamais declare a cote.** La barre de groupe lit le groupe courant dans l'INDICE
+ * de l'element en tete de liste - seule chose qui survive a un saut de defilement, un titre hors de
+ * l'ecran n'existant plus. Tenir cette correspondance a la main, dans une liste parallele, la ferait
+ * mentir a la premiere rubrique ajoutee, en silence : elle se compte donc au fil des blocs, la ou ils
+ * s'ecrivent (cf. [SettingsTabScope]).
+ */
+@Stable
+class TabGroups {
+    /** Indice de l'element -> identifiant de la chaine du groupe qui y commence. */
+    var starts by mutableStateOf<List<Pair<Int, Int>>>(emptyList())
+        internal set
+}
+
+/**
+ * De quoi ecrire un onglet en blocs : chaque bloc est un element de liste, et sait s'il ouvre un groupe.
+ *
+ * Le compte se tient ici, et nulle part ailleurs.
+ */
+class SettingsTabScope(private val scope: LazyListScope, private val groupes: TabGroups) {
+    private val starts = mutableListOf<Pair<Int, Int>>()
+    private var n = 0
+
+    /** Un bloc de l'onglet. [group] est la chaine du groupe quand ce bloc l'ouvre. */
+    fun bloc(group: Int? = null, content: @Composable () -> Unit) {
+        if (group != null) starts += n to group
+        scope.item { content() }
+        n++
+    }
+
+    /**
+     * Le compte est clos : la barre peut s'y raccrocher.
+     *
+     * Une seule fois, a la fin, et non a chaque bloc : la liste est lue par la composition qui entoure
+     * celle-ci, et la publier douze fois lui ferait recommencer douze fois son travail.
+     */
+    fun publier() { groupes.starts = starts.toList() }
+}
