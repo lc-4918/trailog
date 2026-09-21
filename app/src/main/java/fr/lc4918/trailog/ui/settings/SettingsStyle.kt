@@ -18,6 +18,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -668,6 +669,16 @@ fun ColumnScopeMarker.ChipRow(scrollable: Boolean = false, content: @Composable 
     )
 }
 
+/**
+ * Marges d'un bouton de carte.
+ *
+ * [CardButtonEdge] au bord de la carte, [CardButtonHalfGap] du cote d'un voisin : deux boutons cote a
+ * cote laissent donc entre eux le meme ecart que deux LIGNES de boutons, qui se font face par leurs
+ * marges verticales. Un seul ecart dans toute la carte, quel que soit le sens.
+ */
+val CardButtonEdge = 14.dp
+val CardButtonHalfGap = 6.dp
+
 /** Bouton plein d'une carte : l'action principale d'une rubrique ("Importer un fichier"), ou l'une de
  *  deux actions jumelles d'un en-tete ("Importer" / "Creer un composite", cf. le header de la rubrique
  *  Fonds de plan personnalises) - d'ou le modifier ouvert, plein par defaut mais reductible a une moitie
@@ -678,11 +689,13 @@ fun ColumnScopeMarker.CardButton(
     /** Une explication derriere un "i", DANS le bouton : c'est ce bouton-la qu'elle decrit. Le "i" garde
      *  son propre tap - l'expliquer ne doit pas le declencher. */
     info: String? = null,
+    /** Ses marges (cf. [CardButtonEdge]) : a changer quand il partage sa rangee avec un voisin. */
+    margins: PaddingValues = PaddingValues(horizontal = CardButtonEdge, vertical = CardButtonHalfGap),
     onClick: () -> Unit,
 ) {
     val p = settingsPalette
     Row(
-        modifier.padding(horizontal = RowPadH, vertical = 6.dp)
+        modifier.padding(margins)
             .height(42.dp).clip(RoundedCornerShape(12.dp)).background(p.accentContainer)
             .clickable(onClick = onClick)
             // Le "i" occupe la droite du bouton et pousse vers la gauche le groupe icone + libelle, qui

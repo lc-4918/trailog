@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -93,6 +94,18 @@ import kotlinx.coroutines.launch
  * Le plus dense des quatre, parce qu'une ligne de fond porte beaucoup : un apercu, une cle d'API, une plage
  * de zoom, une attribution, et de quoi la modifier sans quitter la liste.
  */
+
+/**
+ * Les marges d'un bouton qui partage sa rangee avec un voisin : pleine au bord de la carte, moitie du
+ * cote du voisin. Les deux moities font l'ecart que deux lignes de boutons laissent deja entre elles,
+ * et les boutons gagnent en largeur ce que l'ancien double bord leur prenait.
+ */
+private fun margesDePaire(premier: Boolean) = PaddingValues(
+    start = if (premier) CardButtonEdge else CardButtonHalfGap,
+    end = if (premier) CardButtonHalfGap else CardButtonEdge,
+    top = CardButtonHalfGap,
+    bottom = CardButtonHalfGap,
+)
 
 @Composable internal fun TilesTab(
     cur: SettingsEntity, providers: List<ProviderEntity>, composites: List<CompositeEntity>, vm: SettingsViewModel,
@@ -176,12 +189,14 @@ import kotlinx.coroutines.launch
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             CardButton(
                 stringResource(R.string.action_import), painterResource(R.drawable.ic_settings_import),
-                modifier = Modifier.weight(1f), onClick = onPickMbtiles,
+                modifier = Modifier.weight(1f), margins = margesDePaire(premier = true),
+                onClick = onPickMbtiles,
             )
             CardButton(
                 stringResource(R.string.offline_action_download),
                 rememberVectorPainter(Icons.Outlined.FileDownload),
                 modifier = Modifier.weight(1f),
+                margins = margesDePaire(premier = false),
                 // Le "i" DANS le bouton, et non pose a cote : il explique ce que ce bouton fait, pas la
                 // rubrique, et il volait a la rangee une largeur que les deux boutons se partagent.
                 info = stringResource(R.string.offline_download_area_info),
