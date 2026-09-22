@@ -328,11 +328,21 @@ class MapController {
     private val POI_LAYER = "poi-pt"
     /** Source et couches du repere de position GPS : le cercle de precision, puis le symbole par-dessus. */
     private val USER_SRC = "user-location"
-    private val USER_ACCURACY = "user-location-accuracy"
-    private val USER_DOT = "user-location-dot"
+    private val USER_ACCURACY = MapHeadOverlays.USER_ACCURACY
+    private val USER_DOT = MapHeadOverlays.USER_DOT
+    /** Le plus bas des calques de tete presents (cf. [MapHeadOverlays]), sous lequel tout s'ajoute. */
+    private fun lowestHeadOverlay(s: Style): String? = MapHeadOverlays.lowest(s.layers.map { it.id })
+    /**
+     * Ajoute une couche SOUS les calques de tete : le repere de position et le curseur du profil restent
+     * visibles, quel que soit l'ordre dans lequel les couches sont arrivees.
+     *
+     * Sans cela, un itineraire enregistre dans la bibliotheque alors que le GPS tournait deja se posait
+     * par-dessus la fleche de position, qui disparaissait sous le trait.
+     */
     private fun addLayerSafe(layer: org.maplibre.android.style.layers.Layer) {
         val s = style ?: return
-        if (s.getLayer("cursor-dot") != null) s.addLayerBelow(layer, "cursor-dot") else s.addLayer(layer)
+        val below = lowestHeadOverlay(s)
+        if (below != null) s.addLayerBelow(layer, below) else s.addLayer(layer)
     }
 
     private val lineGeometryFilter: Expression = Expression.any(
@@ -555,7 +565,7 @@ class MapController {
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
                 .withFilter(pointGeometryFilter)
             val belowPts = belowKey?.let { pointLayerId(it) }
-            if (belowPts != null && s.getLayer(belowPts) != null) s.addLayerBelow(shadow, belowPts) else s.addLayer(shadow)
+            if (belowPts != null && s.getLayer(belowPts) != null) s.addLayerBelow(shadow, belowPts) else addLayerSafe(shadow)
         } else {
             (s.getLayer(SEL_SHADOW) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(shadowImg))
         }
@@ -569,8 +579,7 @@ class MapController {
                 PropertyFactory.iconAnchor("bottom"),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
                 .withFilter(pointGeometryFilter)
-            val headOverlays = setOf(USER_ACCURACY, USER_DOT, "cursor-dot")
-            val lowestOverlay = s.layers.firstOrNull { it.id in headOverlays }?.id
+            val lowestOverlay = lowestHeadOverlay(s)
             if (lowestOverlay != null) s.addLayerBelow(topPin, lowestOverlay) else s.addLayer(topPin)
         } else {
             (s.getLayer(SEL_TOP) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(pinImg))
@@ -627,8 +636,7 @@ class MapController {
             ).withFilter(pointGeometryFilter)
             // Sous les overlays de tete (position GPS, curseur du profil), comme le marqueur selectionne :
             // une nuee de points d'interet ne doit pas cacher le repere de position.
-            val headOverlays = setOf(USER_ACCURACY, USER_DOT, "cursor-dot")
-            val lowest = s.layers.firstOrNull { it.id in headOverlays }?.id
+            val lowest = lowestHeadOverlay(s)
             if (lowest != null) s.addLayerBelow(layer, lowest) else s.addLayer(layer)
         }
     }
@@ -916,7 +924,7 @@ class MapController {
         val existing = s.getSourceAs<GeoJsonSource>(srcId)
         if (existing == null) {
             s.addSource(GeoJsonSource(srcId, geojson))
-            s.addLayer(SymbolLayer(layerId, srcId).withProperties(
+            addLayerSafe(SymbolLayer(layerId, srcId).withProperties(
                 PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
                 PropertyFactory.iconAnchor("bottom"),
                 PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
@@ -959,13 +967,23 @@ class MapController {
         if (existing == null) {
             s.addSource(GeoJsonSource(ROUTE_SRC, geojson))
             val layer = slopeLineLayer(ROUTE_LINE, ROUTE_SRC)
-            val belowPin = listOf(GEO_PLACE, GEO_REF, MAP_POINTS).firstOrNull { s.getLayer(it) != null }
+            val belowPin = routeBelow(s)
             if (belowPin != null) s.addLayerBelow(layer, belowPin) else addLayerSafe(layer)
         } else {
             existing.setGeoJson(geojson)
         }
-        val belowPin = listOf(GEO_PLACE, GEO_REF, MAP_POINTS).firstOrNull { s.getLayer(it) != null }
+        val belowPin = routeBelow(s)
         applyArrows(s, ROUTE_KEY, ROUTE_SRC, belowPin)
+    }
+
+    /**
+     * Le calque sous lequel se glisse le trace d'un itineraire mesure : le plus bas des epingles noires
+     * qu'il relie et des calques de tete. Il aboutit a un lieu trouve, son trait ne doit masquer ni
+     * l'epingle qui le termine, ni le repere de position.
+     */
+    private fun routeBelow(s: Style): String? {
+        val wanted = MapHeadOverlays.ids + setOf(GEO_PLACE, GEO_REF, MAP_POINTS)
+        return s.layers.firstOrNull { it.id in wanted }?.id
     }
 
     /** Croix "+" traversante, cerclée en son centre : les deux traits se croisent exactement au point posé
@@ -1069,7 +1087,7 @@ class MapController {
         val s = style ?: return
         if (s.getSourceAs<GeoJsonSource>("cursor") == null) {
             s.addSource(GeoJsonSource("cursor", emptyFc()))
-            s.addLayer(CircleLayer("cursor-dot", "cursor").withProperties(
+            s.addLayer(CircleLayer(MapHeadOverlays.CURSOR_DOT, "cursor").withProperties(
                 // Rayon constant (4) jusqu'au zoom 16, puis croissant : l'interpolation se fige sur la
                 // première butée en deçà de 16, donc l'agrandissement ne commence qu'à partir de ce niveau.
                 PropertyFactory.circleRadius(Expression.interpolate(
