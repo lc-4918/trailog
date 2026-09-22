@@ -35,6 +35,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import fr.lc4918.trailog.domain.geo.FirstAnswer
 import fr.lc4918.trailog.domain.geo.FixAge
 import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.LocationService
@@ -61,6 +62,15 @@ private const val FRESH_FIX_MS = 2 * 60 * 1000L
  * rendre - une position d'hier ferait calculer, sans un mot, un trajet depuis une autre ville.
  */
 private const val STALE_FIX_MS = 15 * 60 * 1000L
+
+/**
+ * Attente maximale d'une position neuve demandee aux capteurs (cf. [LocationControls.currentPosition]).
+ *
+ * Vingt secondes : de quoi laisser le GPS accrocher a ciel ouvert, sans laisser le rond d'attente tourner
+ * la minute que le systeme, lui, s'accorde avant d'avouer qu'il ne rendra rien. Passe ce delai, il reste
+ * les dernieres positions connues, et a defaut un message qui dit ce qu'il en est.
+ */
+private const val SENSOR_WAIT_MS = 20_000L
 
 /**
  * Tout ce que l'ecran de carte doit savoir faire avec la position : l'allumer, l'eteindre, en demander
@@ -219,13 +229,22 @@ class LocationControls internal constructor(
     /** L'annonce d'un arret subi a ete lue : la banniere se retire. */
     fun dismissStopNotice() { LocationHub.clearStopNotice() }
 
-    /** Le fournisseur de position a interroger : le GPS s'il est allume, le reseau sinon, rien si les
-     *  deux sont eteints. */
-    private fun enabledProvider(): String? = when {
-        locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-        locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-        else -> null
-    }
+    /** Le fournisseur de position a interroger pour ALLUMER LE SUIVI : le GPS s'il est allume, le reseau
+     *  sinon, rien si les deux sont eteints. Le suivi, lui, s'abonne ensuite a tous ceux qui repondent
+     *  (cf. `LocationService.enabledProviders`). */
+    private fun enabledProvider(): String? = enabledProviders().firstOrNull()
+
+    /**
+     * Les fournisseurs allumes, du plus fin au plus disponible.
+     *
+     * **Tous, et non le meilleur.** Une position ponctuelle n'etait demandee qu'au GPS des lors qu'il
+     * etait allume - or le GPS, sous un toit, ne rend rien : arrive au travail, le planificateur
+     * annoncait "Position introuvable" alors que le fournisseur reseau, lui, savait parfaitement ou se
+     * trouvait le telephone. Il n'y a aucune raison de ne pas lui poser la question.
+     */
+    private fun enabledProviders(): List<String> =
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
 
     /**
      * Allume le capteur.
@@ -322,9 +341,36 @@ class LocationControls internal constructor(
         // Plus rien a demander - autorisation refusee, localisation eteinte : il reste ce que le suivi a
         // recu, meme vieilli. C'est tout ce qu'on a, et un depart approximatif vaut mieux que rien.
         if (!hasLocationPermission()) return freshUserLocation(STALE_FIX_MS)
-        val provider = enabledProvider() ?: return freshUserLocation(STALE_FIX_MS)
+        val providers = enabledProviders()
+        if (providers.isEmpty()) return freshUserLocation(STALE_FIX_MS)
         lastKnown(FRESH_FIX_MS)?.let { return it }
-        val duCapteur = suspendCancellableCoroutine { cont ->
+        // Le capteur muet : la position du suivi revient dans la course, avec la meme tolerance que la
+        // derniere position connue du systeme. Un point d'il y a un quart d'heure est un depart utilisable ;
+        // ce qu'on refusait plus haut, c'est qu'il passe AVANT une source capable de faire mieux.
+        return fromSensors(providers) ?: lastKnown(STALE_FIX_MS) ?: freshUserLocation(STALE_FIX_MS)
+    }
+
+    /**
+     * Une position neuve, demandee a TOUS les fournisseurs allumes a la fois ; la premiere reponse gagne,
+     * les autres demandes sont abandonnees.
+     *
+     * **En parallele, et non l'un apres l'autre.** Le GPS s'accorde une bonne demi-minute avant d'avouer
+     * qu'il ne rend rien : l'interroger d'abord et le reseau ensuite ferait tourner le rond d'attente une
+     * minute pour une reponse que le reseau tenait des la premiere seconde.
+     *
+     * **La premiere reponse, et non la plus precise.** Une centaine de metres ne change rien a un depart
+     * d'itineraire - le moteur le rattache a la route la plus proche -, la ou l'attente, elle, se voit.
+     *
+     * [SENSOR_WAIT_MS] borne l'ensemble : un rond qui tourne sans fin ne dit rien a personne.
+     */
+    @SuppressLint("MissingPermission")
+    private suspend fun fromSensors(providers: List<String>): Pair<Double, Double>? =
+        FirstAnswer.from(providers.map { p -> suspend { fromSensor(p) } }, SENSOR_WAIT_MS)
+
+    /** Une position neuve demandee a [provider], ou null s'il n'en rend pas. */
+    @SuppressLint("MissingPermission")
+    private suspend fun fromSensor(provider: String): Pair<Double, Double>? =
+        suspendCancellableCoroutine { cont ->
             val signal = CancellationSignal()
             cont.invokeOnCancellation { signal.cancel() }
             runCatching {
@@ -333,11 +379,6 @@ class LocationControls internal constructor(
                 ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
             }.onFailure { if (cont.isActive) cont.resume(null) }
         }
-        // Le capteur muet : la position du suivi revient dans la course, avec la meme tolerance que la
-        // derniere position connue du systeme. Un point d'il y a un quart d'heure est un depart utilisable ;
-        // ce qu'on refusait plus haut, c'est qu'il passe AVANT une source capable de faire mieux.
-        return duCapteur ?: lastKnown(STALE_FIX_MS) ?: freshUserLocation(STALE_FIX_MS)
-    }
 
     /**
      * La position du suivi, en (lat, lon), si elle a moins de [maxAgeMs] - sinon null.
