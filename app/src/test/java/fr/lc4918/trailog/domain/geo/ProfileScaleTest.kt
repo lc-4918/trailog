@@ -27,7 +27,6 @@ class ProfileScaleTest {
         listOf(
             ProfileScale.Vertical(ProfileScale.Mode.CAP, 25.0),
             ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 100.0),
-            ProfileScale.Vertical(ProfileScale.Mode.EXAGGERATION, 10.0),
         ).forEach { assertEquals(it, ProfileScale.parse(ProfileScale.store(it))) }
     }
 
@@ -38,6 +37,18 @@ class ProfileScaleTest {
         assertEquals("une valeur incomprise ne prive pas de profil",
             ProfileScale.Mode.CAP, ProfileScale.parse("n'importe quoi").mode)
         assertEquals(ProfileScale.Mode.CAP, ProfileScale.parse(null).mode)
+    }
+
+    /**
+     * L'exageration fixe a ete retiree : elle ne donnait un dessin lisible pour aucune valeur sur la
+     * hauteur d'un telephone. Un reglage qui la portait encore se relit comme le plafond par defaut - il
+     * ne doit ni priver de profil, ni geler les reglages sur un regime qui n'existe plus.
+     */
+    @Test fun `un reglage d'exageration se relit comme le plafond par defaut`() {
+        assertEquals(
+            ProfileScale.Vertical(ProfileScale.Mode.CAP, ProfileScale.DEFAULT_CAP),
+            ProfileScale.parse("x:10"),
+        )
     }
 
     // ---------- Les graduations ----------
@@ -117,27 +128,5 @@ class ProfileScaleTest {
         val w = fenetre(ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 200.0), 1_200.0, 1_260.0, 5_000.0)
         assertTrue("le bas de l'axe ne descend pas sous la trace de plus d'un pas",
             w.minZ <= 1_200.0 && w.minZ > 0.0)
-    }
-
-    // ---------- L'exageration fixe ----------
-
-    /** Le rapport demande entre les deux axes est celui qu'on obtient. */
-    @Test fun `une exageration fixe tient son rapport`() {
-        val w = fenetre(ProfileScale.Vertical(ProfileScale.Mode.EXAGGERATION, 10.0), 0.0, 400.0, 20_000.0)
-        assertEquals(10.0, w.exaggeration!!, 1.5)
-    }
-
-    /**
-     * Ce que l'exageration apporte : la meme pente donne le meme dessin, que la trace fasse 3 ou 30 km.
-     * Une echelle absolue, elle, la dresserait dix fois plus sur la courte.
-     */
-    @Test fun `a exageration fixe, une meme pente se dessine pareil`() {
-        val courte = fenetre(ProfileScale.Vertical(ProfileScale.Mode.EXAGGERATION, 10.0), 0.0, 150.0, 3_000.0)
-        val longue = fenetre(ProfileScale.Vertical(ProfileScale.Mode.EXAGGERATION, 10.0), 0.0, 1_500.0, 30_000.0)
-        // Pente dessinee = (amplitude / etendue) * hauteur / (distance -> largeur) : a rapport egal, les
-        // deux profils montent de la meme facon.
-        val penteCourte = (150.0 / courte.spanZ) * courte.heightPx / largeur
-        val penteLongue = (1_500.0 / longue.spanZ) * longue.heightPx / largeur
-        assertEquals(penteCourte, penteLongue, 0.05)
     }
 }

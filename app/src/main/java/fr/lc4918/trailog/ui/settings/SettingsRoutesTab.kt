@@ -257,39 +257,33 @@ import kotlinx.coroutines.launch
             /*
              * L'echelle verticale, en deux lignes : le REGIME, puis sa valeur.
              *
-             * Les trois ne repondent pas a la meme question (cf. ProfileScale) : remplir la hauteur sans
-             * dresser une pente douce en muraille, comparer des AMPLITUDES a la regle, ou comparer des PENTES.
-             * L'exageration ne se propose qu'en mode expert : elle suppose qu'on sache ce qu'on compare.
+             * Les deux ne repondent pas a la meme question (cf. ProfileScale) : remplir la hauteur sans
+             * dresser une pente douce en muraille, ou comparer des AMPLITUDES a la regle.
+             *
+             * Un troisieme regime, l'exageration fixe, a ete retire : il ne donnait un dessin lisible pour
+             * aucune valeur sur la hauteur d'un telephone (cf. ProfileScale).
              */
             val vertical = remember(cur.profileVerticalScale) { ProfileScale.parse(cur.profileVerticalScale) }
-            val modes = buildList {
-                add(ProfileScale.Mode.CAP)
-                add(ProfileScale.Mode.M_PER_CM)
-                if (cur.expertMode) add(ProfileScale.Mode.EXAGGERATION)
-            }
             PickRow(
-                stringResource(R.string.settings_label_vertical_scale), vertical.mode, modes,
+                stringResource(R.string.settings_label_vertical_scale), vertical.mode,
+                ProfileScale.Mode.entries,
                 optionLabel = { verticalModeLabel(it) },
                 info = stringResource(R.string.settings_vertical_scale_hint),
             ) { mode ->
                 val v = when (mode) {
                     ProfileScale.Mode.CAP -> ProfileScale.Vertical(mode, ProfileScale.DEFAULT_CAP)
                     ProfileScale.Mode.M_PER_CM -> ProfileScale.Vertical(mode, 100.0)
-                    ProfileScale.Mode.EXAGGERATION -> ProfileScale.Vertical(mode, 10.0)
                 }
                 vm.save(cur.copy(profileVerticalScale = ProfileScale.store(v)))
             }
             if (vertical.mode != ProfileScale.Mode.CAP) {
                 RowDivider()
-                val metres = vertical.mode == ProfileScale.Mode.M_PER_CM
-                val crans = if (metres) VerticalScaleSteps else ExaggerationSteps
+                val crans = VerticalScaleSteps
                 val cran = crans.indexOf(vertical.value.toInt())
                     .let { if (it >= 0) it else crans.indices.minBy { i -> kotlin.math.abs(crans[i] - vertical.value) } }
                 SliderRow(
-                    if (metres) stringResource(R.string.settings_label_vertical_scale_value)
-                    else stringResource(R.string.settings_label_exaggeration),
-                    if (metres) stringResource(R.string.settings_vertical_scale_value, vertical.value.toInt())
-                    else stringResource(R.string.settings_exaggeration_value, vertical.value.toInt()),
+                    stringResource(R.string.settings_label_vertical_scale_value),
+                    stringResource(R.string.settings_vertical_scale_value, vertical.value.toInt()),
                     fractionOf(cran, 0, crans.lastIndex), steps = crans.size - 2,
                     onFraction = {
                         val v = crans[valueOf(it, 0, crans.lastIndex)].toDouble()
@@ -674,15 +668,11 @@ private fun poiCorridorLabel(m: Int): String = when {
 /** Metres d'altitude par centimetre proposes : de la trace de vallee au massif entier. */
 private val VerticalScaleSteps = listOf(50, 100, 150, 200, 250, 300, 500, 800, 1200)
 
-/** Exagerations proposees : au-dela d'une vingtaine, le relief ne se lit plus, il se devine. */
-private val ExaggerationSteps = listOf(2, 5, 10, 15, 25, 50)
-
 /** Libelle traduit d'un regime d'echelle verticale (cf. ProfileScale.Mode). */
 @Composable private fun verticalModeLabel(m: ProfileScale.Mode): String = stringResource(
     when (m) {
         ProfileScale.Mode.CAP -> R.string.settings_vertical_scale_auto
         ProfileScale.Mode.M_PER_CM -> R.string.settings_vertical_scale_absolute
-        ProfileScale.Mode.EXAGGERATION -> R.string.settings_label_exaggeration
     }
 )
 

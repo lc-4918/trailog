@@ -10,25 +10,29 @@ import kotlin.math.roundToInt
 /**
  * L'echelle verticale du profil altimetrique : ce que la hauteur du graphe represente.
  *
- * **Trois regimes, et ils ne disent pas la meme chose.**
+ * **Deux regimes, et ils ne disent pas la meme chose.**
  * - [Mode.CAP] : le profil remplit la hauteur - c'est ce qui se lit le mieux - mais sans depasser un
  *   RAPPORT entre les deux axes. Sans plafond, une trace longue et douce voit sa pente de 0,2 % dessinee
  *   comme un mur, et l'axe cesse de parler du terrain.
  * - [Mode.M_PER_CM] : une echelle absolue, en metres d'altitude par centimetre d'ecran. Elle rend les
  *   AMPLITUDES comparables : deux profils se mesurent a la regle.
- * - [Mode.EXAGGERATION] : un rapport fixe entre les deux axes. Il rend les PENTES comparables - la pente
- *   lue sur le dessin est la pente reelle, multipliee par le meme facteur d'une trace a l'autre. Une
- *   echelle absolue ne le fait pas : l'axe horizontal s'etire toujours sur toute la trace, si bien qu'une
- *   meme pente de 5 % parait trois fois plus raide sur une boucle de 3 km que sur une traversee de 30.
+ *
+ * **Un troisieme a ete retire : l'exageration fixe**, un rapport impose entre les deux axes. Sur le
+ * papier, elle rendait les PENTES comparables d'une trace a l'autre. A l'usage, elle ne donnait un dessin
+ * lisible pour aucune valeur : la hauteur d'un telephone est ce qu'elle est, et le rapport demande y
+ * aboutit soit a un trait ecrase au bas du cadre, soit a un profil qui deborde. Le plafond de [Mode.CAP]
+ * repond deja a ce qu'on cherchait - une pente douce n'y est jamais dressee en muraille - sans imposer
+ * une valeur qui ne vaut que pour une trace. Un reglage ancien ("x:10") se relit comme le plafond par
+ * defaut (cf. [parse]).
  *
  * Sans Android : ce sont des regles de geometrie, et une faute y est silencieuse - un profil faux se lit
  * comme un profil vrai.
  */
 object ProfileScale {
 
-    enum class Mode { CAP, M_PER_CM, EXAGGERATION }
+    enum class Mode { CAP, M_PER_CM }
 
-    /** Le regime retenu, et sa valeur : le plafond, les metres par centimetre, ou le rapport. */
+    /** Le regime retenu, et sa valeur : le plafond, ou les metres par centimetre. */
     data class Vertical(val mode: Mode, val value: Double)
 
     /** Le plafond par defaut : mesure sur des traces reelles, en deca les traces courtes debordent, au-dela
@@ -51,6 +55,10 @@ object ProfileScale {
      *
      * Les anciennes valeurs se relisent : la colonne portait un entier - zero pour "remplir la hauteur",
      * sinon des metres par centimetre - et une base migree ne doit pas perdre son reglage.
+     *
+     * L'exageration ("x:10") a ete retiree : son ecriture se relit encore, et rend le plafond par defaut.
+     * Un reglage qui ne se comprend plus ne doit pas priver de profil, ni geler l'ecran des reglages sur
+     * un regime qui n'existe plus.
      */
     fun parse(s: String?): Vertical {
         val t = s?.trim().orEmpty()
@@ -59,8 +67,8 @@ object ProfileScale {
         val v = t.substringAfter(':', "").toDoubleOrNull() ?: return Vertical(Mode.CAP, DEFAULT_CAP)
         return when (t.substringBefore(':')) {
             "m" -> if (v > 0) Vertical(Mode.M_PER_CM, v) else Vertical(Mode.CAP, DEFAULT_CAP)
-            "x" -> if (v > 0) Vertical(Mode.EXAGGERATION, v) else Vertical(Mode.CAP, DEFAULT_CAP)
             "cap" -> Vertical(Mode.CAP, if (v > 0) v else DEFAULT_CAP)
+            // "x:" - l'exageration retiree - tombe avec tout le reste sur le plafond par defaut.
             else -> Vertical(Mode.CAP, DEFAULT_CAP)
         }
     }
@@ -69,7 +77,6 @@ object ProfileScale {
     fun store(v: Vertical): String = when (v.mode) {
         Mode.CAP -> "cap:${fmt(v.value)}"
         Mode.M_PER_CM -> "m:${fmt(v.value)}"
-        Mode.EXAGGERATION -> "x:${fmt(v.value)}"
     }
 
     private fun fmt(v: Double) = if (v == floor(v)) v.roundToInt().toString() else v.toString()
@@ -117,10 +124,9 @@ object ProfileScale {
             val mParCmV = etendue / (hauteur / pxPerCm)
             return (distanceM / cmW) / mParCmV
         }
-        // Les metres par centimetre demandes, sous l'une ou l'autre forme.
+        // Les metres par centimetre demandes, quand l'echelle est absolue.
         val mParCm = when (v.mode) {
             Mode.M_PER_CM -> v.value
-            Mode.EXAGGERATION -> if (cmW > 0f && v.value > 0.0 && distanceM > 0.0) (distanceM / cmW) / v.value else 0.0
             Mode.CAP -> 0.0
         }
         if (mParCm > 0.0) return fenetreAbsolue(mParCm, zMin, zMax, h, pxPerCm, ::rapport)

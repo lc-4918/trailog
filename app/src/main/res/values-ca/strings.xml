@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto omple l\'alçada sense convertir un pendent suau en un mur: més enllà d\'una certa relació entre els dos eixos, el gràfic es redueix. Metres per centímetre fa comparables els desnivells d\'una traça a una altra, amb un regle. Exageració fa comparables els pendents: el pendent llegit és el real, multiplicat pel mateix factor arreu.</string>
+    <string name="settings_vertical_scale_hint">Auto omple l\'alçada sense convertir un pendent suau en un mur: més enllà d\'una certa relació entre els dos eixos, el gràfic es redueix. Metres per centímetre fa comparables els desnivells d\'una traça a una altra, amb un regle.</string>
 
     <!-- Configuració: Perfil -->
     <string name="settings_section_display">Visualització</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Les tessel·les vistes un cop es guarden per mostrar-les més ràpid, dins del límit configurat. Esborrar-les farà que es tornin a descarregar. Els mapes fora de línia no es toquen.</string>
     <string name="settings_vertical_scale_absolute">Metres per centímetre</string>
     <string name="settings_label_vertical_scale_value">Escala</string>
-    <string name="settings_label_exaggeration">Exageració</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">El mapa de fons «%1$s» no permet la descàrrega. Tria un mapa en línia: ni compost, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Descarrega una ZONA RECTANGULAR del mapa de fons mostrat actualment, que enquadres al mapa. Alguns mapes no ho permeten: els compostos, els fitxers MBTiles ja al telèfon i OpenStreetMap, les condicions d\'ús del qual prohibeixen la descàrrega massiva.</string>
     <string name="about_title">Quant a</string>

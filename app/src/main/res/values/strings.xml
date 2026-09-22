@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Échelle verticale : %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto remplit la hauteur, sans dresser en muraille une pente douce : au-delà d\'un certain rapport entre les deux axes, c\'est le graphe qui se réduit. Mètres par centimètre rend les dénivelés comparables d\'une trace à l\'autre, à la règle. Exagération rend les pentes comparables : la pente lue est la pente réelle, multipliée par le même facteur partout.</string>
+    <string name="settings_vertical_scale_hint">Auto remplit la hauteur, sans dresser en muraille une pente douce : au-delà d\'un certain rapport entre les deux axes, c\'est le graphe qui se réduit. Mètres par centimètre rend les dénivelés comparables d\'une trace à l\'autre, à la règle.</string>
 
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>
@@ -688,8 +688,6 @@
     <string name="settings_map_cache_hint">Les tuiles vues une fois sont gardées pour un affichage plus rapide, dans la limite réglée. Les effacer les fera retélécharger. Les cartes hors ligne ne sont pas touchées.</string>
     <string name="settings_vertical_scale_absolute">Mètres par centimètre</string>
     <string name="settings_label_vertical_scale_value">Échelle</string>
-    <string name="settings_label_exaggeration">Exagération</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">Le fond de plan « %1$s » n\'autorise pas le téléchargement. Choisissez un fond en ligne : ni composite, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Télécharge une ZONE RECTANGULAIRE du fond de plan actuellement affiché, que vous cadrez sur la carte. Certains fonds ne l\'autorisent pas : les composites, les fichiers MBTiles déjà sur le téléphone, et OpenStreetMap, dont les conditions d\'usage interdisent le téléchargement en masse.</string>
     <string name="about_title">À propos</string>

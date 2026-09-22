@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto preenche a altura sem transformar um declive suave num muro: a partir de certa relação entre os dois eixos, é o gráfico que se reduz. Metros por centímetro torna os desníveis comparáveis de um trilho para outro, com a régua. Exagero torna os declives comparáveis: o declive lido é o real, multiplicado pelo mesmo fator em toda a parte.</string>
+    <string name="settings_vertical_scale_hint">Auto preenche a altura sem transformar um declive suave num muro: a partir de certa relação entre os dois eixos, é o gráfico que se reduz. Metros por centímetro torna os desníveis comparáveis de um trilho para outro, com a régua.</string>
 
     <!-- Definições: Perfil -->
     <string name="settings_section_display">Visualização</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Os mosaicos vistos uma vez são guardados para uma apresentação mais rápida, dentro do limite definido. Limpá-los fará com que sejam transferidos de novo. Os mapas offline não são afetados.</string>
     <string name="settings_vertical_scale_absolute">Metros por centímetro</string>
     <string name="settings_label_vertical_scale_value">Escala</string>
-    <string name="settings_label_exaggeration">Exagero</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">O mapa de fundo «%1$s» não permite a transferência. Escolha um mapa online: nem composto, nem MBTiles, nem OpenStreetMap.</string>
     <string name="offline_download_area_info">Transfere uma ÁREA RETANGULAR do mapa de fundo atualmente apresentado, que enquadra no mapa. Alguns mapas não o permitem: os compostos, os ficheiros MBTiles já no telemóvel e o OpenStreetMap, cujas condições de utilização proíbem a transferência em massa.</string>
     <string name="about_title">Acerca de</string>

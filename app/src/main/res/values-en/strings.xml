@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Vertical scale: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto fills the height without turning a gentle slope into a wall: past a given ratio between the two axes, the chart shrinks instead. Metres per centimetre makes elevation ranges comparable from one track to the next, with a ruler. Exaggeration makes slopes comparable: the gradient you read is the real one, multiplied by the same factor everywhere.</string>
+    <string name="settings_vertical_scale_hint">Auto fills the height without turning a gentle slope into a wall: past a given ratio between the two axes, the chart shrinks instead. Metres per centimetre makes elevation ranges comparable from one track to the next, with a ruler.</string>
 
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Tiles seen once are kept for faster display, within the configured limit. Clearing them makes them download again. Offline maps are not affected.</string>
     <string name="settings_vertical_scale_absolute">Metres per centimetre</string>
     <string name="settings_label_vertical_scale_value">Scale</string>
-    <string name="settings_label_exaggeration">Exaggeration</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">The basemap \u0022%1$s\u0022 does not allow downloading. Choose an online basemap: neither composite, nor MBTiles, nor OpenStreetMap.</string>
     <string name="offline_download_area_info">Downloads a RECTANGULAR AREA of the basemap currently displayed, which you frame on the map. Some basemaps do not allow it: composites, MBTiles files already on the phone, and OpenStreetMap, whose usage policy forbids bulk downloading.</string>
     <string name="about_title">About</string>

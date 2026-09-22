@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Escala vertical: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto llena la altura sin convertir una pendiente suave en un muro: más allá de cierta relación entre los dos ejes, el gráfico se reduce. Metros por centímetro hace comparables los desniveles de una traza a otra, con una regla. Exageración hace comparables las pendientes: la pendiente leída es la real, multiplicada por el mismo factor en todas partes.</string>
+    <string name="settings_vertical_scale_hint">Auto llena la altura sin convertir una pendiente suave en un muro: más allá de cierta relación entre los dos ejes, el gráfico se reduce. Metros por centímetro hace comparables los desniveles de una traza a otra, con una regla.</string>
 
     <!-- Ajustes: Perfil -->
     <string name="settings_section_display">Visualización</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Las teselas vistas una vez se guardan para mostrarlas más rápido, dentro del límite configurado. Borrarlas hará que se descarguen de nuevo. Los mapas sin conexión no se ven afectados.</string>
     <string name="settings_vertical_scale_absolute">Metros por centímetro</string>
     <string name="settings_label_vertical_scale_value">Escala</string>
-    <string name="settings_label_exaggeration">Exageración</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">El mapa base «%1$s» no permite la descarga. Elige un mapa en línea: ni compuesto, ni MBTiles, ni OpenStreetMap.</string>
     <string name="offline_download_area_info">Descarga una ZONA RECTANGULAR del mapa base mostrado actualmente, que encuadras en el mapa. Algunos mapas no lo permiten: los compuestos, los archivos MBTiles ya en el teléfono y OpenStreetMap, cuyas condiciones de uso prohíben la descarga masiva.</string>
     <string name="about_title">Acerca de</string>

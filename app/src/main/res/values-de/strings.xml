@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Vertikaler Maßstab: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto füllt die Höhe, ohne eine sanfte Steigung zur Mauer zu machen: ab einem bestimmten Verhältnis der beiden Achsen verkleinert sich das Diagramm. Meter pro Zentimeter macht Höhenunterschiede von Spur zu Spur vergleichbar, mit dem Lineal. Überhöhung macht Steigungen vergleichbar: die abgelesene Steigung ist die echte, überall mit demselben Faktor multipliziert.</string>
+    <string name="settings_vertical_scale_hint">Auto füllt die Höhe, ohne eine sanfte Steigung zur Mauer zu machen: ab einem bestimmten Verhältnis der beiden Achsen verkleinert sich das Diagramm. Meter pro Zentimeter macht Höhenunterschiede von Spur zu Spur vergleichbar, mit dem Lineal.</string>
 
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Einmal gesehene Kacheln werden im eingestellten Rahmen für eine schnellere Anzeige behalten. Beim Leeren werden sie erneut heruntergeladen. Offline-Karten sind nicht betroffen.</string>
     <string name="settings_vertical_scale_absolute">Meter pro Zentimeter</string>
     <string name="settings_label_vertical_scale_value">Maßstab</string>
-    <string name="settings_label_exaggeration">Überhöhung</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">Die Hintergrundkarte „%1$s“ erlaubt kein Herunterladen. Wählen Sie eine Online-Karte: weder Komposit, noch MBTiles, noch OpenStreetMap.</string>
     <string name="offline_download_area_info">Lädt einen RECHTECKIGEN BEREICH der aktuell angezeigten Hintergrundkarte herunter, den Sie auf der Karte aufziehen. Manche Karten erlauben das nicht: Komposite, bereits auf dem Telefon liegende MBTiles-Dateien und OpenStreetMap, dessen Nutzungsbedingungen Massen-Downloads untersagen.</string>
     <string name="about_title">Über</string>

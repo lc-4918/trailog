@@ -244,7 +244,7 @@
     <string name="settings_section_vertical_scale">Scala verticale: %1$s</string>
     <string name="settings_vertical_scale_auto">Auto</string>
     <string name="settings_vertical_scale_value">1 cm = %1$d m</string>
-    <string name="settings_vertical_scale_hint">Auto riempie l\'altezza senza trasformare una pendenza dolce in un muro: oltre un certo rapporto tra i due assi, è il grafico che si riduce. Metri per centimetro rende i dislivelli confrontabili da una traccia all\'altra, con il righello. Esagerazione rende confrontabili le pendenze: la pendenza letta è quella reale, moltiplicata per lo stesso fattore ovunque.</string>
+    <string name="settings_vertical_scale_hint">Auto riempie l\'altezza senza trasformare una pendenza dolce in un muro: oltre un certo rapporto tra i due assi, è il grafico che si riduce. Metri per centimetro rende i dislivelli confrontabili da una traccia all\'altra, con il righello.</string>
 
     <!-- Impostazioni: Profilo -->
     <string name="settings_section_display">Visualizzazione</string>
@@ -686,8 +686,6 @@
     <string name="settings_map_cache_hint">Le tessere viste una volta sono conservate per una visualizzazione più rapida, entro il limite impostato. Svuotarle le farà riscaricare. Le mappe offline non sono toccate.</string>
     <string name="settings_vertical_scale_absolute">Metri per centimetro</string>
     <string name="settings_label_vertical_scale_value">Scala</string>
-    <string name="settings_label_exaggeration">Esagerazione</string>
-    <string name="settings_exaggeration_value">×%1$d</string>
     <string name="offline_unavailable_named">La mappa di base «%1$s» non consente il download. Scegli una mappa online: né composita, né MBTiles, né OpenStreetMap.</string>
     <string name="offline_download_area_info">Scarica un\'AREA RETTANGOLARE della mappa di base attualmente visualizzata, che inquadri sulla mappa. Alcune mappe non lo consentono: le composite, i file MBTiles già sul telefono e OpenStreetMap, le cui condizioni d\'uso vietano il download di massa.</string>
     <string name="about_title">Informazioni</string>
