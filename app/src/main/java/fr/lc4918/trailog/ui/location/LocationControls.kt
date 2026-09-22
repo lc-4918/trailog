@@ -35,6 +35,7 @@ import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import fr.lc4918.trailog.domain.geo.FixAge
 import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.LocationService
 import fr.lc4918.trailog.ui.components.MapController
@@ -289,9 +290,16 @@ class LocationControls internal constructor(
     /**
      * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
      *
-     * Le repere affiche donne deja un flux de positions : on s'en sert telle quelle. Sinon on lit ce que le
-     * systeme sait deja, puis on demande au capteur. C'est ce qui affranchit le planificateur et les mesures
-     * de l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
+     * Le repere affiche donne deja un flux de positions : on s'en sert SI ELLE EST FRAICHE. Sinon on lit ce
+     * que le systeme sait deja, puis on demande au capteur. C'est ce qui affranchit le planificateur et les
+     * mesures de l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
+     *
+     * **La fraicheur du repere se verifie, et c'est le second defaut signale.** Le suivi peut se taire
+     * longtemps sans s'arreter : l'economie d'energie eteint le GPS des que l'ecran s'eteint (cf.
+     * `PowerSave`), et la derniere position recue reste celle du moment ou l'ecran s'est eteint. Un
+     * itineraire demande au dixieme kilometre partait donc de la maison, sans un mot. Une position qui a
+     * fait son temps ne vaut pas mieux ici qu'ailleurs : elle passe la main aux sources suivantes, dont le
+     * capteur, qui, lui, rendra le point d'aujourd'hui.
      *
      * **Trois sources, dans cet ordre, et c'est l'ordre qui repare le defaut signale.** Le repere allume ;
      * la derniere position connue si elle est FRAICHE ; le capteur enfin. La derniere position connue
@@ -300,19 +308,21 @@ class LocationControls internal constructor(
      * itineraire" pour un trajet qu'il n'avait meme pas demande. Le signalement le disait ainsi - "quand
      * j'ai le capteur active mais que le bouton est inactif, j'ai systematiquement Aucun itineraire".
      *
-     * **Et une quatrieme en dernier recours** : une derniere position connue plus agee, jusqu'a [STALE_FIX_MS].
-     * Un point d'il y a un quart d'heure est un depart de trajet parfaitement utilisable - on n'a pas
-     * traverse la France entre-temps - la ou l'absence de reponse ne l'est pas du tout. Au-dela, on rend
-     * null : une position d'hier ferait calculer, sans un mot, un trajet depuis une autre region.
+     * **Et deux en dernier recours** : une derniere position connue plus agee, puis le repere lui-meme
+     * vieilli, tous deux jusqu'a [STALE_FIX_MS]. Un point d'il y a un quart d'heure est un depart de trajet
+     * parfaitement utilisable - on n'a pas traverse la France entre-temps - la ou l'absence de reponse ne
+     * l'est pas du tout. Au-dela, on rend null : une position d'hier ferait calculer, sans un mot, un
+     * trajet depuis une autre region.
      *
-     * Null si l'autorisation manque, si la localisation est eteinte, ou si aucune des quatre sources ne
-     * repond.
+     * Null si aucune de ces sources ne repond - autorisation refusee ou localisation eteinte comprises.
      */
     @SuppressLint("MissingPermission")
     suspend fun currentPosition(): Pair<Double, Double>? {
-        lastUserLocation?.let { return it }
-        if (!hasLocationPermission()) return null
-        val provider = enabledProvider() ?: return null
+        freshUserLocation(FRESH_FIX_MS)?.let { return it }
+        // Plus rien a demander - autorisation refusee, localisation eteinte : il reste ce que le suivi a
+        // recu, meme vieilli. C'est tout ce qu'on a, et un depart approximatif vaut mieux que rien.
+        if (!hasLocationPermission()) return freshUserLocation(STALE_FIX_MS)
+        val provider = enabledProvider() ?: return freshUserLocation(STALE_FIX_MS)
         lastKnown(FRESH_FIX_MS)?.let { return it }
         val duCapteur = suspendCancellableCoroutine { cont ->
             val signal = CancellationSignal()
@@ -323,8 +333,22 @@ class LocationControls internal constructor(
                 ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
             }.onFailure { if (cont.isActive) cont.resume(null) }
         }
-        return duCapteur ?: lastKnown(STALE_FIX_MS)
+        // Le capteur muet : la position du suivi revient dans la course, avec la meme tolerance que la
+        // derniere position connue du systeme. Un point d'il y a un quart d'heure est un depart utilisable ;
+        // ce qu'on refusait plus haut, c'est qu'il passe AVANT une source capable de faire mieux.
+        return duCapteur ?: lastKnown(STALE_FIX_MS) ?: freshUserLocation(STALE_FIX_MS)
     }
+
+    /**
+     * La position du suivi, en (lat, lon), si elle a moins de [maxAgeMs] - sinon null.
+     *
+     * L'age est pris sur l'instant MONOTONE de la mesure (cf. `LocationHub.Fix.elapsedAtMs`), le seul qui
+     * ne bouge pas quand le telephone se remet a l'heure.
+     */
+    private fun freshUserLocation(maxAgeMs: Long): Pair<Double, Double>? =
+        fixState.value
+            ?.takeIf { FixAge.fresh(it.elapsedAtMs, SystemClock.elapsedRealtime(), maxAgeMs) }
+            ?.let { it.lat to it.lon }
 
     /**
      * Ou l'on est, SANS RIEN DEMANDER AU CAPTEUR ni faire attendre personne, en (lon, lat).
@@ -343,7 +367,7 @@ class LocationControls internal constructor(
      * cote de la carte.
      */
     fun knownPosition(): Pair<Double, Double>? {
-        lastUserLocation?.let { (lat, lon) -> return lon to lat }
+        freshUserLocation(STALE_FIX_MS)?.let { (lat, lon) -> return lon to lat }
         if (!hasLocationPermission()) return null
         return lastKnown(STALE_FIX_MS)?.let { (lat, lon) -> lon to lat }
     }

@@ -410,6 +410,7 @@ class RoutePlannerState {
         route = RouteState.Idle
         recomputing = false
         computedFrom = null
+        repriseDepuisPosition = false
         cursor = null
         resetZoom()
         revision++
@@ -723,15 +724,39 @@ class RoutePlannerState {
      */
     fun adopt(inputs: RouteInputs): Boolean {
         if (route !is RouteState.Done) return false
-        if (computedFrom == null) { computedFrom = inputs; return true }
+        if (computedFrom == null) {
+            // Un parcours repris qui part "d'ou je suis" a ete calcule depuis un ailleurs : on ne l'adopte
+            // pas, on le refait (cf. [repriseDepuisPosition]). Il reste affiche le temps du calcul.
+            // Le drapeau ne tombe qu'a la publication du nouveau parcours, et non ici : une recomposition
+            // pendant le calcul repasserait sinon par une adoption, et reposerait le trace d'hier.
+            if (repriseDepuisPosition) return false
+            computedFrom = inputs
+            return true
+        }
         return computedFrom == inputs
     }
+
+    /**
+     * Le parcours repris du disque part de LA POSITION DU PORTEUR, et doit etre refait avant d'etre cru.
+     *
+     * **Ce que l'adoption ne peut pas savoir.** Une etape "d'ou je suis" ne se fige jamais dans l'empreinte
+     * ([RouteInputs]) : elle est resolue au lancement du calcul, justement pour qu'on parte d'ou l'on est
+     * et non d'ou l'on etait en posant ses etapes. Un parcours repris arrive donc avec des etapes
+     * identiques a celles d'hier et un trace qui, lui, commence a l'autre bout du trajet.
+     *
+     * On le recalcule. S'il echoue - moteur muet, reseau absent, position introuvable -, l'echec se DIT et
+     * le parcours d'hier s'efface : montrer un trajet qui part de la maison a quelqu'un qui est au dixieme
+     * kilometre est pire que de ne rien montrer, parce que rien ne l'y detrompe.
+     */
+    private var repriseDepuisPosition = false
 
     /** @param from l'empreinte des entrees du calcul, pour un parcours abouti (cf. [adopt]). */
     fun publish(r: RouteState, from: RouteInputs? = null) {
         route = r
         recomputing = false
         computedFrom = if (r is RouteState.Done) from else null
+        // Le parcours repris a vecu : ce qui est affiche vient de cette session, quelle qu'en soit l'issue.
+        repriseDepuisPosition = false
         if (r !is RouteState.Done) cursor = null
     }
 
@@ -782,6 +807,7 @@ class RoutePlannerState {
         collapsed = snapshot.collapsed
         route = RouteState.Done(snapshot.meters, snapshot.seconds, snapshot.track)
         computedFrom = null
+        repriseDepuisPosition = steps.any { it.target == StepTarget.CurrentPosition }
         recomputing = false
     }
 

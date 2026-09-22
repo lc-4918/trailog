@@ -124,6 +124,38 @@ class RouteReuseTest {
         assertTrue("et il la porte desormais", etat.adopt(entrees))
     }
 
+    /**
+     * ... mais un parcours repris qui part "d'ou je suis" ne s'adopte PAS : il a ete calcule depuis un
+     * ailleurs - la maison, le matin - et le reposer tel quel ferait partir de la-bas quelqu'un qui est
+     * au dixieme kilometre. Une etape "position actuelle" n'entre jamais dans l'empreinte, rien d'autre
+     * ne peut donc le signaler.
+     */
+    @Test fun `un parcours repris qui part d'ou je suis se recalcule`() {
+        val etat = RoutePlannerState()
+        etat.restore(instantane().copy(steps = listOf(
+            StepSnapshot(currentPosition = true),
+            StepSnapshot(listOf("Soreze"), 2.07, 43.45),
+        )))
+        assertEquals(StepTarget.CurrentPosition, etat.steps.first().target)
+        assertFalse("il doit repasser par le moteur", etat.adopt(entrees(etat)))
+        assertTrue("et le trajet d'hier reste affiche pendant le calcul", etat.done != null)
+    }
+
+    /** Le refus tient tant que le nouveau parcours n'est pas publie : une recomposition pendant le calcul
+     *  ne doit pas reposer le trace d'hier par une adoption. */
+    @Test fun `le refus d'adopter tient jusqu'au parcours suivant`() {
+        val etat = RoutePlannerState()
+        etat.restore(instantane().copy(steps = listOf(
+            StepSnapshot(currentPosition = true),
+            StepSnapshot(listOf("Soreze"), 2.07, 43.45),
+        )))
+        assertFalse(etat.adopt(entrees(etat)))
+        assertFalse("toujours pas", etat.adopt(entrees(etat)))
+        val entrees = entrees(etat)
+        etat.publish(RouteState.Done(120.0, 600.0, parcours), entrees)
+        assertTrue("le parcours de cette session, lui, est a jour", etat.adopt(entrees))
+    }
+
     // ---------- Ce qu'on garde, et ce qu'on repose ----------
 
     /** Un planificateur sans parcours CALCULE n'a rien a garder : des etapes a moitie saisies ne se
