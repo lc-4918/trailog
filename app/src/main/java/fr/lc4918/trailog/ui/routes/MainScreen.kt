@@ -716,22 +716,29 @@ fun MainScreen(
         poi.selected?.let { vm.rememberPlannerPlace(placeOfPoi(it, ctx)) }
     }
     /*
-     * Une infobulle de point s'ouvre pendant qu'un trajet se compose : la bande se range d'elle-meme.
+     * Quelque chose s'ouvre au bas de l'ecran pendant qu'un trajet se compose : la bande se range d'elle-meme.
      *
-     * **Elles se disputent le meme bas d'ecran.** La bande deployee occupe jusqu'a 60 % de la hauteur, et
+     * **Ils se disputent le meme bas d'ecran.** La bande deployee occupe jusqu'a 60 % de la hauteur, et
      * elle est dessinee APRES les infobulles : une bulle qui tombait dans cette zone passait dessous, avec
      * ses boutons d'itineraire - c'est-a-dire precisement ce qu'on venait chercher en designant le point.
      *
-     * Vaut pour les trois : l'appui long, le point d'interet et le lieu trouve par la recherche. Ce sont
-     * trois facons de montrer un endroit, et les trois memes actions les terminent.
+     * **Vaut pour tout ce qu'un tap peut ouvrir la**, et non pour les seules facons de montrer un endroit :
+     * l'appui long, le point d'interet, le lieu trouve par la recherche, mais aussi le MARQUEUR d'une trace
+     * et le PROFIL d'une trace. Les deux derniers manquaient : toucher un waypoint pendant un calcul
+     * d'itineraire ouvrait sa bulle sous la bande, et toucher une trace ouvrait son profil derriere elle.
+     * Dans les deux cas, on avait designe quelque chose et rien ne repondait.
      *
      * La bande ne revient que par une des actions d'itineraire (cf. [ouvrePlanificateur]) : refermer la
      * bulle sans rien en faire, c'est avoir regarde ailleurs, et rien ne dit qu'on en a fini avec la carte.
      * Le bouton du coin bas-droit la redeploie a la demande.
+     *
+     * Le profil est suivi sur la couche OUVERTE et non sur son trace calcule : la bande doit se ranger des
+     * le tap, pendant que le profil se charge, et non a l'arrivee de sa geometrie.
      */
-    LaunchedEffect(mapPoint.point, poi.selected?.uuid, geo.place) {
-        val bulleOuverte = mapPoint.point != null || poi.selected != null || geo.place != null
-        if (bulleOuverte && planner.expanded) planner.collapse(true)
+    LaunchedEffect(mapPoint.point, poi.selected?.uuid, geo.place, selectedMarkerId, activeLayerId) {
+        val ouvert = mapPoint.point != null || poi.selected != null || geo.place != null ||
+            selectedMarkerId != null || activeLayerId != null
+        if (ouvert && planner.expanded) planner.collapse(true)
     }
     // Ouvre le planificateur pour y recevoir un point, en fermant ce qui lui prendrait la place.
     fun ouvrePlanificateur() {

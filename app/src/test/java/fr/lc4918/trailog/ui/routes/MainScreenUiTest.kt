@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.ui.planner.StepTarget
@@ -392,6 +393,64 @@ class MainScreenUiTest {
         // frappe.
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
         attend { texteBrut("Mire") }
+    }
+
+    /**
+     * Une trace posee en base, avec sa geometrie sur le disque : de quoi faire repondre un tap de carte.
+     *
+     * Le fichier est ECRIT pour de vrai (le depot le relira), et la couche porte a la fois une ligne et un
+     * point : les deux taps du test suivant partent de la meme trace, comme sur le terrain.
+     */
+    private fun poseUneTrace(): Long = runBlocking {
+        val geojson = """{"type":"FeatureCollection","features":[""" +
+            """{"type":"Feature","geometry":{"type":"LineString","coordinates":""" +
+            """[[1.86,43.09,210],[1.88,43.10,260]]},"properties":{}},""" +
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[1.87,43.095]},""" +
+            """"properties":{"name":"Col"}}]}"""
+        java.io.File(java.io.File(app.filesDir, "layers").apply { mkdirs() }, "tap.geojson")
+            .writeText(geojson)
+        app.repository.layers.insert(
+            LayerEntity(name = "Trace du tap", folderId = null, geometryFile = "tap.geojson",
+                hasLine = true, hasPoints = true)
+        )
+    }
+
+    /**
+     * Un tap sur une trace ou sur l'un de ses marqueurs pendant qu'un trajet se compose : la bande se range.
+     *
+     * **Le defaut venait du terrain.** La bande deployee occupe jusqu'a 60 % du bas de l'ecran et elle est
+     * dessinee APRES : l'infobulle du waypoint s'ouvrait dessous, et le profil de la trace derriere. On
+     * avait designe quelque chose du doigt, et rien ne repondait.
+     *
+     * Trois facons de montrer un ENDROIT rangeaient deja la bande - l'appui long, le point d'interet, le
+     * lieu trouve. Ces deux-la manquaient.
+     */
+    @Test fun `un tap sur une trace range la bande du calcul`() {
+        reglages { calculLocal(it) }
+        val id = poseUneTrace()
+        ecran()
+        attend { surface.controller != null }
+        ouvreLeCalcul()
+        val garde = ViewModelProvider(compose.activity)[MapScreenStates::class.java]
+        assertFalse("la bande est deployee avant le tap", garde.planner.collapsed)
+
+        carte.onPickLine?.invoke("ly$id", 1.87, 43.095)
+        attend { garde.planner.collapsed }
+        assertTrue("le profil a de la place", garde.planner.collapsed)
+    }
+
+    @Test fun `un tap sur un marqueur de trace range la bande du calcul`() {
+        reglages { calculLocal(it) }
+        val id = poseUneTrace()
+        ecran()
+        attend { surface.controller != null }
+        ouvreLeCalcul()
+        val garde = ViewModelProvider(compose.activity)[MapScreenStates::class.java]
+        assertFalse("la bande est deployee avant le tap", garde.planner.collapsed)
+
+        carte.onPickPoint?.invoke("ly$id", "0", 1.87, 43.095)
+        attend { garde.planner.collapsed }
+        assertTrue("l'infobulle a de la place", garde.planner.collapsed)
     }
 
     /**
