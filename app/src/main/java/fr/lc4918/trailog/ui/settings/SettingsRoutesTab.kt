@@ -272,7 +272,7 @@ import kotlinx.coroutines.launch
             ) { mode ->
                 val v = when (mode) {
                     ProfileScale.Mode.CAP -> ProfileScale.Vertical(mode, ProfileScale.DEFAULT_CAP)
-                    ProfileScale.Mode.M_PER_CM -> ProfileScale.Vertical(mode, 100.0)
+                    ProfileScale.Mode.M_PER_CM -> ProfileScale.DEFAULT
                 }
                 vm.save(cur.copy(profileVerticalScale = ProfileScale.store(v)))
             }

@@ -389,12 +389,13 @@ data class SettingsEntity(
     // tolerances...) ne s'affichent qu'avec lui. Eteint par defaut ; sept appuis sur le titre des reglages
     // l'allument et l'eteignent (cf. ExpertTaps).
     val expertMode: Boolean = false,
-    // Echelle verticale du profil, en trois regimes (cf. ProfileScale) : "cap:25" (remplir la hauteur sans
-    // depasser ce rapport entre les axes), "m:100" (metres par centimetre), "x:10" (exageration fixe).
+    // Echelle verticale du profil, en deux regimes (cf. ProfileScale) : "m:200" (metres par centimetre,
+    // le defaut) ou "cap:25" (remplir la hauteur sans depasser ce rapport entre les axes). Un troisieme,
+    // l'exageration fixe ("x:10"), a ete retire et se relit comme le defaut.
     // L'entier qui la portait - `verticalExaggeration` en base, profileVerticalScaleMPerCm ici - reste en
     // place, recopie par la migration 70 -> 71, mais n'est plus lu : une colonne ne se retire pas sans
     // reconstruire la table.
-    val profileVerticalScale: String = "cap:25",
+    val profileVerticalScale: String = "m:200",
 )
 
 /** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */

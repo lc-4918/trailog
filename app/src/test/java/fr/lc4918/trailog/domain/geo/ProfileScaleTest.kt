@@ -21,6 +21,16 @@ class ProfileScaleTest {
         v: ProfileScale.Vertical, zMin: Double, zMax: Double, distanceM: Double, h: Float = hauteur,
     ) = ProfileScale.window(v, zMin, zMax, distanceM, largeur, h, pxPerCm)
 
+    /** Le telephone des captures : densite 3, et la hauteur qu'un panneau de profil y recoit. */
+    private val pxPerCmDense = 3 * 160f / 2.54f
+    private val hauteurDense = 900f
+
+    /** La trace des captures : 29 km de 200 a 305 m, a deux cents metres par centimetre. */
+    private fun capture() = ProfileScale.window(
+        ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 200.0), 200.0, 305.0, 29_000.0,
+        largeur, hauteurDense, pxPerCmDense,
+    )
+
     // ---------- Ce qui se lit et s'ecrit en base ----------
 
     @Test fun `le reglage se relit tel qu'il s'ecrit`() {
@@ -35,8 +45,8 @@ class ProfileScaleTest {
         assertEquals(ProfileScale.Mode.CAP, ProfileScale.parse("0").mode)
         assertEquals(ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 150.0), ProfileScale.parse("150"))
         assertEquals("une valeur incomprise ne prive pas de profil",
-            ProfileScale.Mode.CAP, ProfileScale.parse("n'importe quoi").mode)
-        assertEquals(ProfileScale.Mode.CAP, ProfileScale.parse(null).mode)
+            ProfileScale.DEFAULT, ProfileScale.parse("n'importe quoi"))
+        assertEquals(ProfileScale.DEFAULT, ProfileScale.parse(null))
     }
 
     /**
@@ -44,11 +54,8 @@ class ProfileScaleTest {
      * hauteur d'un telephone. Un reglage qui la portait encore se relit comme le plafond par defaut - il
      * ne doit ni priver de profil, ni geler les reglages sur un regime qui n'existe plus.
      */
-    @Test fun `un reglage d'exageration se relit comme le plafond par defaut`() {
-        assertEquals(
-            ProfileScale.Vertical(ProfileScale.Mode.CAP, ProfileScale.DEFAULT_CAP),
-            ProfileScale.parse("x:10"),
-        )
+    @Test fun `un reglage d'exageration se relit comme l'echelle par defaut`() {
+        assertEquals(ProfileScale.DEFAULT, ProfileScale.parse("x:10"))
     }
 
     // ---------- Les graduations ----------
@@ -108,11 +115,10 @@ class ProfileScaleTest {
 
     // ---------- L'echelle absolue ----------
 
-    /** Cent metres par centimetre : la hauteur du graphe donne exactement l'etendue attendue. */
+    /** Cent metres par centimetre : un centimetre du graphe vaut cent metres d'altitude. */
     @Test fun `une echelle absolue donne les metres par centimetre demandes`() {
         val w = fenetre(ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 100.0), 500.0, 700.0, 10_000.0)
-        val cmH = hauteur / pxPerCm
-        assertEquals(100.0, w.spanZ / cmH, 1.0)
+        assertEquals(100.0, w.spanZ / (w.heightPx / pxPerCm), 1.0)
         assertTrue("la trace reste dedans", w.minZ <= 500.0 && w.maxZ >= 700.0)
     }
 
@@ -121,6 +127,37 @@ class ProfileScaleTest {
         val w = fenetre(ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 50.0), 0.0, 2_000.0, 10_000.0)
         assertTrue("toute la trace est visible", w.maxZ >= 2_000.0)
         assertEquals(hauteur, w.heightPx, 0.5f)
+    }
+
+    /**
+     * A echelle imposee, c'est la HAUTEUR qui plie : l'axe s'arrete a la graduation qui suit le sommet de
+     * la trace, et le panneau rend le reste.
+     *
+     * Le cas des captures : une trace de 200 a 305 m, a 200 m par centimetre. L'axe montait a 500 m -
+     * l'echelle remplissait toute la hauteur disponible, quelle que soit la trace - et le profil se
+     * tassait au bas d'un cadre aux deux tiers vide.
+     */
+    @Test fun `a echelle absolue, l'axe s'arrete juste au-dessus de la trace`() {
+        val w = capture()
+        assertTrue("toute la trace est visible", w.minZ <= 200.0 && w.maxZ >= 305.0)
+        assertTrue("l'axe ne monte pas d'un pas de plus que necessaire", w.maxZ < 305.0 + 50.0)
+        assertTrue("le panneau a rendu la hauteur en trop", w.heightPx < hauteurDense)
+    }
+
+    /** L'echelle demandee est TENUE : les metres par centimetre du dessin sont ceux du reglage. */
+    @Test fun `a echelle absolue, un centimetre vaut ce qu'on a demande`() {
+        val w = capture()
+        assertEquals(200.0, w.spanZ / (w.heightPx / pxPerCmDense), 1.0)
+    }
+
+    /** Une trace plate garde un graphe lisible : la hauteur ne descend pas sous son plancher. */
+    @Test fun `une trace plate garde la place de ses graduations`() {
+        val w = ProfileScale.window(
+            ProfileScale.Vertical(ProfileScale.Mode.M_PER_CM, 200.0), 100.0, 102.0, 5_000.0,
+            largeur, hauteurDense, pxPerCmDense,
+        )
+        assertTrue("le graphe garde sa hauteur minimale", w.heightPx >= ProfileScale.MIN_CHART_PX - 0.5f)
+        assertTrue("au moins trois graduations", w.ticks.size >= 3)
     }
 
     /** La place en trop va AU-DESSUS : centrer ferait descendre l'axe sous le niveau de la mer. */

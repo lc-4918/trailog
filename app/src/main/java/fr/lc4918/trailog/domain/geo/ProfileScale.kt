@@ -39,6 +39,15 @@ object ProfileScale {
      *  une longue traversee n'occupe plus qu'une fraction du cadre. */
     const val DEFAULT_CAP = 25.0
 
+    /**
+     * L'echelle par defaut : deux cents metres d'altitude par centimetre d'ecran.
+     *
+     * Mesuree sur le terrain, et preferee au remplissage de la hauteur : un profil s'y lit toujours a la
+     * meme aune, d'une sortie a l'autre, et le relief n'y change pas d'allure parce que la trace est plus
+     * longue. C'est aussi ce que rend un reglage qu'on ne sait plus relire (cf. [parse]).
+     */
+    val DEFAULT = Vertical(Mode.M_PER_CM, 200.0)
+
     /** Le graphe ne descend pas sous cette hauteur (px) : en deca, l'axe n'a plus la place de trois
      *  graduations. */
     const val MIN_CHART_PX = 70f
@@ -56,20 +65,20 @@ object ProfileScale {
      * Les anciennes valeurs se relisent : la colonne portait un entier - zero pour "remplir la hauteur",
      * sinon des metres par centimetre - et une base migree ne doit pas perdre son reglage.
      *
-     * L'exageration ("x:10") a ete retiree : son ecriture se relit encore, et rend le plafond par defaut.
-     * Un reglage qui ne se comprend plus ne doit pas priver de profil, ni geler l'ecran des reglages sur
-     * un regime qui n'existe plus.
+     * Ce qui ne se relit pas rend [DEFAULT] : un reglage incompris ne doit pas priver de profil, ni geler
+     * l'ecran des reglages sur un regime qui n'existe plus - ainsi de l'exageration retiree ("x:10").
+     * Seul le zero de l'ancienne colonne demande le remplissage de la hauteur : celui-la a ete choisi.
      */
     fun parse(s: String?): Vertical {
         val t = s?.trim().orEmpty()
         val n = t.toIntOrNull()
         if (n != null) return if (n <= 0) Vertical(Mode.CAP, DEFAULT_CAP) else Vertical(Mode.M_PER_CM, n.toDouble())
-        val v = t.substringAfter(':', "").toDoubleOrNull() ?: return Vertical(Mode.CAP, DEFAULT_CAP)
+        val v = t.substringAfter(':', "").toDoubleOrNull() ?: return DEFAULT
         return when (t.substringBefore(':')) {
-            "m" -> if (v > 0) Vertical(Mode.M_PER_CM, v) else Vertical(Mode.CAP, DEFAULT_CAP)
+            "m" -> if (v > 0) Vertical(Mode.M_PER_CM, v) else DEFAULT
             "cap" -> Vertical(Mode.CAP, if (v > 0) v else DEFAULT_CAP)
-            // "x:" - l'exageration retiree - tombe avec tout le reste sur le plafond par defaut.
-            else -> Vertical(Mode.CAP, DEFAULT_CAP)
+            // "x:" - l'exageration retiree - tombe avec tout le reste sur l'echelle par defaut.
+            else -> DEFAULT
         }
     }
 
@@ -158,23 +167,38 @@ object ProfileScale {
     /**
      * La fenetre sous une echelle ABSOLUE : les metres par centimetre sont ceux demandes.
      *
-     * Elle reste un PLANCHER et non un carcan : une trace dont l'amplitude depasse ce que la hauteur peut
-     * montrer deborderait du cadre, ce qui est pire que de perdre la comparabilite.
+     * **C'est la HAUTEUR qui plie, pas l'axe** - comme sous un plafond (cf. [fenetrePlafonnee]). L'axe
+     * couvrait toute la hauteur disponible, soit ce que l'echelle y met : a 200 m par centimetre sur trois
+     * centimetres, six cents metres d'altitude, quelle que soit la trace. Un parcours de cent metres
+     * d'amplitude se retrouvait tasse au bas d'un cadre aux deux tiers vide, et l'axe montait a 500 m pour
+     * un profil qui plafonne a 305. Le dessin ne dependant pas de la hauteur - ses metres par pixel sont
+     * fixes -, tout ce qu'on ajoutait au-dessus etait du vide : on le retire, le panneau se reduit
+     * d'autant, et l'axe s'arrete a la graduation qui suit le sommet de la trace.
+     *
+     * L'echelle reste un PLANCHER et non un carcan : une trace dont l'amplitude demande plus que la
+     * hauteur disponible garde le cadre entier, et son dessin se tasse - perdre la comparabilite a la
+     * regle vaut mieux que sortir du cadre. Un graphe ne descend pas non plus sous [MIN_CHART_PX], faute
+     * de quoi une trace plate n'aurait plus la place de ses graduations.
      *
      * Le profil reste ancre sur son point bas - la place en trop se met AU-DESSUS : centrer la fenetre
      * creuserait sous la trace, et l'axe descendrait sous le niveau de la mer sur un profil de montagne.
      */
     private fun fenetreAbsolue(
-        mParCm: Double, zMin: Double, zMax: Double, h: Float, pxPerCm: Float,
+        mParCm: Double, zMin: Double, zMax: Double, maxH: Float, pxPerCm: Float,
         rapport: (Double, Float) -> Double?,
     ): Window {
-        val cmH = h / pxPerCm
-        val etendue = maxOf(mParCm * cmH, zMax - zMin).coerceAtLeast(1e-6)
-        val cible = ticksFor(h)
+        val mParPx = (mParCm / pxPerCm).coerceAtLeast(1e-9)
+        val amplitude = (zMax - zMin).coerceAtLeast(1e-6)
+        val hMin = minOf(MIN_CHART_PX, maxH)
+        // Ce que l'axe doit couvrir : la trace, et au moins de quoi tenir une hauteur lisible.
+        val etendue = maxOf(amplitude, hMin * mParPx)
+        val cible = ticksFor((etendue / mParPx).toFloat().coerceIn(hMin, maxH))
         val pas = pasRond(etendue / cible)
         val base = floor(zMin / pas) * pas
-        val sommet = base + etendue
-        return Window(base, sommet, h, graduations(base, sommet, pas), rapport(etendue, h))
+        val sommet = base + ceil((zMin + etendue - base) / pas).coerceAtLeast(1.0) * pas
+        val etendueArrondie = sommet - base
+        val h = (etendueArrondie / mParPx).toFloat().coerceIn(hMin, maxH)
+        return Window(base, sommet, h, graduations(base, sommet, pas), rapport(etendueArrondie, h))
     }
 
     /**
