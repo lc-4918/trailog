@@ -246,5 +246,25 @@ tasks.withType<Test>().configureEach {
     extensions.configure(JacocoTaskExtension::class) {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")
+        // L'agent de couverture instrumente chaque classe chargee - celles du framework que Robolectric
+        // charge compris - et ralentissait CHAQUE passage des tests, rapport demande ou non. Il ne se
+        // branche plus que quand on demande le rapport (cf. le taskGraph ci-dessous).
+        isEnabled = false
+    }
+    // Plusieurs processus de test en parallele : un seul laissait sept coeurs sur huit a ne rien faire,
+    // pendant que chaque classe Robolectric montait son Android simule l'une apres l'autre. Trois au plus,
+    // et un giga chacun : une machine de developpement a d'autres choses ouvertes, et Robolectric a
+    // l'etroit dans les 512 Mo par defaut passe son temps a ramasser ses miettes.
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 3)
+    maxHeapSize = "1g"
+}
+
+// La couverture ne se mesure que si on demande son rapport : l'agent Jacoco s'allume alors, et seulement
+// alors, sur les tests dont il depend.
+gradle.taskGraph.whenReady {
+    if (hasTask(":app:jacocoTestReport")) {
+        tasks.withType<Test>().forEach { t ->
+            t.extensions.configure(JacocoTaskExtension::class) { isEnabled = true }
+        }
     }
 }
