@@ -143,13 +143,15 @@ internal fun ImportFolderDialog(
 internal fun NewFolderDialog(fallbackName: String, onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.label_new_folder)) },
         text = {
             CompactOutlinedTextField(name, { name = it }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().focusRequester(focus))
+            // Le focus se demande DANS la boite, une fois son champ compose : demande depuis l'ecran, il
+            // partait avant que la fenetre de la boite n'existe, et le FocusRequester sans noeud levait.
+            LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
         },
         confirmButton = {
             TextButton(onClick = { onCreate(name.ifBlank { fallbackName }) }) {
@@ -176,7 +178,6 @@ internal fun RouteImportDialog(
 ) {
     var layerName by remember { mutableStateOf(defaultName) }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.planner_import_layer)) },
@@ -187,6 +188,8 @@ internal fun RouteImportDialog(
                     modifier = Modifier.fillMaxWidth().focusRequester(focus),
                     label = { Text(stringResource(R.string.planner_layer_name)) },
                 )
+                // Dans la boite, une fois le champ compose (cf. NewFolderDialog).
+                LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
                 if (folders.isNotEmpty()) {
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                     Text(stringResource(R.string.dialog_import_into_title),

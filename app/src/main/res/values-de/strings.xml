@@ -135,6 +135,8 @@
     <!-- Allgemeine Bezeichnungen -->
     <string name="label_root">- Stammverzeichnis -</string>
     <string name="label_new_folder">Neuer Ordner</string>
+    <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
+    <string name="label_folder_short">Ordner</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS-Position</string>
     <!-- Recherche de lieu / adresse (geocodage) -->

@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -827,7 +828,11 @@ fun MainScreen(
         drawerContent = {
             // Fond de la liste : la surface la plus claire du theme. C'est l'en-tete qui porte une teinte
             // (cf. DrawerContent), pas la liste - l'inverse noierait les lignes dans un aplat.
-            ModalDrawerSheet(Modifier.fillMaxWidth(), drawerContainerColor = MaterialTheme.colorScheme.surface) {
+            //
+            // Coins DROITS, et non l'arrondi de Material cote ouvert : le tiroir prend toute la largeur, et
+            // ses coins arrondis ne faisaient que laisser voir la carte aux deux angles de l'ecran.
+            ModalDrawerSheet(Modifier.fillMaxWidth(), drawerShape = RectangleShape,
+                drawerContainerColor = MaterialTheme.colorScheme.surface) {
                 DrawerContent(
                     folders = folders, layers = layers, settings = settings, vm = vm,
                     open = drawerState.isOpen,

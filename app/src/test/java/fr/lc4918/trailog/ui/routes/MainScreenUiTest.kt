@@ -8,6 +8,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -598,5 +599,27 @@ class MainScreenUiTest {
 
         compose.onNodeWithContentDescription(libelle(R.string.action_menu)).performClick()
         attend { alEcran(R.string.search_placeholder) }
+    }
+
+    /**
+     * L'en-tete du menu porte "Importer" et "Dossier" en toutes lettres ; "Dossier" garde, pour la lecture
+     * d'ecran, le nom complet du geste. Et un dossier se lit tel qu'on l'a nomme : les capitales qui
+     * l'affichaient autrefois sont tombees.
+     */
+    @Test fun `un dossier cree depuis le menu garde son nom tel qu'on l'a tape`() {
+        reglages { it.copy(sideMenuMode = "both") }
+        ecran()
+        attend { affiche(R.string.action_menu) }
+        compose.onNodeWithContentDescription(libelle(R.string.action_menu)).performClick()
+        attend { alEcran(R.string.search_placeholder) }
+        assertTrue("Importer", texte(R.string.action_import))
+        assertTrue("Dossier", texte(R.string.label_folder_short))
+
+        compose.onNodeWithContentDescription(libelle(R.string.label_new_folder)).performClick()
+        attend { texte(R.string.action_create) }
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).performTextInput("Alpes du Nord")
+        compose.onNodeWithText(libelle(R.string.action_create)).performClick()
+        attend { texteBrut("Alpes du Nord") }
+        assertFalse("plus de capitales", texteBrut("ALPES DU NORD"))
     }
 }

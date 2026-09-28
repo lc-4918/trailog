@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -18,11 +19,17 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CenterFocusWeak
+import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Landscape
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
@@ -44,6 +51,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -54,7 +63,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.graphics.toColorInt
 import fr.lc4918.trailog.R
@@ -71,6 +79,8 @@ import fr.lc4918.trailog.ui.settings.SettingsCard
 import fr.lc4918.trailog.ui.settings.SetRow
 import fr.lc4918.trailog.ui.settings.RowDivider
 import fr.lc4918.trailog.ui.settings.ValueText
+import fr.lc4918.trailog.ui.theme.Spacing
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 import fr.lc4918.trailog.ui.theme.isDarkTheme
 import kotlinx.coroutines.launch
 
@@ -186,17 +196,21 @@ internal fun FolderNode(
         // les deux états : Filled.FolderOpen ne remplit que l'onglet arrière, pas tout le dossier.
         Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null,
             Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        // Nom d'un dossier : gras et en capitales. Il ne porte pas de couleur, contrairement a une couche,
-        // et n'a que sa graisse pour se distinguer de ce qu'il contient.
-        Text(folder.name.uppercase(), fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp,
-            fontWeight = FontWeight.Bold, maxLines = 1,
+        // Nom d'un dossier : demi-gras. Il ne porte pas de couleur, contrairement a une couche, et n'a que
+        // sa graisse pour se distinguer de ce qu'il contient. Plus de capitales : elles criaient, et
+        // allongeaient les noms au point de les couper plus tot que ceux des couches.
+        Text(folder.name, style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f))
         // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
         // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
         if (contents.isNotEmpty()) {
-            Text("${contents.size}", fontSize = DrawerCountSp.sp, lineHeight = (DrawerCountSp * 1.3f).sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${contents.size}",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                    .padding(horizontal = 7.dp, vertical = 2.dp))
         }
         // Poignee et menu colles : ce sont les deux prises de la ligne, pas deux elements a distinguer.
         // L'ecart de la ligne les separerait autant que le nom du compteur, qui n'ont rien a voir entre eux.
@@ -241,7 +255,8 @@ internal fun FolderNode(
 @Composable
 internal fun ImportSpinnerRow(depth: Int, elevation: Boolean) {
     Row(
-        Modifier.fillMaxWidth().padding(start = (4 + depth * 20).dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+        Modifier.fillMaxWidth().height(DrawerRowHeight)
+            .padding(start = DrawerRowPadH + DrawerIndent * depth + DrawerHitSize + DrawerRowGap + 7.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -328,7 +343,7 @@ internal fun LayerLine(
             tint = Color(color.toColorInt()).copy(alpha = if (visible) 1f else 0.4f),
             onClick = { showColor = true },
         )
-        Text(name, fontSize = DrawerNameSp.sp, lineHeight = (DrawerNameSp * 1.25f).sp, maxLines = 1,
+        Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             color = if (visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             modifier = Modifier.weight(1f))
@@ -363,10 +378,21 @@ internal fun LayerLine(
 internal fun SearchField(query: String, focus: FocusRequester, onQuery: (String) -> Unit) {
     CompactOutlinedTextField(
         value = query, onValueChange = onQuery, singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).focusRequester(focus),
-        placeholder = { Text(stringResource(R.string.search_placeholder), fontSize = DrawerNameSp.sp) },
+        modifier = Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.s)
+            .height(44.dp).focusRequester(focus),
+        textStyle = MaterialTheme.typography.bodyMedium,
+        // Meme champ que ceux du calcul d'itineraire : fond teinte, contour discret au repos.
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        placeholder = {
+            Text(stringResource(R.string.search_placeholder), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
         leadingIcon = {
-            Icon(Icons.Filled.Search, null, Modifier.size(DrawerIconSize),
+            Icon(Icons.Filled.Search, null, Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
         },
         trailingIcon = {
@@ -530,76 +556,87 @@ internal fun DropIndicatorLine() {
 }
 
 /*
- * Mesures du menu lateral, reprises telles quelles de la maquette (captures/trailog-drawer-styles.html).
+ * Mesures du menu lateral, d'apres la maquette "Trailog - theme et maquettes" (rangee "Menu lateral").
  * Elles sont ici et non a l'appel : une ligne d'arbre est faite de cinq elements que trois composables se
  * partagent, et les voir cote a cote est le seul moyen de garder la grille droite.
+ *
+ * Une ligne fait 44 dp, les icones ont 32 dp de cible : l'arbre se visait mal du bout du doigt a 40 dp et
+ * 30 de cible. Les tailles de texte, elles, sont celles du theme (bodyMedium), plus aucune a part.
  */
-/*
- * Toutes ces mesures ont ete relevees d'un cran (~15 %) par rapport a la maquette : a l'echelle du dessin,
- * l'arbre se lisait juste, mais du bout du doigt il se visait mal. Elles montent ENSEMBLE - le rapport
- * entre le chevron, l'oeil, le nom et la poignee fait la ligne, pas leurs valeurs prises une a une.
- */
+/** Hauteur d'une ligne de l'arbre - et, pendant un glisser-deposer, le pas qui dit quelle ligne est survolee. */
+internal val DrawerRowHeight = 44.dp
+
 /** Retrait de chaque niveau d'imbrication. */
-internal val DrawerIndent = 17.dp
+internal val DrawerIndent = 20.dp
 
-/** Marges d'une ligne : le retrait de depart, puis ce qui la separe de la suivante. */
-internal val DrawerRowPadH = 7.dp
-
-internal val DrawerRowPadV = 6.dp
+/** Marge de bord d'une ligne, a gauche comme a droite. */
+internal val DrawerRowPadH = 8.dp
 
 /** Ecart entre deux elements d'une ligne (chevron, oeil, symbole, nom...). */
-internal val DrawerRowGap = 7.dp
+internal val DrawerRowGap = 2.dp
 
-/** Chevron, oeil, symbole : trois tailles voisines, pas une seule - l'oeil et le symbole portent la ligne,
- *  le chevron n'est qu'un accessoire de pliage. */
-internal val DrawerChevronSize = 16.dp
+/** Chevron, oeil, symbole : deux tailles voisines - l'oeil et le symbole portent la ligne, le chevron
+ *  n'est qu'un accessoire de pliage. */
+internal val DrawerChevronSize = 18.dp
 
-internal val DrawerIconSize = 17.dp
+internal val DrawerIconSize = 20.dp
 
 /** Cible tactile posee autour de ces petites icones : ce qu'on peut prendre sans grossir le dessin. */
-internal val DrawerHitSize = 30.dp
+internal val DrawerHitSize = 32.dp
 
-/** Nom d'une couche, et compteur d'un dossier. */
-internal val DrawerNameSp = 13f
-
-internal val DrawerCountSp = 10.5f
-
-/** Action de l'en-tete du menu : cible de 38 dp, dessin de 18 - un cran au-dessus de la maquette, comme
- *  le reste du tiroir. */
+/**
+ * Un bouton de l'en-tete du menu : icone et libelle dans une pastille de 40 dp.
+ *
+ * [primary] : l'aplat bleu clair du geste qu'on vient chercher ici (importer). Sinon un simple contour -
+ * le bouton existe, mais ne tire pas l'oeil.
+ */
 @Composable
-internal fun HeaderAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector, label: String,
-    showLabel: Boolean = false, active: Boolean = false, onClick: () -> Unit,
+internal fun HeaderButton(
+    icon: ImageVector, label: String, primary: Boolean, contentDescription: String? = null, onClick: () -> Unit,
 ) {
-    // Allume, seul le DESSIN change de couleur. Un aplat derriere lui - meme leger - lui donnait un poids
-    // que ses voisins n'ont pas, et le bouton paraissait plus gros alors que sa cible fait les memes
-    // 44 dp. C'est la regle des boutons de la carte, ou l'etat se lit a la couleur du trait.
-    val tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    if (!showLabel) {
-        Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-            Icon(icon, label, Modifier.size(22.dp), tint = tint)
-        }
-        return
-    }
-    // Icone et libelle dans une meme pastille cliquable : le texte n'est pas une legende posee a cote du
-    // bouton, il en fait partie, et un appui dessus vaut un appui sur l'icone.
+    val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.height(44.dp).clip(RoundedCornerShape(22.dp)).clickable(onClick = onClick)
-            .padding(start = 11.dp, end = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        Modifier.height(40.dp).clip(CircleShape)
+            .then(
+                if (primary) Modifier.background(scheme.primaryContainer)
+                else Modifier.border(1.dp, scheme.outlineVariant, CircleShape)
+            )
+            .clickable(onClick = onClick)
+            .then(if (contentDescription != null) Modifier.semantics { this.contentDescription = contentDescription } else Modifier)
+            .padding(start = if (primary) 12.dp else 10.dp, end = if (primary) 16.dp else 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, Modifier.size(22.dp), tint = tint)
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = tint, maxLines = 1)
+        Icon(icon, null, Modifier.size(20.dp), tint = if (primary) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (primary) scheme.onPrimaryContainer else scheme.onSurface, maxLines = 1)
+    }
+}
+
+/**
+ * Un bouton rond de l'en-tete, icone seule. Allume ([active]), il prend l'aplat bleu clair : c'est ainsi
+ * que la recherche dit qu'elle filtre ce qui est dessous.
+ */
+@Composable
+internal fun HeaderIconButton(icon: ImageVector, label: String, active: Boolean = false, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(40.dp).clip(CircleShape)
+            .background(if (active) scheme.primaryContainer else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, Modifier.size(22.dp), tint = if (active) scheme.onPrimaryContainer else scheme.onSurfaceVariant)
     }
 }
 
 /**
  * Une ligne de l'arbre du menu lateral : le retrait de son niveau, et ce que le drag lui fait.
  *
- * Le retrait est celui de la maquette (15 dp par niveau) et non l'indentation d'une liste ordinaire : cet
- * arbre descend a trois ou quatre niveaux sur un ecran de telephone, et 15 dp est ce qui reste lisible
- * sans manger la moitie de la largeur au dernier.
+ * Le retrait (20 dp par niveau) est plus court que l'indentation d'une liste ordinaire : cet arbre descend
+ * a trois ou quatre niveaux sur un ecran de telephone, et il ne doit pas manger la moitie de la largeur au
+ * dernier.
  */
 @Composable
 internal fun DrawerRow(
@@ -612,10 +649,8 @@ internal fun DrawerRow(
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer { translationY = offset; alpha = if (dragging) 0.85f else 1f }
             .background(if (hovered) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-            .padding(
-                start = DrawerRowPadH + DrawerIndent * depth, end = DrawerRowPadH,
-                top = DrawerRowPadV, bottom = DrawerRowPadV,
-            ),
+            .height(DrawerRowHeight)
+            .padding(start = DrawerRowPadH + DrawerIndent * depth, end = DrawerRowPadH / 2),
         horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
@@ -669,10 +704,9 @@ internal fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () 
     val currentOnStart by rememberUpdatedState(onStart)
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnEnd by rememberUpdatedState(onEnd)
-    Icon(
-        Icons.Filled.DragIndicator, stringResource(R.string.action_drag_to_move),
-        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-        modifier = Modifier.size(DrawerIconSize).pointerInput(Unit) {
+    // La cible fait la hauteur de la ligne, le dessin 18 dp : un appui long se pose a peu pres, pas au pixel.
+    Box(
+        Modifier.size(width = 28.dp, height = 40.dp).pointerInput(Unit) {
             var total = 0f
             detectDragGesturesAfterLongPress(
                 onDragStart = { total = 0f; currentOnStart() },
@@ -680,7 +714,11 @@ internal fun DragHandle(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () 
                 onDragEnd = { currentOnEnd() }, onDragCancel = { currentOnEnd() },
             )
         },
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(Icons.Filled.DragIndicator, stringResource(R.string.action_drag_to_move), Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f))
+    }
 }
 
 /** 3 points : menu contextuel (appui simple). */
@@ -701,64 +739,87 @@ internal fun RowMenu(
             Icon(Icons.Filled.MoreVert, stringResource(R.string.action_more), Modifier.size(DrawerIconSize),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenu(
+            expanded = open, onDismissRequest = { open = false },
+            shape = MaterialTheme.shapes.medium, containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
             // Un dossier cadre TOUTES ses couches, pas une : le libelle le dit au pluriel.
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(
-                        if (onNewSub != null) R.string.action_zoom_to_layers else R.string.action_zoom_to_layer
-                    ))
-                },
-                onClick = { open = false; onZoom() },
-            )
+            MenuEntry(Icons.Outlined.CenterFocusWeak,
+                stringResource(if (onNewSub != null) R.string.action_zoom_to_layers else R.string.action_zoom_to_layer)) {
+                open = false; onZoom()
+            }
             if (onStats != null) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
-                    onClick = { open = false; onStats() })
+                MenuEntry(Icons.Outlined.BarChart, stringResource(R.string.action_folder_stats)) { open = false; onStats() }
             }
             // Une couche de marqueurs n'a ni longueur ni denivele : l'entree n'y apparait pas, plutot que
             // d'ouvrir une fenetre de zeros.
             if (layer != null && layerActions != null && layer.hasLine) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_folder_stats)) },
-                    onClick = { open = false; layerActions.onStats(layer) })
+                MenuEntry(Icons.Outlined.BarChart, stringResource(R.string.action_folder_stats)) {
+                    open = false; layerActions.onStats(layer)
+                }
                 // La carte le long de la trace, pour le hors-ligne : ici, sur la trace elle-meme, plutot que
                 // dans un parcours qui demandait d'abord ce qu'on telecharge, puis quelle trace.
                 layerActions.onDownloadMap?.let { telecharger ->
-                    DropdownMenuItem(text = { Text(stringResource(R.string.action_download_map)) },
-                        onClick = { open = false; telecharger(layer) })
+                    MenuEntry(Icons.Outlined.FileDownload, stringResource(R.string.action_download_map)) {
+                        open = false; telecharger(layer)
+                    }
                 }
                 // Colorier le trait selon la pente, puis lui rendre sa couleur : une entree qui dit ce
                 // qu'elle fera, selon l'etat. Sans altitude, pas de pente, et pas d'entree.
                 if (layer.hasZ) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(stringResource(
-                                if (layer.slopeColored) R.string.action_restore_color else R.string.action_color_by_slope
-                            ))
-                        },
-                        onClick = { open = false; layerActions.onSlopeColored(layer, !layer.slopeColored) },
+                    MenuEntry(
+                        Icons.Outlined.Landscape,
+                        stringResource(if (layer.slopeColored) R.string.action_restore_color else R.string.action_color_by_slope),
                         modifier = Modifier.testTag("menu_slope_colored"),
-                    )
+                    ) { open = false; layerActions.onSlopeColored(layer, !layer.slopeColored) }
                 }
             }
             if (onColor != null) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_color_layers)) },
-                    onClick = { open = false; onColor() })
+                MenuEntry(Icons.Outlined.Palette, stringResource(R.string.action_color_layers)) { open = false; onColor() }
             }
-            DropdownMenuItem(text = { Text(stringResource(R.string.action_rename)) }, onClick = { open = false; onRename() })
-            if (onMove != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_move)) }, onClick = { open = false; onMove() })
-            if (onNewSub != null) DropdownMenuItem(text = { Text(stringResource(R.string.action_new_subfolder)) }, onClick = { open = false; onNewSub() })
+            MenuEntry(Icons.Outlined.Edit, stringResource(R.string.action_rename)) { open = false; onRename() }
+            if (onMove != null) {
+                MenuEntry(Icons.Outlined.DriveFileMove, stringResource(R.string.action_move)) { open = false; onMove() }
+            }
+            if (onNewSub != null) {
+                MenuEntry(Icons.Outlined.CreateNewFolder, stringResource(R.string.action_new_subfolder)) {
+                    open = false; onNewSub()
+                }
+            }
             // Les SORTIES d'une couche seulement. Les retouches, elles, ont quitte ce menu pour la barre
             // d'outils de la carte : elles agissent sur un segment, parfois sur deux, et designer un
             // segment se fait du doigt sur la carte - pas dans le menu d'une ligne d'arborescence.
             if (layer != null && layerActions != null) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_export_layer)) },
-                    onClick = { open = false; layerActions.onExport(layer) })
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_share)) },
-                    onClick = { open = false; layerActions.onShare(layer) })
+                MenuEntry(Icons.Outlined.FileUpload, stringResource(R.string.action_export_layer)) {
+                    open = false; layerActions.onExport(layer)
+                }
+                MenuEntry(Icons.Outlined.Share, stringResource(R.string.action_share)) {
+                    open = false; layerActions.onShare(layer)
+                }
             }
-            DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { open = false; onDelete() })
+            // Le seul geste qui detruit : a part, sous un filet, et en rouge.
+            HorizontalDivider(Modifier.padding(horizontal = 6.dp, vertical = Spacing.xs),
+                color = MaterialTheme.colorScheme.outlineVariant)
+            MenuEntry(TrailogIcons.Trash, stringResource(R.string.action_delete),
+                color = MaterialTheme.colorScheme.error) { open = false; onDelete() }
         }
     }
+}
+
+/** Une entree de menu : son icone, son libelle, et la meme couleur pour les deux. */
+@Composable
+internal fun MenuEntry(
+    icon: ImageVector, text: String, modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface, onClick: () -> Unit,
+) {
+    val iconColor = if (color == MaterialTheme.colorScheme.onSurface) MaterialTheme.colorScheme.onSurfaceVariant else color
+    DropdownMenuItem(
+        text = { Text(text, style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = { Icon(icon, null, Modifier.size(20.dp)) },
+        onClick = onClick,
+        colors = MenuDefaults.itemColors(textColor = color, leadingIconColor = iconColor),
+        modifier = modifier,
+    )
 }
 
 /**
@@ -814,7 +875,7 @@ internal fun DrawerContent(
     var renameTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var renameValue by remember { mutableStateOf("") }
     var moveTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
-    val rowPx = with(LocalDensity.current) { 52.dp.toPx() }
+    val rowPx = with(LocalDensity.current) { DrawerRowHeight.toPx() }
     val scope = rememberCoroutineScope()
 
     // Positions (Y, coord. racine) de chaque ligne affichée, pour détecter au vol la ligne survolée pendant un drag.
@@ -947,80 +1008,45 @@ internal fun DrawerContent(
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        // Header 2 lignes à hauteur totale inchangée (SPEC section 6.1) : l'ancien Row faisait 48dp de
-        // contenu (IconButton) + 32dp de padding vertical = 80dp. On désactive le plancher tactile
-        // de 48dp de Material3 (cf. Groupe N) pour tenir 2 lignes de 32dp dans le même budget.
-        Box(Modifier.fillMaxWidth()) {
-            // Plus de marge sous la bande grise : l'arborescence commence juste dessous, la bande faisant
-            // desormais la separation a elle seule.
-            Box(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                Column(Modifier.fillMaxWidth()) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(34.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        // Une roue crantee, pas l'avatar : ici le bouton mene aux reglages, et c'est
-                        // l'action qui doit se lire. L'avatar reste en tete de l'ecran des reglages,
-                        // ou il designe bien quelqu'un plutot qu'un chemin.
-                        Box(Modifier.size(30.dp).clip(CircleShape).clickable(onClick = onSettings),
-                            contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Settings, stringResource(R.string.settings_title),
-                                Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        // Meme taille et meme graisse que le titre "Reglages" (17 sp, semi-gras) : ce sont
-                        // les deux titres d'ecran de l'application, et rien ne justifierait qu'ils se lisent
-                        // a deux tailles. La maquette du tiroir en donnait 15 ; celle des reglages, plus
-                        // recente, en donne 17, et c'est elle qui fait foi pour les deux.
-                        // Fallback traduit si le titre personnalise est vide, au lieu de ne rien afficher.
-                        val title = settings.customTitle.ifBlank { stringResource(R.string.drawer_default_title) }
-                            ?: stringResource(R.string.drawer_default_title)
-                        Text(title, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    }
-                    Spacer(Modifier.height(11.dp))
-                    // Les actions du header, sur la seule bande grise de l'en-tete : c'est elle qui les
-                    // rassemble, et le titre au-dessus s'en trouve rendu au fond du tiroir.
-                    //
-                    // "Importer" porte son libelle, et tout le bouton - icone comme texte - declenche
-                    // l'action : c'est le geste qu'on vient chercher ici. "Nouveau dossier" garde l'icone
-                    // seule, universelle. Le telechargement de carte a quitte cette bande : une zone se
-                    // telecharge depuis les reglages (onglet Tuiles), une trace depuis son propre menu.
-                    Row(
-                        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .padding(horizontal = 12.dp, vertical = 5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        HeaderAction(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder)) { openNewFolder(null) }
-                        HeaderAction(Icons.Outlined.FileUpload, stringResource(R.string.action_import),
-                            showLabel = true, onClick = onImport)
-                        // La recherche est a l'oppose des trois autres : elle ne cree ni n'importe rien,
-                        // elle change la facon de LIRE ce qui est en dessous. Le vide entre elle et les
-                        // autres dit cette difference mieux qu'un filet.
-                        Spacer(Modifier.weight(1f))
-                        HeaderAction(
-                            Icons.Filled.Search, stringResource(R.string.search_placeholder),
-                            active = searchOpen,
-                        ) {
-                            searchOpen = !searchOpen
-                            // Refermer la barre efface la recherche : la garder filtrerait l'arborescence
-                            // sans que rien a l'ecran ne dise pourquoi elle est incomplete.
-                            if (!searchOpen) { searchQuery = ""; focusManager.clearFocus() }
-                        }
-                    }
-                }
-                // Décalé au maximum vers l'angle haut-droit (SPEC section 6.1), superposé aux 2 lignes ci-dessus
-                // sans agrandir la hauteur du Box (32dp < hauteur totale du Column).
-                // Meme marge de bord que les lignes de l'arborescence, et meme cible de 30 dp : la croix
-                // tombe donc exactement sur la colonne des menus "trois points" des couches. A 14 dp, elle
-                // s'en decalait de sept, ce qui se voyait comme un defaut d'alignement sans qu'on sache
-                // lequel des deux etait de travers.
-                Box(
-                    Modifier.align(Alignment.TopEnd).padding(end = DrawerRowPadH).size(DrawerHitSize)
-                        .clickable(onClick = onClose),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.Close, stringResource(R.string.action_close_menu), Modifier.size(17.dp))
-                }
+        // En-tete, sur deux lignes : les reglages, le titre et la croix ; puis les gestes de la bibliotheque.
+        Row(
+            Modifier.fillMaxWidth().height(56.dp).padding(start = Spacing.s, end = Spacing.s, top = Spacing.s),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            // Une roue crantee, pas l'avatar : ici le bouton mene aux reglages, et c'est l'action qui doit
+            // se lire. L'avatar reste en tete de l'ecran des reglages, ou il designe bien quelqu'un.
+            HeaderIconButton(Icons.Outlined.Settings, stringResource(R.string.settings_title), onClick = onSettings)
+            // Titre d'ecran : le meme style que celui des autres ecrans de l'application.
+            // Fallback traduit si le titre personnalise est vide, au lieu de ne rien afficher.
+            val title = settings.customTitle.ifBlank { stringResource(R.string.drawer_default_title) }
+                ?: stringResource(R.string.drawer_default_title)
+            Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            HeaderIconButton(Icons.Filled.Close, stringResource(R.string.action_close_menu), onClick = onClose)
+        }
+        // Les gestes de la bibliotheque, sans bande grise : c'est l'aplat du bouton "Importer" qui les
+        // designe, et le filet dessous qui les separe de l'arborescence.
+        //
+        // "Importer" est le geste qu'on vient chercher ici : il porte l'aplat. "Dossier" a le sien en
+        // contour, et son libelle plutot que l'icone seule - une icone de dossier "plus" ne se lisait
+        // pas. La recherche est a l'oppose : elle ne cree ni n'importe rien, elle change la facon de LIRE
+        // ce qui est en dessous, et le vide entre elle et les autres dit cette difference.
+        Row(
+            Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.s, top = Spacing.s, bottom = Spacing.m),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeaderButton(Icons.Outlined.FileUpload, stringResource(R.string.action_import), primary = true,
+                onClick = onImport)
+            HeaderButton(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_folder_short), primary = false,
+                contentDescription = stringResource(R.string.label_new_folder)) { openNewFolder(null) }
+            Spacer(Modifier.weight(1f))
+            HeaderIconButton(Icons.Filled.Search, stringResource(R.string.search_placeholder), active = searchOpen) {
+                searchOpen = !searchOpen
+                // Refermer la barre efface la recherche : la garder filtrerait l'arborescence sans que rien
+                // a l'ecran ne dise pourquoi elle est incomplete.
+                if (!searchOpen) { searchQuery = ""; focusManager.clearFocus() }
             }
         }
 
@@ -1034,6 +1060,7 @@ internal fun DrawerContent(
             LaunchedEffect(Unit) { searchFocus.requestFocus() }
             SearchField(searchQuery, searchFocus) { searchQuery = it }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
         /*
          * Un toucher dans l'arborescence rend le focus au tiroir, donc referme le clavier.
@@ -1058,7 +1085,7 @@ internal fun DrawerContent(
                 val found = layers.filter { TreeSearch.matches(it.name, query) }
                 if (found.isEmpty()) {
                     Text(
-                        stringResource(R.string.search_no_result), fontSize = DrawerNameSp.sp,
+                        stringResource(R.string.search_no_result), style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                     )
@@ -1128,13 +1155,17 @@ internal fun DrawerContent(
 
     if (newFolderDialog) {
         val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
         AlertDialog(
             onDismissRequest = { newFolderDialog = false },
             title = { Text(stringResource(R.string.label_new_folder)) },
             text = {
                 CompactOutlinedTextField(newFolderName, { newFolderName = it }, singleLine = true,
                     modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                // Le focus se demande DANS la boite, une fois son champ compose : demande depuis l'ecran,
+                // il partait avant que la fenetre de la boite n'existe, et le FocusRequester sans noeud
+                // levait - l'application se fermait. Sous garde malgre tout : un focus refuse ne coute
+                // que le clavier, qu'un toucher sur le champ fait venir.
+                LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
             },
             confirmButton = {
                 TextButton(onClick = {

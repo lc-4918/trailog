@@ -135,6 +135,8 @@
     <!-- Etiketa orokorrak -->
     <string name="label_root">- Erroa -</string>
     <string name="label_new_folder">Karpeta berria</string>
+    <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
+    <string name="label_folder_short">Karpeta</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS kokapena</string>
     <!-- Recherche de lieu / adresse (geocodage) -->

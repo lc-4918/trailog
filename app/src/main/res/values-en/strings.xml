@@ -135,6 +135,8 @@
     <!-- Generic labels -->
     <string name="label_root">- Root -</string>
     <string name="label_new_folder">New folder</string>
+    <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
+    <string name="label_folder_short">Folder</string>
     <string name="gps_label">GPS</string>
     <string name="content_desc_gps_position">GPS position</string>
     <!-- Recherche de lieu / adresse (geocodage) -->

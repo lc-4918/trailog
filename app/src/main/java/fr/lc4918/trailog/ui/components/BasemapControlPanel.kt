@@ -302,13 +302,15 @@ fun BasemapControlPanel(
     if (newFolderDialog) {
         var name by remember { mutableStateOf("") }
         val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
         AlertDialog(
             onDismissRequest = { newFolderDialog = false },
             title = { Text(stringResource(R.string.label_new_folder)) },
             text = {
                 CompactOutlinedTextField(name, { name = it }, singleLine = true,
                     modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                // Le focus se demande DANS la boite, une fois son champ compose : demande depuis le
+                // panneau, il partait avant que la fenetre de la boite n'existe, et levait.
+                LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
             },
             confirmButton = {
                 TextButton(onClick = {
