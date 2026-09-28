@@ -148,16 +148,23 @@ fun ProvideSettingsPalette(dark: Boolean, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSettingsPalette provides palette, content = content)
 }
 
-/* ---------------- Mesures, toutes reprises de la maquette ---------------- */
+/* ---------------- Mesures ---------------- */
+/*
+ * D'apres la rangee "Reglages" de la maquette "Trailog - theme et maquettes". Les tailles de texte ne sont
+ * plus d'ici : ce sont celles du theme - bodyMedium pour un libelle, comme les lignes du menu lateral et
+ * des bulles, et non plus un 12,5 propre a cet ecran, le plus petit de l'application.
+ */
 
-private val CardRadius = 16.dp
-private val RowPadH = 14.dp
-private val RowPadV = 9.dp
-private val RowMinHeight = 46.dp
+private val RowPadH = 16.dp
+private val RowPadV = 10.dp
+private val RowMinHeight = 52.dp
 private val RowGap = 12.dp
 
 /** Ecart entre les trois elements d'un pas-a-pas, et largeur de sa valeur. */
-private val StepGap = 4.dp
+private val StepGap = 6.dp
+
+/** Les boutons d'un pas-a-pas : ronds, 32 dp - ils se visent au doigt sans chercher. */
+private val StepButtonSize = 32.dp
 
 /** Le retrait qui rend au libelle d'un bouton une part de ce que son "i" lui prend (cf. [CardButton]). */
 private val InfoLead = 8.dp
@@ -165,8 +172,6 @@ private val StepValueWidth = 26.dp
 
 /** L'interrupteur redessine (cf. [SettingsSwitch]) : sa largeur sert a placer ce qui le precede. */
 private val SwitchWidth = 38.dp
-private val LabelSp = 12.5f
-private val SubSp = 10.5f
 
 /* ---------------- Titres ---------------- */
 
@@ -179,7 +184,7 @@ fun GroupTitle(text: String, first: Boolean = false) {
     val barre = LocalGroupBar.current
     DisposableEffect(barre, text) { onDispose { barre?.forget(text) } }
     Text(
-        text, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+        text, style = MaterialTheme.typography.titleMedium, color = settingsPalette.label,
         modifier = Modifier.padding(start = 2.dp, end = 2.dp, top = if (first) 14.dp else 26.dp, bottom = 2.dp)
             .onGloballyPositioned { barre?.report(text, it.positionInWindow().y + it.size.height) },
     )
@@ -195,7 +200,7 @@ fun SectionTitle(
 ) {
     val titre = @Composable { m: Modifier ->
         Text(
-            text.uppercase(), fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.em,
+            text.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, letterSpacing = 0.1.em,
             color = settingsPalette.section, modifier = m,
         )
     }
@@ -217,7 +222,7 @@ fun SectionTitle(
 /** Carte d'une rubrique : les lignes s'y suivent, separees par un filet et non par du vide. */
 @Composable
 fun SettingsCard(content: @Composable ColumnScopeMarker.() -> Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(CardRadius)).background(settingsPalette.card)) {
+    Column(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(settingsPalette.card)) {
         ColumnScopeMarker.content()
     }
 }
@@ -257,17 +262,16 @@ fun ColumnScopeMarker.SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            if (info == null && infoContent == null) {
-                Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label)
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label,
-                        modifier = Modifier.weight(1f, fill = false))
-                    if (infoContent != null) InfoDialogTip(label, infoContent) else InfoTip(info!!)
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label,
+                    modifier = Modifier.weight(1f, fill = false))
+                if (infoContent != null) InfoDialogTip(label, infoContent) else if (info != null) InfoTip(info)
             }
+            // Le sous-titre dit un ETAT - le nombre de lieux retenus, la taille du cache, le dossier en
+            // cours -, et il reste donc ecrit : le cacher derriere un "i" obligerait a toucher pour savoir
+            // ou l'on en est. Une EXPLICATION, elle, va dans [info].
             if (sub != null) {
-                Text(sub, fontSize = SubSp.sp, lineHeight = (SubSp * 1.4f).sp, color = settingsPalette.subtle,
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = settingsPalette.subtle,
                     modifier = Modifier.padding(top = 2.dp))
             }
         }
@@ -299,14 +303,14 @@ fun ColumnScopeMarker.RowTrailingBelow(content: @Composable RowScope.() -> Unit)
 /** Valeur affichee au bout d'une ligne : c'est elle qui porte l'accent, pas le libelle. */
 @Composable
 fun ValueText(text: String) {
-    Text(text, fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.accent)
+    Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = settingsPalette.accent)
 }
 
 /** Texte d'aide sous une ligne : dans la carte, pas dessous, et sans filet qui l'en separe. */
 @Composable
 fun ColumnScopeMarker.Hint(text: String) {
     Text(
-        text, fontSize = SubSp.sp, lineHeight = (SubSp * 1.5f).sp, color = settingsPalette.subtle,
+        text, style = MaterialTheme.typography.bodySmall, color = settingsPalette.subtle,
         modifier = Modifier.padding(start = RowPadH, end = RowPadH, bottom = 12.dp),
     )
 }
@@ -330,7 +334,7 @@ fun ColumnScopeMarker.SliderRow(
     Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = bottomPadding)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, fontSize = LabelSp.sp, color = settingsPalette.label, modifier = Modifier.weight(1f, fill = false))
+                Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, modifier = Modifier.weight(1f, fill = false))
                 if (info != null) InfoTip(info)
             }
             ValueText(value)
@@ -413,7 +417,7 @@ fun ColumnScopeMarker.RangeSliderRow(
 ) {
     Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = 13.dp)) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(label, fontSize = LabelSp.sp, color = settingsPalette.label, modifier = Modifier.weight(1f))
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, modifier = Modifier.weight(1f))
             ValueText(value)
         }
         Spacer(Modifier.height(9.dp))
@@ -436,12 +440,12 @@ fun ColumnScopeMarker.StepperRow(
             SquareButton(
                 onClick = { onBold(!bold) }, selected = bold, contentDescription = null,
             ) {
-                Text(boldLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(boldLabel, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(4.dp))
         }
         StepButton("−", decreaseLabel) { if (value > min) onChange(value - 1) }
-        Text("$value", fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+        Text("$value", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
             textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 26.dp))
         StepButton("+", increaseLabel) { if (value < max) onChange(value + 1) }
     }
@@ -463,7 +467,7 @@ fun ColumnScopeMarker.StepperRow(
 data class AlignedStepperMetrics(val labelWidth: Dp, val lead: Dp)
 
 /** Largeur du pas-a-pas : deux boutons de 28, la valeur au milieu, et leurs ecarts. */
-private val StepperWidth = 28.dp + StepGap + StepValueWidth + StepGap + 28.dp
+private val StepperWidth = StepButtonSize + StepGap + StepValueWidth + StepGap + StepButtonSize
 
 /** Ce qu'on laisse au minimum entre le libelle et le pas-a-pas, meme quand l'espace manque. */
 private val MinLead = 8.dp
@@ -472,7 +476,7 @@ private val MinLead = 8.dp
 fun alignedStepperMetrics(labels: List<String>, width: Dp): AlignedStepperMetrics {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val style = TextStyle(fontSize = LabelSp.sp)
+    val style = MaterialTheme.typography.bodyMedium
     // Le plus long libelle, mesure et non estime : il change avec la langue, et une largeur en dur
     // tiendrait en francais pour deborder en allemand.
     val widest = remember(labels, density, measurer) {
@@ -505,14 +509,14 @@ fun ColumnScopeMarker.SwitchStepperRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            label, fontSize = LabelSp.sp, lineHeight = (LabelSp * 1.35f).sp, color = settingsPalette.label,
+            label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label,
             modifier = Modifier.width(metrics.labelWidth),
         )
         Spacer(Modifier.width(metrics.lead))
         StepButton("−", decreaseLabel) { if (value > min) onValue(value - 1) }
         Spacer(Modifier.width(StepGap))
         Text(
-            "$value", fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+            "$value", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
             textAlign = TextAlign.Center, modifier = Modifier.width(StepValueWidth),
         )
         Spacer(Modifier.width(StepGap))
@@ -530,14 +534,14 @@ fun ColumnScopeMarker.SwitchStepperRow(
 fun SettingsSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)? = null) {
     val p = settingsPalette
     Box(
-        Modifier.size(38.dp, 22.dp).clip(RoundedCornerShape(12.dp))
+        Modifier.size(38.dp, 22.dp).clip(CircleShape)
             .background(if (checked) p.accent else p.track)
             .then(if (onCheckedChange != null) Modifier.clickable(role = Role.Switch) { onCheckedChange(!checked) } else Modifier),
     ) {
         Box(
             Modifier.padding(start = if (checked) 20.dp else 4.dp)
                 .align(Alignment.CenterStart).size(14.dp)
-                .clip(RoundedCornerShape(50)).background(Color.White),
+                .clip(CircleShape).background(Color.White),
         )
     }
 }
@@ -551,13 +555,13 @@ fun SettingsSlider(fraction: Float, onFraction: (Float) -> Unit, steps: Int = 0)
     androidx.compose.material3.Slider(
         value = fraction, onValueChange = onFraction, valueRange = 0f..1f, steps = steps,
         thumb = {
-            Box(Modifier.size(5.dp, 18.dp).clip(RoundedCornerShape(3.dp)).background(p.accentStrong))
+            Box(Modifier.size(5.dp, 18.dp).clip(CircleShape).background(p.accentStrong))
         },
         track = { state ->
             val f = state.value.coerceIn(0f, 1f)
             Box(Modifier.fillMaxWidth().height(5.dp)) {
-                Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(p.track))
-                Box(Modifier.fillMaxWidth(f).height(5.dp).clip(RoundedCornerShape(3.dp)).background(p.accent))
+                Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(p.track))
+                Box(Modifier.fillMaxWidth(f).height(5.dp).clip(CircleShape).background(p.accent))
             }
         },
     )
@@ -572,7 +576,7 @@ fun SettingsRangeSlider(
 ) {
     val p = settingsPalette
     val thumb = @Composable { _: androidx.compose.material3.RangeSliderState ->
-        Box(Modifier.size(5.dp, 18.dp).clip(RoundedCornerShape(3.dp)).background(p.accentStrong))
+        Box(Modifier.size(5.dp, 18.dp).clip(CircleShape).background(p.accentStrong))
     }
     androidx.compose.material3.RangeSlider(
         value = range, onValueChange = onRange, valueRange = bounds, steps = steps,
@@ -582,13 +586,13 @@ fun SettingsRangeSlider(
             val from = ((state.activeRangeStart - bounds.start) / span).coerceIn(0f, 1f)
             val to = ((state.activeRangeEnd - bounds.start) / span).coerceIn(from, 1f)
             Box(Modifier.fillMaxWidth().height(5.dp)) {
-                Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)).background(p.track))
+                Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(p.track))
                 // Une rangee a poids plutot qu'un decalage en dp : la largeur de la piste n'est connue
                 // qu'a la mesure, et le remplissage doit suivre les deux poignees, pas seulement la fin.
                 Row(Modifier.fillMaxWidth().height(5.dp)) {
                     if (from > 0f) Spacer(Modifier.weight(from))
                     Box(Modifier.weight((to - from).coerceAtLeast(0.001f)).height(5.dp)
-                        .clip(RoundedCornerShape(3.dp)).background(p.accent))
+                        .clip(CircleShape).background(p.accent))
                     if (to < 1f) Spacer(Modifier.weight(1f - to))
                 }
             }
@@ -596,32 +600,32 @@ fun SettingsRangeSlider(
     )
 }
 
-/** Petit carre d'action au bout d'une ligne : moins, plus, ou la bascule de graisse. */
+/** Bouton rond et teinte d'un pas-a-pas : moins, plus. */
 @Composable
 private fun StepButton(glyph: String, label: String, onClick: () -> Unit) {
     val p = settingsPalette
     Box(
-        Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).background(p.fieldBg)
+        Modifier.size(StepButtonSize).clip(CircleShape).background(p.fieldBg)
             .clickable(onClick = onClick)
             // Le libelle etait passe depuis toujours et n'etait applique nulle part : un lecteur d'ecran
             // n'annoncait donc que le glyphe - "moins", "plus" - sans dire de quoi. Il le porte desormais.
             .semantics { contentDescription = label; role = Role.Button },
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = p.accent)
+        Text(glyph, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = p.accent)
     }
 }
 
-/** Carre a contour, plein quand il est retenu (bascule de graisse). */
+/** Bouton rond a contour, plein quand il est retenu (bascule de graisse) : la forme des pas-a-pas voisins. */
 @Composable
 fun SquareButton(
     onClick: () -> Unit, selected: Boolean, contentDescription: String?, content: @Composable () -> Unit,
 ) {
     val p = settingsPalette
     Box(
-        Modifier.size(28.dp).clip(RoundedCornerShape(9.dp))
+        Modifier.size(StepButtonSize).clip(CircleShape)
             .background(if (selected) p.accent else Color.Transparent)
-            .border(1.dp, if (selected) p.accent else p.outline, RoundedCornerShape(9.dp))
+            .border(1.dp, if (selected) p.accent else p.outline, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -637,7 +641,7 @@ fun SquareButton(
 fun RowIcon(icon: ImageVector, contentDescription: String?, rotation: Float = 0f, onClick: (() -> Unit)? = null) {
     val p = settingsPalette
     Box(
-        Modifier.size(30.dp).clip(RoundedCornerShape(9.dp))
+        Modifier.size(32.dp).clip(CircleShape)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
@@ -675,15 +679,15 @@ fun PickValue(
 fun SettingsChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val p = settingsPalette
     Box(
-        Modifier.clip(RoundedCornerShape(9.dp))
+        Modifier.clip(MaterialTheme.shapes.small)
             .background(if (selected) p.accentContainer else Color.Transparent)
-            .border(1.dp, if (selected) p.accentContainer else p.outline, RoundedCornerShape(9.dp))
+            .border(1.dp, if (selected) p.accentContainer else p.outline, MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         // Le texte d'une puce libre suit le gris de la palette, et non un bleu-gris ecrit en dur : celui-ci
         // venait de la maquette claire, et disparaissait presque sur une carte sombre.
-        Text(label, fontSize = 11.sp, color = if (selected) p.accentStrong else p.subtle,
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) p.accentStrong else p.subtle,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
@@ -727,7 +731,7 @@ fun ColumnScopeMarker.CardButton(
     val p = settingsPalette
     Row(
         modifier.padding(margins)
-            .height(42.dp).clip(RoundedCornerShape(12.dp)).background(p.accentContainer)
+            .height(44.dp).clip(MaterialTheme.shapes.medium).background(p.accentContainer)
             .clickable(onClick = onClick)
             // Le "i" occupe la droite du bouton et pousse vers la gauche le groupe icone + libelle, qui
             // se centre avec lui : ce retrait rend au libelle une partie de ce que le "i" lui prend.
@@ -738,7 +742,7 @@ fun ColumnScopeMarker.CardButton(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(16.dp), tint = p.accentStrong)
-        Text(label, fontSize = LabelSp.sp, fontWeight = FontWeight.SemiBold, color = p.accentStrong)
+        Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = p.accentStrong)
         // Le "i" apres le libelle, dans le bouton : son propre tap le montre sans declencher le bouton -
         // c'est un enfant cliquable, et il consomme le geste avant que son parent ne le voie.
         if (info != null) InfoTip(info)
@@ -771,7 +775,7 @@ fun ColumnScopeMarker.CardAction(label: String, onClick: () -> Unit) {
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = RowPadH, vertical = 10.dp),
         horizontalArrangement = Arrangement.End,
     ) {
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = p.accent)
+        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = p.accent)
     }
 }
 
@@ -780,13 +784,13 @@ fun ColumnScopeMarker.CardAction(label: String, onClick: () -> Unit) {
 fun InlineButton(label: String, icon: ImageVector? = null, onClick: () -> Unit) {
     val p = settingsPalette
     Row(
-        Modifier.height(34.dp).clip(RoundedCornerShape(10.dp)).border(1.dp, p.outline, RoundedCornerShape(10.dp))
+        Modifier.height(36.dp).clip(MaterialTheme.shapes.small).border(1.dp, p.outline, MaterialTheme.shapes.small)
             .clickable(onClick = onClick).padding(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, null, Modifier.size(14.dp), tint = p.accent)
-        Text(label, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = p.accent)
+        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = p.accent)
     }
 }
 
@@ -807,7 +811,7 @@ fun ColumnScopeMarker.FieldRow(caption: String?, icon: ImageVector? = null, cont
                 modifier = Modifier.padding(bottom = 6.dp),
             ) {
                 if (icon != null) Icon(icon, null, Modifier.size(14.dp), tint = settingsPalette.section)
-                Text(caption, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = settingsPalette.section)
+                Text(caption, style = MaterialTheme.typography.labelMedium, color = settingsPalette.section)
             }
         }
         content()
@@ -819,8 +823,8 @@ fun ColumnScopeMarker.FieldRow(caption: String?, icon: ImageVector? = null, cont
 fun fieldBoxModifier(): Modifier {
     val p = settingsPalette
     return Modifier.fillMaxWidth().height(42.dp)
-        .clip(RoundedCornerShape(11.dp)).background(p.fieldBg)
-        .border(1.dp, p.outline, RoundedCornerShape(11.dp))
+        .clip(MaterialTheme.shapes.small).background(p.fieldBg)
+        .border(1.dp, p.outline, MaterialTheme.shapes.small)
 }
 
 /**
@@ -842,7 +846,7 @@ fun SettingsTextField(
     val p = settingsPalette
     BasicTextField(
         value = value, onValueChange = onValueChange, singleLine = true,
-        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = p.label),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = p.label),
         cursorBrush = SolidColor(p.accent),
         modifier = fieldBoxModifier(),
         decorationBox = { field ->
@@ -852,7 +856,7 @@ fun SettingsTextField(
             ) {
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty() && placeholder.isNotEmpty()) {
-                        Text(placeholder, fontSize = 12.sp, color = p.subtle, maxLines = 1,
+                        Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = p.subtle, maxLines = 1,
                             overflow = TextOverflow.Ellipsis)
                     }
                     field()

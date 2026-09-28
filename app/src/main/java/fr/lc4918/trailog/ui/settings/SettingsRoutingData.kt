@@ -117,7 +117,8 @@ internal fun OfflineRoutingZones(vm: SettingsViewModel) {
     SettingsCard {
         SetRow(
             stringResource(R.string.routing_zones_add),
-            sub = stringResource(R.string.routing_zones_add_sub),
+            // Une explication, et non un etat : derriere le "i", comme celles des autres lignes.
+            info = stringResource(R.string.routing_zones_add_sub),
             onClick = { catalogueOuvert = true },
         ) {
             RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.routing_zones_add))
@@ -131,12 +132,12 @@ internal fun OfflineRoutingZones(vm: SettingsViewModel) {
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.85f),
-                shape = RoundedCornerShape(20.dp), color = settingsPalette.screen,
+                shape = MaterialTheme.shapes.extraLarge, color = settingsPalette.screen,
             ) {
                 Column(Modifier.fillMaxSize().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.routing_zones_available), fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+                        Text(stringResource(R.string.routing_zones_available), style = MaterialTheme.typography.titleLarge,
+                            color = settingsPalette.label,
                             modifier = Modifier.weight(1f))
                         RowIcon(Icons.Filled.Close, stringResource(R.string.action_close)) { catalogueOuvert = false }
                     }
@@ -180,7 +181,7 @@ private fun ZoneItem(
     val progression = s.zoneProgress(zone)
     Column {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(p.card)
+            Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(p.card)
                 .clickable { deplie = !deplie }
                 .defaultMinSize(minHeight = 48.dp)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -188,11 +189,11 @@ private fun ZoneItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ZoneIcon(zone)
-            Text(nom, fontSize = 13.sp, color = p.label, modifier = Modifier.weight(1f))
+            Text(nom, style = MaterialTheme.typography.bodyMedium, color = p.label, modifier = Modifier.weight(1f))
             Text(
                 if (downloaded) poids?.let { TileMath.formatSize(it) } ?: stringResource(R.string.routing_zone_unknown_size)
                 else tailleAFaire(reste),
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = p.accent,
+                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = p.accent,
             )
             if (!downloaded) {
                 Spacer(Modifier.width(4.dp))
@@ -271,7 +272,7 @@ private fun ZoneItem(
                 ) {
                     Icon(Icons.Filled.ExpandLess, null, Modifier.size(18.dp), tint = p.accent)
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.routing_zone_collapse), fontSize = 12.sp,
+                    Text(stringResource(R.string.routing_zone_collapse), style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold, color = p.accent)
                 }
             }
@@ -334,7 +335,7 @@ private fun ZoneMap(zone: BrouterZone, style: StyleBuilder.Result?) {
         mini.fitTo(a.west, a.south, a.east, a.north)
     }
     Box(
-        Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(12.dp)).background(settingsPalette.screen),
+        Modifier.fillMaxWidth().height(170.dp).clip(MaterialTheme.shapes.medium).background(settingsPalette.screen),
     ) {
         MapLibreView(
             modifier = Modifier.fillMaxSize(), controller = mini,

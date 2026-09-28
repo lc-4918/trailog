@@ -266,12 +266,12 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
             // fenetre d'un autre monde.
             Surface(
                 modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.85f),
-                shape = RoundedCornerShape(20.dp), color = settingsPalette.screen,
+                shape = MaterialTheme.shapes.extraLarge, color = settingsPalette.screen,
             ) {
                 Column(Modifier.fillMaxSize().padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.settings_section_providers), fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold, color = settingsPalette.label,
+                        Text(stringResource(R.string.settings_section_providers), style = MaterialTheme.typography.titleLarge,
+                            color = settingsPalette.label,
                             modifier = Modifier.weight(1f))
                         // La fleche montante charge dans l'application (importer), la descendante en sort
                         // un fichier (exporter) : meme sens que dans le tiroir principal, ou la fleche
@@ -312,7 +312,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(painterResource(R.drawable.ic_settings_layers), null, Modifier.size(16.dp), tint = settingsPalette.subtle)
-        Text(c.name, fontSize = 12.5.sp, color = settingsPalette.label, modifier = Modifier.weight(1f))
+        Text(c.name, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, modifier = Modifier.weight(1f))
         RowIcon(Icons.Filled.Edit, stringResource(R.string.action_edit), onClick = onEdit)
         RowIcon(TrailogIcons.Trash, stringResource(R.string.action_delete), onClick = onDelete)
         SettingsSwitch(c.enabled, onToggle)
@@ -337,12 +337,12 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
             // Hauteur libre, bornee a ce que l'ecran offre : la popup ne porte que quatre champs, lui
             // en reserver 80 % laissait un grand vide sous le dernier.
             modifier = Modifier.fillMaxWidth(0.86f).heightIn(max = 620.dp),
-            shape = RoundedCornerShape(20.dp), color = settingsPalette.screen,
+            shape = MaterialTheme.shapes.extraLarge, color = settingsPalette.screen,
         ) {
             Column(Modifier.fillMaxWidth().padding(14.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(if (existing == null) R.string.dialog_composite_title
-                    else R.string.dialog_composite_edit_title), fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold, color = settingsPalette.label)
+                    else R.string.dialog_composite_edit_title), style = MaterialTheme.typography.titleLarge,
+                    color = settingsPalette.label)
                 Spacer(Modifier.height(10.dp))
                 SettingsCard {
                     FieldRow(stringResource(R.string.field_composite_name)) {
@@ -396,7 +396,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(name, fontSize = 12.sp, color = settingsPalette.label, maxLines = 1,
+            Text(name, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Icon(Icons.Filled.KeyboardArrowDown, null, Modifier.size(16.dp), tint = settingsPalette.subtle)
         }
@@ -449,7 +449,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
         Box(Modifier.fillMaxWidth()) {
             AsyncImage(
                 model = model, contentDescription = title, contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.extraSmall),
             )
             ThumbOverlayButton(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
                 Modifier.align(Alignment.TopEnd).padding(4.dp)) { expanded = true }
@@ -458,7 +458,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
     if (expanded) {
         Dialog(onDismissRequest = { expanded = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(Modifier.fillMaxWidth(0.9f).fillMaxHeight(0.8f)) {
-                Surface(Modifier.fillMaxSize(), shape = RoundedCornerShape(8.dp), color = settingsPalette.card) {
+                Surface(Modifier.fillMaxSize(), shape = MaterialTheme.shapes.small, color = settingsPalette.card) {
                     AsyncImage(
                         model = model, contentDescription = title, contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize().padding(8.dp),
@@ -475,7 +475,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
 @Composable private fun ThumbOverlayButton(icon: ImageVector, desc: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(28.dp).background(Color.White.copy(alpha = 0.3f), RoundedCornerShape(4.dp)),
+        modifier = modifier.size(28.dp).background(Color.White.copy(alpha = 0.3f), MaterialTheme.shapes.extraSmall),
     ) {
         Icon(icon, desc, tint = Color.Black, modifier = Modifier.size(18.dp))
     }
@@ -512,8 +512,10 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
                     modifier = Modifier.size(18.dp, 13.dp).clip(RoundedCornerShape(3.dp)))
             }
             Column(Modifier.weight(1f)) {
-                Text(p.name, fontSize = 12.5.sp, color = settingsPalette.label)
-                Text(p.type, fontSize = 10.5.sp, color = settingsPalette.subtle, modifier = Modifier.padding(top = 2.dp))
+                Text(p.name, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label)
+                // Le type du fond, sous son nom : une donnee de la liste, et non une explication - il reste
+                // ecrit, la ou les sous-titres des lignes de reglage ont rejoint leur "i".
+                Text(p.type, style = MaterialTheme.typography.bodySmall, color = settingsPalette.subtle, modifier = Modifier.padding(top = 2.dp))
             }
             RowIcon(
                 if (expanded) Icons.Filled.Close else Icons.Filled.Edit,
@@ -577,8 +579,8 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
             if (isMbtiles) {
                 Text(
                     stringResource(R.string.settings_field_zoom_levels, p.minZoom, p.maxZoom),
-                    fontSize = 12.5.sp, color = settingsPalette.subtle,
-                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 2.dp),
+                    style = MaterialTheme.typography.bodyMedium, color = settingsPalette.subtle,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
                 )
                 // Chemin réel du fichier (urlTemplate ne porte que le nom, résolu via le dossier mbtiles).
                 val fullPath = when {
@@ -588,8 +590,8 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
                 }
                 Text(
                     stringResource(R.string.settings_field_mbtiles_location, fullPath),
-                    fontSize = 10.5.sp, lineHeight = 15.sp, color = settingsPalette.subtle,
-                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 4.dp),
+                    style = MaterialTheme.typography.bodySmall, color = settingsPalette.subtle,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp),
                 )
                 // Miniatures générées à la fin du téléchargement (SPEC section 6), affichées si présentes.
                 val ctx = LocalContext.current

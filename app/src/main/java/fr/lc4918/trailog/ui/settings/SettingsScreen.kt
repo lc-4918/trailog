@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.lc4918.trailog.R
+import androidx.compose.material3.MaterialTheme
 import fr.lc4918.trailog.data.backup.BackupFileName
 import fr.lc4918.trailog.data.repo.StoragePaths
 import fr.lc4918.trailog.ui.components.BusySpinner
@@ -259,7 +260,7 @@ fun SettingsScreen(
                  */
                 title = {
                     Text(
-                        stringResource(R.string.settings_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+                        stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.testTag("settings_title").clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null,
                         ) {
@@ -277,11 +278,11 @@ fun SettingsScreen(
                         },
                     )
                 },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(19.dp)) } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(22.dp)) } },
                 actions = {
                     Box {
                     Avatar(
-                        cur.avatarSource, size = 26.dp,
+                        cur.avatarSource, size = 32.dp,
                         modifier = Modifier.padding(end = 14.dp).testTag("settings_avatar").clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null,
                         ) {
@@ -327,18 +328,18 @@ fun SettingsScreen(
                 tabs.forEachIndexed { i, (label, icon) ->
                     val selected = tab == i
                     Column(
-                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                        Modifier.weight(1f).clip(MaterialTheme.shapes.medium)
                             .background(if (selected) palette.accentContainer else Color.Transparent)
                             .clickable { tab = i }
-                            .padding(vertical = 7.dp, horizontal = 2.dp),
+                            .padding(vertical = 8.dp, horizontal = 2.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Icon(icon, null, Modifier.size(16.dp),
+                        Icon(icon, null, Modifier.size(20.dp),
                             tint = if (selected) palette.accentStrong else palette.subtle)
-                        // 12 sp et non les 9,5 de la maquette : a cette taille, un onglet se devine plus
-                        // qu'il ne se lit, et c'est la premiere chose qu'on lit de l'ecran.
-                        Text(label, fontSize = 12.sp, maxLines = 1,
+                        // 12 sp (labelMedium) : plus petit, un onglet se devine plus qu'il ne se lit, et c'est
+                        // la premiere chose qu'on lit de l'ecran.
+                        Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                             color = if (selected) palette.accentStrong else palette.subtle)
                     }
@@ -449,7 +450,7 @@ fun SettingsScreen(
             if (opacite > 0f) {
                 Text(
                     groupeAffiche.value,
-                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = palette.label,
+                    style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = palette.label,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().alpha(opacite)
                         .background(palette.card)

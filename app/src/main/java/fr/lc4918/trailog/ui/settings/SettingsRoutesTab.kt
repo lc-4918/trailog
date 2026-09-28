@@ -553,7 +553,7 @@ import kotlinx.coroutines.launch
             val selected = p == current
             val label = routingProfileLabel(p)
             Column(
-                Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                Modifier.weight(1f).clip(MaterialTheme.shapes.small)
                     // Aplat d'accent translucide plutot que le couple primary/onPrimary : `onPrimary`
                     // appartient au jeu par defaut de Material, que l'application ne redefinit pas - il
                     // est violet. Le meme bleu, pose a 18 %, dit "retenu" dans les deux themes.
@@ -564,7 +564,7 @@ import kotlinx.coroutines.launch
             ) {
                 Icon(routingProfileIcon(p), label, modifier = Modifier.size(24.dp),
                     tint = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current)
-                Text(label, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 2,
+                Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 2,
                     textAlign = TextAlign.Center,
                     color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current)
             }

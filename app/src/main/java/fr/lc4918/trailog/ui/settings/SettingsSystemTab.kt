@@ -323,8 +323,8 @@ import fr.lc4918.trailog.ui.theme.TrailogIcons
     if (cur.expertMode) SettingsCard {
         SwitchLine(
             stringResource(R.string.settings_simplify_render), cur.simplifyRender,
-            sub = stringResource(R.string.settings_sw_simplify_sub),
-            info = stringResource(R.string.settings_simplify_render_hint),
+            // L'explication courte et la longue, ensemble derriere le "i" : ni l'une ni l'autre ne dit un etat.
+            info = stringResource(R.string.settings_sw_simplify_sub) + "\n\n" + stringResource(R.string.settings_simplify_render_hint),
         ) { vm.save(cur.copy(simplifyRender = it)) }
     }
 
