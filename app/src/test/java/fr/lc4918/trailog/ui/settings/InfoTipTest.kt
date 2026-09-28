@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -128,5 +129,27 @@ class InfoTipTest {
         }
         compose.onNodeWithText("Distance").performClick()
         assertEquals("dist,asc", csv)
+    }
+
+    /**
+     * Le "i" fait partie du TEXTE du libelle, pose apres son dernier mot, et non a cote du bloc de texte :
+     * ainsi, quand le libelle passe sur deux lignes, il le suit sur la derniere - "Transparence barre de
+     * statut (i)" - au lieu de rester au bout de la premiere.
+     *
+     * Verifie par la position du "i", DANS les bornes du texte : pose a cote, comme avant, il en sortait.
+     * Le passage a la ligne lui-meme ne se mesure pas ici - Robolectric mesure un texte presque a vide -, et
+     * le rendu natif qui le permettrait coutait quarante secondes a ce seul test.
+     */
+    @Test fun `le i fait partie du texte du libelle`() {
+        compose.setContent {
+            ProvideSettingsPalette(dark = false) {
+                SettingsCard { SetRow("Transparence barre de statut", info = explication) }
+            }
+        }
+        val texte = compose.onNodeWithText("Transparence barre de statut", substring = true)
+            .fetchSemanticsNode().boundsInRoot
+        val i = compose.onAllNodesWithTag("info_tip")[0].fetchSemanticsNode().boundsInRoot
+        assertTrue("le i est dans le texte : $i dans $texte",
+            i.left >= texte.left - 1f && i.right <= texte.right + 1f && i.top >= texte.top - 1f && i.bottom <= texte.bottom + 1f)
     }
 }

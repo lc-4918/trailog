@@ -46,7 +46,7 @@ class OfflineDownloadConfigScreenTest {
 
     @Test fun `le long d'une trace, le titre et la portion entiere par defaut`() {
         ecran(trace)
-        compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track), substring = true).assertIsDisplayed()
         compose.onNodeWithText(ctx.getString(R.string.offline_config_section_value, 0, 10)).assertIsDisplayed()
     }
 
@@ -80,7 +80,7 @@ class OfflineDownloadConfigScreenTest {
                 },
             )
         }
-        fun y(res: Int) = compose.onNodeWithText(ctx.getString(res)).fetchSemanticsNode().positionInRoot.y
+        fun y(res: Int) = compose.onNodeWithText(ctx.getString(res), substring = true).fetchSemanticsNode().positionInRoot.y
         val zoom = y(R.string.offline_config_zoom_label)
         val portion = y(R.string.offline_config_section_label)
         val largeur = y(R.string.offline_config_width_label)
@@ -94,7 +94,7 @@ class OfflineDownloadConfigScreenTest {
         ecran(trace)
         val croix = compose.onNode(hasContentDescription(ctx.getString(R.string.action_close)))
             .fetchSemanticsNode().boundsInRoot
-        val titre = compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track))
+        val titre = compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track), substring = true)
             .fetchSemanticsNode().boundsInRoot
         assertTrue("la croix commence au-dessus du titre", croix.top <= titre.top)
         assertTrue("et ne descend pas sous lui", croix.bottom <= titre.bottom + 1f)

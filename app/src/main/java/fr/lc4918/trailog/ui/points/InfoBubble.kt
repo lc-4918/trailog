@@ -61,6 +61,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PropValue
 import fr.lc4918.trailog.domain.model.SchemaItem
@@ -139,21 +141,28 @@ fun InfoBubble(
                         PlainHeaderButtons(onEdit, onClose)
                     }
                     // Au bas de la photo, sur une même ligne : le titre à gauche, sur son fond blanc à 85 %
-                    // (un texte sans fond disparaît sur un cliché clair), et l'agrandissement à droite.
+                    // (un texte sans fond disparaît sur un cliché clair), et l'agrandissement contre le bord
+                    // droit.
+                    //
+                    // Le titre prend TOUTE la largeur que le bouton lui laisse. Il la partageait auparavant a
+                    // parts egales avec un espace vide : un nom long se coupait a mi-largeur, et un nom court
+                    // laissait sa moitie inemployee, ce qui repoussait le bouton vers le milieu de la photo.
                     Row(
                         Modifier.align(Alignment.BottomStart).fillMaxWidth()
                             .padding(start = Spacing.s, end = OverlayInset, bottom = OverlayInset),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
-                            color = Color.Black, maxLines = 2,
-                            textDecoration = if (openTitle != null) TextDecoration.Underline else null,
-                            modifier = Modifier.weight(1f, fill = false)
-                                .clip(MaterialTheme.shapes.extraSmall)
-                                .background(Color.White.copy(alpha = 0.85f))
-                                .then(if (openTitle != null) Modifier.clickable(onClick = openTitle) else Modifier)
-                                .padding(horizontal = 6.dp, vertical = 2.dp))
-                        Spacer(Modifier.weight(1f).width(Spacing.s))
+                        Box(Modifier.weight(1f).testTag("bubble_cover_title_area")) {
+                            Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
+                                color = Color.Black, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                textDecoration = if (openTitle != null) TextDecoration.Underline else null,
+                                modifier = Modifier.testTag("bubble_cover_title")
+                                    .clip(MaterialTheme.shapes.extraSmall)
+                                    .background(Color.White.copy(alpha = 0.85f))
+                                    .then(if (openTitle != null) Modifier.clickable(onClick = openTitle) else Modifier)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                        Spacer(Modifier.width(Spacing.s))
                         OverlayIconButton(Icons.Filled.Fullscreen, R.string.action_expand_image,
                             onClick = { enlarged = pinnedImage.path })
                     }
@@ -162,7 +171,7 @@ fun InfoBubble(
                 // sans image : boutons en haut (crayon à gauche, X à droite), titre en dessous.
                 PlainHeaderButtons(onEdit, onClose)
                 Text(title, fontSize = titleFontSp.sp, fontWeight = if (titleBold) FontWeight.Bold else null,
-                    maxLines = 2,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
                     textDecoration = if (openTitle != null) TextDecoration.Underline else null,
                     modifier = Modifier.padding(start = Spacing.l, end = Spacing.l, top = 2.dp)
                         .then(if (openTitle != null) Modifier.clickable(onClick = openTitle) else Modifier))

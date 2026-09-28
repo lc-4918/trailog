@@ -38,7 +38,7 @@ class ExpertModeUiTest {
     private val app = ApplicationProvider.getApplicationContext<TestTrailogApp>()
 
     private fun present(res: Int) =
-        compose.onAllNodesWithText(app.getString(res)).fetchSemanticsNodes().isNotEmpty()
+        compose.onAllNodesWithText(app.getString(res), substring = true).fetchSemanticsNodes().isNotEmpty()
 
     /**
      * Sept appuis sur le titre "Reglages".
@@ -66,7 +66,7 @@ class ExpertModeUiTest {
      */
     private fun defileVers(texte: String) {
         compose.waitUntil(5_000) { avatars().isNotEmpty() }
-        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(texte))
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(texte, substring = true))
         compose.waitForIdle()
     }
 

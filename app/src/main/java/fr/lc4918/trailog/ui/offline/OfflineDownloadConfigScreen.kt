@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.settings.TextWithInfo
 import androidx.compose.foundation.layout.width
 import fr.lc4918.trailog.ui.settings.InfoTip
 import fr.lc4918.trailog.ui.theme.Spacing
@@ -196,16 +197,18 @@ fun OfflineDownloadConfigScreen(
                     // toutes lettres sous le titre, l'explication poussait la taille estimee hors de l'ecran,
                     // alors que c'est elle qu'on vient lire en reglant. Decale d'un demi-bouton : la premiere
                     // ligne du titre reste alignee sur la croix.
-                    Row(Modifier.weight(1f).padding(top = 8.dp), verticalAlignment = Alignment.Top) {
-                        Text(
-                            stringResource(
-                                if (corridorPoints != null) R.string.offline_config_title_track
-                                else R.string.offline_config_title,
-                            ),
-                            style = MaterialTheme.typography.titleLarge, color = p.label,
-                            modifier = Modifier.weight(1f, fill = false).padding(top = 2.dp),
-                        )
-                        if (corridorPoints != null) InfoTip(stringResource(R.string.offline_config_track_hint))
+                    val titre = stringResource(
+                        if (corridorPoints != null) R.string.offline_config_title_track
+                        else R.string.offline_config_title,
+                    )
+                    // Le "i" suit le DERNIER mot du titre, sur sa derniere ligne (cf. TextWithInfo).
+                    val titreModifier = Modifier.weight(1f).padding(top = 10.dp)
+                    if (corridorPoints != null) {
+                        TextWithInfo(titre, MaterialTheme.typography.titleLarge, p.label, titreModifier) {
+                            InfoTip(stringResource(R.string.offline_config_track_hint))
+                        }
+                    } else {
+                        Text(titre, style = MaterialTheme.typography.titleLarge, color = p.label, modifier = titreModifier)
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),

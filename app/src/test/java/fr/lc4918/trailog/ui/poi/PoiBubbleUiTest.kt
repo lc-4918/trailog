@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -195,4 +196,17 @@ class PoiBubbleUiTest {
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onNodeWithContentDescriptionRes(res: Int) =
         onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(res)))
+
+    /**
+     * Le G de la fiche Google se pose contre le bord droit de la bulle, meme a cote d'une categorie courte :
+     * la pastille et un vide se partageaient la ligne a parts egales, et le G tombait au milieu.
+     */
+    @Test fun `le G se pose contre le bord droit`() {
+        ouvre(fontaine)
+        compose.waitForIdle()
+        val densite = ctx.resources.displayMetrics.density
+        val g = compose.onNodeWithTag("poi_google_maps").fetchSemanticsNode().boundsInRoot
+        val bord = fr.lc4918.trailog.ui.points.InfoBubbleWidth.value - 16f
+        assertTrue("le G touche le bord droit : ${g.right / densite} pour $bord", g.right / densite >= bord - 1f)
+    }
 }

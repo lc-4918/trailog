@@ -47,8 +47,8 @@ class OffTrackVibrationSettingsUiTest {
             compose.onAllNodesWithText(app.getString(R.string.settings_tab_map)).fetchSemanticsNodes().isNotEmpty()
         }
         val libelle = app.getString(R.string.settings_sw_off_track_vibrate)
-        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(libelle))
-        compose.onNodeWithText(libelle).performClick()
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(libelle, substring = true))
+        compose.onNodeWithText(libelle, substring = true).performClick()
         compose.waitUntil(5_000) { reglages().offTrackAlertVibrate }
         assertTrue(reglages().offTrackAlertVibrate)
         assertFalse("le son reste eteint", reglages().offTrackAlertSound)

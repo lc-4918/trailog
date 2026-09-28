@@ -1,5 +1,10 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -262,10 +267,14 @@ fun ColumnScopeMarker.SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label,
-                    modifier = Modifier.weight(1f, fill = false))
-                if (infoContent != null) InfoDialogTip(label, infoContent) else if (info != null) InfoTip(info)
+            when {
+                infoContent != null -> TextWithInfo(label, MaterialTheme.typography.bodyMedium, settingsPalette.label) {
+                    InfoDialogTip(label, infoContent)
+                }
+                info != null -> TextWithInfo(label, MaterialTheme.typography.bodyMedium, settingsPalette.label) {
+                    InfoTip(info)
+                }
+                else -> Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label)
             }
             // Le sous-titre dit un ETAT - le nombre de lieux retenus, la taille du cache, le dossier en
             // cours -, et il reste donc ecrit : le cacher derriere un "i" obligerait a toucher pour savoir
@@ -333,9 +342,9 @@ fun ColumnScopeMarker.SliderRow(
 ) {
     Column(Modifier.fillMaxWidth().padding(start = RowPadH, end = RowPadH, top = 11.dp, bottom = bottomPadding)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, modifier = Modifier.weight(1f, fill = false))
-                if (info != null) InfoTip(info)
+            Box(Modifier.weight(1f)) {
+                if (info != null) TextWithInfo(label, MaterialTheme.typography.bodyMedium, settingsPalette.label) { InfoTip(info) }
+                else Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label)
             }
             ValueText(value)
         }
@@ -343,6 +352,40 @@ fun ColumnScopeMarker.SliderRow(
         SettingsSlider(fraction = fraction, onFraction = onFraction, steps = steps)
     }
 }
+
+/**
+ * Un texte, et son "i" pose JUSTE APRES LE DERNIER MOT, dans la ligne : quand le texte passe a la ligne,
+ * le "i" le suit sur la derniere, au lieu de rester au bout de la premiere, a cote d'un bloc qui ne le
+ * concerne plus. Il fait partie du texte (un contenu en ligne), et non de la rangee qui le porte.
+ *
+ * Une espace insecable le lie au dernier mot : ils passent a la ligne ensemble.
+ */
+@Composable
+fun TextWithInfo(
+    text: String, style: TextStyle, color: Color, modifier: Modifier = Modifier,
+    info: @Composable () -> Unit,
+) {
+    val cote = with(LocalDensity.current) { InfoTipSize.toSp() }
+    val texte = buildAnnotatedString {
+        append(text)
+        append("\u00A0")
+        // Le texte de remplacement par defaut (le caractere de remplacement), et non une chaine vide : Compose
+        // la refuse et leve, et l'ecran entier ne s'affichait plus. Le "i" a sa propre description pour la
+        // lecture d'ecran.
+        appendInlineContent(InfoInlineId)
+    }
+    Text(
+        texte, style = style, color = color, modifier = modifier,
+        inlineContent = mapOf(
+            InfoInlineId to InlineTextContent(Placeholder(cote, cote, PlaceholderVerticalAlign.TextCenter)) { info() },
+        ),
+    )
+}
+
+private const val InfoInlineId = "info"
+
+/** Cible du "i" : 28 dp, le dessin de 16 au milieu. */
+private val InfoTipSize = 28.dp
 
 /**
  * Un petit "i" qui montre une explication dans une bulle, au toucher.
@@ -365,7 +408,7 @@ fun InfoTip(text: String) {
         state = state,
     ) {
         Box(
-            Modifier.size(28.dp).clip(CircleShape)
+            Modifier.size(InfoTipSize).clip(CircleShape)
                 .clickable(onClickLabel = null) { scope.launch { state.show() } }
                 .testTag("info_tip"),
             contentAlignment = Alignment.Center,
@@ -384,7 +427,7 @@ fun InfoTip(text: String) {
 fun InfoDialogTip(title: String, content: @Composable () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box(
-        Modifier.size(28.dp).clip(CircleShape).clickable { open = true }.testTag("info_tip"),
+        Modifier.size(InfoTipSize).clip(CircleShape).clickable { open = true }.testTag("info_tip"),
         contentAlignment = Alignment.Center,
     ) {
         Icon(Icons.Outlined.Info, contentDescription = title, Modifier.size(16.dp), tint = settingsPalette.subtle)

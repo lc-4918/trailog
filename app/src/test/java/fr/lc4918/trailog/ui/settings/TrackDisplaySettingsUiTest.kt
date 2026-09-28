@@ -34,7 +34,8 @@ class TrackDisplaySettingsUiTest {
 
     private val app = ApplicationProvider.getApplicationContext<TestTrailogApp>()
 
-    private fun present(texte: String) = compose.onAllNodesWithText(texte).fetchSemanticsNodes().isNotEmpty()
+    // Par morceau : un libelle porteur d'un "i" se termine par l'espace insecable qui l'y lie (cf. TextWithInfo).
+    private fun present(texte: String) = compose.onAllNodesWithText(texte, substring = true).fetchSemanticsNodes().isNotEmpty()
 
     private fun ouvrir(expert: Boolean) {
         runBlocking {
@@ -49,7 +50,7 @@ class TrackDisplaySettingsUiTest {
     }
 
     private fun defileVers(texte: String) {
-        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(texte))
+        compose.onNodeWithTag("settings_list").performScrollToNode(hasText(texte, substring = true))
         compose.waitForIdle()
     }
 

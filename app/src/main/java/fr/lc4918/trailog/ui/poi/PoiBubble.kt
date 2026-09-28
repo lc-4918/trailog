@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
+import androidx.compose.ui.platform.testTag
 import fr.lc4918.trailog.ui.theme.Spacing
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.CircleShape
@@ -167,9 +168,11 @@ fun PoiBubble(
                             .padding(top = if (poi.imageUrl != null) 8.dp else 6.dp, bottom = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        CategoryChip(poi, fontSp, Modifier.weight(1f, fill = false))
-                        Spacer(Modifier.weight(1f))
-                        GoogleMapsLink(poi, fontSp, onOpenWeb)
+                        // La pastille dans une boite qui prend TOUTE la largeur restante, et le G contre le bord
+                        // droit. Pastille et vide se la partageaient a parts egales : une categorie courte
+                        // laissait sa moitie inemployee, et le G se retrouvait au milieu de la ligne.
+                        Box(Modifier.weight(1f)) { CategoryChip(poi, fontSp) }
+                        GoogleMapsLink(poi, fontSp, onOpenWeb, Modifier.testTag("poi_google_maps"))
                     }
                     /*
                      * Les memes cinq actions que l'infobulle d'un appui long, et dans le meme ordre : les
@@ -264,7 +267,7 @@ private fun Nom(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
  * [Image] et non [Icon], qui le repeindrait d'une seule teinte.
  */
 @Composable
-private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
+private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit, modifier: Modifier = Modifier) {
     val libelle = stringResource(R.string.poi_google_maps)
     val cible = (fontSp + 14).dp
     val dessin = (fontSp + 2).dp
@@ -273,7 +276,7 @@ private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
         // de la bulle - la ou s'arretent le nom et les libelles au-dessus -, non la cible tactile qui
         // l'entoure. Sans ce decalage, le pictogramme flottait a six points du bord, seul element de la
         // bulle a ne pas s'aligner sur sa marge.
-        Modifier.offset(x = (cible - dessin) / 2).size(cible).clip(CircleShape)
+        modifier.offset(x = (cible - dessin) / 2).size(cible).clip(CircleShape)
             .clickable { onOpenWeb(googleMapsUrl(poi)) },
         contentAlignment = Alignment.Center,
     ) {

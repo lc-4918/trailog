@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -108,5 +110,29 @@ class InfoBubbleUiTest {
         compose.waitForIdle()
         assertEquals(0, compose.onAllNodesWithText(app.getString(R.string.label_pinned_image))
             .fetchSemanticsNodes().size)
+    }
+
+    /**
+     * Sur une image de garde, le titre prend toute la largeur que le bouton d'agrandissement lui laisse, et
+     * ce bouton se pose contre le bord droit. Le titre partageait la largeur a parts egales avec un vide :
+     * "Plage des Sables d'Olonnes" se coupait a mi-bulle, et un titre court repoussait le bouton au milieu.
+     */
+    @Test fun `sur une image de garde, le titre prend la largeur et l'agrandissement le bord`() {
+        val f = point(
+            KEY_NAME to PropValue.Text("Plage des Sables d'Olonnes, grande plage de la baie"),
+            "photo" to PropValue.Image("/nulle/part.jpg"),
+            pinned = "photo",
+        )
+        ouvre(f)
+        compose.waitForIdle()
+        val largeur = InfoBubbleWidth.value
+        // La PLACE du titre, et non son texte : sous Robolectric, un texte se mesure presque a vide.
+        val titre = compose.onNodeWithTag("bubble_cover_title_area", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val agrandir = compose.onNodeWithContentDescription(app.getString(R.string.action_expand_image))
+            .fetchSemanticsNode().boundsInRoot
+        val densite = app.resources.displayMetrics.density
+        assertTrue("la place du titre depasse la moitie de la bulle", titre.width / densite > largeur * 0.6f)
+        assertTrue("l'agrandissement touche presque le bord droit",
+            agrandir.right / densite >= largeur - OverlayInset.value - 1f)
     }
 }
