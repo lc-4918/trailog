@@ -1226,7 +1226,9 @@ fun MainScreen(
                     imperial = imperialUnits,
                     onHeightChange = { insets.profilePanelPx = it },
                     onExpandZoom = { vm.expandProfileZoom() },
-                    onToggleSlopeLegend = { vm.setSlopeLegend(it) },
+                    // Lue dans la liste des couches, et non retenue a l'ouverture : on colorie par pente depuis
+                    // le menu de la couche, profil ouvert, et le "i" doit paraitre aussitot.
+                    slopeColored = layers.firstOrNull { it.id == activeLayerId }?.slopeColored == true,
                     onScrub = { vm.onProfileTap(it) },
                     onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
                     onDoubleTapZoom = { fraction -> vm.zoomProfile(2f, fraction) },

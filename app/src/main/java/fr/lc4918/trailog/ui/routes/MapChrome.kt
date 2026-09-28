@@ -43,6 +43,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
+import androidx.compose.material3.LocalContentColor
+import fr.lc4918.trailog.ui.profile.SlopeLegend
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.testTag
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
@@ -108,18 +119,25 @@ internal fun rememberMapChrome(settings: SettingsEntity): MapChrome {
     }
 }
 
-/** Un bouton d'une barre du bas : le choix principal se distingue par son fond. */
+/**
+ * Un bouton d'une barre de consigne : le choix principal se distingue par son fond.
+ *
+ * Ses couleurs suivent celles de la barre, et non un blanc ecrit en dur : la barre prend le fond INVERSE
+ * du theme (cf. MapBannerTone), sombre en clair mais clair en sombre, ou un texte blanc disparaissait. Le
+ * choix principal prend l'accent inverse, celui que le theme prevoit sur ce fond.
+ */
 @Composable
 internal fun MapBarAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
+    val fg = LocalContentColor.current
     Text(
         label,
-        fontSize = 12.sp,
-        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Normal,
-        color = Color.White,
-        modifier = Modifier.clip(RoundedCornerShape(6.dp))
-            .background(if (primary) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.15f))
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Medium,
+        color = if (primary) MaterialTheme.colorScheme.inverseSurface else fg,
+        modifier = Modifier.clip(CircleShape)
+            .background(if (primary) MaterialTheme.colorScheme.inversePrimary else fg.copy(alpha = 0.15f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
     )
 }
 
@@ -203,32 +221,38 @@ internal fun Modifier.mapButtonBackground(color: Color, square: Dp): Modifier = 
 internal val ControlButtonRadius = 16.dp
 
 /**
- * Bouton "i" de la legende des pentes, au bout de la ligne de titre du profil.
+ * Le "i" de la legende des pentes, au bout de la ligne de titre du profil : il montre la palette dans une
+ * fenetre, qui se referme d'un OK.
  *
- * La legende n'a plus de reglage : elle se demande la, sur le profil qu'elle explique, et se referme du
- * meme geste. Un reglage aurait demande d'aller le chercher dans un autre ecran pour lire une echelle de
- * couleurs qu'on ne consulte qu'une fois.
- *
- * Fond blanc a 60 % : le bouton flotte au-dessus du titre, qu'un nom long fait passer dessous.
+ * Il ne parait que quand la couche est coloriee selon la pente (cf. LayerEntity.slopeColored) : c'est
+ * alors que ses couleurs demandent a etre lues. La legende ne se deplie plus DANS le panneau, sous les
+ * totaux : elle y prenait la hauteur du profil, pour une echelle de couleurs qu'on ne consulte qu'une fois.
  */
 @Composable
-internal fun SlopeLegendButton(shown: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun SlopeLegendInfo(settings: SettingsEntity, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    val titre = stringResource(R.string.settings_profile_slope_legend)
     Box(
-        // Plus de fond blanc : il servait a garder le "i" lisible quand il chevauchait le titre, ce qui
-        // n'arrive plus - le titre lui reserve sa gouttiere (cf. SlopeLegendGutter).
-        modifier.size(SlopeLegendButtonSize).clip(CircleShape).clickable(onClick = onClick),
+        modifier.size(SlopeLegendButtonSize).clip(CircleShape).clickable { open = true }.testTag("slope_legend_info"),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            if (shown) Icons.Filled.Info else Icons.Outlined.Info,
-            stringResource(R.string.settings_profile_slope_legend),
-            Modifier.size(17.dp), tint = Color(0xFF3F4A55),
+        Icon(Icons.Outlined.Info, titre, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (open) {
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(titre) },
+            text = {
+                SlopeLegend(settings.slopeClassTenths, settings.profLegendFont, Modifier.fillMaxWidth(),
+                    bold = settings.profLegendBold)
+            },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 }
 
-/** Cote du "i" de la legende des pentes. */
-internal val SlopeLegendButtonSize = 22.dp
+/** Cible du "i" de la legende des pentes. */
+internal val SlopeLegendButtonSize = 32.dp
 
 /** Largeur que le titre du profil laisse au "i" : le bouton, et l'air qui l'ecarte du texte. C'est cette
  *  gouttiere qui empeche un titre long de passer dessous. */

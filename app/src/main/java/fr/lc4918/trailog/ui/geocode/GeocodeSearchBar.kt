@@ -1,8 +1,6 @@
 package fr.lc4918.trailog.ui.geocode
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,13 +8,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -34,24 +30,29 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 
 /** Nombre de propositions visibles sans faire défiler ; au-delà, la liste défile. */
 private const val VisibleSuggestions = 4
 
-/** Hauteur d'une proposition : deux lignes à 13sp et leur marge, pour que la liste s'arrête exactement
+/** Hauteur d'une proposition : deux lignes de texte et leur marge, pour que la liste s'arrête exactement
  *  après la quatrième, quelle que soit la longueur des adresses affichées. */
-private val SuggestionHeight = 52.dp
+private val SuggestionHeight = 56.dp
 
 /** Opacité du champ et des propositions : la carte reste lisible dessous pendant la frappe. */
 private const val PanelAlpha = 0.8f
 
-/** Arrondi des deux panneaux. Porté aussi par le contour du champ (celui qui vire au bleu au focus) :
- *  laissé à la forme M3 par defaut, il valait 4dp et ses angles ne suivaient pas ceux du fond. */
-private val PanelShape = RoundedCornerShape(8.dp)
+/** Le champ, arrondi de part en part : une barre de recherche posee sur la carte, comme ses boutons.
+ *  Porté aussi par le contour du champ (celui qui vire au bleu au focus), dont les angles suivent ainsi
+ *  ceux du fond. Les propositions, dessous, sont une carte arrondie a 16. */
+private val PanelShape = CircleShape
 
 /**
  * Barre de recherche de lieu/adresse et ses propositions.
@@ -84,14 +85,21 @@ fun GeocodeSearchBar(
         ) {
             CompactOutlinedTextField(
                 value = query, onValueChange = onQueryChange, singleLine = true,
-                modifier = Modifier.fillMaxWidth().focusRequester(focus), shape = PanelShape,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(focus), shape = PanelShape,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                // Pas de contour au repos : le fond et l'ombre font la barre. Le bleu vient au focus.
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.Transparent, disabledBorderColor = Color.Transparent,
+                ),
                 // Une seule ligne quoi qu'il arrive : le libellé est court, mais une police système agrandie
                 // ou une traduction plus longue le ferait sinon passer à la ligne et grandir le champ.
                 placeholder = {
-                    Text(stringResource(R.string.geocode_search_placeholder),
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(stringResource(R.string.geocode_search_placeholder), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.size(20.dp)) },
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                },
                 trailingIcon = {
                     // Le spinner remplace la croix pendant l'interrogation : même emplacement, pas de
                     // saut de largeur du champ entre les deux états.
@@ -99,8 +107,9 @@ fun GeocodeSearchBar(
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
-                            IconButton(onClick = onClose, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
+                            IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -109,23 +118,25 @@ fun GeocodeSearchBar(
         }
         if (results.isNotEmpty()) {
             Surface(
-                modifier = Modifier.padding(top = 4.dp),
-                shape = PanelShape,
+                modifier = Modifier.padding(top = 6.dp),
+                shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
                 contentColor = MaterialTheme.colorScheme.onSurface,   // cf. le champ ci-dessus
                 shadowElevation = 4.dp,
             ) {
                 Column(Modifier.heightIn(max = SuggestionHeight * VisibleSuggestions).verticalScroll(rememberScrollState())) {
                     results.forEachIndexed { i, place ->
-                        if (i > 0) HorizontalDivider()
-                        Box(
+                        Row(
                             Modifier.fillMaxWidth().height(SuggestionHeight)
                                 .clickable { onPick(place) }
-                                .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.CenterStart,
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(place.label, fontSize = 13.sp, lineHeight = 16.sp,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Icon(Icons.Outlined.Place, null, Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(place.label, style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = 12.dp))
                         }
                     }
                 }

@@ -231,8 +231,9 @@ class MainScreenUiTest {
         assertNotNull("les taps reviennent au mode", carte.onRawTap)
         assertTrue("la regle reste affichee, allumee", affiche(R.string.measure_title))
 
-        // La croix de la bande rend les taps a la selection : le mode se referme entierement.
-        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
+        // Toucher la bande rend les taps a la selection : le mode se referme entierement. Plus de croix -
+        // un bandeau se ferme en le touchant (cf. MapBanner).
+        compose.onNodeWithText(libelle(R.string.measure_pick_start)).performClick()
         attend { affiche(R.string.measure_title) }
         assertNull("plus aucun tap detourne", carte.onRawTap)
         assertNotNull("la selection a repris la main", carte.onTapEmpty)
@@ -321,8 +322,8 @@ class MainScreenUiTest {
         assertFalse(texte(R.string.location_stopped_sensor))
     }
 
-    /** La croix retire l'annonce : elle a ete lue. */
-    @Test fun `la croix de la banniere la retire`() {
+    /** Toucher l'annonce la retire : elle a ete lue. Elle n'a plus de croix (cf. MapBanner). */
+    @Test fun `toucher la banniere la retire`() {
         reglages()
         ecran()
         attend { surface.controller != null }
@@ -331,7 +332,8 @@ class MainScreenUiTest {
             LocationHub.setTracking(false, LocationHub.StopReason.SYSTEM)
         }
         attend { texte(R.string.location_stopped_system) }
-        compose.onNodeWithContentDescription(libelle(R.string.action_close)).performClick()
+        assertFalse("plus de croix", affiche(R.string.action_close))
+        compose.onNodeWithText(libelle(R.string.location_stopped_system)).performClick()
         attend { !texte(R.string.location_stopped_system) }
     }
 

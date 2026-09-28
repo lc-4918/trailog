@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -57,6 +56,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.CircleShape
 import fr.lc4918.trailog.domain.model.GroupCheck
 import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
@@ -125,7 +127,7 @@ fun PoiFilterBubble(
     Card(
         modifier = modifier.widthIn(max = BubbleMaxWidth).fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(18.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -176,12 +178,12 @@ private fun EnTete(
     onToggleMask: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             stringResource(R.string.poi_layer_title),
-            fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.weight(1f),
         )
         if (!filters.nothingShown) {
@@ -252,21 +254,21 @@ private fun Onglets(courant: PoiGroup, filters: PoiFilters, onGroup: (PoiGroup) 
                 // qu'une ondulation qui deborde de deux points sur un angle arrondi.
                 Modifier.weight(1f)
                     .clickable { onGroup(g) }
-                    .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                    .clip(MaterialTheme.shapes.medium.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0)))
                     .background(if (actif) teinte.copy(alpha = 0.14f) else Color.Transparent)
                     .padding(horizontal = 2.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     poiGroupLabel(g),
-                    fontSize = 10.sp, lineHeight = 12.sp,
+                    style = MaterialTheme.typography.labelSmall, letterSpacing = 0.sp,
                     fontWeight = if (actif) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (actif) teinte else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     "${cats.count { filters.isShown(it) }}/${cats.size}",
-                    fontSize = 9.sp, lineHeight = 11.sp,
+                    style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"), letterSpacing = 0.sp,
                     color = if (actif) teinte else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -301,7 +303,7 @@ private fun LigneGroupe(etat: GroupCheck, teinte: Color, onToggle: () -> Unit) {
         Spacer(Modifier.width(20.dp))
         Text(
             stringResource(R.string.settings_poi_select_all),
-            fontSize = 12.sp, fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -326,24 +328,24 @@ private fun LigneCategorie(cat: PoiCategory, retenue: Boolean, onToggle: () -> U
         Modifier.fillMaxWidth()
             .clickable(onClick = onToggle)
             .background(if (retenue) teinte.copy(alpha = 0.10f) else Color.Transparent)
-            .padding(horizontal = 14.dp, vertical = 7.dp),
+            .heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(30.dp).clip(RoundedCornerShape(50))
+            Modifier.size(32.dp).clip(CircleShape)
                 .background(if (retenue) teinte.copy(alpha = 0.18f) else Color.Transparent),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painterResource(poiIcon(cat)), null,
-                modifier = Modifier.size(17.dp),
+                modifier = Modifier.size(18.dp),
                 tint = if (retenue) teinte else eteint,
             )
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             poiCategoryLabel(cat),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             color = if (retenue) MaterialTheme.colorScheme.onSurface else eteint,
             maxLines = 2, overflow = TextOverflow.Ellipsis,
         )

@@ -13,7 +13,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -33,6 +32,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import androidx.compose.foundation.layout.offset
+import fr.lc4918.trailog.ui.theme.Spacing
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CornerSize
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
@@ -59,13 +62,13 @@ internal fun ProfileZoomButton(
     @androidx.annotation.DrawableRes iconRes: Int, contentDesc: String, active: Boolean, onClick: () -> Unit,
 ) {
     Box(
-        Modifier.size(24.dp).clip(RoundedCornerShape(6.dp))
+        Modifier.size(32.dp).clip(MaterialTheme.shapes.small)
             .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(iconRes), contentDesc, modifier = Modifier.size(16.dp),
-            tint = if (active) Color.White else LocalContentColor.current)
+        Icon(painterResource(iconRes), contentDesc, modifier = Modifier.size(20.dp),
+            tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -81,14 +84,6 @@ internal val ProfileGraphGap = 12.dp
 /** Ecart du bloc d'infos du point courant : le meme a droite de l'ecran qu'au-dessus du profil. */
 internal val CursorInfoGap = 4.dp
 
-/** Teintes de l'avertissement "sans altimétrie" : figées, pour rester lisibles sur le fond blanc du
- *  panneau de profil quel que soit le thème. */
-internal val NoElevationBorder = Color(0xFFE8850C)
-
-internal val NoElevationFill = Color(0xFFFFF3E0)
-
-internal val NoElevationText = Color(0xFFB35309)
-
 /** Avertissement affiché à la place du tracé quand la trace n'a aucune altitude : 80 % de la largeur et
  *  50 % de la hauteur de la zone de dessin, centré dedans. */
 @Composable
@@ -96,11 +91,13 @@ internal fun NoElevationBanner(modifier: Modifier = Modifier) {
     Box(modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.5f)
-                .background(NoElevationFill, RoundedCornerShape(8.dp))
-                .border(1.dp, NoElevationBorder, RoundedCornerShape(8.dp)),
+                // L'orange d'avertissement du theme : le panneau suit le theme, l'avertissement aussi.
+                .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.shapes.medium)
+                .border(1.dp, MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.medium),
             contentAlignment = Alignment.Center,
         ) {
-            Text(stringResource(R.string.profile_no_elevation), color = NoElevationText,
+            Text(stringResource(R.string.profile_no_elevation), color = MaterialTheme.colorScheme.onTertiaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp))
         }
     }
@@ -222,7 +219,8 @@ internal fun BoxScope.TrackProfileLayer(
     imperial: Boolean,
     onHeightChange: (Int) -> Unit,
     onExpandZoom: () -> Unit,
-    onToggleSlopeLegend: (Boolean) -> Unit,
+    /** La couche est coloriee selon la pente : le titre porte alors le "i" de la legende. */
+    slopeColored: Boolean,
     onScrub: (Double) -> Unit,
     onZoom: (scale: Float, fraction: Float) -> Unit,
     onDoubleTapZoom: (fraction: Float) -> Unit,
@@ -287,7 +285,7 @@ internal fun BoxScope.TrackProfileLayer(
         // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur un point
         // plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui est seul et va a
         // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
-        CompositionLocalProvider(LocalContentColor provides Color.Black) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             TrackInfoColumns(
                 cursorInfos(cursorSample, settings.cursorInfos, imperial),
                 fontSp = settings.profCursorFont,
@@ -297,8 +295,9 @@ internal fun BoxScope.TrackProfileLayer(
                 // coin, et non comme deux marges qui ne se repondent pas.
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = CursorInfoGap, bottom = panelBottomDp + CursorInfoGap)
-                    .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                    .shadow(3.dp, MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
     }
@@ -309,7 +308,8 @@ internal fun BoxScope.TrackProfileLayer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = panelBottomDp + 4.dp)
-                .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp)),
+                .shadow(3.dp, MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
         ) {
             // Seul bouton restant : le retour a la vue complete. Le zoom lui-meme se fait aux doigts sur le
             // graphique (ecartement ou double-tap), comme dans le planificateur.
@@ -324,9 +324,15 @@ internal fun BoxScope.TrackProfileLayer(
         visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically(),
         modifier = Modifier.align(Alignment.BottomCenter),
     ) {
+        // Une bande aux couleurs du theme, coins hauts arrondis, comme les autres bandes du bas - et non plus
+        // un aplat blanc fixe, qui trouait l'ecran en theme sombre. La forme dessine le fond et l'ombre sans
+        // decouper le contenu (cf. RoutePlannerBand).
+        val forme = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
         Column(
-            Modifier.fillMaxWidth().background(Color.White)
-                .padding(horizontal = 8.dp).navigationBarsPadding()
+            Modifier.fillMaxWidth()
+                .shadow(8.dp, forme, clip = false)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), forme)
+                .padding(start = Spacing.m, end = Spacing.m, top = 10.dp).navigationBarsPadding()
                 .onGloballyPositioned { panelHeightPx = it.size.height; onHeightChange(it.size.height) },
         ) {
             // Le titre a sa ligne, les infos la leur : elles s'etalent alors sur toute la largeur, en
@@ -334,27 +340,18 @@ internal fun BoxScope.TrackProfileLayer(
             // sans nom.
             //
             /*
-             * Le "i" de la legende des pentes se pose en EXPOSANT au bout de la premiere ligne du titre, et
-             * le titre lui reserve sa place.
-             *
-             * Il passait auparavant PAR-DESSUS le titre, qui filait dessous : un nom long se lisait alors
-             * sous un rond blanc. Le titre s'ecrit desormais sur deux lignes au besoin, dans la largeur qui
-             * reste - c'est-a-dire que la place du "i" est retiree a la colonne de texte, non prise au titre.
+             * Le "i" de la legende des pentes, au bout de la premiere ligne du titre, qui lui reserve sa
+             * place : il ne parait que si la couche est coloriee selon la pente, et montre la palette dans
+             * une fenetre (cf. SlopeLegendInfo).
              */
-            val legendShown = settings.profileSlope && settings.profileSlopeLegend
-            val hasLegendButton = settings.profileSlope
             Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
                 Text(title, fontSize = (settings.profTitleFont).sp,
                     fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(end = if (hasLegendButton) SlopeLegendGutter else 0.dp))
-                if (hasLegendButton) {
-                    SlopeLegendButton(
-                        shown = legendShown,
-                        // En haut, non centre : sur un titre de deux lignes, un "i" centre tomberait entre
-                        // les deux, ou il n'appartiendrait plus a aucune.
-                        modifier = Modifier.align(Alignment.TopEnd),
-                    ) { onToggleSlopeLegend(!legendShown) }
+                    modifier = Modifier.padding(start = Spacing.xs, end = if (slopeColored) SlopeLegendGutter else 0.dp))
+                if (slopeColored) {
+                    // En haut, non centre : sur un titre de deux lignes, un "i" centre tomberait entre les deux.
+                    SlopeLegendInfo(settings, Modifier.align(Alignment.TopEnd).offset(y = (-6).dp))
                 }
             }
             if (windowStats != null) {
@@ -370,15 +367,7 @@ internal fun BoxScope.TrackProfileLayer(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            if (windowStats != null && legendShown) {
-                SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
-                    Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                    bold = settings.profLegendBold)
-            } else {
-                // Sans legende, les infos toucheraient le graphique : elle tenait lieu de respiration entre
-                // les deux.
-                Spacer(Modifier.height(ProfileGraphGap))
-            }
+            Spacer(Modifier.height(ProfileGraphGap))
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val hauteurGraphe = if (windowSamples != null && windowStats != null && windowSamples.size >= 2) {
                 profileChartHeight(

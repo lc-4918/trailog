@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
@@ -26,8 +25,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.CircleShape
 import fr.lc4918.trailog.ui.components.MapController
 import kotlinx.coroutines.delay
 
@@ -116,7 +116,9 @@ internal fun BoxScope.PoiStatusBanner(
             // LocalContentColor ambiant, dont le defaut est le noir - illisible sur le fond
             // sombre de ce meme bandeau en theme sombre (cf. GeocodeSearchBar, meme remede).
             contentColor = MaterialTheme.colorScheme.onSurface,
-            shape = RoundedCornerShape(8.dp),
+            // Une pastille arrondie de part en part, avec son ombre : posee sur la carte, comme ses boutons.
+            shape = CircleShape,
+            shadowElevation = 4.dp,
             modifier = Modifier.align(Alignment.TopCenter)
                 .padding(top = with(density) { (topControlsPx + 16).toDp() })
                 .then(
@@ -139,7 +141,7 @@ internal fun BoxScope.PoiStatusBanner(
                 ),
         ) {
             Row(
-                Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                Modifier.heightIn(min = 36.dp).padding(start = 12.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // La main qui appuie, devant le seul des quatre messages qui SE TAPE. La couleur des
@@ -150,14 +152,14 @@ internal fun BoxScope.PoiStatusBanner(
                 if (zoomable) {
                     Icon(
                         Icons.Filled.TouchApp, null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
                 Text(
                     stringResource(message),
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     // La couleur des commandes quand le message en est une, celle du texte ordinaire
                     // sinon : sans cela, rien ne distinguerait la consigne qu'on peut suivre d'un
                     // doigt des deux constats qu'on ne peut que lire.

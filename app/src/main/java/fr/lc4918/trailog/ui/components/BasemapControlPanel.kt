@@ -44,10 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
+import androidx.compose.foundation.shape.CircleShape
 import fr.lc4918.trailog.data.db.BasemapFolderEntity
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
@@ -471,10 +471,10 @@ private fun BasemapIcon(p: ProviderEntity) {
 private fun ActiveBadge() {
     Text(
         stringResource(R.string.basemap_relief_active).uppercase(),
-        fontSize = 9.sp, lineHeight = 11.sp, letterSpacing = 0.08.em,
+        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
-            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(50))
+            .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }

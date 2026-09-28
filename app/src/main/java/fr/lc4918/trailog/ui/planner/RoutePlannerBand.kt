@@ -108,7 +108,7 @@ import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.ui.profile.ElevationProfile
-import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.routes.SlopeLegendInfo
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.routeInfos
 import kotlinx.coroutines.delay
@@ -919,6 +919,9 @@ private fun ResultsZone(
                     ),
                     style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f),
                 )
+                // La legende des pentes, derriere un "i", quand le profil est colorie par pente : comme celui
+                // d'une trace, elle ne se deplie plus dans la bande (cf. SlopeLegendInfo).
+                if (settings.routeSlopeProfile) SlopeLegendInfo(settings)
                 // Calcule sur le telephone : dit en passant, sans en faire un evenement. C'est ce qui
                 // explique un calcul plus lent qu'a l'habitude, ou un trajet trouve sans reseau.
                 if (r.offline) {
@@ -947,11 +950,6 @@ private fun ResultsZone(
                 )
             }
             if (state.profileShown) {
-                if (settings.routeSlopeProfile && settings.profileSlopeLegend) {
-                    SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
-                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        bold = settings.profLegendBold)
-                }
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val hauteurGraphe = profileChartHeight(
                     settings.profileVerticalScale, stats.min, stats.max,

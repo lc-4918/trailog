@@ -1,14 +1,9 @@
 package fr.lc4918.trailog.ui.alert
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.Icon
@@ -17,23 +12,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.theme.Spacing
+import fr.lc4918.trailog.ui.components.MapBannerTone
+import fr.lc4918.trailog.ui.components.MapBanner
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.location.TrackWatch
-
-/**
- * Fond de la banniere d'alerte : le rouge des messages d'erreur, a peine translucide.
- *
- * Elle ne reprend pas le gris des consignes de saisie (cf. MapPromptBar), et c'est voulu : celles-la
- * accompagnent un geste qu'on vient de demander, celle-ci interrompt une marche pour dire ce qu'on n'a
- * pas vu venir. Deux barres de meme couleur au meme endroit se confondraient dans le coin de l'oeil.
- */
-private val AlertBarBackground = Color(0xFFB3261E).copy(alpha = 0.94f)
 
 /**
  * Banniere du haut : on s'est ecarte de la trace suivie, de tant, et voila laquelle.
@@ -55,26 +42,21 @@ fun OffTrackAlertBar(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier.fillMaxWidth().padding(8.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(AlertBarBackground)
-            .clickable(onClick = onClose)
-            .padding(10.dp),
-    ) {
+    // Le rouge des erreurs, et non le fond des consignes (cf. MapBannerTone) : celles-la accompagnent un
+    // geste qu'on vient de demander, celle-ci interrompt une marche pour dire ce qu'on n'a pas vu venir.
+    MapBanner(MapBannerTone.ALERT, modifier, onClose = onClose) { fg ->
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.m),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // La banniere n'est la que pendant l'alerte : sa cloche sonne, comme celle du tableau de bord.
-            Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(20.dp).ringing(true), tint = Color.White)
+            Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(20.dp).ringing(true), tint = fg)
             Text(
                 stringResource(R.string.alert_off_track_banner, Format.shortDistance(awayM, imperial), trackName),
-                style = MaterialTheme.typography.bodySmall, color = Color.White,
+                style = MaterialTheme.typography.bodyMedium, color = fg,
                 fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
             )
         }
     }
 }
-

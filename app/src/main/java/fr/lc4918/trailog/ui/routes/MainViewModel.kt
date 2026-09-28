@@ -883,12 +883,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (s.plannerHistory != maj) repo.settings.upsert(s.copy(plannerHistory = maj))
     }
 
-    /** Bouton "i" du bandeau de profil : montre ou cache la legende des pentes. Retenue d'une fois sur
-     *  l'autre - c'est un etat d'affichage, pas une preference a reprendre a chaque trace. */
-    fun setSlopeLegend(shown: Boolean) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
-        if (s.profileSlopeLegend != shown) repo.settings.upsert(s.copy(profileSlopeLegend = shown))
-    }
 
     /** Tap sur le relief dans le gestionnaire : allume ou éteint son ombrage. Ne touche pas au fond DEM
      *  lui-même, dont le `enabled` ne dit que sa présence dans la liste (cf. SettingsEntity.hillshadeOn). */
