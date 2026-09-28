@@ -672,6 +672,8 @@
     <string name="dash_set_ascent">Desnibel positiboa</string>
     <string name="dash_set_descent">Desnibel negatiboa</string>
     <string name="dash_reset">Berrezarri</string>
+    <!-- Titre du tableau de bord, en tete de ses compteurs. -->
+    <string name="dash_ride_title">Irteera</string>
     <string name="dash_reset_title">Kontagailuak berrezarri?</string>
     <string name="dash_reset_text">Irteeraren distantzia, iraupena eta desnibela zerotik hasiko dira berriro.</string>
     <string name="settings_group_dashboard">Aginte-panela</string>

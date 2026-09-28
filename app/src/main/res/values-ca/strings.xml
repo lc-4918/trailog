@@ -672,6 +672,8 @@
     <string name="dash_set_ascent">Desnivell positiu</string>
     <string name="dash_set_descent">Desnivell negatiu</string>
     <string name="dash_reset">Restableix</string>
+    <!-- Titre du tableau de bord, en tete de ses compteurs. -->
+    <string name="dash_ride_title">Sortida</string>
     <string name="dash_reset_title">Vols restablir els comptadors?</string>
     <string name="dash_reset_text">La distància, la durada i el desnivell de la sortida tornen a zero.</string>
     <string name="settings_group_dashboard">Tauler</string>

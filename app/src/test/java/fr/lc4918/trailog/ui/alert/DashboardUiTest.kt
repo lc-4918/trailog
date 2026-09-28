@@ -3,9 +3,11 @@ package fr.lc4918.trailog.ui.alert
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -47,12 +49,15 @@ class DashboardUiTest {
     ) = compose.setContent {
         Dashboard(
             trip = trip, speedMps = 2.5f, progress = progress, trackName = trackName, armed = armed,
-            alerting = false, hidden = hidden, imperial = false, bg = Color.White, fg = Color.Black,
+            alerting = false, hidden = hidden, imperial = false,
             onBell = onBell, onReset = onReset,
         )
     }
 
     private fun texte(res: Int) = ctx.getString(res)
+
+    /** Un libelle de compteur, tel qu'il s'affiche : en petites capitales. */
+    private fun libelle(res: Int) = texte(res).uppercase()
 
     @Test fun `hors trace, les compteurs de la sortie s'affichent`() {
         tableau()
@@ -60,7 +65,7 @@ class DashboardUiTest {
         compose.onNodeWithText("1:48").assertIsDisplayed()
         compose.onNodeWithText("640 m").assertIsDisplayed()
         compose.onNodeWithText("210 m").assertIsDisplayed()
-        compose.onNodeWithText(texte(R.string.dash_remaining)).assertDoesNotExist()
+        compose.onNodeWithText(libelle(R.string.dash_remaining)).assertDoesNotExist()
     }
 
     /** Hors trace, pas de cloche : il n'y a rien dont s'ecarter. */
@@ -90,8 +95,8 @@ class DashboardUiTest {
 
     @Test fun `un champ masque ne s'affiche pas`() {
         tableau(hidden = setOf(DashboardField.SPEED))
-        compose.onNodeWithText(texte(R.string.dash_speed)).assertDoesNotExist()
-        compose.onNodeWithText(texte(R.string.dash_distance)).assertIsDisplayed()
+        compose.onNodeWithText(libelle(R.string.dash_speed)).assertDoesNotExist()
+        compose.onNodeWithText(libelle(R.string.dash_distance)).assertIsDisplayed()
     }
 
     /** La remise a zero demande confirmation : une sortie effacee d'un doigt qui glisse ne se retrouve pas. */
@@ -103,7 +108,8 @@ class DashboardUiTest {
         compose.onNodeWithText(texte(R.string.action_cancel)).performClick()
         assertEquals(0, remis)
         compose.onNodeWithTag("dashboard_reset").performClick()
-        compose.onNodeWithText(texte(R.string.dash_reset)).performClick()
+        // Le bouton porte le meme mot que la confirmation : c'est celle de la boite qu'on touche.
+        compose.onNode(hasText(texte(R.string.dash_reset)) and hasAnyAncestor(isDialog())).performClick()
         assertEquals(1, remis)
     }
 
@@ -207,7 +213,7 @@ class DashboardUiTest {
                 trip = trip, speedMps = 2.5f, progress = null, trackName = null, armed = false,
                 alerting = false, hidden = emptySet(),
                 fontSizes = DashboardField.entries.associateWith { corps },
-                imperial = false, bg = Color.White, fg = Color.Black, onBell = {}, onReset = {},
+                imperial = false, onBell = {}, onReset = {},
             )
         }
         val petit = compose.onNodeWithTag("dashboard").fetchSemanticsNode().size.height
@@ -230,5 +236,26 @@ class DashboardUiTest {
     /** Moins d'une minute de mouvement : la moyenne ne dit encore rien. */
     @Test fun `pas de temps restant sur une moyenne trop courte`() {
         assertEquals(null, DashboardMath.etaMs(Trip(distanceM = 50.0, movingMs = 30_000L), 3_000.0))
+    }
+
+    /** Sur une trace, l'avancement se dit en pourcentage, a cote du nom : ici 1 km de fait sur 4. */
+    @Test fun `sur une trace, l'avancement s'affiche`() {
+        val avance = progress.copy(doneM = 1_000.0, remainingM = 3_000.0)
+        tableau(progress = avance, trackName = "GR 9")
+        compose.onNodeWithTag("dashboard_percent").assertIsDisplayed()
+        compose.onNodeWithText("25 %").assertIsDisplayed()
+    }
+
+    @Test fun `la part parcourue reste entre zero et un`() {
+        assertEquals(0f, progressFraction(progress.copy(doneM = 0.0, remainingM = 0.0)), 0f)
+        assertEquals(0.25f, progressFraction(progress.copy(doneM = 1_000.0, remainingM = 3_000.0)), 0.0001f)
+        assertEquals(1f, progressFraction(progress.copy(doneM = 5_000.0, remainingM = 0.0)), 0f)
+    }
+
+    /** Le titre "Sortie" coiffe les compteurs, et la remise a zero lui fait face. */
+    @Test fun `le panneau porte son titre`() {
+        tableau()
+        compose.onNodeWithText(texte(R.string.dash_ride_title)).assertIsDisplayed()
+        compose.onNodeWithTag("dashboard_reset").assertIsDisplayed()
     }
 }

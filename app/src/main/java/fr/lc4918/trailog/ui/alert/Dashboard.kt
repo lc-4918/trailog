@@ -2,19 +2,16 @@ package fr.lc4918.trailog.ui.alert
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.RestartAlt
@@ -47,10 +44,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import kotlin.math.roundToInt
+import fr.lc4918.trailog.ui.theme.Spacing
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.Trip
 import fr.lc4918.trailog.ui.routes.MapChromeActive
-import fr.lc4918.trailog.ui.routes.OffTrackAlertColor
 
 /**
  * Un champ du tableau de bord : sa cle en base, son nom court (sur la carte) et son nom long (dans les
@@ -176,9 +185,6 @@ object DashboardMath {
 /** Largeur relative du champ de la vitesse : "12,3 km/h" est la plus longue des valeurs de la rangee. */
 private const val SpeedWeight = 1.25f
 
-/** L'ecart d'une demi-ligne qui separe la sortie de la trace suivie. */
-private val SectionGap = 12.dp
-
 /**
  * Le corps d'un compteur, en points, quand rien n'est regle : celui qu'ils ont toujours eu.
  *
@@ -201,17 +207,22 @@ const val DashboardFontMaxSp = 40
  */
 private const val LabelRatio = 11f / 16f
 
+/** Fond du panneau. Presque opaque, comme la bande du calcul d'itineraire : la carte transparait a peine. */
+private const val PanelAlpha = 0.96f
+
 /**
  * Le tableau de bord de la sortie, en bas de la carte.
  *
- * Des champs encadres, sur un fond presque opaque : il se lit d'un coup d'oeil, telephone sur le guidon,
- * sans que la carte dessous brouille les chiffres.
+ * Une bande aux couleurs du theme, comme celle du calcul d'itineraire - coins hauts arrondis, fond
+ * presque opaque -, et des compteurs en tuiles teintees : il se lit d'un coup d'oeil, telephone sur le
+ * guidon, sans que la carte dessous brouille les chiffres.
  *
- * - une rangee pour la sortie, sur toute la largeur : vitesse, distance, duree, D+, D- ;
- * - sur une trace reconnue (cf. `AutoFollow`), apres une demi-ligne : la cloche et le nom de la trace,
- *   puis la rangee de ce qu'il en reste ;
- * - enfin la remise a zero des compteurs, a droite, qui demande confirmation - une sortie effacee d'un
- *   doigt qui glisse ne se retrouve pas.
+ * - en tete, "Sortie", et face a lui la remise a zero des compteurs, qui demande confirmation - une
+ *   sortie effacee d'un doigt qui glisse ne se retrouve pas. Elle occupait auparavant une ligne a elle
+ *   seule, au bas du panneau ;
+ * - une rangee pour la sortie : vitesse, distance, duree, D+, D- ;
+ * - sur une trace reconnue (cf. `AutoFollow`), sous un filet : la cloche, le nom de la trace et son
+ *   avancement - une barre et un pourcentage -, puis la rangee de ce qu'il en reste.
  *
  * @param progress l'avancement sur la trace suivie, null hors trace.
  * @param trackName le nom de la trace suivie, null hors trace.
@@ -228,48 +239,38 @@ fun Dashboard(
     hidden: Set<DashboardField>,
     fontSizes: Map<DashboardField, Int> = emptyMap(),
     imperial: Boolean,
-    bg: Color,
-    fg: Color,
     onBell: () -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var confirmReset by remember { mutableStateOf(false) }
     val following = trackName != null && progress != null
-    Column(
-        modifier
-            .fillMaxWidth()
-            .background(bg.copy(alpha = 0.9f))
-            .navigationBarsPadding()
-            .padding(start = 8.dp, end = 8.dp, top = 8.dp)
-            .testTag("dashboard"),
-    ) {
-        FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fg, fontSizes)
-        if (following) {
-            Spacer(Modifier.height(SectionGap))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBell, modifier = Modifier.size(40.dp).testTag("dashboard_bell")) {
-                    Icon(
-                        if (armed) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationsNone,
-                        stringResource(R.string.content_desc_off_track_alert),
-                        tint = when {
-                            alerting -> OffTrackAlertColor
-                            armed -> MapChromeActive
-                            else -> fg
-                        },
-                    )
-                }
-                Text(
-                    trackName.orEmpty(), color = fg, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).testTag("dashboard_track"),
-                )
+    val scheme = MaterialTheme.colorScheme
+    // La forme dessine le fond et l'ombre sans decouper le contenu (cf. RoutePlannerBand).
+    val shape = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
+    CompositionLocalProvider(LocalContentColor provides scheme.onSurface) {
+        Column(
+            modifier
+                .fillMaxWidth()
+                .shadow(8.dp, shape, clip = false)
+                .background(scheme.surface.copy(alpha = PanelAlpha), shape)
+                .navigationBarsPadding()
+                .padding(start = Spacing.m, end = Spacing.m, top = 6.dp, bottom = Spacing.l)
+                .testTag("dashboard"),
+            verticalArrangement = Arrangement.spacedBy(Spacing.s),
+        ) {
+            Row(Modifier.fillMaxWidth().height(40.dp).padding(start = Spacing.xs),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.dash_ride_title), style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                ResetButton(onClick = { confirmReset = true })
             }
-            FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fg, fontSizes)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = { confirmReset = true }, modifier = Modifier.size(40.dp).testTag("dashboard_reset")) {
-                Icon(Icons.Filled.RestartAlt, stringResource(R.string.dash_reset), tint = fg)
+            FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fontSizes)
+            if (following) {
+                HorizontalDivider(Modifier.padding(start = Spacing.xs, end = Spacing.xs, top = 6.dp),
+                    color = scheme.outlineVariant)
+                TrackHeader(trackName.orEmpty(), progress!!, armed, alerting, onBell)
+                FieldRow(DashboardField.shown(hidden, onTrack = true), trip, speedMps, progress, imperial, fontSizes)
             }
         }
     }
@@ -288,6 +289,75 @@ fun Dashboard(
     }
 }
 
+/** "Reinitialiser", icone et libelle, en pastille discrete : il efface, il ne doit pas attirer le doigt. */
+@Composable
+private fun ResetButton(onClick: () -> Unit) {
+    val tint = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        Modifier.height(36.dp).clip(CircleShape).clickable(onClick = onClick)
+            .padding(start = 10.dp, end = Spacing.m).testTag("dashboard_reset"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(Icons.Filled.RestartAlt, null, Modifier.size(18.dp), tint = tint)
+        Text(stringResource(R.string.dash_reset), style = MaterialTheme.typography.labelMedium, color = tint)
+    }
+}
+
+/**
+ * La trace suivie : la cloche de l'alerte, son nom, et ou l'on en est - une barre et un pourcentage.
+ *
+ * La cloche armee est du bleu des commandes de la carte en marche ; en alerte, elle passe au rouge, sur un
+ * rond rouge pale, et la barre avec elle : c'est le seul endroit du panneau qui dise qu'on s'est ecarte.
+ */
+@Composable
+private fun TrackHeader(name: String, progress: FollowProgress, armed: Boolean, alerting: Boolean, onBell: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val fraction = progressFraction(progress)
+    Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        IconButton(
+            onClick = onBell,
+            modifier = Modifier.size(40.dp).clip(CircleShape)
+                .background(if (alerting) scheme.errorContainer else Color.Transparent)
+                .testTag("dashboard_bell"),
+        ) {
+            Icon(
+                if (armed) Icons.Filled.NotificationsActive else Icons.Outlined.NotificationsNone,
+                stringResource(R.string.content_desc_off_track_alert),
+                tint = when {
+                    alerting -> scheme.error
+                    armed -> MapChromeActive
+                    else -> scheme.onSurfaceVariant
+                },
+                // En alerte, elle sonne (cf. ringing).
+                modifier = Modifier.ringing(alerting),
+            )
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).testTag("dashboard_track"))
+                Text("${(fraction * 100).roundToInt()} %",
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold, color = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = Spacing.s).testTag("dashboard_percent"))
+            }
+            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)) {
+                Box(Modifier.fillMaxWidth(fraction).height(4.dp).clip(CircleShape)
+                    .background(if (alerting) scheme.error else scheme.primary))
+            }
+        }
+    }
+}
+
+/** La part de la trace deja parcourue, entre 0 et 1 : zero tant que rien n'est ni fait ni a faire. */
+internal fun progressFraction(p: FollowProgress): Float {
+    val total = p.doneM + p.remainingM
+    if (total <= 0.0) return 0f
+    return (p.doneM / total).toFloat().coerceIn(0f, 1f)
+}
+
 /**
  * Une rangee de champs sur toute la largeur ; rien du tout quand tous sont masques.
  *
@@ -303,17 +373,17 @@ fun Dashboard(
 @Composable
 private fun FieldRow(
     fields: List<DashboardField>, trip: Trip, speedMps: Float?, progress: FollowProgress?, imperial: Boolean,
-    fg: Color, fontSizes: Map<DashboardField, Int>,
+    fontSizes: Map<DashboardField, Int>,
 ) {
     if (fields.isEmpty()) return
     FlowRow(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         fields.forEach { f ->
             Field(
-                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial), fg,
+                stringResource(f.shortLabel), value(f, trip, speedMps, progress, imperial),
                 fontSizes[f] ?: DashboardFontDefaultSp,
                 Modifier.weight(if (f == DashboardField.SPEED) SpeedWeight else 1f),
             )
@@ -337,28 +407,36 @@ internal fun value(
     DashboardField.REMAINING_DESCENT -> progress?.let { Format.elevation(it.remainingDescentM, imperial) } ?: "-"
 }
 
+/**
+ * Un compteur : une tuile teintee, son libelle en petites capitales grises, sa valeur en demi-gras a
+ * chiffres de chasse fixe - un chiffre qui defile ne fait pas danser ses voisins.
+ */
 @Composable
-private fun Field(label: String, value: String, fg: Color, fontSp: Int, modifier: Modifier) {
+private fun Field(label: String, value: String, fontSp: Int, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
     Column(
         modifier
-            .border(1.dp, fg.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 5.dp, vertical = 3.dp),
+            .background(scheme.surfaceContainerLow, MaterialTheme.shapes.medium)
+            .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 8.dp),
     ) {
         FitText(
-            AnnotatedString(label), color = fg.copy(alpha = 0.7f),
-            fontSize = (fontSp * LabelRatio).sp, weight = FontWeight.Normal,
+            AnnotatedString(label.uppercase()), color = scheme.onSurfaceVariant,
+            fontSize = (fontSp * LabelRatio).sp, weight = FontWeight.SemiBold, letterSpacing = 0.06.em,
         )
-        FitText(withSmallUnit(value), color = fg, fontSize = fontSp.sp, weight = FontWeight.SemiBold)
+        FitText(withSmallUnit(value, scheme.onSurfaceVariant), color = scheme.onSurface, fontSize = fontSp.sp,
+            weight = FontWeight.SemiBold, features = "tnum")
     }
 }
 
-/** Le nombre en grand, l'unite plus petite : "12,3" se lit d'abord, "km/h" ensuite. */
-private fun withSmallUnit(value: String): AnnotatedString {
+/** Le nombre en grand, l'unite plus petite et grise : "12,3" se lit d'abord, "km/h" ensuite. */
+private fun withSmallUnit(value: String, unitColor: Color): AnnotatedString {
     val i = value.lastIndexOf(' ')
     if (i <= 0) return AnnotatedString(value)
     return buildAnnotatedString {
         append(value.substring(0, i))
-        withStyle(SpanStyle(fontSize = 0.7.em, fontWeight = FontWeight.Normal)) { append(value.substring(i)) }
+        withStyle(SpanStyle(fontSize = 0.7.em, fontWeight = FontWeight.Medium, color = unitColor)) {
+            append(value.substring(i))
+        }
     }
 }
 
@@ -367,13 +445,17 @@ private fun withSmallUnit(value: String): AnnotatedString {
  * rester lisible en entier, quitte a perdre un point de corps. Il se mesure, et se reduit tant qu'il deborde.
  */
 @Composable
-private fun FitText(text: AnnotatedString, color: Color, fontSize: TextUnit, weight: FontWeight) {
+private fun FitText(
+    text: AnnotatedString, color: Color, fontSize: TextUnit, weight: FontWeight,
+    letterSpacing: TextUnit = TextUnit.Unspecified, features: String? = null,
+) {
     // Repart de la taille pleine quand la LONGUEUR change, pas a chaque valeur : le chiffre qui defile
     // chaque seconde ne doit pas faire clignoter la taille.
     var scale by remember(text.length) { mutableFloatStateOf(1f) }
     var ready by remember(text.length) { mutableStateOf(false) }
     Text(
         text, color = color, fontSize = fontSize * scale, lineHeight = fontSize * 1.2f, fontWeight = weight,
+        letterSpacing = letterSpacing, style = LocalTextStyle.current.copy(fontFeatureSettings = features),
         maxLines = 1, softWrap = false,
         onTextLayout = { r ->
             if (r.hasVisualOverflow && scale > MinTextScale) scale = (scale * 0.92f).coerceAtLeast(MinTextScale)

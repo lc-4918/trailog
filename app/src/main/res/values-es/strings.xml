@@ -672,6 +672,8 @@
     <string name="dash_set_ascent">Desnivel positivo</string>
     <string name="dash_set_descent">Desnivel negativo</string>
     <string name="dash_reset">Restablecer</string>
+    <!-- Titre du tableau de bord, en tete de ses compteurs. -->
+    <string name="dash_ride_title">Salida</string>
     <string name="dash_reset_title">¿Restablecer los contadores?</string>
     <string name="dash_reset_text">La distancia, la duración y el desnivel de la salida vuelven a cero.</string>
     <string name="settings_group_dashboard">Panel</string>

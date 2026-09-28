@@ -672,6 +672,8 @@
     <string name="dash_set_ascent">Total ascent</string>
     <string name="dash_set_descent">Total descent</string>
     <string name="dash_reset">Reset</string>
+    <!-- Titre du tableau de bord, en tete de ses compteurs. -->
+    <string name="dash_ride_title">Trip</string>
     <string name="dash_reset_title">Reset the counters?</string>
     <string name="dash_reset_text">Distance, time and elevation for the outing start again from zero.</string>
     <string name="settings_group_dashboard">Dashboard</string>

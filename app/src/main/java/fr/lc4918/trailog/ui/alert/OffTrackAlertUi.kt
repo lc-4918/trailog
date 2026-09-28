@@ -67,7 +67,8 @@ fun OffTrackAlertBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(20.dp), tint = Color.White)
+            // La banniere n'est la que pendant l'alerte : sa cloche sonne, comme celle du tableau de bord.
+            Icon(Icons.Outlined.NotificationsActive, null, Modifier.size(20.dp).ringing(true), tint = Color.White)
             Text(
                 stringResource(R.string.alert_off_track_banner, Format.shortDistance(awayM, imperial), trackName),
                 style = MaterialTheme.typography.bodySmall, color = Color.White,

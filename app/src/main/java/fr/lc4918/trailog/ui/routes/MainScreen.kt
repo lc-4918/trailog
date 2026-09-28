@@ -1204,8 +1204,6 @@ fun MainScreen(
                             DashboardField.fontSizes(settings.dashboardFontSizes)
                         },
                         imperial = imperialUnits,
-                        bg = chromeBg,
-                        fg = chromeFg,
                         onBell = { TrackWatch.setArmed(!armed) },
                         onReset = {
                             TripWatch.reset()
