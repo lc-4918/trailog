@@ -524,6 +524,8 @@
     <string name="settings_section_off_track">Alerta de afastamento</string>
     <string name="settings_label_off_track_distance">Desvio de aviso</string>
     <string name="settings_sw_off_track_sound">Emitir um som</string>
+    <string name="settings_sw_off_track_vibrate">Vibração</string>
+    <string name="settings_off_track_vibrate_hint">O telemóvel vibra repetidamente enquanto dura o alerta, com ou sem som: sente-se onde o toque não se ouve.</string>
     <string name="settings_label_off_track_sound">Toque</string>
     <string name="settings_off_track_sound_default">Predefinido</string>
     <string name="settings_off_track_hint">O sino aparece no painel assim que segue um trilho. Ativo, avisa se se afastar; desativado, ao deixar o trilho este é simplesmente abandonado.</string>

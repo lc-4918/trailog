@@ -524,6 +524,8 @@
     <string name="settings_section_off_track">Allarme di allontanamento</string>
     <string name="settings_label_off_track_distance">Scarto di allarme</string>
     <string name="settings_sw_off_track_sound">Emettere un suono</string>
+    <string name="settings_sw_off_track_vibrate">Vibrazione</string>
+    <string name="settings_off_track_vibrate_hint">Il telefono vibra ripetutamente finché dura l\'avviso, con o senza suono: si sente dove la suoneria non si ode.</string>
     <string name="settings_label_off_track_sound">Suoneria</string>
     <string name="settings_off_track_sound_default">Predefinito</string>
     <string name="settings_off_track_hint">La campana compare nel cruscotto appena segui una traccia. Attiva, avvisa se te ne allontani; spenta, lasciando la traccia questa viene semplicemente abbandonata.</string>

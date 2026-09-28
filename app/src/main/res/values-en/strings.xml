@@ -524,6 +524,8 @@
     <string name="settings_section_off_track">Off-track alert</string>
     <string name="settings_label_off_track_distance">Triggering gap</string>
     <string name="settings_sw_off_track_sound">Play a sound</string>
+    <string name="settings_sw_off_track_vibrate">Vibration</string>
+    <string name="settings_off_track_vibrate_hint">The phone vibrates repeatedly while the alert lasts, with or without sound: you feel it where you cannot hear the ringtone.</string>
     <string name="settings_label_off_track_sound">Ringtone</string>
     <string name="settings_off_track_sound_default">Default</string>
     <string name="settings_off_track_hint">The bell appears in the dashboard as soon as you are on a track. On, it warns you if you stray from it; off, leaving the track simply drops it.</string>

@@ -393,6 +393,13 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
                 ValueText(soundLabel ?: defaultSoundLabel)
             }
         }
+        RowDivider()
+        // La vibration, a part du son : elle se sent la ou la sonnerie ne s'entend pas - vent, torrent,
+        // telephone mis en silencieux (cf. AlertVibration).
+        SwitchLine(
+            stringResource(R.string.settings_sw_off_track_vibrate), cur.offTrackAlertVibrate,
+            info = stringResource(R.string.settings_off_track_vibrate_hint),
+        ) { on -> vm.save(cur.copy(offTrackAlertVibrate = on)) }
     }
     /*
      * "Pour que l'ecran s'allume, il faut l'autoriser."

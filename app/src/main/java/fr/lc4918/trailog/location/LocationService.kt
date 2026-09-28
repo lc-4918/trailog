@@ -448,9 +448,10 @@ class LocationService : Service() {
     }
 
     override fun onDestroy() {
-        // La sonnerie ne survit pas au service : elle boucle, et une boucle sans personne pour la couper
-        // sonnerait jusqu'a la batterie vide.
+        // La sonnerie et la vibration ne survivent pas au service : elles bouclent, et une boucle sans
+        // personne pour la couper tournerait jusqu'a la batterie vide.
         AlertSound.stop()
+        AlertVibration.stop(this)
         cancelOffTrackAlert()
         unsubscribe()
         runCatching { unregisterReceiver(providerReceiver) }
@@ -809,29 +810,32 @@ class LocationService : Service() {
      */
     private fun watchAlertRing() = scope.launch {
         val son = (application as TrailogApp).repository.settingsFlow
-            .map { (it?.offTrackAlertSound ?: false) to (it?.offTrackAlertSoundUri ?: "") }
+            .map { Triple(it?.offTrackAlertSound ?: false, it?.offTrackAlertSoundUri ?: "", it?.offTrackAlertVibrate ?: false) }
             .distinctUntilChanged()
             // Les reglages arrivent de la base un instant apres le service : sans ce premier couple, rien
             // ne serait combine tant qu'ils ne sont pas lus, et une alerte de la premiere seconde se
             // tairait. "Pas de son" est le bon repli - le son est un reglage qu'on allume.
-            .onStart { emit(false to "") }
-        combine(TrackWatch.alerting, TrackWatch.silenced, TrackWatch.armed, son) { alerting, silenced, armed, (actif, uri) ->
+            .onStart { emit(Triple(false, "", false)) }
+        combine(TrackWatch.alerting, TrackWatch.silenced, TrackWatch.armed, son) { alerting, silenced, armed, (actif, uri, vibre) ->
             Ring(
                 notifier = OffTrack.announcing(armed, alerting, silenced),
                 sonner = OffTrack.ringing(actif, armed, alerting, silenced),
                 uri = uri,
+                // La vibration obeit aux memes conditions que la sonnerie, sous son propre reglage.
+                vibrer = OffTrack.ringing(vibre, armed, alerting, silenced),
             )
         }.distinctUntilChanged().collect { etat ->
             FixLog.write(this@LocationService) {
-                "ecart : notification=${etat.notifier} sonnerie=${etat.sonner}"
+                "ecart : notification=${etat.notifier} sonnerie=${etat.sonner} vibration=${etat.vibrer}"
             }
             if (etat.notifier) postOffTrackAlert() else cancelOffTrackAlert()
             if (etat.sonner) AlertSound.start(this@LocationService, etat.uri) else AlertSound.stop()
+            if (etat.vibrer) AlertVibration.start(this@LocationService) else AlertVibration.stop(this@LocationService)
         }
     }
 
     /** Ce que l'alerte demande a cet instant : la notification, la sonnerie, et le son a jouer. */
-    private data class Ring(val notifier: Boolean, val sonner: Boolean, val uri: String)
+    private data class Ring(val notifier: Boolean, val sonner: Boolean, val uri: String, val vibrer: Boolean)
 
     /**
      * L'ecart a la trace, dit la ou on le lira sans rien deverrouiller : l'ecran de verrouillage et la barre

@@ -969,6 +969,16 @@ class MigrationsTest {
         db.close()
     }
 
+    @Test fun `74 vers 75 laisse la vibration de l'alerte eteinte`() {
+        val db = freshDb("m7475")
+        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY NOT NULL)")
+        db.execSQL("INSERT INTO settings (id) VALUES (1)")
+        db.execSQL(MigrationSql.ADD_OFF_TRACK_ALERT_VIBRATE)
+        assertEquals(0, scalar(db, "SELECT offTrackAlertVibrate FROM settings") { it.getInt(0) })
+        assertFalse(SettingsEntity().offTrackAlertVibrate)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -1165,7 +1175,7 @@ class MigrationsTest {
             "routePlannerEnabled", "controlButtonsBackground", "trackMeasureEnabled",
             "mapButtonSizeDp", "hillshadeOn", "trackEditEnabled", "fillMissingElevation", "elevationIgnUrl",
             "elevationWorldUrl", "elevationWorldKey", "offTrackAlertEnabled", "offTrackAlertDistanceM",
-            "offTrackAlertSound", "offTrackAlertSoundUri",
+            "offTrackAlertSound", "offTrackAlertSoundUri", "offTrackAlertVibrate",
             "routePrefsRoad", "routePrefsGravel", "routePrefsHybrid", "routePrefsMtb", "routePrefsFoot",
             "mapFollowPosition", "routeEngine", "routingUrlBrouter", "poiEnabled", "plannerHistory",
             "keepScreenOn", "poiTrackCorridorM", "poiOsmUrl", "gpsRecenterOnStart", "poiMasked",

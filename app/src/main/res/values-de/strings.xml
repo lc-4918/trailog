@@ -524,6 +524,8 @@
     <string name="settings_section_off_track">Abweichungsalarm</string>
     <string name="settings_label_off_track_distance">Auslösender Abstand</string>
     <string name="settings_sw_off_track_sound">Ton abspielen</string>
+    <string name="settings_sw_off_track_vibrate">Vibration</string>
+    <string name="settings_off_track_vibrate_hint">Das Telefon vibriert wiederholt, solange der Alarm dauert, mit oder ohne Ton: Man spürt es, wo man den Klingelton nicht hört.</string>
     <string name="settings_label_off_track_sound">Klingelton</string>
     <string name="settings_off_track_sound_default">Standard</string>
     <string name="settings_off_track_hint">Die Glocke erscheint im Dashboard, sobald Sie einer Spur folgen. Eingeschaltet warnt sie, wenn Sie abweichen; ausgeschaltet wird die Spur beim Verlassen einfach losgelassen.</string>

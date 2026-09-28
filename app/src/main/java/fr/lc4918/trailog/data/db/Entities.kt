@@ -360,6 +360,9 @@ data class SettingsEntity(
     // Son retenu, parmi les notifications du telephone (URI du selecteur systeme). Vide = celui que le
     // telephone donne pour ses notifications : un son n'a pas a etre choisi pour etre entendu.
     val offTrackAlertSoundUri: String = "",
+    // Vibrer en boucle pendant l'alerte, en plus ou a la place du son (cf. AlertVibration). Eteint par
+    // defaut, comme le son : c'est un reglage qu'on allume.
+    val offTrackAlertVibrate: Boolean = false,
     // Champs du tableau de bord qu'on a masques, par leur cle, separes par des virgules (cf. DashboardField).
     // Vide : tous s'affichent. Les MASQUES plutot que les affiches, pour qu'un champ ajoute plus tard
     // paraisse de lui-meme au lieu d'attendre qu'on aille le cocher.

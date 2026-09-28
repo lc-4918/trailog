@@ -524,6 +524,8 @@
     <string name="settings_section_off_track">Alerta de alejamiento</string>
     <string name="settings_label_off_track_distance">Distancia de aviso</string>
     <string name="settings_sw_off_track_sound">Emitir un sonido</string>
+    <string name="settings_sw_off_track_vibrate">Vibración</string>
+    <string name="settings_off_track_vibrate_hint">El teléfono vibra repetidamente mientras dura la alerta, con o sin sonido: se nota donde el tono no se oye.</string>
     <string name="settings_label_off_track_sound">Tono de llamada</string>
     <string name="settings_off_track_sound_default">Predeterminado</string>
     <string name="settings_off_track_hint">La campana aparece en el panel en cuanto sigues una traza. Activada, avisa si te alejas; desactivada, al dejar la traza simplemente se abandona.</string>
