@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Straighten
@@ -45,6 +44,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.points.OverlayInset
+import fr.lc4918.trailog.ui.theme.Spacing
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.ui.geocode.AddressText
 import fr.lc4918.trailog.ui.geocode.BubbleAction
@@ -95,7 +96,7 @@ fun MapPointBubble(
     Card(
         modifier = modifier.width(InfoBubbleWidth),   // meme largeur que l'infobulle d'un marqueur
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         // Couleur de contenu imposee : sous 100 % d'opacite, le fond n'est plus l'une des couleurs du theme
         // et contentColorFor n'y reconnait rien, laissant le texte heriter du LocalContentColor ambiant.
         colors = CardDefaults.cardColors(
@@ -107,7 +108,7 @@ fun MapPointBubble(
         // que l'adresse passait sur deux lignes ; en lui reservant sa largeur, elle tronquait des
         // adresses qui tenaient. Ce qu'elle recouvre, l'appui long le redit en entier.
         Box {
-            Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 4.dp, bottom = 12.dp)) {
+            Column(Modifier.padding(start = Spacing.l, end = Spacing.l, top = 6.dp, bottom = Spacing.s)) {
                 // En-tete : ce que la bulle DIT du point. Rien d'autre - l'adresse seule, comme sur
                 // l'infobulle d'un lieu cherche.
                 AddressLine(address, fontSp, Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp))
@@ -123,7 +124,8 @@ fun MapPointBubble(
                  * quelle distance il se trouve, on decide d'y aller apres. Un seul trait pour les cinq -
                  * c'est une seule liste, et un second la couperait en deux.
                  */
-                HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+                HorizontalDivider(Modifier.padding(top = Spacing.xs, bottom = 2.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant)
                 if (showPositionRow) {
                     MeasureAction(
                         Icons.Filled.MyLocation,
@@ -138,7 +140,7 @@ fun MapPointBubble(
                 )
                 RouteActions(onSetStart, onSetEnd, onAddStep, fontSp, divider = false)
             }
-            CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp))
+            CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(OverlayInset))
         }
     }
 }

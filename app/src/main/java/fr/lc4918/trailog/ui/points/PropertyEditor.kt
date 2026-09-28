@@ -6,7 +6,6 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,6 +31,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import fr.lc4918.trailog.ui.theme.Spacing
+import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PropType
 import fr.lc4918.trailog.domain.model.PropValue
@@ -178,8 +182,8 @@ fun PropertyEditor(
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.92f).fillMaxHeight(0.8f),
-            shape = MaterialTheme.shapes.large,
-            tonalElevation = 4.dp,
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surface,
         ) {
             Column(Modifier.fillMaxSize().padding(16.dp)) {
                 // Croix en haut à droite comme sur l'infobulle : fait double emploi avec "Annuler",
@@ -188,7 +192,8 @@ fun PropertyEditor(
                     Text(stringResource(R.string.dialog_edit_bubble_title), style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f))
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(OverlayIconSize))
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -239,13 +244,10 @@ fun PropertyEditor(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    FilledIconButton(
-                        onClick = { confirmDelete = true },
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                    ) { Icon(TrailogIcons.Trash, stringResource(R.string.action_delete_point)) }
+                    IconButton(onClick = { confirmDelete = true }) {
+                        Icon(TrailogIcons.Trash, stringResource(R.string.action_delete_point), Modifier.size(22.dp),
+                            tint = MaterialTheme.colorScheme.error)
+                    }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     Spacer(Modifier.width(8.dp))
@@ -302,14 +304,14 @@ private fun FieldRow(
                 verticalAlignment = Alignment.CenterVertically) {
                 if (row.fixedKey != null) {
                     Text(fieldLabel(row.fixedKey), style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.weight(1f))
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                 } else {
                     CompactOutlinedTextField(
                         value = state.keyNames[row.id].orEmpty(), onValueChange = { state.keyNames[row.id] = it },
                         placeholder = { Text(stringResource(R.string.field_name_hint)) },
                         isError = showNameError,
                         supportingText = if (showNameError) ({ Text(stringResource(R.string.field_name_required)) }) else null,
-                        modifier = Modifier.weight(1f).focusRequester(nameFocus), singleLine = true,
+                        modifier = Modifier.weight(1f).focusRequester(nameFocus), singleLine = true, colors = tintedFieldColors(),
                     )
                 }
             }
@@ -319,7 +321,7 @@ private fun FieldRow(
                     CompactOutlinedTextField(
                         value = state.texts[row.id].orEmpty(), onValueChange = { state.texts[row.id] = it },
                         suffix = unit?.let { { Text(it) } },
-                        modifier = Modifier.fillMaxWidth(), singleLine = row.fixedKey == KEY_NAME,
+                        modifier = Modifier.fillMaxWidth(), singleLine = row.fixedKey == KEY_NAME, colors = tintedFieldColors(),
                     )
                 }
                 PropType.LINK -> {
@@ -327,12 +329,12 @@ private fun FieldRow(
                     val bad = url.isNotBlank() && !isValidUrl(url)
                     CompactOutlinedTextField(state.linkTexts[row.id].orEmpty(), { state.linkTexts[row.id] = it },
                         label = { Text(stringResource(R.string.field_display_text)) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, colors = tintedFieldColors())
                     CompactOutlinedTextField(url, { state.linkUrls[row.id] = it },
                         label = { Text(stringResource(R.string.settings_field_url)) },
                         isError = bad,
                         supportingText = if (bad) ({ Text(stringResource(R.string.error_invalid_url)) }) else null,
-                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, colors = tintedFieldColors())
                 }
                 PropType.IMAGE -> {
                     val source = state.imageSources[row.id].orEmpty()
@@ -344,25 +346,26 @@ private fun FieldRow(
                         Spacer(Modifier.height(ImageDeleteGap))
                         // Mêmes boutons superposés que l'infobulle : épingle puis agrandir, accolés
                         // (côté mitoyen droit), l'agrandir niché dans l'angle haut-droit de l'image.
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(ImageRadius))) {
+                        Box(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)) {
                             AsyncImage(model = imageModel(source), contentDescription = null,
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp))
-                            Row(Modifier.align(Alignment.TopEnd)
-                                .padding(top = arcInset(ImageRadius), end = arcInset(ImageRadius))) {
+                            Row(Modifier.align(Alignment.TopEnd).padding(OverlayInset),
+                                horizontalArrangement = Arrangement.spacedBy(OverlayInset)) {
                                 OverlayIconButton(
                                     icon = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                                     descRes = if (isPinned) R.string.action_unpin_image else R.string.action_pin_image,
                                     onClick = { state.pinnedRow = if (isPinned) null else row.id },
-                                    shape = OverlayShapeStart,
                                 )
                                 OverlayIconButton(
                                     icon = Icons.Filled.Fullscreen,
                                     descRes = R.string.action_expand_image,
                                     onClick = { onEnlarge(source) },
-                                    shape = OverlayShapeEnd,
                                 )
                             }
+                            // L'image epinglee le dit en toutes lettres : la punaise pleine seule ne se
+                            // distinguait de la creuse qu'a qui savait les comparer.
+                            if (isPinned) PinnedBadge(Modifier.align(Alignment.TopStart).padding(Spacing.s))
                         }
                         Spacer(Modifier.height(6.dp))
                     }
@@ -371,7 +374,7 @@ private fun FieldRow(
                     }
                     CompactOutlinedTextField(source, { state.imageSources[row.id] = it },
                         label = { Text(stringResource(R.string.field_image_source)) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, colors = tintedFieldColors())
                 }
             }
         }
@@ -381,11 +384,11 @@ private fun FieldRow(
 
 /** Taille du badge poubelle posé en haut à droite d'un champ. */
 private val DeleteBadgeSize = 28.dp
-/** Champ photo : espace ajouté au-dessus de l'image (un bouton au minimum tactile) pour que le badge
- *  poubelle ne recouvre pas les boutons pin/agrandir portés par l'image. */
-private val ImageDeleteGap = 48.dp
+/** Champ photo : espace ajouté au-dessus de l'image, pour que le badge poubelle - plus haut que le
+ *  libellé qu'il borde - ne descende pas sur les boutons épingler/agrandir portés par l'image. */
+private val ImageDeleteGap = 16.dp
 
-/** Badge poubelle rouge : supprime le champ du seul marqueur en cours d'édition (les autres marqueurs
+/** Badge poubelle : supprime le champ du seul marqueur en cours d'édition (les autres marqueurs
  *  et le fichier importé ne sont pas touchés ; la suppression prend effet à l'enregistrement). */
 @Composable
 private fun DeleteFieldBadge(onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -395,12 +398,13 @@ private fun DeleteFieldBadge(onClick: () -> Unit, modifier: Modifier = Modifier)
             onClick = onClick,
             modifier = modifier.size(DeleteBadgeSize),
             shape = CircleShape,
+            // Rouge PALE : un badge par champ, rouge vif, faisait de l'editeur une page d'alertes.
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError,
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ),
         ) {
-            Icon(TrailogIcons.Trash, stringResource(R.string.action_remove_field), Modifier.size(OverlayIconSize))
+            Icon(TrailogIcons.Trash, stringResource(R.string.action_remove_field), Modifier.size(16.dp))
         }
     }
 }
@@ -411,7 +415,7 @@ private fun AddFieldButton(onAdd: (PropType) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         TextButton(onClick = { open = true }) {
-            Icon(Icons.Filled.Add, null, Modifier.size(OverlayIconSize))
+            Icon(Icons.Filled.Add, null, Modifier.size(20.dp))
             Spacer(Modifier.width(4.dp))
             Text(stringResource(R.string.action_add_field))
         }
@@ -427,5 +431,20 @@ private fun AddFieldButton(onAdd: (PropType) -> Unit) {
                 )
             }
         }
+    }
+}
+
+/** "Image de garde" : la pastille posee sur l'image epinglee. */
+@Composable
+private fun PinnedBadge(modifier: Modifier = Modifier) {
+    Row(
+        modifier.background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+            .padding(start = 6.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(Icons.Filled.PushPin, null, Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        Text(stringResource(R.string.label_pinned_image), style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
     }
 }

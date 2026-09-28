@@ -5,7 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import fr.lc4918.trailog.ui.points.OverlayInset
+import fr.lc4918.trailog.ui.theme.Spacing
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -42,7 +43,7 @@ fun GeocodeBubble(
     Card(
         modifier = modifier.width(InfoBubbleWidth),   // même largeur que l'infobulle d'un marqueur
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         // Couleur de contenu imposée : sous 100 % d'opacité, le fond n'est plus l'une des couleurs du thème
         // et contentColorFor n'y reconnaît rien, laissant le texte hériter du LocalContentColor ambiant.
         colors = CardDefaults.cardColors(
@@ -56,11 +57,11 @@ fun GeocodeBubble(
         Box {
             Column {
                 AddressText(lines, fontSp,
-                    Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp))
+                    Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.l, top = 14.dp))
                 RouteActions(onSetStart, onSetEnd, onAddStep, fontSp,
-                    Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp))
+                    Modifier.padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.s))
             }
-            CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp))
+            CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(OverlayInset))
         }
     }
 }

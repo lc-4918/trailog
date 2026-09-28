@@ -84,3 +84,16 @@ fun CompactOutlinedTextField(
         }
     }
 }
+
+/**
+ * Le champ TEINTE de l'application : fond a peine plus sombre que la surface, contour discret au repos,
+ * contour de l'accent au focus. Celui des etapes d'itineraire, de la recherche du menu lateral et de
+ * l'editeur d'un point - un champ sans fond se perdait sur une bande ou une bulle deja claire.
+ */
+@Composable
+fun tintedFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    errorContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+)

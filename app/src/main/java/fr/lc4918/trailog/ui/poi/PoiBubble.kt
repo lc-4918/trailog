@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
@@ -44,6 +43,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.theme.Spacing
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.CircleShape
 import fr.lc4918.trailog.poi.Poi
 import java.net.URLEncoder
 import fr.lc4918.trailog.ui.mappoint.MeasureState
@@ -93,7 +95,7 @@ fun PoiBubble(
     Card(
         modifier = modifier.width(InfoBubbleWidth),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -114,7 +116,7 @@ fun PoiBubble(
                 if (poi.imageUrl != null) {
                     Box(
                         Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                            .clip(MaterialTheme.shapes.large.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))),
                     ) {
                         // Le peintre plutot que AsyncImage : c'est son etat qui dit s'il faut encore
                         // attendre. Une photo de point d'interet vient d'un serveur touristique quelconque,
@@ -143,7 +145,7 @@ fun PoiBubble(
                         }
                     }
                 } else {
-                    Column(Modifier.padding(start = 12.dp, end = 8.dp, top = 4.dp)) {
+                    Column(Modifier.padding(start = Spacing.l, end = Spacing.l, top = 4.dp)) {
                         Text(
                             stringResource(R.string.poi_bubble_title),
                             fontSize = (fontSp - 3).sp, fontWeight = FontWeight.Medium,
@@ -153,7 +155,7 @@ fun PoiBubble(
                         Nom(poi, fontSp, onOpenWeb)
                     }
                 }
-                Column(Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) {
+                Column(Modifier.padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.s)) {
                     // La categorie sous l'en-tete, et non par-dessus la photo : posee sur l'image, elle
                     // en masquait le bas - justement la ou le cliche montre le lieu.
                     //
@@ -182,7 +184,8 @@ fun PoiBubble(
                      * apres. Un seul trait pour les cinq : c'est une seule liste, et un second la couperait
                      * en deux.
                      */
-                    HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+                    HorizontalDivider(Modifier.padding(top = Spacing.m, bottom = 2.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant)
                     if (showPositionRow) {
                         MeasureAction(
                             Icons.Filled.MyLocation,
@@ -199,18 +202,18 @@ fun PoiBubble(
                 }
             }
             /*
-             * La croix sur une photo prend son halo blanc, comme celle d'un waypoint pose sur son image
-             * de garde : sans lui, un contour noir se perd sur un cliche sombre et disparait sur un
-             * cliche clair. Sans photo, elle garde la croix ordinaire des autres infobulles - le halo
-             * n'aurait rien a detacher.
+             * La croix sur une photo prend le rond sombre des boutons poses sur une image, comme celle
+             * d'un waypoint sur son image de garde : une croix nue se perd sur un cliche sombre et
+             * disparait sur un cliche clair. Sans photo, elle garde la croix ordinaire des autres
+             * infobulles.
              */
             if (poi.imageUrl != null) {
                 OverlayIconButton(
-                    Icons.Filled.Close, R.string.action_close, onClose, filled = false,
+                    Icons.Filled.Close, R.string.action_close, onClose,
                     modifier = Modifier.align(Alignment.TopEnd).padding(OverlayInset),
                 )
             } else {
-                CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(end = 4.dp, top = 4.dp))
+                CloseCorner(onClose, Modifier.align(Alignment.TopEnd).padding(OverlayInset))
             }
         }
     }
@@ -239,7 +242,7 @@ private fun Nom(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
         maxLines = 2, overflow = TextOverflow.Ellipsis,
         textDecoration = if (url != null) TextDecoration.Underline else null,
         modifier = (if (url != null) Modifier.clickable { onOpenWeb(url) } else Modifier)
-            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+            .background(Color.White.copy(alpha = 0.85f), MaterialTheme.shapes.extraSmall)
             .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
@@ -270,7 +273,7 @@ private fun GoogleMapsLink(poi: Poi, fontSp: Int, onOpenWeb: (String) -> Unit) {
         // de la bulle - la ou s'arretent le nom et les libelles au-dessus -, non la cible tactile qui
         // l'entoure. Sans ce decalage, le pictogramme flottait a six points du bord, seul element de la
         // bulle a ne pas s'aligner sur sa marge.
-        Modifier.offset(x = (cible - dessin) / 2).size(cible).clip(RoundedCornerShape(50))
+        Modifier.offset(x = (cible - dessin) / 2).size(cible).clip(CircleShape)
             .clickable { onOpenWeb(googleMapsUrl(poi)) },
         contentAlignment = Alignment.Center,
     ) {
@@ -305,7 +308,7 @@ private fun CategoryChip(poi: Poi, fontSp: Int, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(MaterialTheme.shapes.extraSmall)
             .background(teinte.copy(alpha = 0.15f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
     ) {

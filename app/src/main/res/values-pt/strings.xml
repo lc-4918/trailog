@@ -106,6 +106,7 @@
     <string name="action_reset_avatar">Repor avatar</string>
     <string name="action_pin_image">Fixar como imagem de capa</string>
     <string name="action_unpin_image">Desafixar</string>
+    <string name="label_pinned_image">Imagem de capa</string>
     <string name="action_create_composite">Composto</string>
     <string name="action_reset_defaults">Repor valores predefinidos</string>
     <string name="action_change_avatar">Alterar avatar</string>

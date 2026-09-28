@@ -72,6 +72,7 @@ import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.ui.components.ColorPickerDialog
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.ui.settings.ProvideSettingsPalette
 import fr.lc4918.trailog.ui.settings.settingsPalette
@@ -382,11 +383,7 @@ internal fun SearchField(query: String, focus: FocusRequester, onQuery: (String)
             .height(44.dp).focusRequester(focus),
         textStyle = MaterialTheme.typography.bodyMedium,
         // Meme champ que ceux du calcul d'itineraire : fond teinte, contour discret au repos.
-        colors = OutlinedTextFieldDefaults.colors(
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+        colors = tintedFieldColors(),
         placeholder = {
             Text(stringResource(R.string.search_placeholder), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

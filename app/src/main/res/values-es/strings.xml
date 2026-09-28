@@ -106,6 +106,7 @@
     <string name="action_reset_avatar">Restablecer avatar</string>
     <string name="action_pin_image">Fijar como imagen de portada</string>
     <string name="action_unpin_image">Quitar fijación</string>
+    <string name="label_pinned_image">Imagen de portada</string>
     <string name="action_create_composite">Compuesto</string>
     <string name="action_reset_defaults">Restablecer valores predeterminados</string>
     <string name="action_change_avatar">Cambiar avatar</string>

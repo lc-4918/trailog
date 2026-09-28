@@ -106,6 +106,7 @@
     <string name="action_reset_avatar">Réinitialiser l\'avatar</string>
     <string name="action_pin_image">Épingler comme image de garde</string>
     <string name="action_unpin_image">Désépingler</string>
+    <string name="label_pinned_image">Image de garde</string>
     <string name="action_create_composite">Composite</string>
     <string name="action_reset_defaults">Réinitialiser les valeurs par défaut</string>
     <string name="action_change_avatar">Changer l\'avatar</string>

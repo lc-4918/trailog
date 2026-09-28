@@ -106,6 +106,7 @@
     <string name="action_reset_avatar">Reset avatar</string>
     <string name="action_pin_image">Pin as cover image</string>
     <string name="action_unpin_image">Unpin</string>
+    <string name="label_pinned_image">Cover image</string>
     <string name="action_create_composite">Composite</string>
     <string name="action_reset_defaults">Reset to defaults</string>
     <string name="action_change_avatar">Change avatar</string>

@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.theme.Spacing
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CircularProgressIndicator
@@ -153,8 +155,9 @@ private fun fitOf(r: TextLayoutResult, crossPx: Int) = LineFit(
     underCross = r.size.width > r.layoutInput.constraints.maxWidth - crossPx,
 )
 
-/** Largeur que prend la croix dans l'angle de la bulle : son bouton et la marge qui l'en ecarte. */
-val CloseCornerSpace = 32.dp
+/** Ce que la croix prend a la largeur du TEXTE : son bouton de 32 dp et son retrait de 6 dp au bord de
+ *  la bulle, moins la marge de 16 dp que le texte laisse deja. */
+val CloseCornerSpace = 22.dp
 
 /**
  * Hauteur rendue au texte quand il doit passer sous la croix.
@@ -179,8 +182,9 @@ private val CloseCornerBand = 20.dp
 @Composable
 fun CloseCorner(onClose: () -> Unit, modifier: Modifier = Modifier) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-        IconButton(onClick = onClose, modifier = modifier.padding(2.dp).size(28.dp)) {
-            Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
+        IconButton(onClick = onClose, modifier = modifier.size(32.dp)) {
+            Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -220,7 +224,8 @@ fun RouteActions(
     divider: Boolean = true,
 ) {
     Column(modifier) {
-        if (divider) HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 2.dp))
+        if (divider) HorizontalDivider(Modifier.padding(top = Spacing.m, bottom = 2.dp),
+            color = MaterialTheme.colorScheme.outlineVariant)
         BubbleAction(Icons.Outlined.PlayArrow, stringResource(R.string.poi_set_start), fontSp, onSetStart)
         BubbleAction(Icons.Outlined.Flag, stringResource(R.string.poi_set_end), fontSp, onSetEnd)
         BubbleAction(Icons.Filled.Add, stringResource(R.string.poi_add_step), fontSp, onAddStep)
@@ -249,14 +254,15 @@ fun BubbleAction(
     detail: @Composable (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        // 44 dp au moins : la ligne se vise au doigt, comme celles du menu lateral.
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(onClick = onClick).padding(vertical = 10.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.Start,
     ) {
         // Le pictogramme suit la PREMIERE ligne du libelle, et ne se centre pas sur une ligne qui a pousse
         // un resultat sous elle : il descendrait alors dans le vide, loin du texte qu'il annonce.
-        Icon(icon, null, Modifier.padding(top = 2.dp).size(18.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(10.dp))
+        Icon(icon, null, Modifier.padding(top = 1.dp).size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(Spacing.m))
         Column {
             Text(label, fontSize = fontSp.sp)
             if (detail != null) detail()

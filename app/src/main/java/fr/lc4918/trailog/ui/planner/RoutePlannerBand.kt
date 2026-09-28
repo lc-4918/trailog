@@ -88,7 +88,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
@@ -107,6 +106,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
@@ -625,11 +625,7 @@ private fun StepRow(
                         onValueChange = { state.type(step, it) },
                         singleLine = true,
                         shape = fieldShape,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = scheme.outlineVariant,
-                            unfocusedContainerColor = scheme.surfaceContainerLow,
-                            focusedContainerColor = scheme.surfaceContainerLow,
-                        ),
+                        colors = tintedFieldColors(),
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester)
                             .onFocusChanged {
                                 focused = it.isFocused
