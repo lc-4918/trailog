@@ -2,20 +2,23 @@ package fr.lc4918.trailog.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
-/** Les deux palettes de l'application, posees par [TrailogTheme] et par lui seul : aucun ecran ne prend
- *  l'autre que celle en cours. */
-private val TrailogLight = lightColorScheme(primary = Color(0xFF1F6FB2), secondary = Color(0xFF2D867C))
-private val TrailogDark = darkColorScheme(primary = Color(0xFF6FB6E8), secondary = Color(0xFF7FC8BD))
-
-/** themePref : "system" | "light" | "dark". */
+/**
+ * Le theme de l'application, pose par lui seul : couleurs (cf. Color.kt), texte (Type.kt) et arrondis
+ * (Shape.kt). Un ecran lit MaterialTheme.colorScheme, .typography et .shapes, et n'a pas de taille de
+ * texte ni d'arrondi a lui.
+ *
+ * themePref : "system" | "light" | "dark".
+ */
 @Composable
 fun TrailogTheme(themePref: String = "light", content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isDarkTheme(themePref)) TrailogDark else TrailogLight, content = content)
+    MaterialTheme(
+        colorScheme = if (isDarkTheme(themePref)) TrailogDark else TrailogLight,
+        typography = TrailogTypography,
+        shapes = TrailogShapes,
+        content = content,
+    )
 }
 
 /** Le theme demande se resout-il en sombre ? "system" suit le reglage de l'appareil. */

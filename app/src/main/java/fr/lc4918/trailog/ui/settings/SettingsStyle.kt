@@ -69,20 +69,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.ColorScheme
+import fr.lc4918.trailog.ui.theme.TrailogDark
+import fr.lc4918.trailog.ui.theme.TrailogLight
 
 /**
  * Grammaire visuelle de l'ecran des reglages, reprise de la maquette
  * (captures/trailog-settings-refined.html).
  *
- * **Pourquoi un jeu de couleurs a part, et non le theme de l'application.** Le reste de l'app pose ses
- * ecrans sur la carte : le menu lateral, les infobulles et le gestionnaire flottent au-dessus d'elle et
- * empruntent les surfaces lavande de Material. Les reglages, eux, sont un formulaire plein ecran, ou
- * l'oeil doit distinguer d'un coup ce qui est un groupe, une rubrique et une ligne. La maquette y repond
- * par des cartes blanches sur un fond bleute, autour du bleu de l'application - une grammaire qui n'aurait
- * pas de sens sur la carte, et qui reste donc ici.
- *
- * En theme sombre, ces valeurs claires seraient illisibles : une seconde palette prend le relais
- * (cf. DarkSettingsPalette), batie sur les memes ecarts - fond, carte, filet - dans l'autre sens.
+ * **Des roles propres a l'ecran, tires du theme.** Les reglages sont un formulaire plein ecran, ou l'oeil
+ * doit distinguer d'un coup ce qui est un groupe, une rubrique et une ligne : des cartes sur un fond, des
+ * filets, des pistes de curseur. Ces roles-la sont nommes ici, mais leurs COULEURS sont celles du theme
+ * (cf. [settingsPaletteOf]) : l'ecran avait longtemps sa palette a lui, faute d'un theme complet, et ne
+ * suivait donc pas l'application quand celle-ci changeait de teinte.
  */
 class SettingsPalette(
     /** Fond de l'ecran, sur lequel les cartes se detachent. */
@@ -111,31 +110,30 @@ class SettingsPalette(
     val track: Color,
 )
 
-private val LightSettingsPalette = SettingsPalette(
-    screen = Color(0xFFF2F6FA), card = Color(0xFFFFFFFF), divider = Color(0xFFEBF1F6),
-    label = Color(0xFF17222C), subtle = Color(0xFF63798C), section = Color(0xFF5C7A94),
-    accent = Color(0xFF16588F), accentStrong = Color(0xFF0C3F6B), accentContainer = Color(0xFFD8E7F5),
-    outline = Color(0xFFC3D1DD), fieldBg = Color(0xFFF4F8FB), track = Color(0xFFDCE7F0),
+/**
+ * Les roles de l'ecran, pris au jeu de couleurs de l'application.
+ *
+ * Seuls le fond, la carte, le filet et le champ different selon le theme : en clair, la carte est plus
+ * CLAIRE que le fond (blanche sur un fond bleute) ; en sombre aussi - plus claire que le fond presque noir
+ * -, ce qui la fait monter d'un cran dans les conteneurs la ou le clair en descend.
+ */
+internal fun settingsPaletteOf(c: ColorScheme, dark: Boolean) = SettingsPalette(
+    screen = if (dark) c.surfaceContainerLowest else c.surfaceContainerLow,
+    card = if (dark) c.surfaceContainerLow else c.surfaceContainerLowest,
+    divider = if (dark) c.surfaceContainerHigh else c.surfaceContainer,
+    label = c.onSurface,
+    subtle = c.onSurfaceVariant,
+    section = c.onSurfaceVariant,
+    accent = c.primary,
+    accentStrong = c.onPrimaryContainer,
+    accentContainer = c.primaryContainer,
+    outline = c.outlineVariant,
+    fieldBg = if (dark) c.surfaceContainerHigh else c.surfaceContainerLow,
+    track = c.surfaceContainerHighest,
 )
 
-/**
- * La meme grammaire en sombre : les memes ecarts entre fond, carte et filet, dans l'autre sens.
- *
- * **Ecrite ici plutot que tiree des roles de Material.** Elle l'etait, et c'est ce qui posait du LAVANDE
- * sur cet ecran : l'application ne redefinit que `primary` et `secondary` de son jeu de couleurs, si bien
- * que `primaryContainer` et les surfaces restaient celles du jeu par defaut de Material 3 - violettes. La
- * pastille d'un onglet ouvert, celle d'une puce retenue et les fonds de carte tiraient donc au violet, sur
- * un ecran par ailleurs bleu.
- *
- * Les valeurs sont donc posees comme celles du clair, et les deux se lisent cote a cote. Meme bleu que
- * l'application, decline en sombre : c'est le seul moyen que "retenu" ait la meme couleur partout.
- */
-private val DarkSettingsPalette = SettingsPalette(
-    screen = Color(0xFF0E141B), card = Color(0xFF161F29), divider = Color(0xFF223140),
-    label = Color(0xFFE7EEF5), subtle = Color(0xFF9FB3C6), section = Color(0xFF89A2B9),
-    accent = Color(0xFF6FB6E8), accentStrong = Color(0xFFC7E3F8), accentContainer = Color(0xFF1D4A70),
-    outline = Color(0xFF33475C), fieldBg = Color(0xFF1B2836), track = Color(0xFF2A3B4D),
-)
+private val LightSettingsPalette = settingsPaletteOf(TrailogLight, dark = false)
+private val DarkSettingsPalette = settingsPaletteOf(TrailogDark, dark = true)
 
 private val LocalSettingsPalette = staticCompositionLocalOf { LightSettingsPalette }
 
@@ -143,7 +141,7 @@ private val LocalSettingsPalette = staticCompositionLocalOf { LightSettingsPalet
 val settingsPalette: SettingsPalette
     @Composable get() = LocalSettingsPalette.current
 
-/** Pose la palette de l'ecran : celle de la maquette en clair, sa jumelle sombre sinon. */
+/** Pose la palette de l'ecran, tiree du jeu de couleurs clair ou sombre de l'application. */
 @Composable
 fun ProvideSettingsPalette(dark: Boolean, content: @Composable () -> Unit) {
     val palette = if (dark) DarkSettingsPalette else LightSettingsPalette
