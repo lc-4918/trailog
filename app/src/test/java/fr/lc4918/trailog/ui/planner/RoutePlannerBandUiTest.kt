@@ -5,6 +5,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,6 +15,7 @@ import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.PlannerHistory
+import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,5 +146,44 @@ class RoutePlannerBandUiTest {
         compose.waitForIdle()
         assertTrue(state.pickingOnMap)
         assertTrue(state.collapsed)
+    }
+
+    /**
+     * La discipline se choisit dans un menu : ferme, le selecteur ne montre que celle en cours ; ouvert, il
+     * les offre toutes, et en retenir une la fait sienne - le libelle COURT du velo de route compris.
+     */
+    @Test fun `le selecteur de discipline ouvre son menu et en change`() {
+        val state = planificateurOuvert()
+        affiche(state)
+        compose.onNodeWithText(ctx.getString(R.string.profile_hybrid_bike)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.profile_road_short)).performClick()
+        compose.waitForIdle()
+        assertEquals(RoutingProfile.ROAD_BIKE, state.profile)
+        // Le menu referme, le selecteur porte la nouvelle discipline, et elle seule.
+        compose.onNodeWithText(ctx.getString(R.string.profile_road_short)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.profile_hybrid_bike)).assertDoesNotExist()
+    }
+
+    /**
+     * Enregistrer et exporter sont la, mais inertes, tant que rien n'est calcule : la ligne ne bouge pas a
+     * l'arrivee du trajet. Reinitialiser, lui, sert toujours.
+     */
+    @Test fun `enregistrer et exporter attendent un trajet calcule`() {
+        affiche(planificateurOuvert())
+        compose.onNodeWithText(ctx.getString(R.string.planner_action_save)).assertIsNotEnabled()
+        compose.onNodeWithText(ctx.getString(R.string.planner_action_export)).assertIsNotEnabled()
+        compose.onNodeWithText(ctx.getString(R.string.planner_reset)).assertIsEnabled()
+    }
+
+    /** Reinitialiser demande confirmation avant d'effacer : la boite s'ouvre, rien n'est encore perdu. */
+    @Test fun `reinitialiser demande confirmation`() {
+        val state = planificateurOuvert()
+        state.choose(state.steps.first(), StepTarget.Place(grenoble))
+        affiche(state)
+        compose.onNodeWithText(ctx.getString(R.string.planner_reset)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_reset_confirm_title)).assertIsDisplayed()
+        compose.onNodeWithText(grenoble.label).assertExists()
     }
 }

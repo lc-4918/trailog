@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Choisir le point de fin de mesure sur la trace %1$s</string>
     <string name="planner_title">Itinéraire</string>
     <string name="planner_reset">Réinitialiser</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Route</string>
+    <string name="planner_action_save">Enregistrer</string>
+    <string name="planner_action_export">Exporter</string>
     <string name="planner_start">Départ</string>
     <string name="planner_end">Arrivée</string>
     <string name="planner_via">Étape</string>

@@ -117,4 +117,14 @@ class ThemeTest {
             assertTrue("carte plus claire que le fond, sombre=$dark", p.card.luminance() > p.screen.luminance())
         }
     }
+
+    /** La poubelle est au TRAIT, sans remplissage, au format des icones de Material qu'elle remplace. */
+    @Test fun `la poubelle est une icone au trait de 24 dp`() {
+        val v = TrailogIcons.Trash
+        assertEquals(24f, v.defaultWidth.value)
+        assertEquals(24f, v.viewportWidth)
+        val trace = v.root.single() as androidx.compose.ui.graphics.vector.VectorPath
+        assertEquals(null, trace.fill)
+        assertTrue(trace.stroke != null && trace.strokeLineWidth > 0f)
+    }
 }

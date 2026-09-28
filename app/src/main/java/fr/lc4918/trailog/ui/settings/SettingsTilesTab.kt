@@ -29,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -87,6 +86,7 @@ import fr.lc4918.trailog.map.flagCodeFor
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import java.io.File
 import kotlinx.coroutines.launch
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /**
  * L'onglet Fonds : le catalogue des fonds de carte, leurs dossiers, et les composites.
@@ -314,7 +314,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
         Icon(painterResource(R.drawable.ic_settings_layers), null, Modifier.size(16.dp), tint = settingsPalette.subtle)
         Text(c.name, fontSize = 12.5.sp, color = settingsPalette.label, modifier = Modifier.weight(1f))
         RowIcon(Icons.Filled.Edit, stringResource(R.string.action_edit), onClick = onEdit)
-        RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_delete), onClick = onDelete)
+        RowIcon(TrailogIcons.Trash, stringResource(R.string.action_delete), onClick = onDelete)
         SettingsSwitch(c.enabled, onToggle)
     }
 }
@@ -524,7 +524,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
                 expanded = !expanded
             }
             if (onDelete != null) {
-                RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_delete), onClick = onDelete)
+                RowIcon(TrailogIcons.Trash, stringResource(R.string.action_delete), onClick = onDelete)
             }
             SettingsSwitch(p.enabled) { onSave(p.copy(enabled = it)) }
         }

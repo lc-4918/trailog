@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Folder
@@ -61,6 +60,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Icon
 import fr.lc4918.trailog.data.db.MinMapButtonSizeDp
 import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /**
  * L'onglet Systeme : langue, theme, sauvegarde et restauration, a propos.
@@ -235,7 +235,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             info = stringResource(R.string.settings_poi_cache_hint),
         ) {
             Icon(
-                Icons.Filled.DeleteOutline, null,
+                TrailogIcons.Trash, null,
                 tint = if (poiEnCache == 0) settingsPalette.subtle else settingsPalette.accent,
             )
         }
@@ -251,7 +251,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             info = stringResource(R.string.settings_planner_history_hint),
         ) {
             Icon(
-                Icons.Filled.DeleteOutline, null,
+                TrailogIcons.Trash, null,
                 tint = if (lieux.isEmpty()) settingsPalette.subtle else settingsPalette.accent,
             )
         }
@@ -267,7 +267,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
             info = stringResource(R.string.settings_map_cache_hint),
         ) {
             Icon(
-                Icons.Filled.DeleteOutline, null,
+                TrailogIcons.Trash, null,
                 tint = if (mapCache <= 0L) settingsPalette.subtle else settingsPalette.accent,
             )
         }
@@ -347,7 +347,7 @@ import fr.lc4918.trailog.data.db.MaxMapButtonSizeDp
         RowDivider()
         SetRow(stringResource(R.string.settings_label_avatar)) {
             if (cur.avatarSource.isNotBlank()) {
-                RowIcon(Icons.Filled.DeleteOutline, stringResource(R.string.action_reset_avatar)) {
+                RowIcon(TrailogIcons.Trash, stringResource(R.string.action_reset_avatar)) {
                     vm.save(cur.copy(avatarSource = ""))
                 }
             }

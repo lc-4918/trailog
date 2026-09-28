@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IndeterminateCheckBox
-import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
@@ -63,6 +62,7 @@ import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
 import androidx.core.graphics.toColorInt
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /**
  * Largeur MAXIMALE de la bulle.
@@ -207,7 +207,7 @@ private fun EnTete(
                 modifier = Modifier.size(28.dp),
             ) {
                 Icon(
-                    Icons.Outlined.DeleteOutline,
+                    TrailogIcons.Trash,
                     stringResource(R.string.poi_filter_hide_all),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp),

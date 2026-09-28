@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Endpunkt der Messung auf dem Track %1$s wählen</string>
     <string name="planner_title">Route</string>
     <string name="planner_reset">Zurücksetzen</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Rennrad</string>
+    <string name="planner_action_save">Speichern</string>
+    <string name="planner_action_export">Exportieren</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Ziel</string>
     <string name="planner_via">Zwischenziel</string>

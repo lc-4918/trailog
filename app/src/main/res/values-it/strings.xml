@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Scegliere il punto finale della misura sulla traccia %1$s</string>
     <string name="planner_title">Itinerario</string>
     <string name="planner_reset">Reimposta</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Strada</string>
+    <string name="planner_action_save">Salva</string>
+    <string name="planner_action_export">Esporta</string>
     <string name="planner_start">Partenza</string>
     <string name="planner_end">Arrivo</string>
     <string name="planner_via">Tappa</string>

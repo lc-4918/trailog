@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
@@ -40,6 +39,7 @@ import fr.lc4918.trailog.domain.model.SchemaItem
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.FullscreenImageDialog
 import fr.lc4918.trailog.ui.components.imageModel
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /**
  * Une ligne du formulaire. Les valeurs sont indexées par [id] et non par clé de propriété : la clé d'un
@@ -245,7 +245,7 @@ fun PropertyEditor(
                             containerColor = MaterialTheme.colorScheme.error,
                             contentColor = MaterialTheme.colorScheme.onError,
                         ),
-                    ) { Icon(Icons.Filled.Delete, stringResource(R.string.action_delete_point)) }
+                    ) { Icon(TrailogIcons.Trash, stringResource(R.string.action_delete_point)) }
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     Spacer(Modifier.width(8.dp))
@@ -400,7 +400,7 @@ private fun DeleteFieldBadge(onClick: () -> Unit, modifier: Modifier = Modifier)
                 contentColor = MaterialTheme.colorScheme.onError,
             ),
         ) {
-            Icon(Icons.Filled.Delete, stringResource(R.string.action_remove_field), Modifier.size(OverlayIconSize))
+            Icon(TrailogIcons.Trash, stringResource(R.string.action_remove_field), Modifier.size(OverlayIconSize))
         }
     }
 }

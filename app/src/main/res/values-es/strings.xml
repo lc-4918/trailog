@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Elegir el punto final de la medición en el track %1$s</string>
     <string name="planner_title">Itinerario</string>
     <string name="planner_reset">Restablecer</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Carretera</string>
+    <string name="planner_action_save">Guardar</string>
+    <string name="planner_action_export">Exportar</string>
     <string name="planner_start">Salida</string>
     <string name="planner_end">Llegada</string>
     <string name="planner_via">Punto intermedio</string>

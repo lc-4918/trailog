@@ -38,28 +38,21 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -86,6 +79,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import fr.lc4918.trailog.ui.settings.routingProfileIcon
+import fr.lc4918.trailog.ui.settings.routingProfileShortLabel
+import fr.lc4918.trailog.ui.theme.Spacing
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.domain.model.PlannerHistory
@@ -98,48 +111,37 @@ import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.SlopeLegend
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.routeInfos
-import fr.lc4918.trailog.ui.settings.RoutingProfilePicker
 import kotlinx.coroutines.delay
+import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /** Hauteur minimale de la bande : le double de celle des barres de consigne existantes, qui n'affichent
  *  qu'une ligne de texte. Le planificateur porte au moins la discipline et deux champs. */
 private val BandMinHeight = 96.dp
 
-/** Fond de la bande. Opaque a 94 % : la carte transparait juste assez pour qu'on garde le sentiment de la
+/** Fond de la bande. Presque opaque : la carte transparait juste assez pour qu'on garde le sentiment de la
  *  survoler, sans nuire a la lecture des champs. */
-private const val BandAlpha = 0.94f
-
-/** Gabarit du champ d'une etape, partage entre le champ de saisie et l'affichage replie qui le remplace
- *  au repos : les deux doivent avoir exactement la meme allure, sans quoi la ligne sauterait au focus.
- *
- *  La hauteur est IMPOSEE aux deux, et non laissee a leur contenu : le champ de saisie se mesure sur sa
- *  ligne de texte, l'affichage replie sur sa bordure, et les etapes remplies se collaient les unes aux
- *  autres la ou les vides gardaient un jour entre elles. */
-private val FieldShape = RoundedCornerShape(4.dp)
-private val FieldHeight = 40.dp
-private val FieldTextPadding = 16.dp
+private const val BandAlpha = 0.96f
 
 /**
- * Titre de la bande, et texte des etapes.
+ * Hauteur du champ d'une etape, partagee entre le champ de saisie et l'affichage replie qui le remplace
+ * au repos : les deux doivent avoir exactement la meme allure, sans quoi la ligne sauterait au focus.
  *
- * Le titre passe de 13 a 16 : c'est le titre d'un ecran, au meme rang que celui d'un profil de trace, et
- * il se lisait plus petit que le nom des lieux saisis dessous. Les etapes font le chemin inverse - un nom
- * de lieu complet ("Grenoble, Isere, France") tient rarement sur une ligne de champ, et chaque point de
- * moins en fait entrer davantage avant l'abreviation.
- *
- * L'indice et la valeur partagent la MEME taille : ce sont deux etats du meme texte, et les voir changer
- * de corps au moment de la saisie ferait sauter la ligne.
+ * La hauteur est IMPOSEE aux deux, et non laissee a leur contenu : le champ de saisie se mesure sur sa
+ * ligne de texte, l'affichage replie sur sa bordure, et les etapes remplies se collaient les unes aux
+ * autres la ou les vides gardaient un jour entre elles.
  */
-private const val BandTitleSp = 16f
-private const val FieldTextSp = 13f
+private val FieldHeight = 44.dp
+private val FieldTextPadding = 14.dp
 
-/** Ce qui separe deux champs, en toute circonstance : pose autour de chacun, donc compte double entre
- *  deux voisins. */
-private val FieldGap = 3.dp
+/** Ce qui separe deux champs : pose au-dessus et au-dessous de chacun, donc compte double entre voisins. */
+private val FieldGap = Spacing.xs
 
-/** Le bouton d'ajout : sa cible tactile, et le dessin qu'elle porte. */
-private val AddButtonSize = 32.dp
-private val AddIconSize = 20.dp
+/**
+ * Le rail, a gauche des champs : un trait qui relie le depart a l'arrivee en passant par chaque etape,
+ * avec un repere a hauteur de chaque champ - cercle creux au depart, point aux etapes, rond plein a
+ * l'arrivee. Il dit d'un coup d'oeil que les champs sont les etapes d'UN trajet, et dans quel ordre.
+ */
+private val RailWidth = 24.dp
 
 /**
  * Bande du planificateur d'itineraire, posee au bas de l'ecran.
@@ -154,6 +156,10 @@ private val AddIconSize = 20.dp
  * reouverture au coin bas-gauche - un second bouton d'itineraire, en face de celui du coin bas-droit qui
  * disparaissait pour lui. Deux boutons pour la meme fonction, chacun a un bout de l'ecran : c'est le bouton
  * habituel qui rouvre desormais le trajet en cours (cf. MapBottomRightControls), et il ne bouge pas.
+ *
+ * Mise en page : maquette "Trailog - theme et maquettes", ecrans du calcul d'itineraire. De haut en bas,
+ * separes par les crans de [Spacing] : l'en-tete, la ligne discipline et actions, les etapes sur leur
+ * rail, l'ajout d'une etape, puis les resultats sur une carte a eux.
  */
 @Composable
 fun RoutePlannerBand(
@@ -174,11 +180,20 @@ fun RoutePlannerBand(
     modifier: Modifier = Modifier,
 ) {
     if (state.collapsed) return
+    var confirmerReset by remember { mutableStateOf(false) }
+    // Coins hauts arrondis, bas droits : la bande est une feuille posee au bord de l'ecran.
+    //
+    // La forme DESSINE le fond et l'ombre, mais ne decoupe pas le contenu : un Surface a forme decoupe, et
+    // un contenu decoupe ne recoit un toucher qu'apres un test de contour. Ce test echoue sous Robolectric
+    // pour des coins inegaux - tous les touchers de la bande s'y perdaient. Rien ne deborde de toute
+    // facon : le contenu garde sa marge, loin des coins.
+    val bandShape = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha),
+        modifier = modifier.fillMaxWidth()
+            .shadow(8.dp, bandShape, clip = false)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = BandAlpha), bandShape),
+        color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 8.dp,
     ) {
         // La bande ne depasse jamais [maxHeight] : au-dela, elle recouvrirait la carte qu'elle sert a
         // composer. C'est la LISTE DES ETAPES qui absorbe le reste, l'en-tete, les disciplines et les
@@ -189,30 +204,52 @@ fun RoutePlannerBand(
             // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
             // nouveau deborder la bande hors de l'ecran.
             Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(start = Spacing.l, end = Spacing.l, top = Spacing.s, bottom = Spacing.l),
         ) {
             BandHeader(
                 recomputing = state.recomputing,
                 onClose = { state.collapseOrClose() },
             )
-            RoutingProfilePicker(state.profile) { state.chooseProfile(it) }
+            ProfileAndActions(
+                state = state,
+                onImport = onImport,
+                onDownload = onDownload,
+                onReset = { confirmerReset = true },
+                modifier = Modifier.padding(top = Spacing.s),
+            )
             StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
                 onPlaceForgotten,
-                onImport, onDownload,
-                Modifier.weight(1f, fill = false).padding(top = 10.dp))
+                Modifier.weight(1f, fill = false).padding(top = Spacing.m))
             ResultsZone(state, imperial, settings, lastLabelInsetPx)
         }
+    }
+    if (confirmerReset) {
+        AlertDialog(
+            onDismissRequest = { confirmerReset = false },
+            title = { Text(stringResource(R.string.planner_reset_confirm_title)) },
+            text = { Text(stringResource(R.string.planner_reset_confirm_text)) },
+            confirmButton = {
+                TextButton(onClick = { confirmerReset = false; state.reset() }) {
+                    Text(stringResource(R.string.planner_reset))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmerReset = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }
 
 /**
- * En-tete : le titre, puis la croix qui range la bande. La remise a blanc est descendue avec les autres
- * gestes du parcours, sous les etapes (cf. [StepList]).
+ * En-tete : le titre, puis la croix qui range la bande.
  *
  * **Un seul bouton pour ranger, la ou il y en avait deux.** Le chevron "reduire" gardait le trajet, la
  * croix le detruisait apres une question : deux boutons voisins, presque identiques, dont l'un se
  * rattrapait et l'autre non. La croix range desormais, comme le chevron qu'elle remplace, et le seul
  * bouton qui perd quelque chose le dit dans son libelle.
+ *
+ * Pas de poignee au-dessus du titre, comme en portent les feuilles qu'on tire : la bande ne se tire pas,
+ * et une poignee promettrait un geste qui n'existe pas.
  */
 @Composable
 private fun BandHeader(
@@ -220,28 +257,129 @@ private fun BandHeader(
     onClose: () -> Unit,
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.planner_title), fontSize = BandTitleSp.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp))
+        Row(Modifier.height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.titleMedium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
             // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
-            if (recomputing) CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-            IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
-                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp))
+            if (recomputing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            // Decale de sa marge interne : c'est le DESSIN de la croix qui s'aligne sur le bord des
+            // champs, non sa cible tactile.
+            IconButton(onClick = onClose, modifier = Modifier.offset(x = Spacing.s).size(40.dp)) {
+                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
 /**
- * Les etapes, le bouton d'ajout sous la derniere, et les deux sorties du parcours a l'oppose.
+ * La discipline, puis les trois gestes du parcours : enregistrer, exporter, reinitialiser.
  *
- * Le bouton `+` est aligne dans la marge gauche, a l'aplomb du bord des champs et non dedans : il
- * n'appartient a aucune etape, il en cree une de plus.
+ * **Un selecteur, et non une rangee de cinq pastilles.** La rangee prenait toute une ligne pour un choix
+ * qu'on fait une fois par trajet, et ses cinq libelles, serres, passaient sur deux lignes. Ferme, le
+ * selecteur ne montre que la discipline en cours ; il libere a cote la place des trois gestes, qui se
+ * perdaient auparavant sous les etapes, en icones seules.
  *
- * Enregistrer et telecharger partagent cette ligne parce qu'elle est la seule libre : les mettre sous les
- * totaux les eloignait de la composition du parcours, alors qu'ils la terminent.
+ * Enregistrer et exporter sont GRISES tant que rien n'est calcule, et non retires : la ligne ne bouge pas
+ * a l'arrivee du trajet. Reinitialiser, seul geste qui efface, est en rouge - et demande confirmation.
+ */
+@Composable
+private fun ProfileAndActions(
+    state: RoutePlannerState,
+    onImport: () -> Unit,
+    onDownload: () -> Unit,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val calcule = state.route is RouteState.Done
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        ProfileSelect(state.profile, { state.chooseProfile(it) }, Modifier.weight(1f))
+        val neutre = MaterialTheme.colorScheme.onSurfaceVariant
+        BandAction(Icons.Outlined.Folder, stringResource(R.string.planner_action_save), neutre, calcule, onImport)
+        BandAction(Icons.Filled.Download, stringResource(R.string.planner_action_export), neutre, calcule, onDownload)
+        BandAction(TrailogIcons.Trash, stringResource(R.string.planner_reset),
+            MaterialTheme.colorScheme.error, true, onReset)
+    }
+}
+
+/**
+ * Le selecteur de discipline : l'icone et le libelle court de la discipline en cours, et le menu des
+ * cinq, chacune avec son icone. Meme fond et meme contour que les champs des etapes, dont il est le voisin.
+ */
+@Composable
+private fun ProfileSelect(current: RoutingProfile, onSelect: (RoutingProfile) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.small
+    Box(modifier) {
+        Row(
+            Modifier.fillMaxWidth().height(FieldHeight).clip(shape)
+                .background(scheme.surfaceContainerLow)
+                .border(if (open) 2.dp else 1.dp, if (open) scheme.primary else scheme.outlineVariant, shape)
+                .clickable { open = true }
+                .padding(start = Spacing.m, end = Spacing.s),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(routingProfileIcon(current), null, Modifier.size(20.dp), tint = scheme.primary)
+            Text(routingProfileShortLabel(current), style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ExpandMore, null, Modifier.size(18.dp), tint = scheme.onSurfaceVariant)
+        }
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            shape = MaterialTheme.shapes.medium,
+            containerColor = scheme.surfaceContainer,
+            modifier = Modifier.width(212.dp),
+        ) {
+            RoutingProfile.entries.forEach { p ->
+                val retenue = p == current
+                DropdownMenuItem(
+                    text = {
+                        Text(routingProfileShortLabel(p), style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (retenue) FontWeight.SemiBold else FontWeight.Normal)
+                    },
+                    leadingIcon = { Icon(routingProfileIcon(p), null, Modifier.size(20.dp)) },
+                    trailingIcon = if (retenue) { { Icon(Icons.Filled.Check, null, Modifier.size(18.dp)) } } else null,
+                    onClick = { open = false; onSelect(p) },
+                    colors = MenuDefaults.itemColors(
+                        textColor = if (retenue) scheme.onPrimaryContainer else scheme.onSurface,
+                        leadingIconColor = if (retenue) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+                        trailingIconColor = scheme.onPrimaryContainer,
+                    ),
+                    modifier = Modifier.padding(horizontal = 6.dp).clip(MaterialTheme.shapes.small)
+                        .then(if (retenue) Modifier.background(scheme.primaryContainer) else Modifier),
+                )
+            }
+        }
+    }
+}
+
+/** Un geste du parcours : l'icone, et son libelle dessous. Grise et inerte tant qu'il n'a rien a faire. */
+@Composable
+private fun BandAction(icon: ImageVector, label: String, color: Color, enabled: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier.width(62.dp).height(52.dp).clip(MaterialTheme.shapes.small)
+            .clickable(enabled = enabled, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.38f),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically),
+    ) {
+        Icon(icon, null, Modifier.size(20.dp), tint = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, letterSpacing = 0.sp, color = color,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/**
+ * Les etapes sur leur rail, et le bouton d'ajout sous la derniere.
+ *
+ * L'ajout se pose a l'aplomb du rail, son "+" a la place d'un repere : il n'appartient a aucune etape, il
+ * en cree une de plus au bout du trajet.
  */
 @Composable
 private fun StepList(
@@ -253,12 +391,9 @@ private fun StepList(
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
     onPlaceForgotten: (GeocodePlace) -> Unit,
-    onImport: () -> Unit,
-    onDownload: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
-    var confirmerReset by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -292,7 +427,7 @@ private fun StepList(
                         // est opaque - les lignes qu'on survole ne doivent pas transparaitre dessous.
                         .then(
                             if (drag.from == i) Modifier.background(
-                                MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+                                MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraSmall)
                             else Modifier
                         ),
                     handle = Modifier.pointerInput(step.id) {
@@ -318,55 +453,66 @@ private fun StepList(
                 )
             }
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                if (state.canAddStep) {
-                    // Decale de la moitie de sa marge interne : c'est le DESSIN du plus qui doit tomber
-                    // sur le bord des champs, non la cible tactile qui l'entoure.
-                    IconButton(
-                        onClick = { state.addStep() },
-                        modifier = Modifier.offset(x = -(AddButtonSize - AddIconSize) / 2).size(AddButtonSize),
-                    ) {
-                        Icon(Icons.Filled.Add, stringResource(R.string.planner_add_step),
-                            Modifier.size(AddIconSize))
-                    }
-                }
-                Spacer(Modifier.weight(1f))
-                // Les deux sorties n'ont de sens qu'une fois le parcours calcule : avant, elles n'auraient
-                // rien a ecrire. La remise a blanc, elle, est toujours la, a droite des deux autres - et
-                // demande confirmation : elle efface ce qu'on a compose.
-                if (state.route is RouteState.Done) {
-                    BandAction(Icons.Outlined.Save, stringResource(R.string.planner_import_layer), onImport)
-                    BandAction(Icons.Outlined.FileDownload, stringResource(R.string.planner_download_gpx), onDownload)
-                }
-                BandAction(Icons.Filled.DeleteOutline, stringResource(R.string.planner_reset)) { confirmerReset = true }
-            }
-        }
-    }
-    if (confirmerReset) {
-        AlertDialog(
-            onDismissRequest = { confirmerReset = false },
-            title = { Text(stringResource(R.string.planner_reset_confirm_title)) },
-            text = { Text(stringResource(R.string.planner_reset_confirm_text)) },
-            confirmButton = {
-                TextButton(onClick = { confirmerReset = false; state.reset() }) {
-                    Text(stringResource(R.string.planner_reset))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmerReset = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
+        if (state.canAddStep) AddStepButton { state.addStep() }
     }
 }
 
-/** Un geste du parcours : meme gabarit et meme gris que les actions de l'en-tete du menu lateral. */
+/** "Ajouter une etape" : un "+" cercle en pointille a l'aplomb du rail, et le libelle a cote. */
 @Composable
-private fun BandAction(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(Modifier.size(38.dp).clip(CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, label, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun AddStepButton(onClick: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    Row(
+        Modifier.padding(top = Spacing.xs).height(40.dp).clip(CircleShape).clickable(onClick = onClick)
+            .padding(end = Spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.width(RailWidth), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(20.dp).drawBehind {
+                    val w = 1.5.dp.toPx()
+                    drawCircle(primary, radius = (size.minDimension - w) / 2, style = Stroke(
+                        width = w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx())),
+                    ))
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Add, null, Modifier.size(14.dp), tint = primary)
+            }
+        }
+        Text(stringResource(R.string.planner_add_step), style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold, color = primary, modifier = Modifier.padding(start = Spacing.m))
     }
 }
+
+/**
+ * Le rail d'une etape : le trait qui la relie a ses voisines, et son repere a hauteur du champ. Chaque
+ * ligne dessine sa part - la moitie haute vers la precedente, la moitie basse vers la suivante, jusqu'au
+ * bas de ses propositions si elles sont ouvertes - et les parts se rejoignent d'une ligne a l'autre.
+ */
+private fun Modifier.stepRail(index: Int, count: Int, line: Color, mark: Color, hole: Color, via: Color) =
+    drawBehind {
+        val x = RailWidth.toPx() / 2
+        val y = (FieldGap + FieldHeight / 2).toPx()
+        val w = 2.dp.toPx()
+        if (index > 0) drawLine(line, Offset(x, 0f), Offset(x, y), w)
+        if (index < count - 1) drawLine(line, Offset(x, y), Offset(x, size.height), w)
+        val c = Offset(x, y)
+        when (index) {
+            0 -> {
+                drawCircle(hole, 7.dp.toPx(), c)
+                drawCircle(mark, 5.5.dp.toPx(), c, style = Stroke(3.dp.toPx()))
+            }
+            count - 1 -> {
+                drawCircle(mark, 9.5.dp.toPx(), c)
+                drawCircle(hole, 8.dp.toPx(), c)
+                drawCircle(mark, 5.dp.toPx(), c)
+            }
+            else -> {
+                drawCircle(hole, 5.dp.toPx(), c)
+                drawCircle(via, 3.dp.toPx(), c)
+            }
+        }
+    }
 
 /** Une etape : son champ, sa poignee de glissement, sa suppression, puis ses propositions. */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -441,21 +587,32 @@ private fun StepRow(
             wantsFocus = false
         }
     }
-    Column(modifier.bringIntoViewRequester(bringIntoView)) {
+    val scheme = MaterialTheme.colorScheme
+    val fieldShape = MaterialTheme.shapes.small
+    val fieldStyle = MaterialTheme.typography.bodyMedium
+    Column(
+        modifier.bringIntoViewRequester(bringIntoView).stepRail(
+            index, state.steps.size,
+            line = scheme.outlineVariant, mark = scheme.primary, hole = scheme.surface, via = scheme.onSurfaceVariant,
+        )
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Spacer(Modifier.width(RailWidth + Spacing.s))
             Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
                 if (step.target != null && !focused && !wantsFocus) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie
                     // ne sait pas abreger - il fait defiler son texte et le coupe net au bord, sans dire
                     // qu'il en reste. Le champ reel reprend sa place des qu'on le touche.
                     Box(
-                        Modifier.fillMaxSize()
-                            .border(1.dp, MaterialTheme.colorScheme.outline, FieldShape)
+                        Modifier.fillMaxSize().clip(fieldShape)
+                            .background(scheme.surfaceContainerLow)
+                            .border(1.dp, scheme.outlineVariant, fieldShape)
                             .clickable { wantsFocus = true }
-                            .padding(horizontal = FieldTextPadding),
+                            // A droite, la place de la croix : le libelle s'abrege avant elle.
+                            .padding(start = FieldTextPadding, end = 36.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = FieldTextSp.sp)
+                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, style = fieldStyle)
                     }
                 } else {
                     // La saisie, et elle seule : y poser le libelle du lieu retenu ferait ecrire la
@@ -467,17 +624,22 @@ private fun StepRow(
                         value = step.query,
                         onValueChange = { state.type(step, it) },
                         singleLine = true,
-                        shape = FieldShape,
+                        shape = fieldShape,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = scheme.outlineVariant,
+                            unfocusedContainerColor = scheme.surfaceContainerLow,
+                            focusedContainerColor = scheme.surfaceContainerLow,
+                        ),
                         modifier = Modifier.fillMaxSize().focusRequester(focusRequester)
                             .onFocusChanged {
                                 focused = it.isFocused
                                 state.setEditing(step, it.isFocused)
                                 if (it.isFocused) state.focus(step)
                             },
-                        textStyle = LocalTextStyle.current.copy(fontSize = FieldTextSp.sp),
+                        textStyle = fieldStyle,
                         placeholder = {
                             Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                fontSize = FieldTextSp.sp)
+                                style = fieldStyle, color = scheme.onSurfaceVariant)
                         },
                     )
                 }
@@ -486,27 +648,20 @@ private fun StepRow(
                 // transparence laisse lire. Le spinner se tient a gauche de la croix : l'interrogation
                 // porte sur ce qu'on vient de taper, elle appartient au champ et non a la liste dessous.
                 Row(
-                    Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                    Modifier.align(Alignment.CenterEnd).padding(end = Spacing.s),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
                     if (step.searching) {
-                        CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
                     }
                     if (shown.isNotEmpty()) {
-                        // Pastille et croix prises aux roles du theme, et non a deux couleurs fixes
-                        // choisies par theme : elles s'echangent d'elles-memes en sombre, la pastille
-                        // restant le contraire du fond sur lequel elle se pose.
                         Box(
-                            Modifier.size(15.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    CircleShape)
-                                .clickable { state.clearStep(step) },
+                            Modifier.size(24.dp).clip(CircleShape).clickable { state.clearStep(step) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Filled.Close, stringResource(R.string.planner_clear_step),
-                                Modifier.size(11.dp), tint = MaterialTheme.colorScheme.surface)
+                                Modifier.size(16.dp), tint = scheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -517,17 +672,19 @@ private fun StepRow(
                 // poignee seule, apres un appui long, et la ne dispute rien au defilement de la liste ni au
                 // champ de saisie.
                 Box(
-                    handle.size(width = 26.dp, height = FieldHeight),
+                    handle.size(width = 28.dp, height = FieldHeight),
                     contentAlignment = Alignment.Center,
                 ) {
                     // Le meme dessin que la poignee des couches et des dossiers du menu lateral : meme icone,
                     // meme taille, meme gris - c'est le meme geste.
                     Icon(Icons.Filled.DragIndicator, stringResource(R.string.planner_drag_step),
-                        Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f))
+                        Modifier.size(18.dp), tint = scheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
+                // Le bord droit de la corbeille, et non celui de sa cible, tombe sur le bord de la bande.
                 IconButton(onClick = { state.removeStep(index) }, enabled = state.steps.size > 2,
-                    modifier = Modifier.size(26.dp)) {
-                    Icon(Icons.Filled.DeleteOutline, stringResource(R.string.planner_remove_step), Modifier.size(18.dp))
+                    modifier = Modifier.offset(x = Spacing.s).size(width = 36.dp, height = 40.dp)) {
+                    Icon(TrailogIcons.Trash, stringResource(R.string.planner_remove_step), Modifier.size(20.dp),
+                        tint = scheme.onSurfaceVariant.copy(alpha = if (state.steps.size > 2) 1f else 0.38f))
                 }
             }
         }
@@ -540,84 +697,97 @@ private fun StepRow(
         LaunchedEffect(suggesting, step.results.size, step.searching) {
             if (suggesting) bringIntoView.bringIntoView()
         }
-        // Position actuelle : proposee au focus tant que rien n'a ete tape, et non offerte par un bouton
-        // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
-        // Seulement si la localisation est allumee dans le telephone : sans position connue, le calcul
-        // echouerait sur un "Aucun itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas
-        // honorer ne vaut rien. L'AFFICHAGE du repere sur la carte, lui, n'entre pas en compte - la
-        // position se demande au capteur le temps du calcul, sans rien poser sur la carte.
-        // Elle peut servir PLUSIEURS fois dans un meme trajet : partir d'ou l'on est, passer par un col et
-        // y revenir, c'est la boucle, et c'est le trajet le plus courant a pied comme a velo. Seul le
-        // doublon COLLE - deux etapes voisines sur le meme point - reste hors de portee : le troncon entre
-        // les deux serait de longueur nulle, et le moteur refuse la requete entiere.
-        if (sensorEnabled && vierge && state.canUseCurrentPosition(step)) {
-            SuggestionRow(
-                label = stringResource(R.string.planner_current_position),
-                icon = true,
-                onClick = { onPickCurrentPosition(step); settle() },
-            )
-        }
-        /*
-         * Un point MONTRE sur la carte, juste apres la position actuelle - et en tete quand celle-ci sert
-         * deja ailleurs dans le trajet, la ligne ci-dessus ne s'affichant plus.
-         *
-         * **Ce qu'aucune frappe ne trouve.** Un depart de sentier, un col, un croisement de pistes, le coin
-         * d'un parking : le geocodeur n'a pas de nom pour eux, et les chercher au clavier ne rend rien. Le
-         * seul moyen de les designer est de les montrer, et la carte est deja dessous.
-         *
-         * Offerte sans condition de capteur ni de reseau, a la difference de la position actuelle : montrer
-         * un endroit ne demande rien a personne. L'adresse qui suivra, elle, passe par le geocodeur - mais
-         * son silence ne coute que le nom (cf. RoutePlannerState.nameMapPoint), jamais l'etape.
-         */
-        if (vierge) {
-            SuggestionRow(
-                label = stringResource(R.string.planner_pick_on_map),
-                icon = true,
-                image = Icons.Filled.Place,
-                onClick = { onPickOnMap(step); settle() },
-            )
-        }
-        /*
-         * Historique : les huit derniers lieux retenus, proposes au focus d'un champ vide, comme la
-         * position actuelle et au meme moment.
-         *
-         * Ils s'effacent des la premiere frappe : ce qu'on tape prime toujours sur ce qu'on a fait hier,
-         * et deux listes superposees au-dessus d'un clavier ne se lisent pas.
-         *
-         * Un lieu DEJA POSE ailleurs dans le trajet n'y figure pas : le choisir donnerait deux etapes au
-         * meme endroit, donc un troncon de longueur nulle. Celui de l'etape courante, lui, reste offert -
-         * c'est elle qu'on est en train de remplacer.
-         */
-        if (rappels.isNotEmpty()) {
-            rappels.forEach { lieu ->
+        // Les propositions tiennent dans UNE carte, sous le champ et a l'aplomb de ses bords : elles se
+        // lisent comme ce que le champ offre, et non comme des lignes de la bande entre deux etapes.
+        if (vierge || rappels.isNotEmpty() || step.failed || step.results.isNotEmpty()) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = scheme.surfaceContainerLowest,
+                border = BorderStroke(1.dp, scheme.outlineVariant),
+                shadowElevation = 2.dp,
+                modifier = Modifier.padding(start = RailWidth + Spacing.s, end = 64.dp, bottom = Spacing.xs),
+            ) {
+            Column(Modifier.padding(vertical = Spacing.xs)) {
+            // Position actuelle : proposee au focus tant que rien n'a ete tape, et non offerte par un bouton
+            // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
+            // Seulement si la localisation est allumee dans le telephone : sans position connue, le calcul
+            // echouerait sur un "Aucun itineraire" que rien n'expliquerait. Une proposition qu'on ne peut pas
+            // honorer ne vaut rien. L'AFFICHAGE du repere sur la carte, lui, n'entre pas en compte - la
+            // position se demande au capteur le temps du calcul, sans rien poser sur la carte.
+            // Elle peut servir PLUSIEURS fois dans un meme trajet : partir d'ou l'on est, passer par un col et
+            // y revenir, c'est la boucle, et c'est le trajet le plus courant a pied comme a velo. Seul le
+            // doublon COLLE - deux etapes voisines sur le meme point - reste hors de portee : le troncon entre
+            // les deux serait de longueur nulle, et le moteur refuse la requete entiere.
+            if (sensorEnabled && vierge && state.canUseCurrentPosition(step)) {
                 SuggestionRow(
-                    label = lieu.label,
+                    label = stringResource(R.string.planner_current_position),
                     icon = true,
-                    image = Icons.Filled.History,
-                    onClick = { onPlaceChosen(lieu); state.choose(step, StepTarget.Place(lieu)); settle() },
-                    onForget = { onPlaceForgotten(lieu) },
+                    onClick = { onPickCurrentPosition(step); settle() },
                 )
             }
-        }
-        // Echec du service : on le DIT, avec de quoi reessayer. Le silence laissait croire que le lieu
-        // n'existait pas.
-        if (step.failed) {
-            Row(
-                Modifier.fillMaxWidth().clickable { step.askRetry() }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.planner_search_failed), fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
-                // Meme graisse que le libelle d'un bouton de dialogue (labelLarge, demi-gras) : c'est le
-                // meme genre de geste, et le gras le faisait crier plus fort que le "Fermer" d'une boite.
-                Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+            /*
+             * Un point MONTRE sur la carte, juste apres la position actuelle - et en tete quand celle-ci sert
+             * deja ailleurs dans le trajet, la ligne ci-dessus ne s'affichant plus.
+             *
+             * **Ce qu'aucune frappe ne trouve.** Un depart de sentier, un col, un croisement de pistes, le coin
+             * d'un parking : le geocodeur n'a pas de nom pour eux, et les chercher au clavier ne rend rien. Le
+             * seul moyen de les designer est de les montrer, et la carte est deja dessous.
+             *
+             * Offerte sans condition de capteur ni de reseau, a la difference de la position actuelle : montrer
+             * un endroit ne demande rien a personne. L'adresse qui suivra, elle, passe par le geocodeur - mais
+             * son silence ne coute que le nom (cf. RoutePlannerState.nameMapPoint), jamais l'etape.
+             */
+            if (vierge) {
+                SuggestionRow(
+                    label = stringResource(R.string.planner_pick_on_map),
+                    icon = true,
+                    image = Icons.Filled.Place,
+                    onClick = { onPickOnMap(step); settle() },
+                )
             }
-        }
-        step.results.forEach { place ->
-            SuggestionRow(label = place.label, icon = false,
-                onClick = { onPlaceChosen(place); state.choose(step, StepTarget.Place(place)); settle() })
+            /*
+             * Historique : les huit derniers lieux retenus, proposes au focus d'un champ vide, comme la
+             * position actuelle et au meme moment.
+             *
+             * Ils s'effacent des la premiere frappe : ce qu'on tape prime toujours sur ce qu'on a fait hier,
+             * et deux listes superposees au-dessus d'un clavier ne se lisent pas.
+             *
+             * Un lieu DEJA POSE ailleurs dans le trajet n'y figure pas : le choisir donnerait deux etapes au
+             * meme endroit, donc un troncon de longueur nulle. Celui de l'etape courante, lui, reste offert -
+             * c'est elle qu'on est en train de remplacer.
+             */
+            if (rappels.isNotEmpty()) {
+                rappels.forEach { lieu ->
+                    SuggestionRow(
+                        label = lieu.label,
+                        icon = true,
+                        image = Icons.Filled.History,
+                        onClick = { onPlaceChosen(lieu); state.choose(step, StepTarget.Place(lieu)); settle() },
+                        onForget = { onPlaceForgotten(lieu) },
+                    )
+                }
+            }
+            // Echec du service : on le DIT, avec de quoi reessayer. Le silence laissait croire que le lieu
+            // n'existait pas.
+            if (step.failed) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { step.askRetry() }
+                        .padding(horizontal = Spacing.m),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.planner_search_failed), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+                    // Le style d'un bouton de dialogue (labelLarge) : c'est le meme genre de geste.
+                    Text(stringResource(R.string.planner_retry), style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            step.results.forEach { place ->
+                SuggestionRow(label = place.label, icon = false,
+                    onClick = { onPlaceChosen(place); state.choose(step, StepTarget.Place(place)); settle() })
+            }
+            }
+            }
         }
     }
 }
@@ -632,14 +802,19 @@ private fun SuggestionRow(
     onForget: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(onClick = onClick)
+            .padding(start = Spacing.m, end = if (onForget != null) Spacing.xs else Spacing.m),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon) {
-            Icon(image, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            // L'historique en gris : ce n'est qu'un rappel. Les deux gestes - ou je suis, un point de la
+            // carte - dans l'accent.
+            val teinte = if (onForget != null) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.primary
+            Icon(image, null, Modifier.size(18.dp), tint = teinte)
         }
-        Text(label, fontSize = 13.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = if (icon) 6.dp else 0.dp).weight(1f))
+        Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = if (icon) Spacing.m else 0.dp, top = 6.dp, bottom = 6.dp).weight(1f))
         /*
          * La croix des seules propositions d'HISTORIQUE (cf. [onForget] : les autres ne la passent pas).
          *
@@ -651,10 +826,10 @@ private fun SuggestionRow(
          */
         if (onForget != null) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                IconButton(onClick = onForget, modifier = Modifier.size(22.dp)) {
+                IconButton(onClick = onForget, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Filled.Close, stringResource(R.string.planner_forget_place),
-                        Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -683,22 +858,23 @@ private fun ResultsZone(
         // trouver. Le second n'a jamais atteint le moteur, et le dire "Aucun itineraire" envoyait chercher
         // la faute du cote de la discipline ou des etapes.
         RouteState.Failed -> Text(stringResource(R.string.geocode_no_route),
-            fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth().padding(top = Spacing.m))
         RouteState.NoPosition -> Text(stringResource(R.string.planner_no_position),
-            fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth().padding(top = Spacing.m))
         // Le reseau, lui, porte de quoi REDEMANDER : rien n'est a corriger dans le trajet, il n'y a qu'a
         // recommencer une fois la liaison revenue. Meme ligne que l'echec de la recherche d'un lieu, au
         // dessus : c'est le meme genre de panne, et le meme geste la repare.
         RouteState.NoNetwork -> Row(
-            Modifier.fillMaxWidth().clickable { state.retryRoute() }.padding(vertical = 8.dp),
+            Modifier.padding(top = Spacing.s).fillMaxWidth().heightIn(min = 44.dp)
+                .clickable { state.retryRoute() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.planner_no_network), fontSize = 13.sp,
+            Text(stringResource(R.string.planner_no_network), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
-            Text(stringResource(R.string.planner_retry), fontSize = 13.sp,
-                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.planner_retry), style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary)
         }
         is RouteState.Done -> {
             // Fenetre affichee du profil : la plage zoomee, ou tout le parcours. Le kilometrage n'est
@@ -716,6 +892,12 @@ private fun ResultsZone(
             // lentement qu'une portion plate de meme longueur - d'ou le "~" qui la precede.
             val partSeconds = if (r.track.stats.distance > 0)
                 r.seconds * stats.distance / r.track.stats.distance else 0.0
+            // Les resultats sur une carte a eux : ils se lisent a part des etapes qui les ont produits.
+            Column(
+                Modifier.padding(top = Spacing.m).fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
+                    .padding(start = Spacing.m, end = Spacing.m, top = Spacing.m, bottom = Spacing.xs),
+            ) {
             // Memes colonnes, memes tailles et meme reglage que les infos d'une trace sous son profil :
             // c'est la meme lecture, sur un parcours qu'on vient de calculer plutot que sur un fichier.
             TrackInfoColumns(
@@ -724,45 +906,48 @@ private fun ResultsZone(
                 bold = settings.profBarBold,
                 modifier = Modifier.fillMaxWidth(),
             )
+            HorizontalDivider(Modifier.padding(top = 10.dp, bottom = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
             // Le profil est replie derriere son libelle : il occupe a lui seul la moitie de la hauteur
             // disponible, et il n'a d'interet qu'une fois le trajet compose. La zone resultats se reduit
             // donc a une ligne de totaux et a cette bascule, tant qu'on ne demande pas le relief.
             Row(
-                Modifier.fillMaxWidth().clickable { state.toggleProfile() }.padding(vertical = 6.dp),
+                Modifier.fillMaxWidth().height(40.dp).clickable { state.toggleProfile() },
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             ) {
                 Text(
                     stringResource(
                         if (state.profileVisible) R.string.planner_hide_profile
                         else R.string.planner_show_profile
                     ),
-                    fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f),
                 )
                 // Calcule sur le telephone : dit en passant, sans en faire un evenement. C'est ce qui
                 // explique un calcul plus lent qu'a l'habitude, ou un trajet trouve sans reseau.
                 if (r.offline) {
-                    Text(stringResource(R.string.planner_computed_offline), fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.planner_computed_offline), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                            .padding(horizontal = Spacing.s, vertical = 3.dp))
                 }
                 // Retour a la vue complete : sur cette ligne parce qu'il concerne le profil, et non le
                 // parcours. Bouton a part DANS une ligne cliquable : son propre clic l'emporte sur celui
                 // de la ligne, qui continue d'ouvrir et de fermer le profil partout ailleurs.
                 if (state.zoomed) {
                     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                        IconButton(onClick = { state.resetZoom() }, modifier = Modifier.size(26.dp)) {
+                        IconButton(onClick = { state.resetZoom() }, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Filled.Fullscreen, stringResource(R.string.planner_zoom_out),
-                                Modifier.size(18.dp))
+                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
                 }
                 // Le chevron montre le SENS DU GESTE a venir, non l'etat courant : profil replie, il
                 // pointe vers le bas pour dire qu'il va se deployer ; deploye, vers le haut pour le
                 // refermer.
                 Icon(
                     if (state.profileVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    null, Modifier.size(18.dp),
+                    null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (state.profileShown) {
@@ -797,6 +982,7 @@ private fun ResultsZone(
                     )
                 }
                 }
+            }
             }
         }
     }

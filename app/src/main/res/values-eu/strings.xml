@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Aukeratu neurketaren amaiera-puntua %1$s arrastoan</string>
     <string name="planner_title">Ibilbidea</string>
     <string name="planner_reset">Berrezarri</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Errepidea</string>
+    <string name="planner_action_save">Gorde</string>
+    <string name="planner_action_export">Esportatu</string>
     <string name="planner_start">Irteera</string>
     <string name="planner_end">Helmuga</string>
     <string name="planner_via">Etapa</string>

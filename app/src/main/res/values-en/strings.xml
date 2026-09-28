@@ -154,6 +154,10 @@
     <string name="measure_pick_end">Pick the measurement end point on track %1$s</string>
     <string name="planner_title">Route</string>
     <string name="planner_reset">Reset</string>
+    <!-- Libelles courts de la ligne de discipline : ils tiennent sous une icone, dans un bouton etroit. -->
+    <string name="profile_road_short">Road</string>
+    <string name="planner_action_save">Save</string>
+    <string name="planner_action_export">Export</string>
     <string name="planner_start">Start</string>
     <string name="planner_end">Finish</string>
     <string name="planner_via">Waypoint</string>

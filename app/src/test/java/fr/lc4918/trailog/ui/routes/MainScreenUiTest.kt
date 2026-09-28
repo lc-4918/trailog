@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -526,10 +529,11 @@ class MainScreenUiTest {
         ouvreLeCalcul()
         compose.onNodeWithText(libelle(R.string.planner_end)).performTextInput("Mire")
 
-        // La corbeille, puis la confirmation : effacer ce qu'on a compose se demande deux fois.
-        compose.onNodeWithContentDescription(libelle(R.string.planner_reset)).performClick()
-        attend { texte(R.string.planner_reset_confirm_title) }
+        // Le bouton, puis la confirmation : effacer ce qu'on a compose se demande deux fois. Les deux
+        // portent le meme mot ; la confirmation est celui de la boite de dialogue.
         compose.onNodeWithText(libelle(R.string.planner_reset)).performClick()
+        attend { texte(R.string.planner_reset_confirm_title) }
+        compose.onNode(hasText(libelle(R.string.planner_reset)) and hasAnyAncestor(isDialog())).performClick()
         attend { !texteBrut("Mire") }
         assertTrue("la bande est toujours deployee", texte(R.string.planner_end))
     }

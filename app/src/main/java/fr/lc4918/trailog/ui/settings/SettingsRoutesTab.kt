@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Grain
@@ -573,6 +572,13 @@ import kotlinx.coroutines.launch
     }
 }
 
+/**
+ * Libellé COURT d'une discipline, pour le sélecteur de la bande d'itinéraire : il y partage sa ligne avec
+ * trois boutons. Seul le vélo de route en a un à lui ("Route") ; les autres sont déjà brefs.
+ */
+@Composable fun routingProfileShortLabel(p: RoutingProfile): String =
+    if (p == RoutingProfile.ROAD_BIKE) stringResource(R.string.profile_road_short) else routingProfileLabel(p)
+
 /** Nom du moteur d'itinéraire. Pas de chaîne traduite : ce sont deux noms propres. */
 @Composable private fun routeEngineLabel(e: RouteEngine): String = when (e) {
     RouteEngine.VALHALLA -> "Valhalla"
@@ -623,7 +629,7 @@ import kotlinx.coroutines.launch
 
 /** Icône d'une discipline. Le libellé l'accompagne toujours : les cinq pictogrammes se distinguent bien
  *  entre eux, mais aucun ne dit à lui seul "gravel" plutôt que "VTC". */
-private fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
+internal fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
     RoutingProfile.ROAD_BIKE -> Icons.Filled.DirectionsBike
     RoutingProfile.GRAVEL -> Icons.Filled.Grain
     RoutingProfile.HYBRID_BIKE -> Icons.Filled.PedalBike
