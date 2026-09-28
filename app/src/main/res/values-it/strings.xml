@@ -128,6 +128,10 @@
     <string name="offline_progress_total">Totale da scaricare: %1$d</string>
     <string name="offline_progress_downloaded">Tessere scaricate: %1$d</string>
     <string name="offline_progress_failed">Tessere non scaricate: %1$d</string>
+    <!-- Libelles courts des trois tuiles de la progression d'un telechargement. -->
+    <string name="offline_stat_total">Totale</string>
+    <string name="offline_stat_received">Ricevute</string>
+    <string name="offline_stat_failed">Errori</string>
     <string name="offline_progress_success">Livello \"%1$s\" creato!</string>
     <string name="offline_progress_error">Download interrotto: %1$d tessera/e mancante/i</string>
     <string name="offline_action_minimize">Riduci</string>

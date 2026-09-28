@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -34,29 +33,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.routes.ControlButtonRadius
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.layout.Box
 import fr.lc4918.trailog.TrailogApp
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.routing.offline.BrouterZones
 import fr.lc4918.trailog.ui.settings.zoneName
 
-private val Orange = Color(0xFFF57C00)
-private val Vert = Color(0xFF2E7D32)
-private val Rouge = Color(0xFFD32F2F)
-
 /**
- * Le telechargement des donnees d'itineraire, sur la carte : un bouton orange avec le pourcentage tant qu'il
- * dure, puis vert - ou rouge - pour en annoncer la fin.
+ * Le telechargement des donnees d'itineraire, sur la carte : un bouton de carte a anneau de progression tant
+ * qu'il dure, puis une coche - ou un signe d'erreur - pour en annoncer la fin.
  *
- * Le meme gabarit que le bouton reduit d'un telechargement de fond de plan (cf. [OfflineMinimizedButton]) : le
- * geste est rare, et on le lance depuis les reglages, mais il dure des minutes - la carte doit dire qu'il
+ * Le meme bouton que celui d'un telechargement de fond de plan reduit (cf. [MapProgressButton]) : le geste
+ * est rare, et on le lance depuis les reglages, mais il dure des minutes - la carte doit dire qu'il
  * continue, et quand il est fini. L'annonce reste jusqu'a ce qu'on l'ait lue.
+ *
+ * [background] porte le fond des boutons de la carte, [fg] la couleur de leur dessin.
  */
 @Composable
-fun RoutingDownloadIndicator(modifier: Modifier = Modifier) {
+fun RoutingDownloadIndicator(fg: Color, background: Modifier, modifier: Modifier = Modifier) {
     val data = (LocalContext.current.applicationContext as? TrailogApp)?.brouterData ?: return
     val s by data.state.collectAsState()
     val progression = s.overall()
@@ -64,28 +63,23 @@ fun RoutingDownloadIndicator(modifier: Modifier = Modifier) {
     if (progression == null && s.finished.isEmpty()) return
 
     val enEchec = progression == null && s.finished.any { !it.ok }
-    val fond = when {
-        progression != null -> Orange
-        enEchec -> Rouge
-        else -> Vert
-    }
-    Column(
-        modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(fond).clickable { ouvert = true },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        if (progression != null) {
-            Icon(Icons.Filled.Download, stringResource(R.string.routing_download_notice_title),
-                tint = Color.White, modifier = Modifier.size(16.dp))
-            val (recu, attendu) = progression
-            Text(
-                if (attendu != null && attendu > 0) "${(recu * 100 / attendu).coerceIn(0, 100)}%" else "...",
-                color = Color.White, fontSize = 9.sp, lineHeight = 9.sp, fontWeight = FontWeight.Bold,
-            )
-        } else {
-            Icon(if (enEchec) Icons.Filled.ErrorOutline else Icons.Filled.Check,
-                stringResource(R.string.routing_download_done_title), tint = Color.White,
-                modifier = Modifier.size(22.dp))
+    val scheme = MaterialTheme.colorScheme
+    if (progression != null) {
+        val (recu, attendu) = progression
+        MapProgressButton(
+            percent = if (attendu != null && attendu > 0) (recu * 100 / attendu).toInt().coerceIn(0, 100) else null,
+            contentDescription = stringResource(R.string.routing_download_notice_title),
+            fg = fg, onClick = { ouvert = true }, modifier = modifier.then(background),
+        )
+    } else {
+        Box(
+            modifier.then(background).size(48.dp).clip(RoundedCornerShape(ControlButtonRadius))
+                .clickable { ouvert = true },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(if (enEchec) Icons.Filled.ErrorOutline else Icons.Filled.CheckCircle,
+                stringResource(R.string.routing_download_done_title),
+                tint = if (enEchec) scheme.error else scheme.secondary, modifier = Modifier.size(26.dp))
         }
     }
 
@@ -111,7 +105,7 @@ fun RoutingDownloadIndicator(modifier: Modifier = Modifier) {
                             LinearProgressIndicator(
                                 progress = { (recu.toFloat() / attendu).coerceIn(0f, 1f) },
                                 modifier = Modifier.fillMaxWidth().height(4.dp),
-                                gapSize = 0.dp, drawStopIndicator = {},
+                                gapSize = 0.dp, drawStopIndicator = {}, strokeCap = StrokeCap.Round,
                             )
                         }
                     }
@@ -119,7 +113,7 @@ fun RoutingDownloadIndicator(modifier: Modifier = Modifier) {
                         val z = BrouterZones.byId(f.zoneId) ?: return@forEach
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(if (f.ok) Icons.Filled.Check else Icons.Filled.ErrorOutline, null,
-                                tint = if (f.ok) Vert else Rouge, modifier = Modifier.size(18.dp))
+                                tint = if (f.ok) scheme.secondary else scheme.error, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(stringResource(
                                 if (f.ok) R.string.routing_download_zone_ready else R.string.routing_download_zone_failed,

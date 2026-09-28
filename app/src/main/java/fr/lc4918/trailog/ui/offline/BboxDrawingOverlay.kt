@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -40,14 +38,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.ui.theme.Spacing
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.BorderStroke
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.ui.components.MapController
-import fr.lc4918.trailog.ui.components.MapBarBackground
 import kotlin.math.roundToInt
 
 /** Le rouge du cadre, celui de l'emprise dans l'apercu du telechargement. */
@@ -87,7 +86,6 @@ private enum class Poignee(val gauche: Boolean, val haut: Boolean, val droite: B
 @Composable
 fun BoxScope.BboxEditorOverlay(
     controller: MapController,
-    dark: Boolean,
     /** Ce que les boutons du haut recouvrent : le cadre de depart se pose en dessous. */
     topInsetPx: Int,
     onCancel: () -> Unit,
@@ -146,34 +144,41 @@ fun BoxScope.BboxEditorOverlay(
                     val dessin = if (coin) Modifier.size(PoigneeCoin).background(Color.White, CircleShape)
                         .border(3.dp, CadreRouge, CircleShape)
                     else if (p.haut || p.bas) Modifier.size(28.dp, PoigneeCote / 2 + 4.dp)
-                        .background(Color.White, RoundedCornerShape(4.dp)).border(2.dp, CadreRouge, RoundedCornerShape(4.dp))
+                        .background(Color.White, MaterialTheme.shapes.extraSmall).border(2.dp, CadreRouge, MaterialTheme.shapes.extraSmall)
                     else Modifier.size(PoigneeCote / 2 + 4.dp, 28.dp)
-                        .background(Color.White, RoundedCornerShape(4.dp)).border(2.dp, CadreRouge, RoundedCornerShape(4.dp))
+                        .background(Color.White, MaterialTheme.shapes.extraSmall).border(2.dp, CadreRouge, MaterialTheme.shapes.extraSmall)
                     Box(dessin)
                 }
             }
         }
     }
 
-    // La barre du bas : ce qu'on fait, et les deux issues.
-    val fg = if (dark) Color.White else MaterialTheme.colorScheme.onSurface
+    // La bande du bas : ce qu'on fait, et les deux issues. Aux couleurs du theme, coins hauts arrondis,
+    // comme les autres bandes posees au bas de la carte ; la forme dessine le fond et l'ombre sans
+    // decouper le contenu (cf. RoutePlannerBand).
+    val forme = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
     Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-            .background(if (dark) MapBarBackground else Color.White)
+            .shadow(8.dp, forme, clip = false)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), forme)
             .onSizeChanged { barre = it.height; onBarHeight(it.height) }
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = Spacing.l, end = Spacing.l, top = 18.dp, bottom = Spacing.l),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            stringResource(R.string.offline_bbox_adjust), fontSize = 16.sp, fontWeight = FontWeight.Bold,
-            color = fg, modifier = Modifier.fillMaxWidth(),
+            stringResource(R.string.offline_bbox_adjust), style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+            OutlinedButton(onClick = onCancel, modifier = Modifier.height(44.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Text(stringResource(R.string.action_cancel))
+            }
             Button(
                 enabled = cadre != null,
+                modifier = Modifier.height(44.dp),
                 onClick = {
                     val r = cadre ?: return@Button
                     val a = controller.lonLatAt(r.left, r.top) ?: return@Button

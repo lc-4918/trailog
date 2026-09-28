@@ -3,23 +3,22 @@ package fr.lc4918.trailog.ui.offline
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,21 +28,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
-
-private val OrangeMinimized = Color(0xFFF57C00)   // bouton réduit, bien visible sur la carte (SPEC section 4)
-private val GreenSuccess = Color(0xFF2E7D32)
-private val RedError = Color(0xFFD32F2F)
+import fr.lc4918.trailog.ui.routes.ControlButtonRadius
+import fr.lc4918.trailog.ui.theme.Spacing
+import java.text.NumberFormat
 
 /**
  * Popup de progression du téléchargement hors-ligne (SPEC offline_map.md section 4). Un seul composable gère
- * les trois phases : en cours (barre + stats + Réduire/Annuler), succès et erreur (message + Fermer).
+ * les trois phases : en cours (tuiles, barre, Annuler/Réduire), succès et erreur (message + Fermer).
  */
 @Composable
 fun OfflineDownloadCard(
@@ -55,16 +55,18 @@ fun OfflineDownloadCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp,
         shadowElevation = 8.dp,
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(start = Spacing.l, end = Spacing.l, top = Spacing.m, bottom = Spacing.m)) {
             when (state.phase) {
                 OfflinePhase.RUNNING -> RunningContent(state, onMinimize, onCancel)
                 OfflinePhase.SUCCESS -> ResultContent(
-                    icon = { Icon(Icons.Filled.CheckCircle, null, tint = GreenSuccess, modifier = Modifier.size(28.dp)) },
+                    icon = {
+                        Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(28.dp))
+                    },
                     message = stringResource(R.string.offline_progress_success, state.name),
                     // Le sort des points d'interet, quand on a demande a les emporter : leur nombre, ou
                     // l'aveu que le service n'a pas repondu. La carte, elle, est bien la - d'ou une ligne
@@ -76,7 +78,10 @@ fun OfflineDownloadCard(
                     onClose = onClose,
                 )
                 OfflinePhase.ERROR -> ResultContent(
-                    icon = { Icon(Icons.Filled.ErrorOutline, null, tint = RedError, modifier = Modifier.size(28.dp)) },
+                    icon = {
+                        Icon(Icons.Filled.ErrorOutline, null, tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(28.dp))
+                    },
                     message = stringResource(R.string.offline_progress_error, state.failed),
                     onClose = onClose,
                 )
@@ -85,39 +90,63 @@ fun OfflineDownloadCard(
     }
 }
 
+/**
+ * En cours : le titre et le chevron qui reduit, les trois comptes en tuiles - comme les compteurs du
+ * tableau de bord -, la barre, puis les deux issues. "Annuler" est en rouge : il arrete le telechargement.
+ * "Reduire" est a sa droite, a la place de l'action qu'on attend d'une popup qui dure.
+ */
 @Composable
 private fun RunningContent(state: OfflineDownloadState, onMinimize: () -> Unit, onCancel: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onMinimize, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Filled.ExpandMore, stringResource(R.string.offline_action_minimize))
+    val scheme = MaterialTheme.colorScheme
+    val nombre = NumberFormat.getIntegerInstance()
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.offline_progress_title), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f))
+            IconButton(onClick = onMinimize, modifier = Modifier.padding(start = Spacing.s).size(36.dp)) {
+                Icon(Icons.Filled.ExpandMore, stringResource(R.string.offline_action_minimize),
+                    tint = scheme.onSurfaceVariant)
+            }
         }
-        Spacer(Modifier.width(8.dp))
-        Text(
-            stringResource(R.string.offline_progress_title),
-            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatTile(stringResource(R.string.offline_stat_total), nombre.format(state.total), Modifier.weight(1f))
+            StatTile(stringResource(R.string.offline_stat_received), nombre.format(state.done), Modifier.weight(1f))
+            StatTile(stringResource(R.string.offline_stat_failed), nombre.format(state.failed), Modifier.weight(1f),
+                valueColor = if (state.failed > 0) scheme.error else scheme.onSurface)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)) {
+                Box(Modifier.fillMaxWidth((state.percent / 100f).coerceIn(0f, 1f)).height(6.dp)
+                    .clip(CircleShape).background(scheme.primary))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${state.percent} %",
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    fontWeight = FontWeight.SemiBold)
+                Text("${nombre.format(state.done + state.failed)} / ${nombre.format(state.total)}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    color = scheme.onSurfaceVariant)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.action_cancel), color = scheme.error)
+            }
+            TextButton(onClick = onMinimize) { Text(stringResource(R.string.offline_action_minimize)) }
+        }
     }
-    Spacer(Modifier.height(12.dp))
-    Text(stringResource(R.string.offline_progress_total, state.total), style = MaterialTheme.typography.bodyLarge)
-    Text(stringResource(R.string.offline_progress_downloaded, state.done), style = MaterialTheme.typography.bodyLarge)
-    Text(stringResource(R.string.offline_progress_failed, state.failed), style = MaterialTheme.typography.bodyLarge)
-    Spacer(Modifier.height(12.dp))
-    LinearProgressIndicator(
-        progress = { state.percent / 100f },
-        modifier = Modifier.fillMaxWidth().height(6.dp),
-        gapSize = 0.dp,             // pas d'espace entre la partie remplie et la piste
-        drawStopIndicator = {},     // supprime le point de fin (dessiné à 100 % de la piste par défaut)
-    )
-    Spacer(Modifier.height(6.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text("${state.percent} %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-        Text("${state.done + state.failed}/${state.total}", style = MaterialTheme.typography.bodyMedium)
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-        TextButton(onClick = onMinimize) { Text(stringResource(R.string.offline_action_minimize)) }
-        Spacer(Modifier.width(8.dp))
-        TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+}
+
+/** Un compte : son libelle en petites capitales grises, sa valeur a chiffres de chasse fixe. */
+@Composable
+private fun StatTile(label: String, value: String, modifier: Modifier, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
+    Column(
+        modifier.background(MaterialTheme.colorScheme.surfaceContainerLow, MaterialTheme.shapes.medium)
+            .padding(start = 10.dp, end = 10.dp, top = 7.dp, bottom = 8.dp),
+    ) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        Text(value, style = MaterialTheme.typography.titleSmall, color = valueColor, maxLines = 1)
     }
 }
 
@@ -128,43 +157,62 @@ private fun ResultContent(
     onClose: () -> Unit,
     detail: String? = null,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.Top) {
         icon()
-        Spacer(Modifier.width(12.dp))
-        Text(message, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Column(Modifier.padding(start = Spacing.m, top = 3.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(message, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            // A l'aplomb du message et non de l'icone : c'est une precision sur ce qui vient d'etre dit,
+            // pas une seconde nouvelle.
+            if (detail != null) {
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
-    // En retrait sous le message, a l'aplomb du texte et non de l'icone : c'est une precision sur ce qui
-    // vient d'etre dit, pas une seconde nouvelle.
-    if (detail != null) {
-        Text(
-            detail, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 40.dp, top = 4.dp),
-        )
-    }
-    Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+    Row(Modifier.fillMaxWidth().padding(top = Spacing.xs), horizontalArrangement = Arrangement.End) {
         TextButton(onClick = onClose) { Text(stringResource(R.string.action_close)) }
     }
 }
 
 /**
- * Popup réduite : petit bouton rond orange sur la carte (SPEC section 4). Affiche l'icône download et le
- * pourcentage courant ; un clic rouvre la popup.
+ * Popup réduite : un bouton de la carte comme les autres (SPEC section 4), et non plus un carré orange. Un
+ * anneau de progression autour du pourcentage dit que le téléchargement continue, et combien il en reste ;
+ * un toucher rouvre la popup.
  */
 @Composable
-fun OfflineMinimizedButton(state: OfflineDownloadState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    // Carré à bords arrondis, même gabarit (48.dp) qu'un IconButton de la carte (bouton GPS).
-    Column(
-        modifier = modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(OrangeMinimized)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+fun OfflineMinimizedButton(
+    state: OfflineDownloadState, fg: Color, onClick: () -> Unit, modifier: Modifier = Modifier,
+) {
+    MapProgressButton(state.percent, stringResource(R.string.offline_action_reopen), fg, onClick, modifier)
+}
+
+/**
+ * Un transfert en cours, sur la carte : le bouton de carte, un anneau qui se remplit et le pourcentage au
+ * milieu. Sans pourcentage connu, l'anneau tourne. Commun au fond de plan et aux donnees d'itineraire,
+ * qui peuvent courir en meme temps, cote a cote.
+ *
+ * [modifier] porte le fond des boutons de la carte (cf. MapChrome.buttonBackground).
+ */
+@Composable
+internal fun MapProgressButton(
+    percent: Int?, contentDescription: String, fg: Color, onClick: () -> Unit, modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier.size(48.dp).clip(RoundedCornerShape(ControlButtonRadius)).clickable(onClick = onClick)
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Download, stringResource(R.string.offline_action_reopen), tint = Color.White, modifier = Modifier.size(16.dp))
-        Text("${state.percent}%", color = Color.White, fontSize = 9.sp, lineHeight = 9.sp, fontWeight = FontWeight.Bold)
+        val scheme = MaterialTheme.colorScheme
+        if (percent != null) {
+            CircularProgressIndicator(
+                progress = { (percent / 100f).coerceIn(0f, 1f) }, modifier = Modifier.size(38.dp),
+                color = scheme.primary, trackColor = scheme.outlineVariant, strokeWidth = 3.dp,
+                strokeCap = StrokeCap.Round, gapSize = 0.dp,
+            )
+            Text("$percent", style = MaterialTheme.typography.labelSmall.copy(fontFeatureSettings = "tnum"),
+                fontWeight = FontWeight.Bold, color = fg)
+        } else {
+            CircularProgressIndicator(Modifier.size(38.dp), color = scheme.primary, strokeWidth = 3.dp,
+                trackColor = scheme.outlineVariant, strokeCap = StrokeCap.Round)
+        }
     }
 }

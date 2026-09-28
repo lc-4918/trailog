@@ -47,7 +47,6 @@ class OfflineDownloadConfigScreenTest {
     @Test fun `le long d'une trace, le titre et la portion entiere par defaut`() {
         ecran(trace)
         compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track)).assertIsDisplayed()
-        compose.onNodeWithText(ctx.getString(R.string.offline_config_track_hint)).assertIsDisplayed()
         compose.onNodeWithText(ctx.getString(R.string.offline_config_section_value, 0, 10)).assertIsDisplayed()
     }
 
@@ -61,7 +60,8 @@ class OfflineDownloadConfigScreenTest {
     @Test fun `l'explication de la largeur parait au toucher du i`() {
         ecran(trace)
         compose.onNodeWithTag("info_tip_text").assertDoesNotExist()
-        compose.onAllNodesWithTag("info_tip")[0].performClick()
+        // Le premier "i" est celui du titre (cf. le test suivant) ; celui de la largeur vient ensuite.
+        compose.onAllNodesWithTag("info_tip")[1].performClick()
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.offline_config_width_hint)).assertIsDisplayed()
     }
@@ -96,10 +96,8 @@ class OfflineDownloadConfigScreenTest {
             .fetchSemanticsNode().boundsInRoot
         val titre = compose.onNodeWithText(ctx.getString(R.string.offline_config_title_track))
             .fetchSemanticsNode().boundsInRoot
-        val sousTitre = compose.onNodeWithText(ctx.getString(R.string.offline_config_track_hint))
-            .fetchSemanticsNode().boundsInRoot
         assertTrue("la croix commence au-dessus du titre", croix.top <= titre.top)
-        assertTrue("et finit avant le bas du sous-titre", croix.bottom < sousTitre.bottom)
+        assertTrue("et ne descend pas sous lui", croix.bottom <= titre.bottom + 1f)
     }
 
     /** Les points d'interet ont aussi leur "i" : l'explication n'est plus ecrite sous la ligne. */
@@ -107,7 +105,7 @@ class OfflineDownloadConfigScreenTest {
         ecran(trace, pois = true)
         val texte = ctx.getString(R.string.offline_config_pois_desc)
         compose.onNodeWithText(texte).assertDoesNotExist()
-        compose.onAllNodesWithTag("info_tip")[1].performScrollTo().performClick()
+        compose.onAllNodesWithTag("info_tip")[2].performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithText(texte).assertIsDisplayed()
     }
@@ -135,13 +133,26 @@ class OfflineDownloadConfigScreenTest {
         assertEquals(trace, tampon)
     }
 
-    /** La ligne grise sous le titre ne se montre que tout en haut : on descend, elle se retire. */
-    @Test fun `la ligne sous le titre se retire au defilement`() {
-        ecran(trace, pois = true)
-        val ligne = ctx.getString(R.string.offline_config_track_hint)
-        compose.onNodeWithText(ligne).assertIsDisplayed()
-        compose.onNodeWithText(ctx.getString(R.string.offline_config_pois_label)).performScrollTo()
+    /**
+     * Ce que l'on regle ici le long d'une trace se lit derriere le "i" du titre, et non plus en toutes
+     * lettres dessous : la ligne poussait la taille estimee hors de l'ecran.
+     */
+    @Test fun `l'explication du titre parait au toucher de son i`() {
+        ecran(trace)
+        val texte = ctx.getString(R.string.offline_config_track_hint)
+        compose.onNodeWithText(texte).assertDoesNotExist()
+        compose.onAllNodesWithTag("info_tip")[0].performClick()
         compose.waitForIdle()
-        compose.onNodeWithText(ligne).assertDoesNotExist()
+        compose.onNodeWithText(texte).assertIsDisplayed()
+    }
+
+    /**
+     * Sur un telephone de la taille d'un S10e, la taille estimee se lit sans defiler : c'est elle qu'on
+     * vient lire en reglant le zoom, la portion et la largeur.
+     */
+    @Config(qualifiers = "fr-w360dp-h760dp")
+    @Test fun `la taille estimee se voit sans defiler`() {
+        ecran(trace, pois = true)
+        compose.onNodeWithText(ctx.getString(R.string.offline_config_label_size)).assertIsDisplayed()
     }
 }

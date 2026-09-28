@@ -1168,7 +1168,6 @@ fun MainScreen(
                 if (offline.drawingActive) {
                     BboxEditorOverlay(
                         controller = controller,
-                        dark = darkChrome,
                         topInsetPx = insets.topControlsPx,
                         onCancel = { offline.cancelDrawing() },
                         onNext = { bbox ->

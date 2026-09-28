@@ -128,6 +128,10 @@
     <string name="offline_progress_total">Total a descargar: %1$d</string>
     <string name="offline_progress_downloaded">Teselas descargadas: %1$d</string>
     <string name="offline_progress_failed">Teselas no descargadas: %1$d</string>
+    <!-- Libelles courts des trois tuiles de la progression d'un telechargement. -->
+    <string name="offline_stat_total">Total</string>
+    <string name="offline_stat_received">Recibidas</string>
+    <string name="offline_stat_failed">Errores</string>
     <string name="offline_progress_success">¡Capa \"%1$s\" creada!</string>
     <string name="offline_progress_error">Descarga interrumpida: faltan %1$d tesela(s)</string>
     <string name="offline_action_minimize">Minimizar</string>

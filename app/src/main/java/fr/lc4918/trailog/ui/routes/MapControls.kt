@@ -166,14 +166,15 @@ internal fun BoxScope.MapTopLeftControls(
                     }
                 }
             }
-            // Popup de progression réduite : bouton orange à droite de l'emplacement du bouton
-            // GPS, dans la même barre (donc même espacement latéral de 4.dp).
+            // Popup de progression réduite : un bouton de la carte, à anneau de progression, à droite de
+            // l'emplacement du bouton GPS, dans la même barre (donc même espacement latéral de 4.dp).
             offlineDownload?.takeIf { it.minimized }?.let { dl ->
-                OfflineMinimizedButton(state = dl, onClick = { vm.setOfflineDownloadMinimized(false) })
+                OfflineMinimizedButton(state = dl, fg = chrome.fg, onClick = { vm.setOfflineDownloadMinimized(false) },
+                    modifier = chrome.buttonBackground)
             }
-            // Les donnees d'itineraire hors ligne, telechargees depuis les reglages : meme bouton orange,
-            // juste apres - les deux transferts peuvent courir en meme temps.
-            RoutingDownloadIndicator()
+            // Les donnees d'itineraire hors ligne, telechargees depuis les reglages : meme bouton, juste
+            // apres - les deux transferts peuvent courir en meme temps.
+            RoutingDownloadIndicator(fg = chrome.fg, background = chrome.buttonBackground)
         }
         // La recherche de lieu ouvre sa barre de saisie juste dessous : elle reste donc dans la
         // colonne du haut, là où la barre a la place de se déplier.

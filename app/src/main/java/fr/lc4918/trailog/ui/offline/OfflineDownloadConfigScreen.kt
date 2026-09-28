@@ -1,6 +1,5 @@
 package fr.lc4918.trailog.ui.offline
 
-import androidx.compose.animation.AnimatedVisibility
 import fr.lc4918.trailog.map.offline.CorridorShape
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.filled.Fullscreen
@@ -11,8 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -44,12 +40,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import fr.lc4918.trailog.R
+import androidx.compose.foundation.layout.width
+import fr.lc4918.trailog.ui.settings.InfoTip
+import fr.lc4918.trailog.ui.theme.Spacing
+import fr.lc4918.trailog.ui.points.OverlayInset
+import fr.lc4918.trailog.ui.points.OverlayIconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.offline.OfflineCorridor
 import fr.lc4918.trailog.map.offline.TrackSection
@@ -191,28 +192,24 @@ fun OfflineDownloadConfigScreen(
                     // milieu du bloc. Elle reste au coin, ou l'on cherche a fermer.
                     verticalAlignment = Alignment.Top,
                 ) {
-                    // Le long d'une trace, le titre le dit, et une ligne en petit dit ce qu'on regle ici.
-                    // Decale d'un demi-bouton : la premiere ligne du titre reste alignee sur la croix.
-                    Column(Modifier.weight(1f).padding(top = 12.dp)) {
+                    // Le long d'une trace, le titre le dit, et ce qu'on regle ici se lit derriere un "i" : en
+                    // toutes lettres sous le titre, l'explication poussait la taille estimee hors de l'ecran,
+                    // alors que c'est elle qu'on vient lire en reglant. Decale d'un demi-bouton : la premiere
+                    // ligne du titre reste alignee sur la croix.
+                    Row(Modifier.weight(1f).padding(top = 8.dp), verticalAlignment = Alignment.Top) {
                         Text(
                             stringResource(
                                 if (corridorPoints != null) R.string.offline_config_title_track
                                 else R.string.offline_config_title,
                             ),
-                            fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = p.label,
+                            style = MaterialTheme.typography.titleLarge, color = p.label,
+                            modifier = Modifier.weight(1f, fill = false).padding(top = 2.dp),
                         )
-                        // Seulement tout en haut : des qu'on descend, la ligne se retire et rend sa hauteur
-                        // aux reglages - elle a ete lue en arrivant.
-                        AnimatedVisibility(corridorPoints != null && defilement.value == 0) {
-                            Text(
-                                stringResource(R.string.offline_config_track_hint), fontSize = 12.sp,
-                                lineHeight = 15.sp, color = p.subtle, modifier = Modifier.padding(top = 2.dp),
-                            )
-                        }
+                        if (corridorPoints != null) InfoTip(stringResource(R.string.offline_config_track_hint))
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(19.dp),
-                            tint = p.label)
+                        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),
+                            tint = p.subtle)
                     }
                 }
                 Column(
@@ -299,33 +296,29 @@ fun OfflineDownloadConfigScreen(
                         }
                     }
                 }
-                // Action principale, hors du défilement : un aplat d'accent plein, là où les boutons de
-                // carte des réglages se contentent du container - c'est la seule action de l'écran.
+                // Action principale, hors du défilement : un bouton plein, arrondi de part en part, comme les
+                // boutons pleins de l'application - c'est la seule action de l'écran.
                 val enabled = name.isNotBlank() && (tileCount ?: 0L) > 0
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)
-                        .navigationBarsPadding()
-                        .height(46.dp).clip(RoundedCornerShape(12.dp))
-                        .background(if (enabled) p.accent else p.track)
-                        // 'enabled' garantit déjà name.isNotBlank() : pas de repli nécessaire ici.
-                        .clickable(enabled = enabled) {
-                            onDownload(OfflineDownloadRequest(
-                                // Toujours : une tuile manquante laisse un trou dans la carte, quand
-                                // l'arret jetait tout ce qui avait ete telecharge. Ce n'est plus un choix.
-                                emprise, minZ, maxZ, name, continueOnError = true,
-                                corridor = portion?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
-                                withPois = poiAvailable && withPois,
-                            ))
-                        },
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
+                Button(
+                    onClick = {
+                        onDownload(OfflineDownloadRequest(
+                            // Toujours : une tuile manquante laisse un trou dans la carte, quand
+                            // l'arret jetait tout ce qui avait ete telecharge. Ce n'est plus un choix.
+                            emprise, minZ, maxZ, name, continueOnError = true,
+                            corridor = portion?.let { OfflineCorridor(it, halfWidthKm * 1000.0) },
+                            withPois = poiAvailable && withPois,
+                        ))
+                    },
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth().navigationBarsPadding()
+                        .padding(start = Spacing.l, end = Spacing.l, top = Spacing.s, bottom = Spacing.l).height(48.dp),
                 ) {
-                    val fg = if (enabled) Color.White else p.subtle
                     // Meme icone que le bouton "Telecharger" du menu lateral, d'ou l'on vient : c'est la
                     // meme action, menee a son terme.
-                    Icon(Icons.Outlined.FileDownload, null, Modifier.size(18.dp), tint = fg)
-                    Text(stringResource(R.string.offline_action_download), fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold, color = fg)
+                    Icon(Icons.Outlined.FileDownload, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(Spacing.s))
+                    Text(stringResource(R.string.offline_action_download), style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -351,36 +344,23 @@ private fun BboxOverview(
 ) {
     var enGrand by remember { mutableStateOf(false) }
     Box(
-        Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(16.dp))
+        Modifier.fillMaxWidth().height(170.dp).clip(MaterialTheme.shapes.large)
             .background(settingsPalette.card),
     ) {
         EmpriseMap(bbox, styleJson, styleUrl, track, corridor, radiusM, interactive = false)
-        Box(
-            Modifier.align(Alignment.BottomEnd).padding(8.dp).size(32.dp)
-                .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.85f))
-                .clickable { enGrand = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.Fullscreen, stringResource(R.string.offline_thumb_expand),
-                Modifier.size(20.dp), tint = Color.Black)
-        }
+        // Le bouton pose sur une image, comme ceux des photos des bulles : un rond sombre, l'icone en blanc.
+        OverlayIconButton(Icons.Filled.Fullscreen, R.string.offline_thumb_expand, onClick = { enGrand = true },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(OverlayInset))
     }
     if (enGrand) {
         Dialog(onDismissRequest = { enGrand = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             Box(
-                Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.88f).clip(RoundedCornerShape(16.dp))
+                Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.88f).clip(MaterialTheme.shapes.large)
                     .background(settingsPalette.card),
             ) {
                 EmpriseMap(bbox, styleJson, styleUrl, track, corridor, radiusM, interactive = true)
-                Box(
-                    Modifier.align(Alignment.TopEnd).padding(10.dp).size(36.dp)
-                        .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.9f))
-                        .clickable { enGrand = false },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp),
-                        tint = Color.Black)
-                }
+                OverlayIconButton(Icons.Filled.Close, R.string.action_close, onClick = { enGrand = false },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.s))
             }
         }
     }
