@@ -139,4 +139,37 @@ class TrailogRepositoryTest {
         repo.ensureSeed()
         assertEquals("le fond supprime ne doit pas revenir", n - 1, db.providers().count())
     }
+
+    // ---------- Voies retrouvees (recalage) ----------
+
+    private val voies = fr.lc4918.trailog.domain.model.LayerWays(
+        lines = listOf(listOf(fr.lc4918.trailog.domain.model.WaySegment(120.0, "highway=track surface=gravel"))),
+        offNetworkMeters = 12.0,
+    )
+
+    @Test fun `les voies d'une couche se gardent et se relisent`() = runTest {
+        repo.importLayer(bytes("test_locus.gpx"), "locus.gpx", folderId = null)
+        val l = derniereCouche()
+        assertEquals(null, repo.loadWays(l))
+        repo.saveWays(l, voies)
+        assertEquals(voies, repo.loadWays(l))
+    }
+
+    /** Des voies gardees decrivaient la trace d'avant : une retouche doit les faire retrouver. */
+    @Test fun `retoucher la geometrie oublie les voies`() = runTest {
+        repo.importLayer(bytes("test_locus.gpx"), "locus.gpx", folderId = null)
+        val l = derniereCouche()
+        repo.saveWays(l, voies)
+        repo.restoreLayers(listOf(repo.snapshotLayer(l)), emptyList())
+        assertEquals(null, repo.loadWays(l))
+    }
+
+    @Test fun `supprimer la couche supprime ses voies`() = runTest {
+        repo.importLayer(bytes("test_locus.gpx"), "locus.gpx", folderId = null)
+        val l = derniereCouche()
+        repo.saveWays(l, voies)
+        repo.deleteLayer(l)
+        val f = java.io.File(java.io.File(ctx.filesDir, "layers"), l.geometryFile + ".ways")
+        assertFalse(f.exists())
+    }
 }

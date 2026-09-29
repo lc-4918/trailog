@@ -9,7 +9,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import fr.lc4918.trailog.domain.model.TrackStats
+import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.domain.model.ComputedTrack
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,6 +67,7 @@ import fr.lc4918.trailog.domain.geo.RouteDetails
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.SurfaceKind
 import fr.lc4918.trailog.domain.model.WayKind
+import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.profile.TitleInfo
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
@@ -198,10 +205,26 @@ internal fun DetailsZone(
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.padding(vertical = Spacing.s))
         return
     }
-    val surfaces = remember(done) { RouteDetails.surfaces(done.segments) }
-    val paved = remember(done) { RouteDetails.paved(done.segments) }
-    val ways = remember(done) { RouteDetails.ways(done.segments) }
-    val estime = remember(done) { RouteDetails.estimatedFraction(done.segments) }
+    DetailsRubrics(done.segments, imperial, onOpen, modifier)
+}
+
+/**
+ * Les rubriques "Surfaces" et "Types de voies" de morceaux de voies, quelle qu'en soit l'origine : un
+ * itineraire calcule (cf. [DetailsZone]) ou une trace de la bibliotheque recalee sur le reseau (cf. la
+ * fenetre des statistiques d'une couche). Un appui sur une rubrique appelle [onOpen] avec son VIEWER et la
+ * plus longue de ses categories.
+ */
+@Composable
+fun DetailsRubrics(
+    segments: List<WaySegment>,
+    imperial: Boolean,
+    onOpen: (PlannerViewer, Any?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val surfaces = remember(segments) { RouteDetails.surfaces(segments) }
+    val paved = remember(segments) { RouteDetails.paved(segments) }
+    val ways = remember(segments) { RouteDetails.ways(segments) }
+    val estime = remember(segments) { RouteDetails.estimatedFraction(segments) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.s)) {
         Rubric(
             title = stringResource(R.string.planner_details_surfaces),
@@ -228,6 +251,53 @@ internal fun DetailsZone(
             ways.forEach { LegendRow(wayColor(it.kind), wayLabel(it.kind), it.meters, it.fraction, imperial) }
         }
     }
+}
+
+/**
+ * La rubrique "Elevation" : le profil d'une trace en petit, titre comme les rubriques des voies. Un appui
+ * sur le profil ouvre son VIEWER le point touche designe ([onOpen] recoit sa distance) ; un appui sur le
+ * titre l'ouvre sans point designe.
+ *
+ * Le profil ne se parcourt pas ici au doigt : il sert a ouvrir le VIEWER, ou il se parcourt en grand.
+ */
+@Composable
+internal fun ElevationRubric(
+    track: ComputedTrack,
+    settings: SettingsEntity,
+    slope: Boolean,
+    lineColor: Color,
+    onOpen: (Double?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Rubric(
+        title = stringResource(R.string.planner_viewer_elevation),
+        onClick = { onOpen(null) },
+        modifier = modifier.testTag("details_elevation"),
+    ) {
+        ElevationProfile(
+            samples = track.samples, stats = track.stats,
+            grid = settings.profileGrid,
+            slope = slope,
+            lineColor = lineColor,
+            axisFontSp = settings.profAxisFont,
+            axisBold = settings.profAxisBold,
+            cursorX = null,
+            onScrub = {},
+            onTap = { onOpen(it) },
+            verticalScale = settings.profileVerticalScale,
+            modifier = Modifier.fillMaxWidth().height(ElevationRubricHeight).testTag("details_elevation_profile"),
+        )
+    }
+}
+
+/** Hauteur du profil dans la rubrique : de quoi lire le relief, sans prendre la place des voies. */
+private val ElevationRubricHeight = 90.dp
+
+/** La categorie la plus longue du VIEWER [v], celle qu'il met en evidence d'emblee ; null pour le profil. */
+fun initialHighlight(v: PlannerViewer, segments: List<WaySegment>): Any? = when (v) {
+    PlannerViewer.PROFILE -> null
+    PlannerViewer.SURFACES -> RouteDetails.surfaces(segments).firstOrNull()?.kind
+    PlannerViewer.WAYS -> RouteDetails.ways(segments).firstOrNull()?.kind
 }
 
 /** Une rubrique des details : son titre, puis son contenu, le tout sensible a l'appui. */
@@ -264,7 +334,14 @@ private fun PavedSummary(paved: List<RouteDetails.Share<Boolean?>>) {
             x += w + gap
         }
     }
-    Row(Modifier.padding(top = Spacing.xs), horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+    /*
+     * Les pastilles passent a la ligne quand elles ne tiennent pas, au lieu de se serrer : dans une Row, la
+     * troisieme ("Inconnu") n'avait plus qu'une largeur quasi nulle, son texte se coupait a chaque lettre,
+     * et la colonne invisible ainsi dressee creusait un grand vide sous la synthese.
+     */
+    @OptIn(ExperimentalLayoutApi::class)
+    FlowRow(Modifier.padding(top = Spacing.xs), horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         parts.forEach { (kind, f) ->
             val label = stringResource(
                 when (kind) {
@@ -281,9 +358,10 @@ private fun PavedSummary(paved: List<RouteDetails.Share<Boolean?>>) {
                         null -> drawRoundRect(UnknownGrey, cornerRadius = CornerRadius(size.height / 2))
                     }
                 }
-                Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, softWrap = false)
                 Text(percentOf(f), style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
             }
         }
     }
@@ -434,11 +512,7 @@ private fun ViewerHeader(state: RoutePlannerState, viewer: PlannerViewer, done: 
                             },
                             onClick = {
                                 menu = false
-                                state.openViewer(v, when (v) {
-                                    PlannerViewer.PROFILE -> null
-                                    PlannerViewer.SURFACES -> RouteDetails.surfaces(done.segments).firstOrNull()?.kind
-                                    PlannerViewer.WAYS -> RouteDetails.ways(done.segments).firstOrNull()?.kind
-                                })
+                                state.openViewer(v, initialHighlight(v, done.segments))
                             },
                         )
                     }
@@ -456,8 +530,8 @@ private fun ViewerHeader(state: RoutePlannerState, viewer: PlannerViewer, done: 
 }
 
 /**
- * Le profil en grand : au-dessus, ce que dit le point sous le doigt - distance, altitude, pente, et
- * l'horaire estime pour l'atteindre -, ou les totaux du parcours tant qu'aucun point n'est designe.
+ * Le profil en grand du planificateur : au-dessus, ce que dit le point sous le doigt - distance, altitude,
+ * pente, et l'horaire estime pour l'atteindre -, ou les totaux du parcours tant qu'aucun point n'est designe.
  */
 @Composable
 private fun ProfileViewer(
@@ -465,22 +539,53 @@ private fun ProfileViewer(
     lastLabelInsetPx: Float,
 ) {
     val all = r.track.samples
-    val zoom = state.zoomRange
-    val samples = remember(r.track, zoom) {
+    ProfileViewerContent(
+        all = all, fullStats = r.track.stats, zoom = state.zoomRange, cursor = state.cursor,
+        settings = settings, slope = settings.routeSlopeLine, lineColor = MaterialTheme.colorScheme.primary,
+        lastLabelInsetPx = lastLabelInsetPx,
+        infos = { point, stats ->
+            if (point != null) {
+                // L'horaire au prorata de la distance, comme la duree d'une portion zoomee : le moteur ne la
+                // rend que pour le trajet entier, d'ou le "~".
+                val total = all.last().x
+                val secondes = if (total > 0) r.seconds * point.x / total else 0.0
+                cursorInfos(point, "dist,ele,slope", imperial) + TitleInfo("dur",
+                    stringResource(R.string.chip_duration), stringResource(R.string.info_name_duration),
+                    "~" + Format.duration(secondes))
+            } else routeInfos(stats, r.seconds, false, imperial)
+        },
+        onScrub = { state.tapProfile(it) },
+        onZoom = { scale, fraction -> state.zoomBy(scale, fraction, all.size) },
+        modifier = Modifier.testTag("planner_viewer_profile"),
+    )
+}
+
+/**
+ * Le contenu d'un VIEWER Profil, quel que soit le trace : les chiffres ([infos], ceux du point [cursor] ou,
+ * a defaut, ceux de la portion affichee), puis le profil de [all] - ou de sa fenetre [zoom] -, qu'on
+ * parcourt au doigt ([onScrub]), qu'on pince ou qu'on touche deux fois pour grossir ([onZoom]).
+ */
+@Composable
+internal fun ProfileViewerContent(
+    all: List<Sample>,
+    fullStats: TrackStats,
+    zoom: IntRange?,
+    cursor: Double?,
+    settings: SettingsEntity,
+    slope: Boolean,
+    lineColor: Color,
+    infos: @Composable (point: Sample?, stats: TrackStats) -> List<TitleInfo>,
+    onScrub: (Double) -> Unit,
+    onZoom: (scale: Float, fraction: Float) -> Unit,
+    modifier: Modifier = Modifier,
+    lastLabelInsetPx: Float = 0f,
+) {
+    val samples = remember(all, zoom) {
         if (zoom != null && zoom.last < all.size) all.subList(zoom.first, zoom.last + 1) else all
     }
-    val stats = remember(r.track, zoom, samples) { if (zoom != null) TrackMath.statsOf(samples) else r.track.stats }
-    val point = state.cursor?.let { TrackMath.sampleAt(all, it) }
-    val infos = if (point != null) {
-        // L'horaire au prorata de la distance, comme la duree d'une portion zoomee : le moteur ne la rend
-        // que pour le trajet entier, d'ou le "~".
-        val total = all.last().x
-        val secondes = if (total > 0) r.seconds * point.x / total else 0.0
-        cursorInfos(point, "dist,ele,slope", imperial) + TitleInfo("dur",
-            stringResource(R.string.chip_duration), stringResource(R.string.info_name_duration),
-            "~" + Format.duration(secondes))
-    } else routeInfos(stats, r.seconds, false, imperial)
-    TrackInfoColumns(infos, fontSp = settings.profBarFont, bold = settings.profBarBold,
+    val stats = remember(all, zoom, samples) { if (zoom != null) TrackMath.statsOf(samples) else fullStats }
+    val point = cursor?.let { TrackMath.sampleAt(all, it) }
+    TrackInfoColumns(infos(point, stats), fontSp = settings.profBarFont, bold = settings.profBarBold,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs))
     if (samples.size < 2) return
     BoxWithConstraints(Modifier.fillMaxWidth().padding(top = Spacing.s)) {
@@ -492,17 +597,17 @@ private fun ProfileViewer(
             ElevationProfile(
                 samples = samples, stats = stats,
                 grid = settings.profileGrid,
-                slope = settings.routeSlopeLine,
-                lineColor = MaterialTheme.colorScheme.primary,
+                slope = slope,
+                lineColor = lineColor,
                 axisFontSp = settings.profAxisFont,
                 axisBold = settings.profAxisBold,
-                cursorX = state.cursor,
-                onScrub = { state.tapProfile(it) },
-                onZoom = { scale, fraction -> state.zoomBy(scale, fraction, all.size) },
-                onDoubleTap = { fraction -> state.zoomBy(2f, fraction, all.size) },
+                cursorX = cursor,
+                onScrub = onScrub,
+                onZoom = onZoom,
+                onDoubleTap = { fraction -> onZoom(2f, fraction) },
                 lastLabelInsetPx = lastLabelInsetPx,
                 verticalScale = settings.profileVerticalScale,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight().testTag("planner_viewer_profile"),
+                modifier = Modifier.fillMaxWidth().fillMaxHeight().then(modifier),
             )
         }
     }
@@ -595,4 +700,94 @@ private fun <K> ShareViewer(
         cursorColor = MaterialTheme.colorScheme.onSurface,
         cursorFill = MaterialTheme.colorScheme.surface,
     )
+}
+
+/**
+ * Le panneau VIEWER d'une trace de la BIBLIOTHEQUE : le meme que celui du planificateur (cf.
+ * [PlannerViewerPanel]) - le profil, les surfaces, les types de voies -, pose sur une couche.
+ *
+ * En-tete : le retour, le VIEWER en cours et son menu ([offered] : ceux qui ont quelque chose a montrer),
+ * [headerActions] au bout, puis le nom de la couche - on vient de quitter la fenetre qui le portait, et
+ * c'est lui que la carte montre. Dessous, [profile] pour le profil ; sinon la categorie mise en evidence et
+ * la barre des parts, dont le choix appelle [onSelect].
+ */
+@Composable
+internal fun WaysViewerPanel(
+    viewer: PlannerViewer,
+    title: String,
+    segments: List<WaySegment>,
+    highlight: Any?,
+    imperial: Boolean,
+    offered: List<PlannerViewer>,
+    onSwitch: (PlannerViewer, Any?) -> Unit,
+    onSelect: (Any?) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    headerActions: @Composable RowScope.() -> Unit = {},
+    profile: @Composable () -> Unit = {},
+) {
+    val shape = MaterialTheme.shapes.extraLarge
+    var menu by remember { mutableStateOf(false) }
+    fun titre(v: PlannerViewer) = when (v) {
+        PlannerViewer.PROFILE -> R.string.planner_viewer_elevation
+        PlannerViewer.SURFACES -> R.string.planner_details_surfaces
+        PlannerViewer.WAYS -> R.string.planner_details_ways
+    }
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(bottom = Spacing.m)
+            .shadow(8.dp, shape, clip = false).testTag("layer_viewer"),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column(Modifier.padding(start = Spacing.m, end = Spacing.m, top = Spacing.s, bottom = Spacing.l)) {
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp).testTag("layer_viewer_back")) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(22.dp))
+                    }
+                    Box(Modifier.weight(1f)) {
+                        Row(
+                            Modifier.clip(MaterialTheme.shapes.small).clickable(enabled = offered.size > 1) { menu = true }
+                                .padding(horizontal = Spacing.s, vertical = 6.dp).testTag("layer_viewer_title"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        ) {
+                            Text(stringResource(titre(viewer)), style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (offered.size > 1) Icon(Icons.Filled.ExpandMore, null, Modifier.size(20.dp))
+                        }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false },
+                            shape = MaterialTheme.shapes.medium,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+                            offered.forEach { v ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(titre(v)), style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (v == viewer) FontWeight.SemiBold else FontWeight.Normal)
+                                    },
+                                    onClick = { menu = false; onSwitch(v, initialHighlight(v, segments)) },
+                                )
+                            }
+                        }
+                    }
+                    headerActions()
+                }
+            }
+            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = Spacing.s, bottom = Spacing.xs))
+            when (viewer) {
+                PlannerViewer.PROFILE -> profile()
+                PlannerViewer.WAYS -> {
+                    val shares = remember(segments) { RouteDetails.ways(segments) }
+                    ShareViewer(shares, highlight as? WayKind, imperial) { onSelect(it) }
+                }
+                PlannerViewer.SURFACES -> {
+                    val shares = remember(segments) { RouteDetails.surfaces(segments) }
+                    ShareViewer(shares, highlight as? SurfaceKind, imperial) { onSelect(it) }
+                }
+            }
+        }
+    }
 }

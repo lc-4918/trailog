@@ -216,4 +216,35 @@ class OverpassTest {
         assertNotNull(Overpass.parse("<html>Overpass is busy</html>"))
         assertTrue(Overpass.parse("<html>Overpass is busy</html>").isEmpty())
     }
+
+    // ---------- Attributs de voies (recalage des traces) ----------
+
+    @Test fun `la requete des voies les demande par identifiant, attributs seuls`() {
+        assertEquals(
+            "[out:json][timeout:40];way(id:807287666,130670192);out tags;",
+            Overpass.wayTagsQuery(listOf(807287666L, 130670192L)),
+        )
+    }
+
+    /** Les cles gardees seules, dans l'ordre demande, ecrites comme BRouter les ecrit. */
+    @Test fun `les attributs des voies sont ramenes aux cles gardees`() {
+        val body = """{"elements":[
+            {"type":"way","id":807287666,"tags":{"name":"Chemin de Berniquaut","highway":"track","tracktype":"grade2","surface":"gravel"}},
+            {"type":"way","id":130670192,"tags":{"highway":"residential"}},
+            {"type":"way","id":42}]}"""
+        val t = Overpass.parseWayTags(body, listOf("highway", "surface", "tracktype"))!!
+        assertEquals("highway=track surface=gravel tracktype=grade2", t[807287666L])
+        assertEquals("highway=residential", t[130670192L])
+        assertEquals("", t[42L])
+    }
+
+    /** L'espace separe les couples : une valeur qui en porte un le perdrait au decoupage. */
+    @Test fun `une valeur a espace prend un souligne`() {
+        val body = """{"elements":[{"type":"way","id":1,"tags":{"surface":"fine gravel"}}]}"""
+        assertEquals("surface=fine_gravel", Overpass.parseWayTags(body, listOf("surface"))!![1L])
+    }
+
+    @Test fun `une reponse illisible ne rend pas d'attributs`() {
+        assertNull(Overpass.parseWayTags("pas du json", listOf("highway")))
+    }
 }

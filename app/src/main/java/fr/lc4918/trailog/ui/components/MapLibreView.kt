@@ -995,37 +995,45 @@ class MapController {
         applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, belowPin)
     }
 
-    /** Calques et source de la mise en evidence d'une categorie de l'itineraire (cf. [setRouteHighlight]). */
-    private val ROUTE_HL = "planner-highlight"
-    private val ROUTE_HL_CASING = "planner-highlight-casing"
-    private val ROUTE_HL_SRC = "planner-highlight-src"
+    /**
+     * Calques et source de la mise en evidence d'une categorie (cf. [setRouteHighlight]), par proprietaire :
+     * l'itineraire (`planner`) et une trace de la bibliotheque (`layer`) ont chacun les leurs, et l'un ne
+     * peut pas effacer ce que l'autre vient de poser.
+     */
+    private fun hlId(key: String) = "$key-highlight"
+    private fun hlCasingId(key: String) = "$key-highlight-casing"
+    private fun hlSrcId(key: String) = "$key-highlight-src"
 
     /**
      * Met en evidence des morceaux de l'itineraire - ceux d'un revetement, ou d'un type de voie -, chacun
-     * donne en (lon, lat). Vide : rien n'est mis en evidence.
+     * donne en (lon, lat). Vide : rien n'est mis en evidence. [key] : a qui appartient la mise en evidence
+     * (cf. [hlId]) ; une trace de la bibliotheque s'en sert de la meme facon.
      *
      * Un trait plus large que celui du parcours, bleu franc borde de blanc : il doit se detacher du trace
      * noir ou teinte par pente qu'il recouvre, sur un fond clair comme sombre. Pose juste au-dessus du
      * trace, et donc sous les epingles et le repere de position, comme lui.
      */
-    fun setRouteHighlight(pieces: List<List<Pair<Double, Double>>>) {
+    fun setRouteHighlight(pieces: List<List<Pair<Double, Double>>>, key: String = "planner") {
         val s = style ?: return
+        val hl = hlId(key)
+        val hlCasing = hlCasingId(key)
+        val hlSrc = hlSrcId(key)
         val lignes = pieces.filter { it.size >= 2 }
         if (lignes.isEmpty()) {
-            s.getLayer(ROUTE_HL)?.let { s.removeLayer(it) }
-            s.getLayer(ROUTE_HL_CASING)?.let { s.removeLayer(it) }
-            s.getSource(ROUTE_HL_SRC)?.let { s.removeSource(it) }
+            s.getLayer(hl)?.let { s.removeLayer(it) }
+            s.getLayer(hlCasing)?.let { s.removeLayer(it) }
+            s.getSource(hlSrc)?.let { s.removeSource(it) }
             return
         }
         val coords = lignes.joinToString(",") { l -> l.joinToString(",", "[", "]") { (lon, lat) -> "[$lon,$lat]" } }
         val geojson = """{"type":"Feature","geometry":{"type":"MultiLineString","coordinates":[$coords]},"properties":{}}"""
-        val existing = s.getSourceAs<GeoJsonSource>(ROUTE_HL_SRC)
+        val existing = s.getSourceAs<GeoJsonSource>(hlSrc)
         if (existing != null) { existing.setGeoJson(geojson); return }
-        s.addSource(GeoJsonSource(ROUTE_HL_SRC, geojson))
-        val casing = LineLayer(ROUTE_HL_CASING, ROUTE_HL_SRC).withProperties(
+        s.addSource(GeoJsonSource(hlSrc, geojson))
+        val casing = LineLayer(hlCasing, hlSrc).withProperties(
             PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(trackWidthDp + 7f),
             PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
-        val ligne = LineLayer(ROUTE_HL, ROUTE_HL_SRC).withProperties(
+        val ligne = LineLayer(hl, hlSrc).withProperties(
             PropertyFactory.lineColor(RouteHighlightColor), PropertyFactory.lineWidth(trackWidthDp + 3f),
             PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
         val dessous = routeBelow(s)

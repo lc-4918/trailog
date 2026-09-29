@@ -710,6 +710,11 @@
     <string name="planner_details_unpaved">Zolatu gabea</string>
     <string name="planner_details_unknown">Ezezaguna</string>
     <string name="planner_details_unavailable">Xehetasunak BRouter motorrarekin bakarrik daude eskuragarri</string>
+    <string name="stats_ways_analyzing">Erabilitako bideak bilatzen...</string>
+    <string name="stats_ways_no_match">Ez dago bide ezagunik trazaren luzeran</string>
+    <string name="stats_ways_unreachable">Bideak aztertu gabe: zerbitzua ez dago eskuragarri</string>
+    <string name="stats_ways_off_network">%1$s bide ezagunetatik kanpo</string>
+    <string name="stats_ways_coarse">Gutxi gorabeherako atributuak: OpenStreetMap-ek ez du erantzun</string>
     <string name="planner_viewer_elevation">Altuera</string>
     <string name="surface_asphalt">Asfaltoa</string>
     <string name="surface_paved">Zolatua</string>

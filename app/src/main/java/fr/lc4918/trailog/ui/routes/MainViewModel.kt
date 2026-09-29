@@ -22,6 +22,11 @@ import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.domain.model.LayerWays
+import fr.lc4918.trailog.domain.model.RouteEngine
+import fr.lc4918.trailog.data.db.routeUrl
+import fr.lc4918.trailog.routing.Router
+import fr.lc4918.trailog.routing.TraceMatch
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.poi.Overpass
@@ -693,6 +698,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** L'instant du premier point horodate d'une trace - le jour de la sortie -, ou null s'il n'y en a pas. */
     suspend fun trackStartTime(layer: LayerEntity): Long? =
         repo.loadTrackLines(layer).mapNotNull { seg -> seg.firstNotNullOfOrNull { it.timeMs } }.minOrNull()
+
+    /** Les voies de la couche deja retrouvees, ou null si elle n'a jamais ete recalee. */
+    suspend fun layerWays(layer: LayerEntity): LayerWays? = repo.loadWays(layer)
+
+    /**
+     * Retrouve les voies qu'a empruntees la trace (cf. TraceMatch) et les garde avec la couche.
+     *
+     * L'instance Valhalla est celle des reglages, meme quand le planificateur calcule avec BRouter : lui
+     * seul sait recaler une trace. Overpass est celle des points d'interet.
+     */
+    suspend fun analyzeLayerWays(layer: LayerEntity): TraceMatch.LayerOutcome {
+        val s = settings.value
+        val lines = repo.loadTrackLines(layer).map { l -> l.map { it.lat to it.lon } }.filter { it.size >= 2 }
+        if (lines.isEmpty()) return TraceMatch.LayerOutcome.NoMatch
+        val issue = TraceMatch.matchLines(
+            Router.baseOf(RouteEngine.VALHALLA, s.routeUrl(RouteEngine.VALHALLA)),
+            s.poiOsmUrl.ifBlank { Overpass.DEFAULT_URL },
+            lines,
+        )
+        if (issue is TraceMatch.LayerOutcome.Done) repo.saveWays(layer, issue.ways)
+        return issue
+    }
+
+    /** Le profil de chaque ligne de la couche, dans l'ordre des lignes : ce que montrent la rubrique et le
+     *  VIEWER "Elevation", et ce sur quoi se posent les categories mises en evidence (cf. RouteDetails.pieces). */
+    suspend fun layerProfiles(layer: LayerEntity): List<ComputedTrack> = repo.loadProfiles(layer)
 
     /** La couche des points d'interet mise de cote, ou remise, par l'oeil de sa bulle. */
     fun savePoiMasked(masked: Boolean) = viewModelScope.launch {

@@ -54,3 +54,20 @@ enum class WayKind {
     FERRY,
     OTHER,
 }
+
+/**
+ * Les voies d'une couche de la bibliotheque, retrouvees par recalage (cf. TraceMatch) : un jeu de morceaux
+ * par LIGNE de la couche, dans l'ordre des lignes, pour que la mise en evidence d'une categorie tombe sur
+ * la bonne. Garde a cote de la geometrie, et jete avec elle quand elle change.
+ */
+@Serializable
+data class LayerWays(
+    val lines: List<List<WaySegment>>,
+    /** Longueur de trace posee sur aucune voie : hors sentier, ou voie absente d'OSM. */
+    val offNetworkMeters: Double = 0.0,
+    /** Faux quand Overpass n'a pas repondu : les attributs sont ceux de Valhalla, plus grossiers. */
+    val osmTags: Boolean = true,
+) {
+    /** Tous les morceaux, lignes mises bout a bout : ce que comptent les parts. */
+    val all: List<WaySegment> get() = lines.flatten()
+}

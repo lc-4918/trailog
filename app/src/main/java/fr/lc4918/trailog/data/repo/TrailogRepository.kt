@@ -41,6 +41,7 @@ import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.PropType
 import fr.lc4918.trailog.domain.model.PropValue
 import fr.lc4918.trailog.domain.model.SchemaItem
+import fr.lc4918.trailog.domain.model.LayerWays
 import fr.lc4918.trailog.domain.model.TrackPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,6 +89,7 @@ class TrailogRepository(private val ctx: Context) {
     private companion object {
         const val MAP_SUFFIX = ".map"     // fichier GeoJSON prêt-pour-carte précalculé
         const val PROF_SUFFIX = ".prof"   // profil (samples décimés + stats) précalculé par segment
+        const val WAYS_SUFFIX = ".ways"   // voies empruntées, retrouvées par recalage (cf. LayerWays)
         const val SHARE_DIR = "partage"   // cache des fichiers ouverts à une autre application
     }
 
@@ -292,6 +294,8 @@ class TrailogRepository(private val ctx: Context) {
         // sous lui. La clé de cache tient à la date du fichier, qu'on vient de réécrire, mais l'entrée
         // périmée resterait en mémoire jusqu'à son éviction - on la retire tout de suite.
         profileCache.keys.removeAll { it.startsWith(File(layersDir, file.name + PROF_SUFFIX).absolutePath) }
+        // Les voies retrouvees decrivaient la trace d'avant : une trace coupee ou retouchee se recale.
+        File(layersDir, file.name + WAYS_SUFFIX).delete()
         WrittenGeometry(file.name, computed, lines.isNotEmpty(), points.isNotEmpty())
     }
 
@@ -617,6 +621,23 @@ class TrailogRepository(private val ctx: Context) {
         File(layersDir, layer.geometryFile).delete()
         File(layersDir, layer.geometryFile + MAP_SUFFIX).delete()
         File(layersDir, layer.geometryFile + PROF_SUFFIX).delete()
+        File(layersDir, layer.geometryFile + WAYS_SUFFIX).delete()
+    }
+
+    /** Les voies de la couche, si elles ont deja ete retrouvees (cf. [saveWays]) ; null sinon. */
+    suspend fun loadWays(layer: LayerEntity): LayerWays? = withContext(Dispatchers.IO) {
+        val f = File(layersDir, layer.geometryFile + WAYS_SUFFIX)
+        if (!f.exists()) return@withContext null
+        runCatching { profileJson.decodeFromString<LayerWays>(f.readText()) }.getOrNull()
+    }
+
+    /**
+     * Garde les voies retrouvees a cote de la geometrie : le recalage interroge deux services et prend
+     * quelques secondes, il ne se refait pas a chaque ouverture des statistiques.
+     */
+    suspend fun saveWays(layer: LayerEntity, ways: LayerWays) = withContext(Dispatchers.IO) {
+        runCatching { File(layersDir, layer.geometryFile + WAYS_SUFFIX).writeText(profileJson.encodeToString(ways)) }
+        Unit
     }
 
     /** Segments de lignes de la couche, chacun avec ses propres points (pour un profil par segment tapé). */

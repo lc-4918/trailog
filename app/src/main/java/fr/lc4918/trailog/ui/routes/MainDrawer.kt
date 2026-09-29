@@ -76,6 +76,7 @@ import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.ui.settings.ProvideSettingsPalette
 import fr.lc4918.trailog.ui.settings.settingsPalette
+import fr.lc4918.trailog.ui.settings.ColumnScopeMarker
 import fr.lc4918.trailog.ui.settings.SettingsCard
 import fr.lc4918.trailog.ui.settings.SetRow
 import fr.lc4918.trailog.ui.settings.RowDivider
@@ -83,6 +84,12 @@ import fr.lc4918.trailog.ui.settings.ValueText
 import fr.lc4918.trailog.ui.theme.Spacing
 import fr.lc4918.trailog.ui.theme.TrailogIcons
 import fr.lc4918.trailog.ui.theme.isDarkTheme
+import fr.lc4918.trailog.domain.model.LayerWays
+import fr.lc4918.trailog.routing.TraceMatch
+import fr.lc4918.trailog.ui.planner.DetailsRubrics
+import fr.lc4918.trailog.ui.planner.ElevationRubric
+import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.ui.planner.PlannerViewer
 import kotlinx.coroutines.launch
 
 /**
@@ -481,6 +488,11 @@ internal fun FolderStatsDialog(
  *
  * Une trace sans horodatage - dessinee, ou calculee par le planificateur - le dit, plutot que de montrer
  * la date d'import comme si c'etait celle du parcours.
+ *
+ * Sous les chiffres, les rubriques "Surfaces" et "Types de voies", rendues comme les "Details" d'un
+ * itineraire calcule (cf. DetailsRubrics). Une trace importee ne dit pas sur quelles voies elle passe : il
+ * faut la recaler sur le reseau (cf. TraceMatch), ce qui se fait a la premiere ouverture et se garde avec
+ * la couche. Un appui sur une rubrique ferme la fenetre et ouvre son VIEWER sur la carte ([onOpenViewer]).
  */
 @Composable
 internal fun LayerStatsDialog(
@@ -488,6 +500,13 @@ internal fun LayerStatsDialog(
     imperial: Boolean,
     dark: Boolean,
     loadStart: suspend (LayerEntity) -> Long?,
+    loadWays: suspend (LayerEntity) -> LayerWays?,
+    analyzeWays: suspend (LayerEntity) -> TraceMatch.LayerOutcome,
+    /** Le profil de chaque ligne de la couche (cf. MainViewModel.layerProfiles). */
+    loadProfiles: suspend (LayerEntity) -> List<ComputedTrack>,
+    settings: SettingsEntity,
+    /** Un VIEWER a ouvrir : les voies si on les a, le VIEWER, et la categorie ou le point du profil a designer. */
+    onOpenViewer: (LayerWays?, PlannerViewer, Any?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     // Trois etats : en lecture, lue (une date), lue sans rien trouver.
@@ -497,53 +516,198 @@ internal fun LayerStatsDialog(
         debut = if (layer.hasTime) runCatching { loadStart(layer) }.getOrNull() else null
         lu = true
     }
+    // Les voies : lues du disque, sinon retrouvees. [essai] relance le recalage apres un echec.
+    var voies by remember(layer.id) { mutableStateOf<WaysLoad>(WaysLoad.Loading) }
+    var essai by remember(layer.id) { mutableIntStateOf(0) }
+    LaunchedEffect(layer.id, essai) {
+        if (essai == 0) {
+            val gardees = runCatching { loadWays(layer) }.getOrNull()
+            if (gardees != null) { voies = WaysLoad.Done(gardees); return@LaunchedEffect }
+        }
+        voies = WaysLoad.Analyzing
+        voies = when (val issue = runCatching { analyzeWays(layer) }.getOrNull()) {
+            is TraceMatch.LayerOutcome.Done -> WaysLoad.Done(issue.ways)
+            TraceMatch.LayerOutcome.NoMatch -> WaysLoad.NoMatch
+            TraceMatch.LayerOutcome.Unreachable, null -> WaysLoad.Unreachable
+        }
+    }
+    // Le profil de la ligne la plus longue, pour la rubrique "Elevation" : sans altitudes, pas de rubrique.
+    var profil by remember(layer.id) { mutableStateOf<ComputedTrack?>(null) }
+    LaunchedEffect(layer.id) {
+        profil = runCatching { profileTrackOf(loadProfiles(layer)) }.getOrNull()
+            ?.takeIf { it.hasZ && it.samples.size >= 2 }
+    }
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            containerColor = p.screen,
-            title = { Text(layer.name, color = p.label, maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-            text = {
-                SettingsCard {
-                    SetRow(stringResource(R.string.chip_distance)) {
-                        ValueText(Format.distance(layer.distance, imperial))
-                    }
-                    RowDivider()
-                    SetRow(stringResource(R.string.info_name_ascent)) {
-                        ValueText(Format.elevation(layer.ascent, imperial))
-                    }
-                    RowDivider()
-                    SetRow(stringResource(R.string.info_name_descent)) {
-                        ValueText(Format.elevation(layer.descent, imperial))
-                    }
-                    // La duree, seulement si le fichier porte des heures : sans elles, il n'y a rien a
-                    // mesurer, et une ligne vide se lirait comme une sortie de zero minute.
-                    val duree = layer.movingTime?.takeIf { layer.hasTime }
-                    if (duree != null) {
-                        RowDivider()
-                        SetRow(stringResource(R.string.info_name_duration)) { ValueText(Format.duration(duree)) }
-                    }
-                    RowDivider()
-                    SetRow(stringResource(R.string.stats_date)) {
-                        val d = debut
-                        when {
-                            !lu -> androidx.compose.material3.CircularProgressIndicator(
-                                Modifier.size(14.dp), strokeWidth = 2.dp)
-                            d != null -> ValueText(
-                                java.time.Instant.ofEpochMilli(d).atZone(java.time.ZoneId.systemDefault())
-                                    .format(java.time.format.DateTimeFormatter
-                                        .ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(locale)))
-                            else -> ValueText(stringResource(R.string.stats_date_unknown))
+        /*
+         * Une fenetre dessinee ici et non un AlertDialog : celui-ci reserve sous son contenu une bande de
+         * boutons haute de pres de 80 dp, pour le seul "Fermer". Les voies ont besoin de cette hauteur.
+         */
+        @OptIn(ExperimentalMaterial3Api::class)
+        BasicAlertDialog(onDismissRequest = onDismiss) {
+            Surface(shape = MaterialTheme.shapes.extraLarge, color = p.screen) {
+                Column(Modifier.padding(start = Spacing.xl, end = Spacing.xl, top = Spacing.xl, bottom = Spacing.xs)) {
+                    Text(layer.name, style = MaterialTheme.typography.headlineSmall, color = p.label, maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(bottom = Spacing.l))
+                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).testTag("layer_stats")) {
+                        SettingsCard {
+                            SetRow(stringResource(R.string.chip_distance)) {
+                                ValueText(Format.distance(layer.distance, imperial))
+                            }
+                            RowDivider()
+                            // Les deux deniveles sur une ligne, sous leurs noms courts : ils se lisent ensemble.
+                            StatPair(
+                                stringResource(R.string.chip_ascent), Format.elevation(layer.ascent, imperial),
+                                stringResource(R.string.chip_descent), Format.elevation(layer.descent, imperial),
+                            )
+                            RowDivider()
+                            val d = debut
+                            val date: @Composable () -> Unit = {
+                                when {
+                                    !lu -> androidx.compose.material3.CircularProgressIndicator(
+                                        Modifier.size(14.dp), strokeWidth = 2.dp)
+                                    // Le mois abrege : la date partage sa ligne avec la duree.
+                                    d != null -> ValueText(
+                                        java.time.Instant.ofEpochMilli(d).atZone(java.time.ZoneId.systemDefault())
+                                            .format(java.time.format.DateTimeFormatter
+                                                .ofLocalizedDate(java.time.format.FormatStyle.MEDIUM).withLocale(locale)))
+                                    else -> ValueText(stringResource(R.string.stats_date_unknown))
+                                }
+                            }
+                            // La duree, seulement si le fichier porte des heures : sans elles, il n'y a rien a
+                            // mesurer, et une case vide se lirait comme une sortie de zero minute. Elle
+                            // partage alors sa ligne avec la date.
+                            val duree = layer.movingTime?.takeIf { layer.hasTime }
+                            if (duree != null) {
+                                StatPair(stringResource(R.string.chip_duration), { ValueText(Format.duration(duree)) },
+                                    stringResource(R.string.stats_date), date)
+                            } else {
+                                SetRow(stringResource(R.string.stats_date)) { date() }
+                            }
                         }
+                        LayerWaysSection(voies, imperial, onRetry = { essai++ }, onOpenViewer = onOpenViewer,
+                            elevation = profil?.let { t ->
+                                {
+                                    ElevationRubric(
+                                        track = t, settings = settings, slope = layer.slopeColored,
+                                        lineColor = runCatching { Color(layer.color.toColorInt()) }
+                                            .getOrDefault(MaterialTheme.colorScheme.primary),
+                                        onOpen = { x ->
+                                            onOpenViewer((voies as? WaysLoad.Done)?.ways, PlannerViewer.PROFILE, x)
+                                        },
+                                    )
+                                }
+                            })
+                    }
+                    TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                        Text(stringResource(R.string.action_close), color = p.accent)
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close), color = p.accent) }
-            },
-        )
+            }
+        }
+    }
+}
+
+/**
+ * Deux mesures sur une ligne de carte, separees d'un filet vertical : chacune son libelle court a gauche,
+ * sa valeur a droite. La valeur ne se coupe jamais ; c'est le libelle qui cede, s'il le faut.
+ */
+@Composable
+private fun ColumnScopeMarker.StatPair(
+    leftLabel: String, left: @Composable () -> Unit, rightLabel: String, right: @Composable () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        StatCell(leftLabel, Modifier.weight(1f), left)
+        Box(Modifier.fillMaxHeight().width(1.dp).background(settingsPalette.divider))
+        StatCell(rightLabel, Modifier.weight(1f), right)
+    }
+}
+
+@Composable
+private fun ColumnScopeMarker.StatPair(leftLabel: String, left: String, rightLabel: String, right: String) =
+    StatPair(leftLabel, { ValueText(left) }, rightLabel, { ValueText(right) })
+
+@Composable
+private fun StatCell(label: String, modifier: Modifier, value: @Composable () -> Unit) {
+    Row(
+        modifier.defaultMinSize(minHeight = 52.dp).padding(horizontal = Spacing.l, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = settingsPalette.label, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        value()
+    }
+}
+
+/** Ou en sont les voies d'une couche dans la fenetre des statistiques. */
+internal sealed interface WaysLoad {
+    data object Loading : WaysLoad
+    data object Analyzing : WaysLoad
+    data class Done(val ways: LayerWays) : WaysLoad
+    data object NoMatch : WaysLoad
+    data object Unreachable : WaysLoad
+}
+
+/**
+ * Les surfaces et les types de voies d'une couche, sous ses chiffres : les rubriques d'un itineraire, sur
+ * une carte a part. Pendant le recalage, un indicateur et ce qu'il fait ; en cas d'echec, pourquoi - et de
+ * quoi reessayer quand c'est le reseau.
+ */
+@Composable
+private fun LayerWaysSection(
+    load: WaysLoad,
+    imperial: Boolean,
+    onRetry: () -> Unit,
+    onOpenViewer: (LayerWays?, PlannerViewer, Any?) -> Unit,
+    /** La rubrique "Elevation", au-dessus des voies ; null quand la trace n'a pas d'altitudes. */
+    elevation: (@Composable () -> Unit)? = null,
+) {
+    val p = settingsPalette
+    Spacer(Modifier.height(Spacing.m))
+    SettingsCard {
+        Column(Modifier.padding(horizontal = Spacing.l, vertical = Spacing.m).testTag("layer_ways")) {
+            if (elevation != null) CompositionLocalProvider(LocalContentColor provides p.label) {
+                elevation()
+                Spacer(Modifier.height(Spacing.s))
+            }
+            when (load) {
+                WaysLoad.Loading -> Unit
+                WaysLoad.Analyzing -> Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.m),
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Text(stringResource(R.string.stats_ways_analyzing), color = p.subtle,
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+                WaysLoad.NoMatch -> Text(stringResource(R.string.stats_ways_no_match), color = p.subtle,
+                    style = MaterialTheme.typography.bodyMedium)
+                WaysLoad.Unreachable -> Column {
+                    Text(stringResource(R.string.stats_ways_unreachable), color = p.subtle,
+                        style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = onRetry, modifier = Modifier.testTag("layer_ways_retry")) {
+                        Text(stringResource(R.string.planner_retry), color = p.accent)
+                    }
+                }
+                is WaysLoad.Done -> CompositionLocalProvider(LocalContentColor provides p.label) {
+                    val w = load.ways
+                    DetailsRubrics(w.all, imperial, onOpen = { v, initial -> onOpenViewer(w, v, initial) })
+                    // Ce que le recalage n'a pas pu dire, dit plutot que fondu dans les parts.
+                    if (w.offNetworkMeters >= 50.0) {
+                        Text(stringResource(R.string.stats_ways_off_network, Format.shortDistance(w.offNetworkMeters, imperial)),
+                            style = MaterialTheme.typography.bodySmall, color = p.subtle,
+                            modifier = Modifier.padding(top = Spacing.s))
+                    }
+                    if (!w.osmTags) {
+                        Text(stringResource(R.string.stats_ways_coarse), style = MaterialTheme.typography.bodySmall,
+                            color = p.subtle, modifier = Modifier.padding(top = Spacing.xs))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -868,6 +1032,8 @@ internal fun DrawerContent(
     // Un geste du tiroir n'a rien produit : l'ecran le dit. Un rappel etroit plutot que le porteur des
     // boites, dont le tiroir n'a aucune raison de lire le reste (cf. MainDialogState.failure).
     onFailure: (Int) -> Unit,
+    /** Une rubrique touchee dans les statistiques d'une couche - elevation ou voies : son VIEWER, sur la carte. */
+    onWaysViewer: (LayerEntity, LayerWays?, PlannerViewer, Any?) -> Unit = { _, _, _, _ -> },
 ) {
     var renameTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var renameValue by remember { mutableStateOf("") }
@@ -1127,6 +1293,11 @@ internal fun DrawerContent(
         LayerStatsDialog(
             layer = l, imperial = settings.units == "imperial", dark = isDarkTheme(settings.theme),
             loadStart = { vm.trackStartTime(it) },
+            loadWays = { vm.layerWays(it) },
+            analyzeWays = { vm.analyzeLayerWays(it) },
+            loadProfiles = { vm.layerProfiles(it) },
+            settings = settings,
+            onOpenViewer = { w, v, initial -> layerStatsTarget = null; onWaysViewer(l, w, v, initial) },
             onDismiss = { layerStatsTarget = null },
         )
     }

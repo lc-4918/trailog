@@ -710,6 +710,11 @@
     <string name="planner_details_unpaved">Sense pavimentar</string>
     <string name="planner_details_unknown">Desconegut</string>
     <string name="planner_details_unavailable">Els detalls només estan disponibles amb el motor BRouter</string>
+    <string name="stats_ways_analyzing">Cercant les vies recorregudes...</string>
+    <string name="stats_ways_no_match">Cap via coneguda al llarg del track</string>
+    <string name="stats_ways_unreachable">Vies no analitzades: servei inaccessible</string>
+    <string name="stats_ways_off_network">%1$s fora de vies conegudes</string>
+    <string name="stats_ways_coarse">Atributs aproximats: OpenStreetMap no ha respost</string>
     <string name="planner_viewer_elevation">Elevació</string>
     <string name="surface_asphalt">Asfalt</string>
     <string name="surface_paved">Pavimentat</string>

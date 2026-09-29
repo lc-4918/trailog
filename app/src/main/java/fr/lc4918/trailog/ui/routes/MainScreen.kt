@@ -376,6 +376,16 @@ fun MainScreen(
 
     // ---------- planificateur d'itinéraire ----------
     val planner = screen.planner
+    // Le VIEWER des surfaces ou des types de voies d'une trace, ouvert depuis ses statistiques.
+    val layerViewer = remember { LayerWaysViewerState() }
+    /*
+     * Il cede la place a tout ce qui reprend le bas de l'ecran : le profil d'une trace touchee sur la
+     * carte, la bande du planificateur deployee. Une couche supprimee, ou masquee, l'emporte avec elle.
+     */
+    LaunchedEffect(activeLayerId, planner.expanded, layers) {
+        val l = layerViewer.layer ?: return@LaunchedEffect
+        if (activeLayerId != null || planner.expanded || layers.none { it.id == l.id && it.visible }) layerViewer.close()
+    }
     // Tenu a jour a chaque composition, comme les proprietes du controleur de carte plus haut : le
     // planificateur deploye interdit le premier saut de camera a l'activation du GPS (cf.
     // LocationControls.startGps), pour la meme raison que le suivi continu s'y suspend deja.
@@ -864,6 +874,21 @@ fun MainScreen(
                         }
                     }),
                     onFailure = { message -> dialogs.failed(message) },
+                    /*
+                     * Une rubrique touchee dans les statistiques - l'elevation ou les voies - : le tiroir se ferme, la couche
+                     * s'allume si elle etait masquee, et ce qui occupait le bas de l'ecran - profil, bande
+                     * du planificateur - lui cede la place.
+                     */
+                    onWaysViewer = { l, w, v, initial ->
+                        scope.launch {
+                            drawerState.close()
+                            if (!l.visible) vm.setLayerVisible(l, true)
+                            vm.closeProfile()
+                            if (planner.expanded) planner.collapse(true)
+                            val profils = vm.layerProfiles(l)
+                            layerViewer.open(l.copy(visible = true), w, profils, v, initial)
+                        }
+                    },
                     onZoom = { kind, id ->
                         scope.launch { drawerState.close() }
                         when (kind) {
@@ -931,7 +956,7 @@ fun MainScreen(
                 //
                 // Posée AVANT les infobulles, donc dessous : une infobulle dit ce qu'on vient de demander,
                 // l'échelle est là en permanence. C'est à elle de passer derrière.
-                if (activeLayerId == null && !planner.expanded && settings.showScale) {
+                if (activeLayerId == null && !planner.expanded && !layerViewer.isOpen && settings.showScale) {
                     // Ces barres portent déjà leur propre marge de barre de navigation, d'où le repli sur
                     // navigationBarsPadding quand il n'y en a aucune.
                     val bottomBarPx = insets.bottomBarPx
@@ -1014,6 +1039,7 @@ fun MainScreen(
                         }
                     },
                     onNoConnection = { dialogs.noConnection = true },
+                    bottomPanelOpen = layerViewer.isOpen,
                 )
 
                 /*
@@ -1201,7 +1227,7 @@ fun MainScreen(
                  * sa hauteur remonte l'echelle et les boutons du coin (cf. MapInsetsState.dashboardPx).
                  */
                 if (alertEnabled && dashboardOpen && activeLayerId == null && !planner.expanded &&
-                    insets.promptBarPx == 0
+                    !layerViewer.isOpen && insets.promptBarPx == 0
                 ) {
                     val nomSuivi = followed?.let {
                         if (it.trackCount <= 1) it.layerName
@@ -1248,6 +1274,14 @@ fun MainScreen(
                     onScrub = { vm.onProfileTap(it) },
                     onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
                     onDoubleTapZoom = { fraction -> vm.zoomProfile(2f, fraction) },
+                )
+                LayerWaysViewerLayer(
+                    state = layerViewer,
+                    controller = controller,
+                    styleTick = styleTick,
+                    topPaddingPx = statusBarTopPx,
+                    imperial = imperialUnits,
+                    settings = settings,
                 )
                 MapNoticeLayer(
                     location = location,

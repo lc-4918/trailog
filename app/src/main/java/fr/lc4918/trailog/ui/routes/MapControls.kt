@@ -333,6 +333,9 @@ internal fun BoxScope.MapBottomRightControls(
     maxHeightPx: Int,
     onDashboardTap: () -> Unit,
     onNoConnection: () -> Unit,
+    /** Un panneau occupe le bas de l'ecran (cf. LayerWaysViewerLayer) : la colonne s'efface, comme
+     *  devant la bande deployee du planificateur. */
+    bottomPanelOpen: Boolean = false,
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
@@ -381,7 +384,7 @@ internal fun BoxScope.MapBottomRightControls(
      * le suivi continu de la position et le premier saut de camera a l'activation du GPS (cf.
      * MapFollow.follows, LocationControls.startGps).
      */
-    if (!planner.expanded) Column(
+    if (!planner.expanded && !bottomPanelOpen) Column(
         Modifier.align(Alignment.BottomEnd)
             // Au-dessus du tableau de bord quand il est la : il est affiche en permanence, et des boutons
             // poses dessous seraient invisibles et pourtant touchables. Il porte deja la barre de

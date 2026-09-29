@@ -710,6 +710,11 @@
     <string name="planner_details_unpaved">Sin pavimentar</string>
     <string name="planner_details_unknown">Desconocido</string>
     <string name="planner_details_unavailable">Los detalles solo están disponibles con el motor BRouter</string>
+    <string name="stats_ways_analyzing">Buscando las vías recorridas...</string>
+    <string name="stats_ways_no_match">Ninguna vía conocida a lo largo del track</string>
+    <string name="stats_ways_unreachable">Vías no analizadas: servicio inaccesible</string>
+    <string name="stats_ways_off_network">%1$s fuera de vías conocidas</string>
+    <string name="stats_ways_coarse">Atributos aproximados: OpenStreetMap no ha respondido</string>
     <string name="planner_viewer_elevation">Elevación</string>
     <string name="surface_asphalt">Asfalto</string>
     <string name="surface_paved">Pavimentado</string>

@@ -208,8 +208,63 @@ object Overpass {
         return if (derniere != null && derniere in ordre) listOf(derniere) + (ordre - derniere) else ordre
     }
 
+    /** Charge les points d'intérêt d'une emprise - une cellule de la grille. */
+    suspend fun fetch(base: String, box: Bbox, categories: Set<PoiCategory>): Fetched =
+        withContext(Dispatchers.IO) {
+            // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
+            val ql = query(box, categories) ?: return@withContext Fetched(emptyList(), failed = false)
+            val texte = ask(base, ql)
+                // Aucune instance n'a repondu. La zone peut etre reellement vide, mais on n'en sait rien,
+                // et la cellule ne doit pas etre retenue comme chargee.
+                ?: return@withContext Fetched(emptyList(), failed = true)
+            Fetched(parse(texte, categories), failed = false)
+        }
+
     /**
-     * Charge les points d'intérêt d'une emprise - une cellule de la grille.
+     * La requete des attributs de voies connues par leur identifiant : ce que le recalage d'une trace
+     * a trouve (cf. [fr.lc4918.trailog.routing.TraceMatch]). `out tags` : les attributs seuls, sans la
+     * liste des noeuds.
+     */
+    internal fun wayTagsQuery(ids: List<Long>): String =
+        "[out:json][timeout:$QUERY_TIMEOUT_S];way(id:${ids.joinToString(",")});out tags;"
+
+    /**
+     * Les attributs de chaque voie, ramenes aux cles [kept] et ecrits comme BRouter les ecrit :
+     * `highway=track surface=gravel` (cf. WaySegment). Une valeur a espace - rare sur ces cles - prend un
+     * souligne : l'espace separe les couples.
+     */
+    internal fun parseWayTags(body: String, kept: List<String>): Map<Long, String>? = runCatching {
+        json.parseToJsonElement(body).jsonObject["elements"]!!.jsonArray.mapNotNull { el ->
+            val o = el.jsonObject
+            val id = o["id"]?.jsonPrimitive?.content?.toLongOrNull() ?: return@mapNotNull null
+            val tags = o["tags"]?.jsonObject
+            id to kept.mapNotNull { k ->
+                tags?.get(k)?.texte()?.takeIf { it.isNotBlank() }?.let { "$k=${it.trim().replace(' ', '_')}" }
+            }.joinToString(" ")
+        }.toMap()
+    }.getOrNull()
+
+    /** Nombre maximal d'identifiants par requete : une trace de plusieurs centaines de kilometres en
+     *  compte des milliers, et le corps d'un POST a lui aussi ses limites chez les intermediaires. */
+    private const val WAY_IDS_PER_QUERY = 1_000
+
+    /**
+     * Les attributs des voies [ids], ou null si une requete n'a pas abouti : l'appelant se replie alors
+     * sur ce qu'il sait d'autre, plutot que sur un melange des deux.
+     */
+    suspend fun wayTags(base: String, ids: List<Long>, kept: List<String>): Map<Long, String>? =
+        withContext(Dispatchers.IO) {
+            val out = mutableMapOf<Long, String>()
+            for (lot in ids.distinct().chunked(WAY_IDS_PER_QUERY)) {
+                val texte = ask(base, wayTagsQuery(lot)) ?: return@withContext null
+                out += parseWayTags(texte, kept) ?: return@withContext null
+            }
+            out
+        }
+
+    /**
+     * Pose [ql] aux instances de la cascade (cf. [cascade]) jusqu'a la premiere qui repond, et rend sa
+     * reponse ; null si aucune n'a repondu.
      *
      * En POST et non en GET : la requête dépasse couramment le millier de caractères, et une URL de cette
      * longueur se fait tronquer par les intermédiaires.
@@ -217,35 +272,30 @@ object Overpass {
      * Une tentative par instance, sans pause : un refus d'une instance ne dit rien de la suivante, et
      * attendre avant de s'adresser ailleurs ne ferait que retarder la carte.
      */
-    suspend fun fetch(base: String, box: Bbox, categories: Set<PoiCategory>): Fetched =
-        withContext(Dispatchers.IO) {
-            // Rien a demander n'est pas un echec : c'est une reponse vide, et une reponse vide est une reponse.
-            val ql = query(box, categories) ?: return@withContext Fetched(emptyList(), failed = false)
-            val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
-            for (cible in cascade(base)) {
-                /*
-                 * `runInterruptible` et non un appel direct : `HttpURLConnection` bloque dans un thread
-                 * d'E/S ne s'apercoit pas d'une annulation. Ici, l'annulation interrompt le thread, la
-                 * lecture leve, et la requete s'arrete pour de bon.
-                 */
-                coroutineContext.ensureActive()
-                val resp = runInterruptible {
-                    TileHttp.post(
-                        cible, corps,
-                        contentType = "application/x-www-form-urlencoded; charset=utf-8",
-                        connectTimeoutMs = CONNECT_TIMEOUT_MS,
-                        readTimeoutMs = READ_TIMEOUT_MS,
-                    )
-                }
-                val texte = resp.body?.toString(Charsets.UTF_8) ?: continue
-                // Un 200 peut porter un abandon du serveur - "runtime error: Query timed out" - dans un
-                // corps sans liste d'elements : ce n'est pas une zone vide, c'est un echec.
-                if (!texte.contains("\"elements\"") || ABANDON.containsMatchIn(texte)) continue
-                derniereQuiRepond = cible
-                return@withContext Fetched(parse(texte, categories), failed = false)
+    private suspend fun ask(base: String, ql: String): String? {
+        val corps = ("data=" + URLEncoder.encode(ql, "UTF-8")).toByteArray(Charsets.UTF_8)
+        for (cible in cascade(base)) {
+            /*
+             * `runInterruptible` et non un appel direct : `HttpURLConnection` bloque dans un thread
+             * d'E/S ne s'apercoit pas d'une annulation. Ici, l'annulation interrompt le thread, la
+             * lecture leve, et la requete s'arrete pour de bon.
+             */
+            coroutineContext.ensureActive()
+            val resp = runInterruptible {
+                TileHttp.post(
+                    cible, corps,
+                    contentType = "application/x-www-form-urlencoded; charset=utf-8",
+                    connectTimeoutMs = CONNECT_TIMEOUT_MS,
+                    readTimeoutMs = READ_TIMEOUT_MS,
+                )
             }
-            // Aucune instance n'a repondu. La zone peut etre reellement vide, mais on n'en sait rien, et
-            // la cellule ne doit pas etre retenue comme chargee.
-            Fetched(emptyList(), failed = true)
+            val texte = resp.body?.toString(Charsets.UTF_8) ?: continue
+            // Un 200 peut porter un abandon du serveur - "runtime error: Query timed out" - dans un
+            // corps sans liste d'elements : ce n'est pas une zone vide, c'est un echec.
+            if (!texte.contains("\"elements\"") || ABANDON.containsMatchIn(texte)) continue
+            derniereQuiRepond = cible
+            return texte
         }
+        return null
+    }
 }
