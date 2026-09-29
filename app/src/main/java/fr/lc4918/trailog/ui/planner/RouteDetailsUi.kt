@@ -791,3 +791,69 @@ internal fun WaysViewerPanel(
         }
     }
 }
+
+/**
+ * Le choix du VIEWER, en petit : le nom de celui qu'on regarde et son chevron, un menu des [offered] au
+ * toucher. Pose au bout du titre d'une trace, dans le panneau de son profil.
+ */
+@Composable
+internal fun ViewerSelect(
+    viewer: PlannerViewer,
+    offered: List<PlannerViewer>,
+    onPick: (PlannerViewer) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var menu by remember { mutableStateOf(false) }
+    fun titre(v: PlannerViewer) = when (v) {
+        PlannerViewer.PROFILE -> R.string.planner_viewer_elevation
+        PlannerViewer.SURFACES -> R.string.planner_details_surfaces
+        PlannerViewer.WAYS -> R.string.planner_details_ways
+    }
+    Box(modifier) {
+        Row(
+            Modifier.clip(MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.small)
+                .clickable { menu = true }
+                .padding(start = Spacing.s, end = Spacing.xs, top = 4.dp, bottom = 4.dp)
+                .testTag("track_viewer_select"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(stringResource(titre(viewer)), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Icon(Icons.Filled.ExpandMore, null, Modifier.size(18.dp))
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false },
+            shape = MaterialTheme.shapes.medium, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+            offered.forEach { v ->
+                DropdownMenuItem(
+                    text = {
+                        Text(stringResource(titre(v)), style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (v == viewer) FontWeight.SemiBold else FontWeight.Normal)
+                    },
+                    onClick = { menu = false; onPick(v) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Le contenu d'un VIEWER des surfaces ([PlannerViewer.SURFACES]) ou des types de voies de [segments] : la
+ * categorie mise en evidence et son menu, puis la barre des parts qu'un curseur parcourt.
+ */
+@Composable
+internal fun WaysShareContent(
+    viewer: PlannerViewer,
+    segments: List<WaySegment>,
+    highlight: Any?,
+    imperial: Boolean,
+    onSelect: (Any?) -> Unit,
+) {
+    if (viewer == PlannerViewer.WAYS) {
+        val shares = remember(segments) { RouteDetails.ways(segments) }
+        ShareViewer(shares, highlight as? WayKind, imperial) { onSelect(it) }
+    } else {
+        val shares = remember(segments) { RouteDetails.surfaces(segments) }
+        ShareViewer(shares, highlight as? SurfaceKind, imperial) { onSelect(it) }
+    }
+}

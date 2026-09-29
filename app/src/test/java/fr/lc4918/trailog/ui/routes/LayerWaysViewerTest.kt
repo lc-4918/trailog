@@ -157,4 +157,34 @@ class LayerWaysViewerTest {
         s.resetZoom()
         assertNull(s.zoomRange)
     }
+
+    // ---------- Panneau du profil d'une trace touchee ----------
+
+    /** Une trace touchee s'ouvre sur son profil, point courant compris. */
+    @Test fun `le panneau s'ouvre sur le profil`() {
+        assertEquals(PlannerViewer.PROFILE, TrackPanelView.Initial.viewer)
+        assertTrue(TrackPanelView.Initial.cursorShown)
+    }
+
+    /** Hors du profil, le point courant ne designe rien : il se retire, et revient avec le profil. */
+    @Test fun `le point courant ne se montre que sur le profil`() {
+        val segments = voies.lines[0]
+        val surfaces = TrackPanelView.Initial.showing(PlannerViewer.SURFACES, segments)
+        assertFalse(surfaces.cursorShown)
+        assertFalse(surfaces.showing(PlannerViewer.WAYS, segments).cursorShown)
+        assertTrue(surfaces.showing(PlannerViewer.PROFILE, segments).cursorShown)
+    }
+
+    @Test fun `changer de viewer met en evidence la plus longue categorie de la ligne`() {
+        // Premiere ligne : 500 m de gravier et 500 m d'asphalte ; la seconde : du gravier seul.
+        val v = TrackPanelView.Initial.showing(PlannerViewer.WAYS, voies.lines[1])
+        assertEquals(WayKind.TRACK, v.highlight)
+        assertEquals(SurfaceKind.ASPHALT, v.selecting(SurfaceKind.ASPHALT).highlight)
+        assertNull(v.showing(PlannerViewer.PROFILE, voies.lines[1]).highlight)
+    }
+
+    @Test fun `les voies d'une ligne absente sont vides`() {
+        assertEquals(voies.lines[1], lineWays(voies, 1))
+        assertTrue(lineWays(voies, 5).isEmpty())
+    }
 }

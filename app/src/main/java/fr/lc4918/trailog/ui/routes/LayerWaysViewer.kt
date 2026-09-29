@@ -262,3 +262,33 @@ internal fun BoxScope.LayerWaysViewerLayer(
         },
     )
 }
+
+/**
+ * Ce que montre le panneau du profil d'une trace touchee sur la carte : le profil ("Elevation"), les
+ * surfaces ou les types de voies, et la categorie mise en evidence.
+ *
+ * Une valeur et non un etat mutable : le ViewModel la tient dans un flux, et chaque geste en rend une
+ * nouvelle - ce qui se verifie sans ecran.
+ */
+data class TrackPanelView(
+    val viewer: PlannerViewer = PlannerViewer.PROFILE,
+    val highlight: Any? = null,
+) {
+    /** Le point courant et ses infos ne se montrent que sur le profil : ailleurs, ils ne designent rien. */
+    val cursorShown: Boolean get() = viewer == PlannerViewer.PROFILE
+
+    /** Passe au VIEWER [v], la plus longue categorie de [segments] mise en evidence. */
+    fun showing(v: PlannerViewer, segments: List<fr.lc4918.trailog.domain.model.WaySegment>): TrackPanelView =
+        TrackPanelView(v, fr.lc4918.trailog.ui.planner.initialHighlight(v, segments))
+
+    fun selecting(kind: Any?): TrackPanelView = copy(highlight = kind)
+
+    companion object {
+        /** Une trace qu'on vient de toucher s'ouvre sur son profil, quoi qu'on regardait sur la precedente. */
+        val Initial = TrackPanelView()
+    }
+}
+
+/** Les voies de la ligne [index] d'une couche ; vide si la couche n'a pas cette ligne. */
+internal fun lineWays(ways: LayerWays, index: Int): List<fr.lc4918.trailog.domain.model.WaySegment> =
+    ways.lines.getOrNull(index).orEmpty()

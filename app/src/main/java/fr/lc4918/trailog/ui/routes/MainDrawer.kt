@@ -643,7 +643,7 @@ private fun StatCell(label: String, modifier: Modifier, value: @Composable () ->
 }
 
 /** Ou en sont les voies d'une couche dans la fenetre des statistiques. */
-internal sealed interface WaysLoad {
+sealed interface WaysLoad {
     data object Loading : WaysLoad
     data object Analyzing : WaysLoad
     data class Done(val ways: LayerWays) : WaysLoad

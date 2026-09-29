@@ -1002,10 +1002,10 @@ class MapController {
 
     /**
      * Calques et source de la mise en evidence d'une categorie (cf. [setRouteHighlight]), par proprietaire :
-     * l'itineraire (`planner`) et une trace de la bibliotheque (`layer`) ont chacun les leurs, et l'un ne
+     * l'itineraire (`planner`), une trace de la bibliotheque (`layer`) et le panneau du profil (`profile`) ont chacun les leurs, et l'un ne
      * peut pas effacer ce que l'autre vient de poser.
      */
-    private val HIGHLIGHT_KEYS = listOf("planner", "layer")
+    private val HIGHLIGHT_KEYS = listOf("planner", "layer", "profile")
     private fun hlId(key: String) = "$key-highlight"
     private fun hlCasingId(key: String) = "$key-highlight-casing"
     private fun hlSrcId(key: String) = "$key-highlight-src"

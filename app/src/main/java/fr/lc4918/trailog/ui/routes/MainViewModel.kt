@@ -27,6 +27,7 @@ import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.routing.TraceMatch
+import fr.lc4918.trailog.ui.planner.PlannerViewer
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.poi.Overpass
@@ -173,6 +174,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _profileLoading = MutableStateFlow(false)
     val profileLoading = _profileLoading.asStateFlow()
 
+    /** La ligne de la couche active dont le profil est montre : la plus proche du tap (cf. [onPickLine]). */
+    private val _activeTrackIndex = MutableStateFlow(0)
+    val activeTrackIndex = _activeTrackIndex.asStateFlow()
+
+    /** Ce que montre le panneau : le profil, les surfaces ou les types de voies (cf. [TrackPanelView]). */
+    private val _panelView = MutableStateFlow(TrackPanelView.Initial)
+    val panelView = _panelView.asStateFlow()
+
+    /**
+     * Les voies de la couche active, pour les VIEWER des surfaces et des types de voies du panneau. Null
+     * tant qu'on ne les a pas demandees : le profil seul ne les lit pas, et les retrouver interroge deux
+     * services.
+     */
+    private val _panelWays = MutableStateFlow<WaysLoad?>(null)
+    val panelWays = _panelWays.asStateFlow()
+    private var panelWaysJob: Job? = null
+
     // --- zoom sur le profil ---
     /**
      * Portion du profil actuellement affichee (indices absolus dans computed.samples), ou null pour la
@@ -281,20 +299,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _cursor.value = null
         _profileLoading.value = true
         resetProfileZoom()
+        // Une autre trace s'ouvre sur son profil, meme si l'on regardait les surfaces de la precedente.
+        resetPanelView()
         viewModelScope.launch {
             val result = withContext(Dispatchers.Default) {
                 // Profils précalculés (lecture du .prof, pas de parse DOM au tap). Une couche peut avoir
                 // plusieurs segments : on retient celui le plus proche du tap (pas de concaténation).
                 val profiles = repo.loadProfiles(layer)
-                val nearest = profiles.minByOrNull { ct ->
-                    ct.samples.minOfOrNull { s -> TrackMath.haversine(lon, lat, s.lon, s.lat) } ?: Double.MAX_VALUE
+                val index = profiles.indices.minByOrNull { i ->
+                    profiles[i].samples.minOfOrNull { s -> TrackMath.haversine(lon, lat, s.lon, s.lat) } ?: Double.MAX_VALUE
                 } ?: return@withContext null
-                nearest to TrackMeasure.project(nearest.samples, lon, lat)?.alongM
+                val nearest = profiles[index]
+                Triple(nearest, TrackMeasure.project(nearest.samples, lon, lat)?.alongM, index)
             }
             // Ne pas écraser si l'utilisateur a retapé une autre trace pendant le calcul.
             if (_activeLayerId.value == id) {
                 _computed.value = result?.first
                 _cursor.value = result?.second
+                _activeTrackIndex.value = result?.third ?: 0
                 _profileLoading.value = false
             }
         }
@@ -389,6 +411,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeProfile() {
         _activeLayerId.value = null; _computed.value = null; _cursor.value = null; _profileLoading.value = false
+        resetPanelView()
         // Les zooms disparaissent mais la carte ne bouge pas (pas d'effet de bord ici, juste l'etat local).
         resetProfileZoom()
     }
@@ -698,6 +721,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** L'instant du premier point horodate d'une trace - le jour de la sortie -, ou null s'il n'y en a pas. */
     suspend fun trackStartTime(layer: LayerEntity): Long? =
         repo.loadTrackLines(layer).mapNotNull { seg -> seg.firstNotNullOfOrNull { it.timeMs } }.minOrNull()
+
+    private fun resetPanelView() {
+        _panelView.value = TrackPanelView.Initial
+        panelWaysJob?.cancel()
+        _panelWays.value = null
+    }
+
+    /**
+     * Passe le panneau au VIEWER [v]. Les voies sont lues - ou retrouvees - la premiere fois qu'on quitte le
+     * profil, puis la plus longue categorie de la ligne affichee est mise en evidence.
+     */
+    fun showPanel(v: PlannerViewer) {
+        val ways = (_panelWays.value as? WaysLoad.Done)?.ways
+        _panelView.value = _panelView.value.showing(v, ways?.let { lineWays(it, _activeTrackIndex.value) }.orEmpty())
+        if (v != PlannerViewer.PROFILE && _panelWays.value == null) loadPanelWays(retry = false)
+    }
+
+    fun selectPanel(kind: Any?) { _panelView.value = _panelView.value.selecting(kind) }
+
+    /** Reessaie de retrouver les voies, apres un service injoignable. */
+    fun retryPanelWays() = loadPanelWays(retry = true)
+
+    private fun loadPanelWays(retry: Boolean) {
+        val layer = activeLayer() ?: return
+        panelWaysJob?.cancel()
+        panelWaysJob = viewModelScope.launch {
+            val gardees = if (retry) null else layerWays(layer)
+            if (gardees == null) _panelWays.value = WaysLoad.Analyzing
+            val issue = gardees?.let { WaysLoad.Done(it) } ?: when (val o = analyzeLayerWays(layer)) {
+                is TraceMatch.LayerOutcome.Done -> WaysLoad.Done(o.ways)
+                TraceMatch.LayerOutcome.NoMatch -> WaysLoad.NoMatch
+                TraceMatch.LayerOutcome.Unreachable -> WaysLoad.Unreachable
+            }
+            if (_activeLayerId.value != layer.id) return@launch
+            _panelWays.value = issue
+            // Les voies arrivent apres le choix du VIEWER : la categorie initiale se pose maintenant.
+            val v = _panelView.value
+            if (issue is WaysLoad.Done && v.viewer != PlannerViewer.PROFILE && v.highlight == null) {
+                _panelView.value = v.showing(v.viewer, lineWays(issue.ways, _activeTrackIndex.value))
+            }
+        }
+    }
 
     /** Les voies de la couche deja retrouvees, ou null si elle n'a jamais ete recalee. */
     suspend fun layerWays(layer: LayerEntity): LayerWays? = repo.loadWays(layer)

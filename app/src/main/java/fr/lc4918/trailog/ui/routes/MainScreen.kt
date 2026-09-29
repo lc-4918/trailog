@@ -105,6 +105,7 @@ import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.PlannerEffects
 import fr.lc4918.trailog.ui.planner.PlannerViewerPanel
+import fr.lc4918.trailog.domain.model.LayerWays
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.StepTarget
@@ -177,6 +178,10 @@ fun MainScreen(
     val computed by vm.computed.collectAsState()
     val profileLoading by vm.profileLoading.collectAsState()
     val cursor by vm.cursor.collectAsState()
+    // Ce que montre le panneau du profil (profil, surfaces, types de voies), et les voies qu'il lit.
+    val panelView by vm.panelView.collectAsState()
+    val panelWays by vm.panelWays.collectAsState()
+    val activeTrackIndex by vm.activeTrackIndex.collectAsState()
     val profileZoom by vm.profileZoom.collectAsState()
     val selectedMarkerId by vm.selectedMarkerId.collectAsState()
     val selectedMarkerPos by vm.selectedMarkerPos.collectAsState()
@@ -591,10 +596,21 @@ fun MainScreen(
     )
     ProfileCursorEffects(
         controller = controller,
-        cursor = cursor,
+        // Hors du profil, le point n'est plus pose sur la carte ; il y revient avec le profil.
+        cursor = cursor.takeIf { panelView.cursorShown },
         computed = computed,
         profileZoom = profileZoom,
     )
+    // La categorie choisie dans le panneau, mise en evidence sur la ligne montree - et elle seule.
+    LaunchedEffect(panelView, panelWays, computed, activeTrackIndex, styleTick) {
+        val w = (panelWays as? WaysLoad.Done)?.ways
+        val s = computed?.samples
+        val pieces = if (w == null || s == null || panelView.cursorShown) emptyList()
+            else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                layerHighlightPieces(LayerWays(listOf(lineWays(w, activeTrackIndex))), listOf(s), panelView.highlight)
+            }
+        controller.setRouteHighlight(pieces, key = "profile")
+    }
 
     // `by` et non `=` : ce drapeau est relu a chaque arret de la camera, depuis un rappel pose une seule
     // fois (cf. rememberCameraPlacement).
@@ -1274,6 +1290,12 @@ fun MainScreen(
                     onScrub = { vm.onProfileTap(it) },
                     onZoom = { scale, fraction -> vm.zoomProfile(scale, fraction) },
                     onDoubleTapZoom = { fraction -> vm.zoomProfile(2f, fraction) },
+                    panel = panelView,
+                    ways = panelWays,
+                    trackIndex = activeTrackIndex,
+                    onViewer = { vm.showPanel(it) },
+                    onSelect = { vm.selectPanel(it) },
+                    onRetryWays = { vm.retryPanelWays() },
                 )
                 LayerWaysViewerLayer(
                     state = layerViewer,

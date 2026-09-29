@@ -1,5 +1,13 @@
 package fr.lc4918.trailog.ui.routes
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import fr.lc4918.trailog.ui.planner.WaysShareContent
+import fr.lc4918.trailog.ui.planner.ViewerSelect
+import fr.lc4918.trailog.ui.planner.PlannerViewer
 import fr.lc4918.trailog.ui.profile.profileChartHeight
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.annotation.DrawableRes
@@ -138,6 +146,15 @@ internal fun BoxScope.TrackProfileLayer(
     onScrub: (Double) -> Unit,
     onZoom: (scale: Float, fraction: Float) -> Unit,
     onDoubleTapZoom: (fraction: Float) -> Unit,
+    /** Ce que montre le panneau : le profil, ou les surfaces ou les types de voies (cf. TrackPanelView). */
+    panel: TrackPanelView = TrackPanelView.Initial,
+    /** Les voies de la couche, null tant qu'on ne les a pas demandees. */
+    ways: WaysLoad? = null,
+    /** La ligne de la couche montree : ses voies seules comptent ici. */
+    trackIndex: Int = 0,
+    onViewer: (PlannerViewer) -> Unit = {},
+    onSelect: (Any?) -> Unit = {},
+    onRetryWays: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
@@ -194,8 +211,9 @@ internal fun BoxScope.TrackProfileLayer(
     val panelBottomDp = with(density) { panelHeightPx.toDp() }
 
     // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil (décalées
-    // de la hauteur mesurée du panneau, superposé à la carte).
-    if (computed != null && cursorSample != null) {
+    // de la hauteur mesurée du panneau, superposé à la carte). Sur le profil seulement : ailleurs, le point
+    // ne designe rien de ce qu'on regarde ; il reparait au retour sur le profil.
+    if (computed != null && cursorSample != null && panel.cursorShown) {
         // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur un point
         // plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui est seul et va a
         // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
@@ -217,7 +235,7 @@ internal fun BoxScope.TrackProfileLayer(
     }
     // Bouton de zoom du profil : même hauteur que les infos du point ci-dessus, mais à gauche - elles
     // occupent désormais la droite.
-    if (activeLayerId != null && shown != null) {
+    if (activeLayerId != null && shown != null && panel.viewer == PlannerViewer.PROFILE) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -258,14 +276,20 @@ internal fun BoxScope.TrackProfileLayer(
              * place : il ne parait que si la couche est coloriee selon la pente, et montre la palette dans
              * une fenetre (cf. SlopeLegendInfo).
              */
-            Box(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap)) {
+            /*
+             * A droite du titre, le choix de ce qu'on regarde : le profil, les surfaces, les types de voies
+             * - le meme choix que dans les VIEWER. Le "i" des pentes ne vaut que pour le profil.
+             */
+            val legende = slopeColored && panel.viewer == PlannerViewer.PROFILE
+            Row(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap), verticalAlignment = Alignment.Top) {
                 Text(title, fontSize = (settings.profTitleFont).sp,
                     fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = Spacing.xs, end = if (slopeColored) SlopeLegendGutter else 0.dp))
-                if (slopeColored) {
+                    modifier = Modifier.weight(1f).padding(start = Spacing.xs, end = Spacing.s))
+                ViewerSelect(panel.viewer, PlannerViewer.entries, onPick = onViewer)
+                if (legende) {
                     // En haut, non centre : sur un titre de deux lignes, un "i" centre tomberait entre les deux.
-                    SlopeLegendInfo(settings, Modifier.align(Alignment.TopEnd).offset(y = (-6).dp))
+                    SlopeLegendInfo(settings, Modifier.offset(y = (-6).dp))
                 }
             }
             if (windowStats != null) {
@@ -282,6 +306,10 @@ internal fun BoxScope.TrackProfileLayer(
                 )
             }
             Spacer(Modifier.height(ProfileGraphGap))
+            if (panel.viewer != PlannerViewer.PROFILE) {
+                PanelWays(panel, ways, trackIndex, imperial, onSelect, onRetryWays)
+                Spacer(Modifier.height(Spacing.m))
+            } else
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val hauteurGraphe = if (windowSamples != null && windowStats != null && windowSamples.size >= 2) {
                 profileChartHeight(
@@ -315,6 +343,42 @@ internal fun BoxScope.TrackProfileLayer(
                     CircularProgressIndicator()
                 }
             }
+            }
+        }
+    }
+}
+
+/**
+ * Les surfaces ou les types de voies de la ligne montree, a la place du graphique : la categorie mise en
+ * evidence et la barre des parts. Pendant la recherche des voies, un indicateur ; en cas d'echec, pourquoi -
+ * et de quoi reessayer quand c'est le reseau.
+ */
+@Composable
+private fun PanelWays(
+    view: TrackPanelView, ways: WaysLoad?, trackIndex: Int, imperial: Boolean,
+    onSelect: (Any?) -> Unit, onRetry: () -> Unit,
+) {
+    val sub = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(Modifier.fillMaxWidth().heightIn(min = 72.dp).testTag("track_panel_ways"), contentAlignment = Alignment.CenterStart) {
+        when (ways) {
+            is WaysLoad.Done -> {
+                val segments = remember(ways, trackIndex) { lineWays(ways.ways, trackIndex) }
+                if (segments.isEmpty()) Text(stringResource(R.string.stats_ways_no_match), color = sub,
+                    style = MaterialTheme.typography.bodyMedium)
+                else Column { WaysShareContent(view.viewer, segments, view.highlight, imperial, onSelect) }
+            }
+            WaysLoad.NoMatch -> Text(stringResource(R.string.stats_ways_no_match), color = sub,
+                style = MaterialTheme.typography.bodyMedium)
+            WaysLoad.Unreachable -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.stats_ways_unreachable), color = sub,
+                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                androidx.compose.material3.TextButton(onClick = onRetry, modifier = Modifier.testTag("track_panel_retry")) {
+                    Text(stringResource(R.string.planner_retry))
+                }
+            }
+            else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.stats_ways_analyzing), color = sub, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
