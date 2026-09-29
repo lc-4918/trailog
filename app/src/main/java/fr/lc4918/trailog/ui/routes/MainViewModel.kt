@@ -131,6 +131,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * L'ECRITURE, elle, garde le null (cf. SettingsViewModel) : modifier une ligne qu'on n'a pas encore
      * lue reviendrait a ecrire des defauts par-dessus les reglages de quelqu'un.
      */
+    /*
+     * Ces reglages se LISENT, ils ne s'ecrivent pas : tant que la base n'a pas repondu, ils valent les
+     * defauts, et une ecriture partie d'eux ecrasait la vraie ligne par des defauts. Au premier lancement
+     * apres une mise a jour, la migration retardait assez la lecture pour que l'enregistrement de la
+     * position de la carte passe avant : les reglages repartaient aux defauts, et le drapeau du jeu de
+     * demonstration avec eux - un dossier Demo de plus a chaque release. Chaque ecriture relit donc la
+     * ligne en base (repo.settings.get()), et n'ecrit rien tant qu'elle n'existe pas.
+     */
     val settings: StateFlow<SettingsEntity> =
         repo.settingsFlow.map { it ?: startupSettings }
             .stateIn(viewModelScope, SharingStarted.Eagerly, startupSettings)
@@ -676,7 +684,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             _cameraToSave.filterNotNull().debounce(600).collect { (lat, lon, zoom) ->
-                val s = settings.value ?: return@collect
+                val s = repo.settings.get() ?: return@collect
                 if (s.hasCamera && kotlin.math.abs(s.lastLat - lat) < 1e-6 &&
                     kotlin.math.abs(s.lastLon - lon) < 1e-6 && kotlin.math.abs(s.lastZoom - zoom) < 1e-4) return@collect
                 repo.settings.upsert(s.copy(lastLat = lat, lastLon = lon, lastZoom = zoom, hasCamera = true))
@@ -696,7 +704,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * carte doit rester coupe le temps qu'on la lise, rotation et mise en veille comprises.
      */
     fun setMapFollowPosition(on: Boolean) = viewModelScope.launch {
-        val s = settings.value
+        val s = repo.settings.get() ?: return@launch
         if (s.mapFollowPosition == on) return@launch
         repo.settings.upsert(s.copy(mapFollowPosition = on))
     }
@@ -708,7 +716,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * l'interrupteur de la couche, et il se regle la ou l'on regarde la carte (cf. PoiFilterBubble).
      */
     fun savePoiFilters(filters: PoiFilters) = viewModelScope.launch {
-        val s = settings.value
+        val s = repo.settings.get() ?: return@launch
         val csv = filters.hiddenCsv()
         if (s.poiHiddenCategories == csv) return@launch
         // Rallumer la couche - une categorie cochee apres tout decoche - leve la mise de cote : c'est une
@@ -792,7 +800,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** La couche des points d'interet mise de cote, ou remise, par l'oeil de sa bulle. */
     fun savePoiMasked(masked: Boolean) = viewModelScope.launch {
-        val s = settings.value
+        val s = repo.settings.get() ?: return@launch
         if (s.poiMasked != masked) repo.settings.upsert(s.copy(poiMasked = masked))
     }
 
@@ -951,7 +959,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Change le fond de plan courant (bouton du Basemap Control ou tap sur un item du panneau). */
     fun selectBasemap(id: String) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
+        val s = repo.settings.get() ?: return@launch
         repo.settings.upsert(s.copy(defaultBasemapId = id))
     }
 
@@ -967,7 +975,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * ViewModel que passent les autres etats d'affichage retenus d'une fois sur l'autre.
      */
     fun rememberPlannerPlace(place: fr.lc4918.trailog.geocode.GeocodePlace) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
+        val s = repo.settings.get() ?: return@launch
         val maj = (PlannerHistory.of(s.plannerHistory) + place).asText()
         if (s.plannerHistory != maj) repo.settings.upsert(s.copy(plannerHistory = maj))
     }
@@ -980,7 +988,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * l'un et l'autre s'effacent d'un geste, sans passer par la reinitialisation de tous les reglages.
      */
     fun forgetPlannerPlace(label: String) = viewModelScope.launch {
-        val s = settings.value ?: return@launch
+        val s = repo.settings.get() ?: return@launch
         val maj = (PlannerHistory.of(s.plannerHistory) - label).asText()
         if (s.plannerHistory != maj) repo.settings.upsert(s.copy(plannerHistory = maj))
     }
@@ -989,7 +997,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Tap sur le relief dans le gestionnaire : allume ou éteint son ombrage. Ne touche pas au fond DEM
      *  lui-même, dont le `enabled` ne dit que sa présence dans la liste (cf. SettingsEntity.hillshadeOn). */
     fun toggleHillshade() = viewModelScope.launch {
-        val s = settings.value ?: return@launch
+        val s = repo.settings.get() ?: return@launch
         repo.settings.upsert(s.copy(hillshadeOn = !s.hillshadeOn))
     }
 

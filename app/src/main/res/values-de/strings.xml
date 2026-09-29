@@ -744,4 +744,9 @@
     <string name="way_ferry">Fähre</string>
     <string name="way_other">Sonstiges</string>
     <string name="planner_details_estimated">Davon %1$s aus dem Wegtyp geschätzt, da kein Belag angegeben ist</string>
+    <string name="selection_delete_title">Auswahl löschen</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">%1$d Element löschen? Ein Ordner wird mit seinem Inhalt gelöscht.</item>
+        <item quantity="other">%1$d Elemente löschen? Ein Ordner wird mit seinem Inhalt gelöscht.</item>
+    </plurals>
 </resources>

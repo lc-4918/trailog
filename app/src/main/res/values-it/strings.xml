@@ -744,4 +744,9 @@
     <string name="way_ferry">Traghetto</string>
     <string name="way_other">Altro</string>
     <string name="planner_details_estimated">Di cui %1$s stimato dal tipo di strada, in assenza della superficie</string>
+    <string name="selection_delete_title">Elimina la selezione</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">Eliminare %1$d elemento? Una cartella viene eliminata con il suo contenuto.</item>
+        <item quantity="other">Eliminare %1$d elementi? Una cartella viene eliminata con il suo contenuto.</item>
+    </plurals>
 </resources>

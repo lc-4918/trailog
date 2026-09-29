@@ -744,4 +744,9 @@
     <string name="way_ferry">Ferrya</string>
     <string name="way_other">Bestelakoa</string>
     <string name="planner_details_estimated">Horietatik %1$s bide motaren arabera kalkulatua, gainazala adierazi gabe dagoelako</string>
+    <string name="selection_delete_title">Ezabatu hautapena</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">%1$d elementu ezabatu? Karpeta bat bere edukiarekin ezabatzen da.</item>
+        <item quantity="other">%1$d elementu ezabatu? Karpeta bat bere edukiarekin ezabatzen da.</item>
+    </plurals>
 </resources>

@@ -746,4 +746,9 @@
     <string name="way_ferry">Bac</string>
     <string name="way_other">Autre</string>
     <string name="planner_details_estimated">Dont %1$s estimés d\'après le type de voie, faute de revêtement renseigné</string>
+    <string name="selection_delete_title">Supprimer la sélection</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">Supprimer %1$d élément ? Un dossier est supprimé avec son contenu.</item>
+        <item quantity="other">Supprimer %1$d éléments ? Un dossier est supprimé avec son contenu.</item>
+    </plurals>
 </resources>

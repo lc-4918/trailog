@@ -744,4 +744,9 @@
     <string name="way_ferry">Transbordador</string>
     <string name="way_other">Altres</string>
     <string name="planner_details_estimated">D\'aquest total, %1$s estimat segons el tipus de via, perquè no s\'indica la superfície</string>
+    <string name="selection_delete_title">Suprimeix la selecció</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">Vols suprimir %1$d element? Una carpeta se suprimeix amb el seu contingut.</item>
+        <item quantity="other">Vols suprimir %1$d elements? Una carpeta se suprimeix amb el seu contingut.</item>
+    </plurals>
 </resources>

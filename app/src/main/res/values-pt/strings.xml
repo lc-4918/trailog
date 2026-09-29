@@ -744,4 +744,9 @@
     <string name="way_ferry">Ferry</string>
     <string name="way_other">Outro</string>
     <string name="planner_details_estimated">Dos quais %1$s estimados pelo tipo de via, por falta de superfície indicada</string>
+    <string name="selection_delete_title">Eliminar a seleção</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">Eliminar %1$d elemento? Uma pasta é eliminada com o seu conteúdo.</item>
+        <item quantity="other">Eliminar %1$d elementos? Uma pasta é eliminada com o seu conteúdo.</item>
+    </plurals>
 </resources>

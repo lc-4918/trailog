@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import androidx.core.content.FileProvider
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.DemoPrefs
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
@@ -47,6 +48,7 @@ import fr.lc4918.trailog.domain.model.LayerWays
 import fr.lc4918.trailog.domain.model.TrackPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -189,18 +191,23 @@ class TrailogRepository(private val ctx: Context) {
     }
 
     /**
-     * Pose le jeu de démonstration au tout premier lancement, installation neuve comme mise à jour d'une
-     * base existante (la migration 23->24 y ajoute le drapeau à faux).
+     * Pose le jeu de démonstration au tout premier lancement, et à lui seul.
      *
      * Le drapeau est levé quoi qu'il arrive, y compris si l'import échoue ou si les assets sont absents :
      * un jeu d'exemple qui n'a pas pu s'installer ne vaut pas d'être retenté à chaque lancement, et une
      * exception ici empêcherait l'app de démarrer. Levé AVANT l'import, pour qu'un plantage en cours de
      * route ne laisse pas non plus la porte ouverte à un second essai qui produirait un doublon.
+     *
+     * Il vit a part des reglages (cf. DemoPrefs), qui le perdaient. Pour une base d'avant ce changement, le
+     * drapeau des reglages vaut encore - et un dossier Demo deja present aussi : chez qui le drapeau avait
+     * ete perdu, c'est la seule trace fiable que la demonstration est passee.
      */
     private suspend fun seedDemoIfNeeded() {
+        if (DemoPrefs.seeded(ctx)) return
+        DemoPrefs.markSeeded(ctx)
         val s = db.settings().get() ?: return
-        if (s.demoSeeded) return
-        db.settings().upsert(s.copy(demoSeeded = true))
+        val demo = ctx.getString(R.string.demo_folder_name)
+        if (s.demoSeeded || db.folders().all().first().any { it.name == demo }) return
         runCatching { importDemoLayer() }.onFailure { it.printStackTrace() }
     }
 

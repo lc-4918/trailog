@@ -744,4 +744,9 @@
     <string name="way_ferry">Ferry</string>
     <string name="way_other">Other</string>
     <string name="planner_details_estimated">Including %1$s estimated from the way type, as no surface is tagged</string>
+    <string name="selection_delete_title">Delete selection</string>
+    <plurals name="selection_delete_text">
+        <item quantity="one">Delete %1$d item? A folder is deleted with its contents.</item>
+        <item quantity="other">Delete %1$d items? A folder is deleted with its contents.</item>
+    </plurals>
 </resources>

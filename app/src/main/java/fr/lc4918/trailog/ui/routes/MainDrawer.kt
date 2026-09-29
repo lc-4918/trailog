@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -189,12 +190,18 @@ internal fun FolderNode(
         onPositioned = { dctx.rowBounds["folder" to folder.id] = it },
     ) {
         val allVisible = contents.isEmpty() || contents.all { it.visible }
+        val selection = LocalDrawerSelection.current
+        val vibre = rememberSelectionHaptic()
         DrawerIcon(
             if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
             if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
             size = DrawerChevronSize, onClick = { expanded = !expanded },
         )
-        DrawerIcon(
+        // En selection, la case prend la place de l'oeil : meme colonne, meme cible.
+        if (selection.active) {
+            RowCheckbox(selection.isSelected("folder" to folder.id), { selection.toggle("folder" to folder.id) },
+                DrawerHitSize, "select_folder_${folder.id}")
+        } else DrawerIcon(
             if (allVisible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
             if (allVisible) stringResource(R.string.action_hide_folder) else stringResource(R.string.action_show_folder),
             onClick = { vm.setFolderVisible(folder.id, !allVisible) },
@@ -207,9 +214,8 @@ internal fun FolderNode(
         // Nom d'un dossier : demi-gras. Il ne porte pas de couleur, contrairement a une couche, et n'a que
         // sa graisse pour se distinguer de ce qu'il contient. Plus de capitales : elles criaient, et
         // allongeaient les noms au point de les couper plus tot que ceux des couches.
-        Text(folder.name, style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        RowLabel(folder.name, MaterialTheme.typography.bodyMedium, MaterialTheme.colorScheme.onSurface,
+            FontWeight.SemiBold, onLongPress = { vibre(); selection.start("folder" to folder.id) },
             modifier = Modifier.weight(1f))
         // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
         // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
@@ -222,7 +228,8 @@ internal fun FolderNode(
         }
         // Poignee et menu colles : ce sont les deux prises de la ligne, pas deux elements a distinguer.
         // L'ecart de la ligne les separerait autant que le nom du compteur, qui n'ont rien a voir entre eux.
-        RowEndActions {
+        // En selection, ils s'effacent : on coche, on ne range ni ne retouche.
+        if (!selection.active) RowEndActions {
             DragHandle(
                 onStart = { strongHaptic(context); dctx.onStart("folder", folder.id) },
                 onDrag = { dctx.onDrag("folder", folder.id, it) },
@@ -339,7 +346,12 @@ internal fun LayerLine(
         // Place du chevron d'un dossier, laissee vide : sans elle, l'oeil d'une couche remonterait sous
         // celui de son dossier et l'arbre perdrait sa colonne.
         Spacer(Modifier.width(DrawerChevronSize))
-        DrawerIcon(
+        val selection = LocalDrawerSelection.current
+        val vibre = rememberSelectionHaptic()
+        if (selection.active) {
+            RowCheckbox(selection.isSelected(kind to id), { selection.toggle(kind to id) }, DrawerHitSize,
+                "select_${kind}_$id")
+        } else DrawerIcon(
             if (visible) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff,
             if (visible) stringResource(R.string.action_hide) else stringResource(R.string.action_show),
             onClick = { onToggle(!visible) },
@@ -351,11 +363,11 @@ internal fun LayerLine(
             tint = Color(color.toColorInt()).copy(alpha = if (visible) 1f else 0.4f),
             onClick = { showColor = true },
         )
-        Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            color = if (visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+        RowLabel(name, MaterialTheme.typography.bodyMedium,
+            if (visible) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            null, onLongPress = { vibre(); selection.start(kind to id) },
             modifier = Modifier.weight(1f))
-        RowEndActions {
+        if (!selection.active) RowEndActions {
             DragHandle(
                 onStart = { strongHaptic(context); dctx.onStart(kind, id) },
                 onDrag = { dctx.onDrag(kind, id, it) },
@@ -757,7 +769,7 @@ internal fun HeaderButton(
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
-        Modifier.height(40.dp).clip(CircleShape)
+        Modifier.height(HeaderActionsHeight).clip(CircleShape)
             .then(
                 if (primary) Modifier.background(scheme.primaryContainer)
                 else Modifier.border(1.dp, scheme.outlineVariant, CircleShape)
@@ -1170,7 +1182,16 @@ internal fun DrawerContent(
         }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    // La selection multiple : ouverte par un appui long sur une ligne, annulee par le retour, et refermee
+    // avec le tiroir - on ne retrouve pas en rouvrant le menu des cases cochees la fois d'avant.
+    val selection = remember { DrawerSelection() }
+    var confirmDeleteSelection by remember { mutableStateOf(false) }
+    // L'infobulle du nom entier : une a la fois, fermee par tout appui dans le menu (cf. TooltipHolder).
+    val bulles = remember { TooltipHolder() }
+    androidx.activity.compose.BackHandler(enabled = selection.active) { selection.cancel() }
+    LaunchedEffect(open) { if (!open) { selection.cancel(); bulles.close() } }
+    CompositionLocalProvider(LocalDrawerSelection provides selection, LocalTooltipHolder provides bulles) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().closesTooltips(bulles)) {
         // En-tete, sur deux lignes : les reglages, le titre et la croix ; puis les gestes de la bibliotheque.
         Row(
             Modifier.fillMaxWidth().height(56.dp).padding(start = Spacing.s, end = Spacing.s, top = Spacing.s),
@@ -1195,6 +1216,17 @@ internal fun DrawerContent(
         // contour, et son libelle plutot que l'icone seule - une icone de dossier "plus" ne se lisait
         // pas. La recherche est a l'oppose : elle ne cree ni n'importe rien, elle change la facon de LIRE
         // ce qui est en dessous, et le vide entre elle et les autres dit cette difference.
+        // En selection, la ligne des gestes cede la place a ceux de la selection (cf. SelectionHeader).
+        if (selection.active) {
+            val tous = allTreeItems(folders, layers)
+            SelectionHeader(
+                state = selection.allState(tous), count = selection.selected.size,
+                onToggleAll = { selection.toggleAll(tous) },
+                onCancel = { selection.cancel() },
+                onDelete = { confirmDeleteSelection = true },
+                modifier = Modifier.padding(start = Spacing.xs, end = Spacing.s, top = Spacing.s, bottom = Spacing.m),
+            )
+        } else
         Row(
             Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.s, top = Spacing.s, bottom = Spacing.m),
             horizontalArrangement = Arrangement.spacedBy(Spacing.s),
@@ -1272,6 +1304,28 @@ internal fun DrawerContent(
             }
         }
     }
+    }
+
+    if (confirmDeleteSelection) {
+        val n = selection.selected.size
+        AlertDialog(
+            onDismissRequest = { confirmDeleteSelection = false },
+            title = { Text(stringResource(R.string.selection_delete_title)) },
+            text = { Text(pluralStringResource(R.plurals.selection_delete_text, n, n)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteSelection = false
+                    val (dossiers, couches) = deletionPlan(selection.selected, folders, layers)
+                    dossiers.forEach { vm.deleteFolder(it, deleteContents = true) }
+                    couches.forEach { vm.deleteLayer(it) }
+                    selection.cancel()
+                }) { Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteSelection = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
 
     exportTarget?.let { layer ->
         ExportFormatDialog(
@@ -1347,17 +1401,13 @@ internal fun DrawerContent(
     }
 
     renameTarget?.let { (kind, id) ->
-        AlertDialog(
-            onDismissRequest = { renameTarget = null },
-            title = { Text(stringResource(R.string.action_rename)) },
-            text = { CompactOutlinedTextField(renameValue, { renameValue = it }, singleLine = true) },
-            confirmButton = {
-                TextButton(onClick = {
-                    when (kind) { "folder" -> vm.renameFolder(id, renameValue); "layer" -> vm.renameLayer(id, renameValue) }
-                    renameTarget = null
-                }) { Text(stringResource(R.string.action_ok)) }
+        RenameDialog(
+            value = renameValue, onValue = { renameValue = it },
+            onConfirm = {
+                when (kind) { "folder" -> vm.renameFolder(id, renameValue); "layer" -> vm.renameLayer(id, renameValue) }
+                renameTarget = null
             },
-            dismissButton = { TextButton(onClick = { renameTarget = null }) { Text(stringResource(R.string.action_cancel)) } },
+            onDismiss = { renameTarget = null },
         )
     }
     moveTarget?.let { (kind, id) ->
@@ -1373,4 +1423,32 @@ internal fun DrawerContent(
             confirmButton = {}, dismissButton = { TextButton(onClick = { moveTarget = null }) { Text(stringResource(R.string.action_close)) } },
         )
     }
+}
+
+/**
+ * Renommer un dossier ou une couche : le champ a le focus des l'ouverture - on vient pour taper, et le
+ * clavier sort d'emblee -, et il prend toute la largeur de la fenetre, quelle que soit la longueur du nom.
+ * Il s'adaptait a son contenu : un nom court donnait un champ etroit, ou l'on visait mal.
+ */
+@Composable
+internal fun RenameDialog(
+    value: String,
+    onValue: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.action_rename)) },
+        text = {
+            CompactOutlinedTextField(value, onValue, singleLine = true,
+                modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("rename_field"))
+            // DANS la fenetre, et non a cote : elle compose son contenu dans sa propre fenetre, apres
+            // l'appelant ; demande de l'exterieur, le focus visait un champ pas encore pose, et levait.
+            LaunchedEffect(Unit) { focus.requestFocus() }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_ok)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }

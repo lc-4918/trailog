@@ -8,6 +8,7 @@ import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.imp.EmptyLayerException
 import kotlinx.coroutines.flow.first
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.data.db.FolderEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -208,5 +209,53 @@ class TrailogRepositoryTest {
         fondParDefaut("osm")
         repo.deleteProvider(fond)
         assertEquals("osm", db.settings().get()!!.defaultBasemapId)
+    }
+
+    // ---------- Jeu de demonstration ----------
+
+    private val demo get() = ctx.getString(fr.lc4918.trailog.R.string.demo_folder_name)
+
+    private suspend fun dossiersDemo() = db.folders().all().first().filter { it.name == demo }
+
+    /** Etat d'une installation neuve : ni drapeau, ni dossier Demo. */
+    private suspend fun installationNeuve() {
+        ctx.getSharedPreferences("demo_prefs", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        dossiersDemo().forEach { db.folders().delete(it) }
+        db.settings().upsert((db.settings().get() ?: SettingsEntity()).copy(demoSeeded = false))
+    }
+
+    /** Ce que faisaient une copie perimee des reglages, ou "Reinitialiser les reglages" : drapeau a faux. */
+    private suspend fun reglagesReecrits() {
+        db.settings().upsert(db.settings().get()!!.copy(demoSeeded = false))
+    }
+
+    /** Le cas d'un testeur : trois dossiers Demo au fil des mises a jour. */
+    @Test fun `la demo n'est posee qu'une fois, meme si les reglages perdent leur drapeau`() = runTest {
+        installationNeuve()
+        repo.ensureSeed()
+        assertEquals(1, dossiersDemo().size)
+        reglagesReecrits()
+        repo.ensureSeed()
+        reglagesReecrits()
+        repo.ensureSeed()
+        assertEquals(1, dossiersDemo().size)
+    }
+
+    /** Une base d'avant, dont le drapeau s'etait deja perdu : le dossier Demo present suffit a le dire. */
+    @Test fun `une base d'avant qui a deja sa demo n'en recoit pas d'autre`() = runTest {
+        installationNeuve()
+        db.folders().insert(FolderEntity(name = demo))
+        repo.ensureSeed()
+        assertEquals(1, dossiersDemo().size)
+    }
+
+    /** Qui supprime la demo ne la voit pas revenir, reglages reinitialises ou non. */
+    @Test fun `une demo supprimee ne revient pas`() = runTest {
+        installationNeuve()
+        repo.ensureSeed()
+        dossiersDemo().forEach { db.folders().delete(it) }
+        reglagesReecrits()
+        repo.ensureSeed()
+        assertEquals(0, dossiersDemo().size)
     }
 }
