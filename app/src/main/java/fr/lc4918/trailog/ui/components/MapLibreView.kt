@@ -513,12 +513,14 @@ class MapController {
         val bmp = createBitmap(w, h)
         val c = AndroidCanvas(bmp)
         val stroke = TrackChevron.strokePx(h)
+        val haloW = TrackChevron.haloPx(h)
         val path = android.graphics.Path().apply {
-            val m = stroke
+            // Marge d'un demi-halo : le halo reste dans le cadre, qui ne deborde pas le trait.
+            val m = haloW / 2f
             moveTo(m, m); lineTo(w - m, h / 2f); lineTo(m, h - m)
         }
         val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE; strokeWidth = stroke * 1.9f; color = android.graphics.Color.WHITE
+            style = Paint.Style.STROKE; strokeWidth = haloW; color = android.graphics.Color.WHITE
             strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
         }
         val ink = Paint(halo).apply { strokeWidth = stroke; color = android.graphics.Color.BLACK }

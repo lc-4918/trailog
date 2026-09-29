@@ -16,6 +16,7 @@ import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.routing.RouteOutcome
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.components.MapController
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -49,8 +50,6 @@ fun PlannerEffects(
     prefs: RoutingPrefs,
     smoothingM: Double,
     slopeTint: Boolean,
-    /** Largeur des classes de pente, en dixiemes de point (cf. SlopeRamp). */
-    slopeClassTenths: Int,
     /** Compteur de styles prets : un fond de carte recharge emporte le trace avec lui. */
     styleTick: Int,
     /** Le reglage qui autorise le planificateur : l'eteindre pendant qu'il est ouvert le referme. */
@@ -215,8 +214,8 @@ fun PlannerEffects(
     // Tracés posés sur la carte, teintés par classe de pente comme l'aire du profil : le parcours du
     // planificateur, et les itinéraires mesurés depuis un point de la carte. Un seul calque pour les trois :
     // ils ont même style, et rien n'impose d'ordre entre eux.
-    LaunchedEffect(state.revision, state.route, routeRevision, styleTick, slopeTint, slopeClassTenths) {
-        controller.setRouteLines(listOfNotNull(state.done?.track) + routeTracks, slopeTint, slopeClassTenths)
+    LaunchedEffect(state.revision, state.route, routeRevision, styleTick, slopeTint) {
+        controller.setRouteLines(listOfNotNull(state.done?.track) + routeTracks, slopeTint, SlopeRamp.DefaultClassTenths)
     }
     // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
     // planificateur fermant le profil ouvert quand il s'ouvre.

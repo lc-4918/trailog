@@ -260,21 +260,16 @@
     <!-- Configuració: Perfil -->
     <string name="settings_section_display">Visualització</string>
     <string name="settings_profile_grid">Quadrícula</string>
-    <string name="settings_profile_color_by_slope">Acoloreix l\'àrea segons el pendent</string>
     <string name="action_color_by_slope">Acolorir segons el pendent</string>
     <string name="action_restore_color">Restablir el color</string>
     <string name="settings_section_route_slope">Coloració per pendent</string>
-    <string name="settings_route_slope_info">Només afecta el càlcul de rutes. Els tracks s\'acoloreixen des del menú de cada capa, i el seu perfil des de la pestanya Mapa.</string>
-    <string name="settings_route_slope_line">Traçat de la ruta calculada</string>
-    <string name="settings_route_slope_profile">Perfil d\'altitud</string>
-    <string name="settings_profile_color_by_slope_info">Només perfils de tracks. El de la ruta calculada es configura a la pestanya Rutes.</string>
-    <string name="settings_slope_classes">Classes de pendent</string>
+    <string name="settings_route_slope_info">El traçat de la ruta calculada i l\'àrea del seu perfil d\'altitud s\'acoloriran segons el pendent.</string>
+    <string name="settings_route_slope_line">Acoloreix segons el pendent</string>
     <string name="settings_group_track">Track</string>
     <string name="settings_track_line_width">Gruix de la línia</string>
     <string name="settings_track_line_width_info">Gruix dels tracks i de la ruta calculada al mapa.</string>
     <string name="settings_track_direction">Sentit de la marxa</string>
     <string name="settings_track_direction_info">Uns xebrons al llarg de la línia indiquen en quin sentit es recorre el track.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Llegenda de pendents</string>
     <string name="settings_section_font_sizes">Estils</string>
     <string name="font_axes">Eixos</string>

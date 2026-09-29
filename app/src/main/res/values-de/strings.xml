@@ -260,21 +260,16 @@
     <!-- Einstellungen: Profil -->
     <string name="settings_section_display">Anzeige</string>
     <string name="settings_profile_grid">Raster</string>
-    <string name="settings_profile_color_by_slope">Fläche nach Steigung einfärben</string>
     <string name="action_color_by_slope">Nach Steigung färben</string>
     <string name="action_restore_color">Farbe wiederherstellen</string>
     <string name="settings_section_route_slope">Färbung nach Steigung</string>
-    <string name="settings_route_slope_info">Gilt nur für die Routenplanung. Tracks werden über das Menü jeder Ebene gefärbt, ihr Profil über den Reiter Karte.</string>
-    <string name="settings_route_slope_line">Linie der geplanten Route</string>
-    <string name="settings_route_slope_profile">Höhenprofil</string>
-    <string name="settings_profile_color_by_slope_info">Nur Profile von Tracks. Das Profil der geplanten Route wird im Reiter Routen eingestellt.</string>
-    <string name="settings_slope_classes">Steigungsklassen</string>
+    <string name="settings_route_slope_info">Die Linie der geplanten Route und die Fläche ihres Höhenprofils werden nach Steigung eingefärbt.</string>
+    <string name="settings_route_slope_line">Nach Steigung einfärben</string>
     <string name="settings_group_track">Track</string>
     <string name="settings_track_line_width">Linienbreite</string>
     <string name="settings_track_line_width_info">Stärke der Tracks und der geplanten Route auf der Karte.</string>
     <string name="settings_track_direction">Fahrtrichtung</string>
     <string name="settings_track_direction_info">Winkel entlang der Linie zeigen, in welche Richtung der Track verläuft.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Steigungslegende</string>
     <string name="settings_section_font_sizes">Stile</string>
     <string name="font_axes">Achsen</string>

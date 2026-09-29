@@ -104,92 +104,6 @@ internal fun NoElevationBanner(modifier: Modifier = Modifier) {
 }
 
 /**
- * Panneau de profil d'un itinéraire mesuré depuis l'infobulle d'un lieu.
- *
- * Reprend la forme du profil d'une trace - mêmes réglages d'apparence, même légende, même graphique - pour
- * qu'une pente s'y lise de la même façon. Trois différences, toutes tenant à la nature de l'objet : pas de
- * spinner (l'itinéraire est calculé avant que le bouton n'apparaisse), pas de zoom A/B (un parcours court,
- * d'un seul tenant), et une croix de fermeture, car rien sur la carte ne permettrait de le rouvrir.
- *
- * Aucun garde-fou sur l'altimétrie : le bouton qui ouvre ce panneau n'existe que si le moteur a rendu des
- * altitudes (cf. GeocodeBubble).
- */
-@Composable
-internal fun RouteProfilePanel(
-    track: ComputedTrack,
-    title: String,
-    settings: SettingsEntity,
-    imperial: Boolean,
-    lineColor: Color,
-    cursorX: Double?,
-    lastLabelInsetPx: Float,
-    onScrub: (Double) -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier.fillMaxWidth().background(Color.White).padding(horizontal = 8.dp).navigationBarsPadding(),
-    ) {
-        // Meme mise en page que le bandeau d'une trace : le titre sur sa ligne (la croix a son bout),
-        // les infos en colonnes sur toute la largeur en dessous.
-        Row(
-            Modifier.padding(vertical = ProfileTitleGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(title, fontSize = (settings.profTitleFont).sp,
-                fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f))
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                IconButton(onClick = onClose, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
-                }
-            }
-        }
-        TrackInfoColumns(
-            titleInfos(
-                track.stats, settings.titleInfos, imperial,
-                remember(track.samples) { TrackMath.toblerSeconds(track.samples) },
-            ),
-            fontSp = settings.profBarFont,
-            bold = settings.profBarBold,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (settings.routeSlopeProfile && settings.profileSlopeLegend) {
-            SlopeLegend(settings.slopeClassTenths, settings.profLegendFont,
-                Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                bold = settings.profLegendBold)
-        } else {
-            Spacer(Modifier.height(ProfileGraphGap))
-        }
-        // La hauteur du graphe suit l'echelle : sous un plafond d'exageration, le dessin n'a pas besoin de
-        // tout le cadre, et le panneau rend la place (cf. profileChartHeight).
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val hauteurGraphe = profileChartHeight(
-            settings.profileVerticalScale, track.stats.min, track.stats.max,
-            track.samples.last().x - track.samples.first().x,
-            constraints.maxWidth, ProfileChartMaxHeight, settings.profAxisFont,
-        )
-        Box(Modifier.fillMaxWidth().height(hauteurGraphe), contentAlignment = Alignment.Center) {
-            ElevationProfile(
-                samples = track.samples, stats = track.stats,
-                grid = settings.profileGrid,
-                slope = settings.routeSlopeProfile,
-                slopeClassTenths = settings.slopeClassTenths,
-                lineColor = lineColor,
-                axisFontSp = settings.profAxisFont,
-                axisBold = settings.profAxisBold,
-                cursorX = cursorX, onScrub = onScrub,
-                lastLabelInsetPx = lastLabelInsetPx,
-                verticalScale = settings.profileVerticalScale,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-            )
-        }
-        }
-    }
-}
-
-/**
  * Le profil de la trace active, et les deux blocs qui l'accompagnent au bas de la carte.
  *
  * Trois choses posees dans la meme boite, parce qu'elles se lisent ensemble et se calent les unes sur les
@@ -385,8 +299,8 @@ internal fun BoxScope.TrackProfileLayer(
                     ElevationProfile(
                         samples = windowSamples, stats = windowStats,
                         grid = settings.profileGrid,
-                        slope = settings.profileSlope,
-                        slopeClassTenths = settings.slopeClassTenths,
+                        // L'aire suit le trait : coloriee par pente des que la couche l'est.
+                        slope = slopeColored,
                         lineColor = if (lineColor != Color.Unspecified) lineColor else MaterialTheme.colorScheme.primary,
                         axisFontSp = settings.profAxisFont,
                         axisBold = settings.profAxisBold,

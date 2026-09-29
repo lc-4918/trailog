@@ -260,21 +260,16 @@
     <!-- Réglages : Profil -->
     <string name="settings_section_display">Affichage</string>
     <string name="settings_profile_grid">Grille</string>
-    <string name="settings_profile_color_by_slope">Colorer l\'aire par pente</string>
     <string name="action_color_by_slope">Colorier selon la pente</string>
     <string name="action_restore_color">Rétablir la couleur</string>
     <string name="settings_section_route_slope">Coloration par pente</string>
-    <string name="settings_route_slope_info">Concerne uniquement le calcul d\'itinéraire. Les traces se colorient depuis le menu de chaque couche, et leur profil depuis l\'onglet Carte.</string>
-    <string name="settings_route_slope_line">Trace de l\'itinéraire calculé</string>
-    <string name="settings_route_slope_profile">Profil altimétrique</string>
-    <string name="settings_profile_color_by_slope_info">Profil des traces uniquement. Celui de l\'itinéraire calculé se règle dans l\'onglet Trajets.</string>
-    <string name="settings_slope_classes">Classes des pentes</string>
+    <string name="settings_route_slope_info">Le parcours de l\'itinéraire calculé et l\'aire de son profil altimétrique seront colorés suivant la pente.</string>
+    <string name="settings_route_slope_line">Colorer suivant la pente</string>
     <string name="settings_group_track">Trace</string>
     <string name="settings_track_line_width">Largeur du trait</string>
     <string name="settings_track_line_width_info">Épaisseur du trait des traces et de l\'itinéraire calculé sur la carte.</string>
     <string name="settings_track_direction">Sens de parcours</string>
     <string name="settings_track_direction_info">Des chevrons le long du trait montrent dans quel sens la trace se parcourt.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Légende des pentes</string>
     <string name="settings_section_font_sizes">Styles</string>
     <string name="font_axes">Axes</string>

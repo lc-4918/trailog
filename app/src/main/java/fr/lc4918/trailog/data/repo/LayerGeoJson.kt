@@ -93,7 +93,7 @@ object LayerGeoJson {
     /** Tolérance de simplification (Douglas-Peucker) des lignes dans le fichier de rendu, en mètres.
      *  Quasi sans perte : ne retire que la redondance des portions droites et le bruit GPS, invisible même
      *  au zoom maximal. La géométrie source complète reste dans le fichier de couche (profil/édition/export). */
-    private const val MAP_SIMPLIFY_TOLERANCE_M = 1.0
+    const val MAP_SIMPLIFY_TOLERANCE_M = 1.0
 
     /** GeoJSON destiné à la carte : points avec __id/title (pour le tap), lignes simplifiées pour le rendu.
      *  [simplify] est le flag haut-niveau d'activation de la simplification (piloté par le réglage système) :
@@ -122,6 +122,14 @@ object LayerGeoJson {
      *  et temps restent alignés sur les coordonnées). N'affecte que le rendu, jamais la géométrie source. */
     fun simplifyLine(points: List<TrackPoint>, toleranceMeters: Double): List<TrackPoint> {
         if (points.size <= 2 || toleranceMeters <= 0.0) return points
+        val keep = simplifyKeep(points, toleranceMeters)
+        return points.filterIndexed { i, _ -> keep[i] }
+    }
+
+    /** Les points que [simplifyLine] garde, par leur rang : qui doit rapprocher un point retenu de sa
+     *  position dans la trace complete (sa distance depuis le depart, par exemple) en a besoin. */
+    fun simplifyKeep(points: List<TrackPoint>, toleranceMeters: Double): BooleanArray {
+        if (points.size <= 2 || toleranceMeters <= 0.0) return BooleanArray(points.size) { true }
         val mPerDegLat = 110540.0
         val mPerDegLon = 111320.0 * Math.cos(Math.toRadians(points[points.size / 2].lat))
         fun px(p: TrackPoint) = p.lon * mPerDegLon
@@ -154,7 +162,7 @@ object LayerGeoJson {
                 stack.addLast(a to idx); stack.addLast(idx to b)
             }
         }
-        return points.filterIndexed { i, _ -> keep[i] }
+        return keep
     }
 
     // ---- helpers points ----

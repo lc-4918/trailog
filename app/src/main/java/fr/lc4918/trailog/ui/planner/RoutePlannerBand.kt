@@ -109,6 +109,12 @@ import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.routes.SlopeLegendInfo
+import fr.lc4918.trailog.ui.routes.SlopeLegendButtonSize
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
+import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.routeInfos
 import kotlinx.coroutines.delay
@@ -219,7 +225,12 @@ fun RoutePlannerBand(
             )
             StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
                 onPlaceForgotten,
-                Modifier.weight(1f, fill = false).padding(top = Spacing.m))
+                // La legende des pentes se lit sous "Ajouter une etape" tant que le profil est replie ;
+                // deplie, son "i" passe sur la ligne du profil (cf. ResultsZone).
+                slopeLegend = settings.takeIf {
+                    it.routeSlopeLine && state.route is RouteState.Done && !state.profileVisible
+                },
+                modifier = Modifier.weight(1f, fill = false).padding(top = Spacing.m))
             ResultsZone(state, imperial, settings, lastLabelInsetPx)
         }
     }
@@ -391,6 +402,8 @@ private fun StepList(
     history: PlannerHistory,
     onPlaceChosen: (GeocodePlace) -> Unit,
     onPlaceForgotten: (GeocodePlace) -> Unit,
+    /** Les reglages de la legende des pentes, quand son "i" doit se poser au bout de la ligne d'ajout. */
+    slopeLegend: SettingsEntity? = null,
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
@@ -453,7 +466,29 @@ private fun StepList(
                 )
             }
         }
-        if (state.canAddStep) AddStepButton { state.addStep() }
+        if (state.canAddStep || slopeLegend != null) {
+            var legende by rememberSaveable { mutableStateOf(false) }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { if (state.canAddStep) AddStepButton { state.addStep() } }
+                if (slopeLegend != null) {
+                    Box(
+                        Modifier.padding(top = Spacing.xs).size(SlopeLegendButtonSize).clip(CircleShape)
+                            .clickable { legende = !legende }.testTag("planner_slope_legend_info"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Info, stringResource(R.string.settings_profile_slope_legend),
+                            Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            // Sous la ligne, et non dans une fenetre : le trace colorie reste visible au-dessus de la bande,
+            // et la legende se lit a cote de lui.
+            if (slopeLegend != null && legende) {
+                SlopeLegend(SlopeRamp.DefaultClassTenths, slopeLegend.profLegendFont,
+                    Modifier.fillMaxWidth().padding(vertical = Spacing.xs).testTag("planner_slope_legend"),
+                    bold = slopeLegend.profLegendBold)
+            }
+        }
     }
 }
 
@@ -921,7 +956,7 @@ private fun ResultsZone(
                 )
                 // La legende des pentes, derriere un "i", quand le profil est colorie par pente : comme celui
                 // d'une trace, elle ne se deplie plus dans la bande (cf. SlopeLegendInfo).
-                if (settings.routeSlopeProfile) SlopeLegendInfo(settings)
+                if (settings.routeSlopeLine && state.profileVisible) SlopeLegendInfo(settings)
                 // Calcule sur le telephone : dit en passant, sans en faire un evenement. C'est ce qui
                 // explique un calcul plus lent qu'a l'habitude, ou un trajet trouve sans reseau.
                 if (r.offline) {
@@ -960,8 +995,7 @@ private fun ResultsZone(
                     ElevationProfile(
                         samples = samples, stats = stats,
                         grid = settings.profileGrid,
-                        slope = settings.routeSlopeProfile,
-                        slopeClassTenths = settings.slopeClassTenths,
+                        slope = settings.routeSlopeLine,
                         lineColor = MaterialTheme.colorScheme.primary,
                         axisFontSp = settings.profAxisFont,
                         axisBold = settings.profAxisBold,

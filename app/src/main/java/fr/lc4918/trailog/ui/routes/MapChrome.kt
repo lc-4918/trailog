@@ -45,6 +45,7 @@ import coil3.compose.AsyncImage
 import fr.lc4918.trailog.R
 import androidx.compose.material3.LocalContentColor
 import fr.lc4918.trailog.ui.profile.SlopeLegend
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.remember
@@ -243,7 +244,7 @@ internal fun SlopeLegendInfo(settings: SettingsEntity, modifier: Modifier = Modi
             onDismissRequest = { open = false },
             title = { Text(titre) },
             text = {
-                SlopeLegend(settings.slopeClassTenths, settings.profLegendFont, Modifier.fillMaxWidth(),
+                SlopeLegend(SlopeRamp.DefaultClassTenths, settings.profLegendFont, Modifier.fillMaxWidth(),
                     bold = settings.profLegendBold)
             },
             confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok)) } },

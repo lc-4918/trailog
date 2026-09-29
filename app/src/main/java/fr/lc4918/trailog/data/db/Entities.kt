@@ -146,8 +146,8 @@ data class SettingsEntity(
     // telephone regle en sombre la posait sous des bandeaux noirs.
     val theme: String = "light",           // system | light | dark
     val profileGrid: Boolean = true,       // grille du profil
-    // Colorer l'aire du profil d'une TRACE par pente. Le profil de l'itineraire calcule a son propre
-    // reglage (cf. routeSlopeProfile).
+    // N'est plus lue : l'aire du profil d'une trace se colorie des que sa couche l'est
+    // (LayerEntity.slopeColored). La colonne reste, une table ne perd pas de colonne sans etre recopiee.
     val profileSlope: Boolean = false,
     // Legende des pentes : masquee par defaut, et montree d'un tap sur le "i" du bandeau de profil. Ce
     // n'est plus une preference mais un etat d'affichage, qui se referme du meme geste.
@@ -373,13 +373,12 @@ data class SettingsEntity(
     // correctement sans entree a lui. Un corps plus grand fait passer les champs a la ligne, et le panneau
     // grandit avec eux.
     val dashboardFontSizes: String = "",
-    // Coloration par pente de l'itineraire calcule : son trace sur la carte, et l'aire de son profil. A
-    // part de celle des traces (profileSlope, et le menu de chaque couche) : on veut souvent l'une sans
-    // l'autre.
+    // Coloration par pente de l'itineraire calcule : son trace sur la carte ET l'aire de son profil, d'un
+    // seul interrupteur. Celle des traces se regle dans le menu de chaque couche.
     val routeSlopeLine: Boolean = true,
+    // Ne sont plus lues, colonnes gardees comme profileSlope : le profil de l'itineraire suit
+    // routeSlopeLine, et les classes de pente gardent leur largeur par defaut (SlopeRamp.DefaultClassTenths).
     val routeSlopeProfile: Boolean = true,
-    // Largeur des classes de pente, en dixiemes de point (cf. SlopeRamp.ClassSteps) : 5 = 0,5 %, la
-    // trame d'OruxMaps.
     val slopeClassTenths: Int = 5,
     // Largeur du trait des traces et des itineraires sur la carte (dp).
     val trackLineWidth: Int = DefaultTrackLineWidthDp,

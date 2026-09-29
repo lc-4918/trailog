@@ -133,98 +133,17 @@ import kotlinx.coroutines.launch
 
 
     /*
-     * La coloration par pente de l'itineraire CALCULE, et de lui seul : son trace sur la carte et l'aire de
-     * son profil. Celle des traces se regle ailleurs - trace par trace dans le menu de chaque couche, et
-     * pour leur profil dans l'onglet Carte - parce qu'on la veut souvent pour l'une et non pour l'autre.
+     * La coloration par pente de l'itineraire CALCULE : un seul interrupteur, pour son trace sur la carte
+     * ET l'aire de son profil - la couleur du trait se lit sur le profil, les deux vont ensemble. Celle
+     * des traces se regle trace par trace, dans le menu de chaque couche, et vaut de meme pour les deux.
+     * (La colonne routeSlopeProfile, qui separait le profil, n'est plus lue.)
      */
-    SectionTitle(
-        stringResource(R.string.settings_section_route_slope),
-        info = stringResource(R.string.settings_route_slope_info),
-    )
+    SectionTitle(stringResource(R.string.settings_section_route_slope))
     SettingsCard {
-        SwitchLine(stringResource(R.string.settings_route_slope_line), cur.routeSlopeLine) {
-            vm.save(cur.copy(routeSlopeLine = it))
-        }
-        RowDivider()
-        SwitchLine(stringResource(R.string.settings_route_slope_profile), cur.routeSlopeProfile) {
-            vm.save(cur.copy(routeSlopeProfile = it))
-        }
-    }
-
-    /*
-     * Les CATEGORIES de points d'interet ne sont plus ici : elles se choisissent dans une bulle ouverte
-     * depuis la carte (cf. PoiFilterBubble).
-     *
-     * Quatre sections depliables de cases a cocher vivaient a cet endroit, c'est-a-dire a quatre gestes de
-     * la carte, dans un ecran qui recouvre justement ce qu'on essaie de regarder. Or choisir ses points
-     * d'interet est un geste de TERRAIN : on cherche un camping en fin d'apres-midi, un point d'eau a la
-     * montee. L'attribution de la source reste, elle : elle est due des lors qu'on affiche ces lieux, et
-     * n'a pas sa place sur une bulle qu'on ouvre et referme en roulant.
-     *
-     * Vider le cache et effacer l'historique des lieux ont suivi vers l'onglet Systeme, rubrique CACHE :
-     * ce sont des gestes d'entretien, et le seul lien qu'ils avaient avec cet onglet-ci etait la rubrique
-     * qui vient d'en partir.
-     */
-    SectionTitle(stringResource(R.string.settings_section_poi))
-    SettingsCard {
-        /*
-         * Completer DATAtourisme par OpenStreetMap : venu de l'onglet Carte, ou il suivait l'interrupteur
-         * qui POSE le bouton des points d'interet.
-         *
-         * Ce n'est ni un bouton ni un geste : c'est le choix des SOURCES qu'on interroge, au meme titre
-         * que le geocodeur et le moteur d'itineraire regles en tete de cet onglet. Une requete Overpass de
-         * plus par chargement, et elle est longue - d'ou l'interrupteur.
-         *
-         * Seulement quand la couche est allumee : un reglage qui ne peut rien faire n'a rien a montrer.
-         */
-        if (cur.poiEnabled) {
-            SwitchLine(
-                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
-                info = stringResource(R.string.settings_sw_poi_osm_sub),
-            ) {
-                // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
-                // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
-                vm.save(cur.copy(poiOsmComplement = it))
-            }
-            RowDivider()
-            /*
-             * Le couloir des traces : au-dela de cette distance d'une trace AFFICHEE, un lieu n'est plus
-             * montre (cf. ui/poi/PoiCorridor).
-             *
-             * Ce qu'il repare : le zoom de chargement etait haut - une ville et ses abords - parce qu'a
-             * l'echelle d'une region la vue porte des milliers de lieux dont le service ne rend que les
-             * premiers. On zoomait donc beaucoup pour voir quoi que ce soit. Le couloir retire ce qui ne
-             * borde aucun trajet, et c'est lui qui rend le zoom plus bas supportable (cf.
-             * PoiLoading.MIN_ZOOM).
-             *
-             * Une poignee de distances plutot qu'un curseur : le choix se fait entre "le long du chemin" et
-             * "dans le coin", pas au decametre pres.
-             *
-             * Eteint par defaut, ici comme en base : c'est un filtre qui RETIRE de la carte, et une couche
-             * qui montre moins qu'on ne lui a demande sans l'avoir dit se lit comme une panne.
-             */
-            // Le curseur parcourt les crans, et non les metres : "Sans limite" vaut zero en base, mais se
-            // tient tout a DROITE, au-dela de la plus grande distance - c'est la plus large de toutes.
-            val crans = PoiCorridorSteps
-            val cran = crans.indexOf(cur.poiTrackCorridorM).takeIf { it >= 0 }
-                ?: crans.indices.minBy { kotlin.math.abs(crans[it] - cur.poiTrackCorridorM) }
-            SliderRow(
-                label = stringResource(R.string.settings_label_poi_corridor),
-                value = poiCorridorLabel(cur.poiTrackCorridorM),
-                fraction = fractionOf(cran, 0, crans.lastIndex),
-                steps = crans.size - 2,
-                onFraction = {
-                    vm.save(cur.copy(poiTrackCorridorM = crans[valueOf(it, 0, crans.lastIndex)]))
-                },
-                info = stringResource(R.string.settings_poi_corridor_hint),
-                // L'attribution suit immediatement : elle appartient a ce qui est au-dessus, et l'ecart
-                // normal l'en aurait detachee.
-                bottomPadding = 6.dp,
-            )
-        }
-        // Sans filet au-dessus : un filet separe deux reglages, et l'attribution n'en est pas un - c'est
-        // la mention que les donnees imposent, au bas de ce qui les affiche.
-        Hint(stringResource(R.string.settings_poi_attribution))
+        SwitchLine(
+            stringResource(R.string.settings_route_slope_line), cur.routeSlopeLine,
+            info = stringResource(R.string.settings_route_slope_info),
+        ) { vm.save(cur.copy(routeSlopeLine = it)) }
     }
 
     // Le lissage et l'echelle verticale ont quitte l'onglet "Carte" pour celui-ci : ils ne decrivent pas
@@ -304,40 +223,6 @@ import kotlinx.coroutines.launch
         }
     }
 
-    // Dans cet onglet et non dans "Carte" : c'est de la matiere du profil qu'il s'agit, comme le lissage
-    // au-dessus, et non de ce qui s'affiche. Les deux services ne s'ouvrent qu'une fois le completement
-    // demande - trois champs d'URL sous un interrupteur eteint n'auraient rien a regler.
-    SectionTitle(stringResource(R.string.settings_section_elevation_fill))
-    SettingsCard {
-        SwitchLine(
-            stringResource(R.string.settings_label_fill_elevation), cur.fillMissingElevation,
-            info = stringResource(R.string.settings_fill_elevation_hint),
-        ) { vm.save(cur.copy(fillMissingElevation = it)) }
-        // Les adresses des services : mode expert seulement. Le completement se demande d'un interrupteur,
-        // et ses serveurs par defaut conviennent a qui ne les a jamais regardes.
-        if (cur.fillMissingElevation && cur.expertMode) {
-            RowDivider()
-            FieldRow(stringResource(R.string.settings_label_elevation_france)) {
-                SettingsTextField(cur.elevationIgnUrl, IgnElevation.DEFAULT_URL) {
-                    vm.save(cur.copy(elevationIgnUrl = it.trim()))
-                }
-            }
-            RowDivider()
-            FieldRow(stringResource(R.string.settings_label_elevation_world)) {
-                SettingsTextField(cur.elevationWorldUrl, OpenTopo.DEFAULT_URL) {
-                    vm.save(cur.copy(elevationWorldUrl = it.trim()))
-                }
-            }
-            RowDivider()
-            FieldRow(stringResource(R.string.settings_label_elevation_world_key)) {
-                SettingsTextField(cur.elevationWorldKey, OpenTopo.DEFAULT_KEY) {
-                    vm.save(cur.copy(elevationWorldKey = it.trim()))
-                }
-            }
-            Hint(stringResource(R.string.settings_services_hint))
-        }
-    }
-
     /*
      * Moteur d'itineraire et services techniques, en fin de liste : ce sont des reglages qu'on pose une
      * fois puis qu'on oublie, a la difference de la discipline et des preferences de trace, ajustees a
@@ -397,6 +282,119 @@ import kotlinx.coroutines.launch
             }
         }
     }
+
+    // L'altimetrie manquante puis les points d'interet, en fin d'onglet : ils se reglent une fois pour
+    // toutes, le second en dernier parce qu'il se choisit surtout depuis la bulle de la carte.
+    //
+    // Dans cet onglet et non dans "Carte" : c'est de la matiere du profil qu'il s'agit, comme le lissage
+    // au-dessus, et non de ce qui s'affiche. Les deux services ne s'ouvrent qu'une fois le completement
+    // demande - trois champs d'URL sous un interrupteur eteint n'auraient rien a regler.
+    SectionTitle(stringResource(R.string.settings_section_elevation_fill))
+    SettingsCard {
+        SwitchLine(
+            stringResource(R.string.settings_label_fill_elevation), cur.fillMissingElevation,
+            info = stringResource(R.string.settings_fill_elevation_hint),
+        ) { vm.save(cur.copy(fillMissingElevation = it)) }
+        // Les adresses des services : mode expert seulement. Le completement se demande d'un interrupteur,
+        // et ses serveurs par defaut conviennent a qui ne les a jamais regardes.
+        if (cur.fillMissingElevation && cur.expertMode) {
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_france)) {
+                SettingsTextField(cur.elevationIgnUrl, IgnElevation.DEFAULT_URL) {
+                    vm.save(cur.copy(elevationIgnUrl = it.trim()))
+                }
+            }
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_world)) {
+                SettingsTextField(cur.elevationWorldUrl, OpenTopo.DEFAULT_URL) {
+                    vm.save(cur.copy(elevationWorldUrl = it.trim()))
+                }
+            }
+            RowDivider()
+            FieldRow(stringResource(R.string.settings_label_elevation_world_key)) {
+                SettingsTextField(cur.elevationWorldKey, OpenTopo.DEFAULT_KEY) {
+                    vm.save(cur.copy(elevationWorldKey = it.trim()))
+                }
+            }
+            Hint(stringResource(R.string.settings_services_hint))
+        }
+    }
+
+    /*
+     * Les CATEGORIES de points d'interet ne sont plus ici : elles se choisissent dans une bulle ouverte
+     * depuis la carte (cf. PoiFilterBubble).
+     *
+     * Quatre sections depliables de cases a cocher vivaient a cet endroit, c'est-a-dire a quatre gestes de
+     * la carte, dans un ecran qui recouvre justement ce qu'on essaie de regarder. Or choisir ses points
+     * d'interet est un geste de TERRAIN : on cherche un camping en fin d'apres-midi, un point d'eau a la
+     * montee. L'attribution de la source reste, elle : elle est due des lors qu'on affiche ces lieux, et
+     * n'a pas sa place sur une bulle qu'on ouvre et referme en roulant.
+     *
+     * Vider le cache et effacer l'historique des lieux ont suivi vers l'onglet Systeme, rubrique CACHE :
+     * ce sont des gestes d'entretien, et le seul lien qu'ils avaient avec cet onglet-ci etait la rubrique
+     * qui vient d'en partir.
+     */
+    SectionTitle(stringResource(R.string.settings_section_poi))
+    SettingsCard {
+        /*
+         * Completer DATAtourisme par OpenStreetMap : venu de l'onglet Carte, ou il suivait l'interrupteur
+         * qui POSE le bouton des points d'interet.
+         *
+         * Ce n'est ni un bouton ni un geste : c'est le choix des SOURCES qu'on interroge, au meme titre
+         * que le geocodeur et le moteur d'itineraire regles en tete de cet onglet. Une requete Overpass de
+         * plus par chargement, et elle est longue - d'ou l'interrupteur.
+         *
+         * Seulement quand la couche est allumee : un reglage qui ne peut rien faire n'a rien a montrer.
+         */
+        if (cur.poiEnabled) {
+            SwitchLine(
+                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
+                info = stringResource(R.string.settings_sw_poi_osm_sub),
+            ) {
+                // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
+                // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
+                vm.save(cur.copy(poiOsmComplement = it))
+            }
+            RowDivider()
+            /*
+             * Le couloir des traces : au-dela de cette distance d'une trace AFFICHEE, un lieu n'est plus
+             * montre (cf. ui/poi/PoiCorridor).
+             *
+             * Ce qu'il repare : le zoom de chargement etait haut - une ville et ses abords - parce qu'a
+             * l'echelle d'une region la vue porte des milliers de lieux dont le service ne rend que les
+             * premiers. On zoomait donc beaucoup pour voir quoi que ce soit. Le couloir retire ce qui ne
+             * borde aucun trajet, et c'est lui qui rend le zoom plus bas supportable (cf.
+             * PoiLoading.MIN_ZOOM).
+             *
+             * Une poignee de distances plutot qu'un curseur : le choix se fait entre "le long du chemin" et
+             * "dans le coin", pas au decametre pres.
+             *
+             * Eteint par defaut, ici comme en base : c'est un filtre qui RETIRE de la carte, et une couche
+             * qui montre moins qu'on ne lui a demande sans l'avoir dit se lit comme une panne.
+             */
+            // Le curseur parcourt les crans, et non les metres : "Sans limite" vaut zero en base, mais se
+            // tient tout a DROITE, au-dela de la plus grande distance - c'est la plus large de toutes.
+            val crans = PoiCorridorSteps
+            val cran = crans.indexOf(cur.poiTrackCorridorM).takeIf { it >= 0 }
+                ?: crans.indices.minBy { kotlin.math.abs(crans[it] - cur.poiTrackCorridorM) }
+            SliderRow(
+                label = stringResource(R.string.settings_label_poi_corridor),
+                value = poiCorridorLabel(cur.poiTrackCorridorM),
+                fraction = fractionOf(cran, 0, crans.lastIndex),
+                steps = crans.size - 2,
+                onFraction = {
+                    vm.save(cur.copy(poiTrackCorridorM = crans[valueOf(it, 0, crans.lastIndex)]))
+                },
+                info = stringResource(R.string.settings_poi_corridor_hint),
+                // L'attribution suit immediatement : elle appartient a ce qui est au-dessus, et l'ecart
+                // normal l'en aurait detachee.
+                bottomPadding = 6.dp,
+            )
+        }
+        // Sans filet au-dessus : un filet separe deux reglages, et l'attribution n'en est pas un - c'est
+        // la mention que les donnees imposent, au bas de ce qui les affiche.
+        Hint(stringResource(R.string.settings_poi_attribution))
+    }
 }
 
 /**
@@ -408,26 +406,9 @@ import kotlinx.coroutines.launch
     SectionTitle(stringResource(R.string.settings_section_display), tight = true)
     SettingsCard {
         SwitchLine(stringResource(R.string.settings_profile_grid), cur.profileGrid) { vm.save(cur.copy(profileGrid = it)) }
-        RowDivider()
-        // Pas d'interrupteur pour la legende des pentes : elle se demande d'un "i" pose sur le bandeau du
-        // profil, la ou elle sert, et se referme du meme geste (cf. SlopeLegendButton).
-        // Le profil des TRACES seulement : celui de l'itineraire calcule a son reglage, onglet Trajets.
-        SwitchLine(
-            stringResource(R.string.settings_profile_color_by_slope), cur.profileSlope,
-            info = stringResource(R.string.settings_profile_color_by_slope_info),
-        ) { vm.save(cur.copy(profileSlope = it)) }
-        RowDivider()
-        // La largeur des classes vaut partout ou la pente colore : profils, traces et itineraire. Le "i"
-        // montre la trame elle-meme, dans la largeur choisie.
-        PickRow(
-            stringResource(R.string.settings_slope_classes), cur.slopeClassTenths, SlopeRamp.ClassSteps,
-            optionLabel = { slopeClassLabel(it) },
-            infoContent = {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    SlopeLegend(cur.slopeClassTenths, fontSp = 14, vertical = true, length = 360.dp)
-                }
-            },
-        ) { vm.save(cur.copy(slopeClassTenths = it)) }
+        // Ni coloration par pente ni largeur des classes ici : l'aire d'un profil se colorie des que sa
+        // couche l'est (menu de la couche), et les classes gardent leur largeur par defaut
+        // (SlopeRamp.DefaultClassTenths). Les colonnes profileSlope et slopeClassTenths ne sont plus lues.
     }
 
     SectionTitle(stringResource(R.string.settings_section_title_line_info))
@@ -681,11 +662,3 @@ private val VerticalScaleSteps = listOf(50, 100, 150, 200, 250, 300, 500, 800, 1
         ProfileScale.Mode.M_PER_CM -> R.string.settings_vertical_scale_absolute
     }
 )
-
-/** "0,5 %", "1 %", "2,5 %", "5 %" : la largeur d'une classe de pente, ecrite comme on la lit. */
-@Composable internal fun slopeClassLabel(tenths: Int): String {
-    // Le separateur decimal de la langue de l'application, et non celle du telephone.
-    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
-    val valeur = if (tenths % 10 == 0) "${tenths / 10}" else String.format(locale, "%.1f", tenths / 10.0)
-    return stringResource(R.string.settings_slope_class_format, valeur)
-}

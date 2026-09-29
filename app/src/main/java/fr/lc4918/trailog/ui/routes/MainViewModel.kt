@@ -35,7 +35,9 @@ import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
+import fr.lc4918.trailog.data.repo.LayerGeoJson
 import fr.lc4918.trailog.ui.components.SlopeLines
+import fr.lc4918.trailog.ui.profile.SlopeRamp
 import fr.lc4918.trailog.ui.measure.MeasurePoint
 import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
 import fr.lc4918.trailog.ui.profile.ProfileZoom
@@ -52,8 +54,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -190,9 +192,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            // La largeur des classes de pente en plus : elle redessine les couches coloriees par pente.
-            val classes = settings.map { it.slopeClassTenths }.distinctUntilChanged()
-            combine(layers, renderTick, classes) { l, _, c -> l to c }.collectLatest { (list, classTenths) ->
+            combine(layers, renderTick) { l, _ -> l }.collectLatest { list ->
+                val classTenths = SlopeRamp.DefaultClassTenths
                 val simplify = settings.value.simplifyRender
                 val rl = withContext(Dispatchers.IO) {
                     list.filter { it.visible }.mapNotNull { ly ->
@@ -201,12 +202,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         // .map sur son thread de travail. La révision (horodatage ^ taille) change quand le
                         // fichier est réécrit (édition de points) et force un rechargement de la source.
                         val revision = f.lastModified() xor (f.length() * 1000003L)
-                        // Coloriee par pente : ses troncons viennent des profils precalcules, qui portent la
-                        // pente de chaque echantillon - le .map, lui, n'a que la geometrie.
+                        // Coloriee par pente : la pente vient des profils precalcules, la geometrie de la
+                        // trace complete, simplifiee comme le .map - le trait suit alors les memes virages
+                        // que les chevrons, poses sur le .map (cf. SlopeLines.alongTrack).
                         val slope = if (ly.slopeColored && ly.hasLine && ly.hasZ) {
                             val profils = repo.loadProfiles(ly)
+                            val lignes = repo.loadTrackLines(ly)
                             withContext(Dispatchers.Default) {
-                                SlopeLines.collection(profils.map { it.samples }, classTenths)
+                                val tol = if (simplify) LayerGeoJson.MAP_SIMPLIFY_TOLERANCE_M else 0.0
+                                SlopeLines.collection(lignes.zip(profils) { pts, prof ->
+                                    SlopeLines.alongTrack(pts, prof.samples, LayerGeoJson.simplifyKeep(pts, tol))
+                                }, classTenths)
                             }
                         } else null
                         RenderLayer("ly${ly.id}", "file://" + f.absolutePath, revision, ly.color, slope)

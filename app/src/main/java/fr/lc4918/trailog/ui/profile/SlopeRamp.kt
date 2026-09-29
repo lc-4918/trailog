@@ -20,7 +20,7 @@ import kotlin.math.sign
  * couleur du bout.
  *
  * **Des classes**, comme la legende d'OruxMaps, qui avance par demi-points : une pente prend la couleur du
- * bas de sa classe. La largeur se regle (cf. [ClassSteps]) ; 0,5 % reproduit la trame d'OruxMaps.
+ * bas de sa classe, large de [DefaultClassTenths] dixiemes de point - la trame d'OruxMaps.
  */
 object SlopeRamp {
 
@@ -29,9 +29,6 @@ object SlopeRamp {
 
     /** Au-dela, la couleur ne change plus. */
     const val MaxPct = 25.0
-
-    /** Largeurs de classe proposees, en dixiemes de point : 0,5 %, 1 %, 2,5 %, 5 %. */
-    val ClassSteps = listOf(5, 10, 25, 50)
 
     /** La largeur par defaut : la trame d'OruxMaps. */
     const val DefaultClassTenths = 5

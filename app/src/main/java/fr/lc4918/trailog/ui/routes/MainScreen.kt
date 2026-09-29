@@ -425,7 +425,6 @@ fun MainScreen(
         prefs = settings.routePrefs(planner.profile),
         smoothingM = profileSmoothingM,
         slopeTint = settings.routeSlopeLine,
-        slopeClassTenths = settings.slopeClassTenths,
         styleTick = styleTick,
         enabled = settings.routePlannerEnabled,
         topPaddingPx = statusBarTopPx,

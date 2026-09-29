@@ -2,8 +2,11 @@ package fr.lc4918.trailog.ui.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -67,20 +70,48 @@ class TrackDisplaySettingsUiTest {
         assertTrue(present(app.getString(R.string.settings_track_direction)))
     }
 
-    /** Le profil garde la coloration et gagne les classes ; la ligne du restant a disparu. */
-    @Test fun `le profil propose les classes des pentes`() {
+    /**
+     * L'affichage du profil n'a plus ni coloration par pente - elle suit l'option de la couche - ni
+     * classes des pentes ; la ligne du restant a disparu aussi.
+     */
+    @Test fun `le profil ne regle plus la pente`() {
         ouvrir(expert = false)
-        defileVers(app.getString(R.string.settings_slope_classes))
-        assertTrue(present(app.getString(R.string.settings_profile_color_by_slope)))
+        defileVers(app.getString(R.string.settings_profile_grid))
+        assertFalse(present("Colorer l'aire par pente"))
+        assertFalse(present("Classes des pentes"))
         assertFalse(present("Restant sur la trace"))
     }
 
-    @Test fun `l'onglet Trajets regle la coloration de l'itineraire`() {
+    /** Une seule ligne pour la pente de l'itineraire, qui dit dans son "i" qu'elle vaut trace et profil. */
+    @Test fun `l'onglet Trajets regle la coloration de l'itineraire d'une seule ligne`() {
         ouvrir(expert = false)
         compose.onNodeWithText(app.getString(R.string.settings_tab_routes)).performClick()
         compose.waitForIdle()
-        defileVers(app.getString(R.string.settings_route_slope_profile))
+        defileVers(app.getString(R.string.settings_route_slope_line))
         assertTrue(present(app.getString(R.string.settings_section_route_slope).uppercase()))
-        assertTrue(present(app.getString(R.string.settings_route_slope_line)))
+        assertTrue(present("Colorer suivant la pente"))
+        assertFalse("plus de ligne a part pour le profil", present("Trace de l'itinéraire calculé"))
+        val info = app.getString(R.string.settings_route_slope_info)
+        assertFalse(present(info))
+        // Le "i" de la ligne porte l'explication pour description (cf. InfoTip).
+        compose.onNode(hasTestTag("info_tip") and hasContentDescription(info)).performClick()
+        compose.waitForIdle()
+        assertTrue(present(info))
+    }
+
+    /** L'onglet Trajets finit par l'altimetrie manquante, puis les points d'interet. */
+    @Test fun `les points d'interet ferment l'onglet Trajets, apres l'altimetrie manquante`() {
+        ouvrir(expert = true)
+        compose.onNodeWithText(app.getString(R.string.settings_tab_routes)).performClick()
+        compose.waitForIdle()
+        // La position, et non les bornes : celles-ci s'arretent au bord de la liste, et deux rubriques
+        // hors de l'ecran y auraient la meme.
+        fun haut(res: Int) = compose.onNodeWithText(app.getString(res).uppercase(), useUnmergedTree = true)
+            .fetchSemanticsNode().positionInRoot.y
+        val services = haut(R.string.settings_section_services)
+        val altimetrie = haut(R.string.settings_section_elevation_fill)
+        val poi = haut(R.string.settings_section_poi)
+        assertTrue("altimetrie apres les services", altimetrie > services)
+        assertTrue("points d'interet en dernier", poi > altimetrie)
     }
 }

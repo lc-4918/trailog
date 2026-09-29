@@ -260,21 +260,16 @@
     <!-- Ezarpenak: Profila -->
     <string name="settings_section_display">Bistaratzea</string>
     <string name="settings_profile_grid">Sareta</string>
-    <string name="settings_profile_color_by_slope">Koloreztatu area maldaren arabera</string>
     <string name="action_color_by_slope">Koloreztatu maldaren arabera</string>
     <string name="action_restore_color">Berrezarri kolorea</string>
     <string name="settings_section_route_slope">Maldaren araberako kolorea</string>
-    <string name="settings_route_slope_info">Ibilbide-kalkuluari bakarrik dagokio. Trackak geruza bakoitzaren menutik koloreztatzen dira, eta haien profila Mapa fitxatik.</string>
-    <string name="settings_route_slope_line">Kalkulatutako ibilbidearen marra</string>
-    <string name="settings_route_slope_profile">Altitude-profila</string>
-    <string name="settings_profile_color_by_slope_info">Tracken profilak bakarrik. Kalkulatutako ibilbidearena Ibilbideak fitxan doitzen da.</string>
-    <string name="settings_slope_classes">Malda-klaseak</string>
+    <string name="settings_route_slope_info">Kalkulatutako ibilbidearen marra eta haren altitude-profilaren area maldaren arabera koloreztatuko dira.</string>
+    <string name="settings_route_slope_line">Koloreztatu maldaren arabera</string>
     <string name="settings_group_track">Tracka</string>
     <string name="settings_track_line_width">Marraren lodiera</string>
     <string name="settings_track_line_width_info">Tracken eta kalkulatutako ibilbidearen lodiera mapan.</string>
     <string name="settings_track_direction">Ibilbidearen noranzkoa</string>
     <string name="settings_track_direction_info">Marran zehar dauden geziek tracka zein noranzkotan egiten den erakusten dute.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Malden legenda</string>
     <string name="settings_section_font_sizes">Estiloak</string>
     <string name="font_axes">Ardatzak</string>

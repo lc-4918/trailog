@@ -8,13 +8,16 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.PlannerHistory
+import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import org.junit.Assert.assertEquals
@@ -49,13 +52,13 @@ class RoutePlannerBandUiTest {
 
     private val grenoble = GeocodePlace(listOf("Grenoble", "Isere, France"), 5.72, 45.18)
 
-    private fun affiche(state: RoutePlannerState) = compose.setContent {
+    private fun affiche(state: RoutePlannerState, settings: SettingsEntity = SettingsEntity()) = compose.setContent {
         MaterialTheme {
             Surface(Modifier.fillMaxSize()) {
                 RoutePlannerBand(
                     state = state,
                     imperial = false,
-                    settings = SettingsEntity(),
+                    settings = settings,
                     lastLabelInsetPx = 0f,
                     maxHeight = 600.dp,
                     onPickCurrentPosition = {},
@@ -185,5 +188,44 @@ class RoutePlannerBandUiTest {
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.planner_reset_confirm_title)).assertIsDisplayed()
         compose.onNodeWithText(grenoble.label).assertExists()
+    }
+
+    /** Un itineraire calcule, qui monte : de quoi colorier par pente et montrer un profil. */
+    private fun calcule(): RoutePlannerState = planificateurOuvert().apply {
+        val pts = List(50) { TrackPoint(5.72 + it * 0.001, 45.18, 200.0 + it * 5, null) }
+        publish(RouteState.Done(4000.0, 1200.0, TrackMath.compute(pts)))
+    }
+
+    private fun existe(tag: String) =
+        compose.onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+
+    /**
+     * Profil replie, le "i" de la legende des pentes se tient au bout de "Ajouter une etape", et la
+     * legende se deplie SOUS cette ligne ; profil deplie, il passe sur la ligne du profil.
+     */
+    @Test fun `le i de la legende suit le profil, de la ligne d'ajout a celle du profil`() {
+        val state = calcule()
+        affiche(state)
+        assertTrue(existe("planner_slope_legend_info"))
+        assertTrue("pas de i sur la ligne du profil replie", !existe("slope_legend_info"))
+        assertTrue(!existe("planner_slope_legend"))
+        compose.onNodeWithTag("planner_slope_legend_info").performClick()
+        compose.waitForIdle()
+        val ajout = compose.onNodeWithText(ctx.getString(R.string.planner_add_step)).fetchSemanticsNode().positionInRoot.y
+        val legende = compose.onNodeWithTag("planner_slope_legend").fetchSemanticsNode().positionInRoot.y
+        assertTrue("la legende sous la ligne d'ajout", legende > ajout)
+
+        compose.onNodeWithText(ctx.getString(R.string.planner_show_profile)).performClick()
+        compose.waitForIdle()
+        assertTrue(existe("slope_legend_info"))
+        assertTrue("plus de i sur la ligne d'ajout", !existe("planner_slope_legend_info"))
+    }
+
+    @Test fun `sans coloration par pente, pas de legende`() {
+        affiche(calcule(), SettingsEntity(routeSlopeLine = false))
+        assertTrue(!existe("planner_slope_legend_info"))
+        compose.onNodeWithText(ctx.getString(R.string.planner_show_profile)).performClick()
+        compose.waitForIdle()
+        assertTrue(!existe("slope_legend_info"))
     }
 }

@@ -1,6 +1,9 @@
 package fr.lc4918.trailog.ui.components
 
+import fr.lc4918.trailog.data.repo.LayerGeoJson
+import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.Sample
+import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.ui.profile.SlopeRamp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -31,11 +34,52 @@ class TrackLineStyleTest {
         assertEquals("""{"type":"FeatureCollection","features":[]}""", SlopeLines.collection(emptyList(), 5))
     }
 
-    /** Le chevron deborde a peine le trait : moins d'une fois et demie sa largeur, plus un dp. */
-    @Test fun `le chevron ne deborde guere le trait`() {
-        for (w in listOf(2f, 4f, 8f, 12f)) {
-            val h = TrackChevron.heightPx(w, 3f)
-            assertTrue("largeur $w", h > w * 3f && h <= (w * 1.5f + 1f) * 3f + 1)
+    /**
+     * En travers du trait, l'encre du chevron deborde d'au plus 10 % la largeur de la ligne, sans rester
+     * en deca de 80 % : il se voit, sans la couvrir. Il gagne en longueur, et son encre s'epaissit.
+     */
+    @Test fun `le chevron deborde d'au plus dix pour cent le trait`() {
+        for (d in listOf(2f, 2.625f, 3f)) for (w in listOf(2f, 4f, 6f, 8f, 12f)) {
+            val h = TrackChevron.heightPx(w, d)
+            val ink = TrackChevron.inkPx(h)
+            assertTrue("largeur $w, densite $d : encre $ink", ink <= w * 1.10f * d && ink >= w * 0.8f * d)
+            assertTrue("plus long que haut de moitie au moins", TrackChevron.widthPx(h) >= h * 0.75f)
+            assertTrue("encre epaisse", TrackChevron.strokePx(h) >= h * 0.2f)
+            assertTrue("le halo tient dans l'image", TrackChevron.haloPx(h) < h)
         }
+    }
+
+    /**
+     * Une boucle de 3001 points, que le profil ne garde qu'en 2000 echantillons : le trait de pente doit
+     * garder CHAQUE point de la trace, et non couper entre deux echantillons - sans quoi les chevrons,
+     * poses sur la vraie geometrie, s'en ecartent dans les virages.
+     */
+    @Test fun `le trait de pente suit chaque point de la trace, pas les echantillons du profil`() {
+        val n = 3001
+        val pts = List(n) { i ->
+            val a = i * 2 * Math.PI / (n - 1)
+            TrackPoint(6.0 + 0.01 * Math.cos(a), 45.0 + 0.01 * Math.sin(a), 1000.0 + 100 * Math.sin(a), null)
+        }
+        val profil = TrackMath.compute(pts, smoothingM = 0.0).samples
+        assertTrue("le profil est decime", profil.size < n)
+        val trait = SlopeLines.alongTrack(pts, profil)
+        assertEquals(n, trait.size)
+        trait.forEachIndexed { i, p -> assertEquals(pts[i].lon, p.lon, 0.0); assertEquals(pts[i].lat, p.lat, 0.0) }
+        // La pente de chaque point est celle du segment de profil ou il tombe.
+        for (i in 1 until n step 97) {
+            val k = profil.indexOfFirst { it.x >= trait[i].x }
+            assertEquals(profil[k].slope, trait[i].slope, 0.0)
+        }
+        assertEquals(profil.last().x, trait.last().x, 1e-6)
+    }
+
+    /** Simplifie pour le rendu, il garde les memes points que le fichier de la carte, ou sont les chevrons. */
+    @Test fun `simplifie, le trait de pente garde les points de la carte`() {
+        val pts = List(500) { i -> TrackPoint(6.0 + i * 0.0001, 45.0 + if (i % 50 < 25) 0.0 else 0.0005, 0.0, null) }
+        val carte = LayerGeoJson.simplifyLine(pts, 1.0)
+        val profil = TrackMath.compute(pts, smoothingM = 0.0).samples
+        val trait = SlopeLines.alongTrack(pts, profil, LayerGeoJson.simplifyKeep(pts, 1.0))
+        assertTrue(carte.size < pts.size)
+        assertEquals(carte.map { it.lon to it.lat }, trait.map { it.lon to it.lat })
     }
 }

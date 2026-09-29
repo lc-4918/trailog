@@ -260,21 +260,16 @@
     <!-- Definições: Perfil -->
     <string name="settings_section_display">Visualização</string>
     <string name="settings_profile_grid">Grelha</string>
-    <string name="settings_profile_color_by_slope">Colorir a área pela inclinação</string>
     <string name="action_color_by_slope">Colorir pelo declive</string>
     <string name="action_restore_color">Repor a cor</string>
     <string name="settings_section_route_slope">Coloração por declive</string>
-    <string name="settings_route_slope_info">Aplica-se apenas ao cálculo de percursos. Os tracks colorem-se no menu de cada camada, e o seu perfil no separador Mapa.</string>
-    <string name="settings_route_slope_line">Traçado do percurso calculado</string>
-    <string name="settings_route_slope_profile">Perfil altimétrico</string>
-    <string name="settings_profile_color_by_slope_info">Apenas perfis de tracks. O do percurso calculado define-se no separador Percursos.</string>
-    <string name="settings_slope_classes">Classes de declive</string>
+    <string name="settings_route_slope_info">O traçado do percurso calculado e a área do seu perfil altimétrico serão coloridos pela inclinação.</string>
+    <string name="settings_route_slope_line">Colorir pela inclinação</string>
     <string name="settings_group_track">Track</string>
     <string name="settings_track_line_width">Espessura da linha</string>
     <string name="settings_track_line_width_info">Espessura dos tracks e do percurso calculado no mapa.</string>
     <string name="settings_track_direction">Sentido do percurso</string>
     <string name="settings_track_direction_info">Setas ao longo da linha indicam em que sentido o track é percorrido.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Legenda de inclinações</string>
     <string name="settings_section_font_sizes">Estilos</string>
     <string name="font_axes">Eixos</string>

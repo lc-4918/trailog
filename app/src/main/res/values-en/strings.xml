@@ -260,21 +260,16 @@
     <!-- Settings: Profile -->
     <string name="settings_section_display">Display</string>
     <string name="settings_profile_grid">Grid</string>
-    <string name="settings_profile_color_by_slope">Color area by slope</string>
     <string name="action_color_by_slope">Color by slope</string>
     <string name="action_restore_color">Restore color</string>
     <string name="settings_section_route_slope">Slope coloring</string>
-    <string name="settings_route_slope_info">Applies to route planning only. Tracks are colored from each layer\'s menu, and their profile from the Map tab.</string>
-    <string name="settings_route_slope_line">Planned route line</string>
-    <string name="settings_route_slope_profile">Elevation profile</string>
-    <string name="settings_profile_color_by_slope_info">Track profiles only. The planned route profile is set in the Routes tab.</string>
-    <string name="settings_slope_classes">Slope classes</string>
+    <string name="settings_route_slope_info">The planned route line and the area of its elevation profile will be colored by slope.</string>
+    <string name="settings_route_slope_line">Color by slope</string>
     <string name="settings_group_track">Track</string>
     <string name="settings_track_line_width">Line width</string>
     <string name="settings_track_line_width_info">Thickness of tracks and of the planned route on the map.</string>
     <string name="settings_track_direction">Direction of travel</string>
     <string name="settings_track_direction_info">Chevrons along the line show which way the track goes.</string>
-    <string name="settings_slope_class_format">%1$s %%</string>
     <string name="settings_profile_slope_legend">Slope legend</string>
     <string name="settings_section_font_sizes">Styles</string>
     <string name="font_axes">Axes</string>
