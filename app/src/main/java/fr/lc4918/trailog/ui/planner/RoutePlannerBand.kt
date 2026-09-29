@@ -223,15 +223,32 @@ fun RoutePlannerBand(
                 onReset = { confirmerReset = true },
                 modifier = Modifier.padding(top = Spacing.s),
             )
-            StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
-                onPlaceForgotten,
-                // La legende des pentes se lit sous "Ajouter une etape" tant que le profil est replie ;
-                // deplie, son "i" passe sur la ligne du profil (cf. ResultsZone).
-                slopeLegend = settings.takeIf {
-                    it.routeSlopeLine && state.route is RouteState.Done && !state.profileVisible
-                },
-                modifier = Modifier.weight(1f, fill = false).padding(top = Spacing.m))
-            ResultsZone(state, imperial, settings, lastLabelInsetPx)
+            // La legende des pentes se lit sous "Ajouter une etape" tant que le profil est replie ;
+            // deplie, son "i" passe sur la ligne du profil (cf. ResultsZone).
+            val slopeLegend = settings.takeIf {
+                it.routeSlopeLine && state.route is RouteState.Done && !state.profileVisible
+            }
+            if (state.detailsShown) {
+                /*
+                 * Details ouverts, les etapes et les resultats defilent D'UN SEUL TENANT. Chacun sa part de
+                 * hauteur ne marchait pas : la bande pleine - etapes, totaux, profil - ne laissait aux
+                 * details qu'une hauteur nulle, et ils etaient la sans qu'on puisse les voir. Les etapes ne
+                 * defilent plus d'elles-memes ici : deux defilements dans le meme sens ne s'imbriquent pas.
+                 * La saisie d'une etape referme les details (cf. detailsShown), et rend la liste a son
+                 * propre defilement, celui qui ramene les propositions sous le champ.
+                 */
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history,
+                        onPlaceChosen, onPlaceForgotten, slopeLegend = slopeLegend, scrollable = false,
+                        modifier = Modifier.padding(top = Spacing.m))
+                    ResultsZone(state, imperial, settings, lastLabelInsetPx)
+                }
+            } else {
+                StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
+                    onPlaceForgotten, slopeLegend = slopeLegend,
+                    modifier = Modifier.weight(1f, fill = false).padding(top = Spacing.m))
+                ResultsZone(state, imperial, settings, lastLabelInsetPx)
+            }
         }
     }
     if (confirmerReset) {
@@ -404,13 +421,15 @@ private fun StepList(
     onPlaceForgotten: (GeocodePlace) -> Unit,
     /** Les reglages de la legende des pentes, quand son "i" doit se poser au bout de la ligne d'ajout. */
     slopeLegend: SettingsEntity? = null,
+    /** Faux quand un conteneur exterieur defile deja (cf. les details ouverts, dans la bande). */
+    scrollable: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    Column(modifier.verticalScroll(rememberScrollState())) {
+    Column(if (scrollable) modifier.verticalScroll(rememberScrollState()) else modifier) {
         state.steps.forEachIndexed { i, step ->
             // Par identifiant, et non par rang : une ligne deposee ailleurs garde son champ, son focus et
             // ses propositions, au lieu de les laisser a celle qui prend sa place.
@@ -873,6 +892,7 @@ private fun SuggestionRow(
  *
  * Rien tant que le parcours n'a pas deux etapes : la zone n'apparait qu'avec quelque chose a dire.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ResultsZone(
     state: RoutePlannerState,
@@ -1001,15 +1021,49 @@ private fun ResultsZone(
                         axisBold = settings.profAxisBold,
                         cursorX = state.cursor,
                         onScrub = { state.tapProfile(it) },
+                        // Un appui simple ouvre le profil en grand, le curseur pose ou l'on a touche.
+                        onTap = { state.tapProfile(it); state.openViewer(PlannerViewer.PROFILE) },
                         onZoom = { scale, fraction -> state.zoomBy(scale, fraction, r.track.samples.size) },
                         // Double-tap : un grossissement franc au point vise, la ou le pincement dose.
                         onDoubleTap = { fraction -> state.zoomBy(2f, fraction, r.track.samples.size) },
                         lastLabelInsetPx = lastLabelInsetPx,
                         verticalScale = settings.profileVerticalScale,
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight().testTag("planner_profile"),
                     )
                 }
                 }
+            }
+            // La zone "Details", sous le profil et repliee comme lui : les surfaces et les types de voies.
+            HorizontalDivider(Modifier.padding(top = 2.dp, bottom = 2.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+            // Ouverts, les details se ramenent a l'ecran : ils naissent sous le profil, souvent sous le bord.
+            val detailsInView = remember { BringIntoViewRequester() }
+            LaunchedEffect(state.detailsShown) {
+                if (state.detailsShown) { delay(50); detailsInView.bringIntoView() }
+            }
+            Column(Modifier.bringIntoViewRequester(detailsInView)) {
+            Row(
+                Modifier.fillMaxWidth().height(40.dp).clickable { state.toggleDetails() }.testTag("planner_details_toggle"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(
+                        if (state.detailsVisible) R.string.planner_hide_details else R.string.planner_show_details
+                    ),
+                    style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    if (state.detailsVisible) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (state.detailsShown) {
+                DetailsZone(
+                    done = r, imperial = imperial,
+                    onOpen = { v, initial -> state.openViewer(v, initial) },
+                    modifier = Modifier.padding(bottom = Spacing.s),
+                )
+            }
             }
             }
         }

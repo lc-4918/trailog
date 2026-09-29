@@ -8,7 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import fr.lc4918.trailog.domain.geo.RouteDetails
 import fr.lc4918.trailog.domain.geo.TrackMath
+import fr.lc4918.trailog.domain.model.SurfaceKind
+import fr.lc4918.trailog.domain.model.WayKind
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
@@ -167,7 +170,7 @@ fun PlannerEffects(
             TrackMath.compute(r.points, smoothingM = smoothingM, maxPoints = 0, ignoreStops = false)
         }
         state.publish(RouteState.Done(r.meters, r.seconds, track,
-            offline = (issue as? RouteOutcome.Done)?.offline == true), inputs)
+            offline = (issue as? RouteOutcome.Done)?.offline == true, segments = r.segments), inputs)
         if (!routeFramed) framePending = true
     }
     /*
@@ -205,6 +208,38 @@ fun PlannerEffects(
             s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
             topPaddingPx = topPaddingPx, bottomPaddingPx = bandHeightPx,
         )
+    }
+    /*
+     * Entrer dans un VIEWER - ou passer de l'un a l'autre - cadre la carte sur TOUT le parcours, au-dessus
+     * du panneau qui remplace la bande. Differe comme le cadrage d'un trajet neuf, et pour la meme raison :
+     * a l'instant du basculement, la hauteur mesuree est encore celle de la bande, bien plus haute que le
+     * panneau. L'effet se relance a chaque mesure, et le delai ne laisse passer que la derniere.
+     */
+    LaunchedEffect(state.viewer, bandHeightPx) {
+        if (state.viewer == null) return@LaunchedEffect
+        val s = state.done?.track?.samples ?: return@LaunchedEffect
+        if (s.size < 2) return@LaunchedEffect
+        delay(150)
+        controller.fitTo(
+            s.minOf { it.lon }, s.minOf { it.lat }, s.maxOf { it.lon }, s.maxOf { it.lat },
+            topPaddingPx = topPaddingPx, bottomPaddingPx = bandHeightPx,
+        )
+    }
+    // La categorie choisie dans un VIEWER des surfaces ou des types de voies, mise en evidence sur le trace.
+    LaunchedEffect(state.viewer, state.highlight, state.route, styleTick) {
+        val fait = state.done
+        val kind = state.highlight
+        val pieces = if (fait == null || kind == null || state.viewer == null) emptyList() else {
+            val s = fait.track.samples
+            val totalX = s.lastOrNull()?.x ?: 0.0
+            val ranges = when (kind) {
+                is SurfaceKind -> RouteDetails.ranges(fait.segments, totalX, { RouteDetails.surfaceOf(it) }, kind)
+                is WayKind -> RouteDetails.ranges(fait.segments, totalX, { RouteDetails.wayOf(it) }, kind)
+                else -> emptyList()
+            }
+            withContext(Dispatchers.Default) { RouteDetails.pieces(s, ranges) }
+        }
+        controller.setRouteHighlight(pieces)
     }
     // Le planificateur désactivé dans les réglages pendant qu'il est ouvert le referme : sans cela sa bande
     // survivrait au réglage qui l'a fait naître.

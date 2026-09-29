@@ -5,6 +5,7 @@ import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.domain.model.SurfacePref
 import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.domain.model.WayPref
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,9 @@ data class RouteResult(
     val meters: Double,
     val seconds: Double,
     val points: List<TrackPoint> = emptyList(),
+    /** Les attributs OSM des voies empruntees, troncon par troncon (cf. [WaySegment]). BRouter seul les
+     *  rend : vide chez Valhalla, et le planificateur le dit plutot que d'afficher des parts fausses. */
+    val segments: List<WaySegment> = emptyList(),
 )
 
 /**

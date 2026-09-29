@@ -10,6 +10,7 @@ import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.geocode.GeocodePlace
 
 /** Nombre maximal d'etapes. Au-dela, le moteur d'itineraire refuse la requete et la liste devient illisible. */
@@ -73,11 +74,23 @@ sealed interface RouteState {
      * redemander une fois le reseau revenu, et le message porte donc de quoi le faire.
      */
     data object NoNetwork : RouteState
-    /** [offline] : calcule sur le telephone, sans le reseau - la bande le dit (cf. Router.route). */
+    /**
+     * [offline] : calcule sur le telephone, sans le reseau - la bande le dit (cf. Router.route).
+     * [segments] : les attributs OSM des voies, d'ou sortent les "Details" (cf. RouteDetails) ; vides
+     * quand le moteur n'en rend pas.
+     */
     data class Done(
         val meters: Double, val seconds: Double, val track: ComputedTrack, val offline: Boolean = false,
+        val segments: List<WaySegment> = emptyList(),
     ) : RouteState
 }
+
+/**
+ * Les affichages "VIEWER" : la bande s'efface devant un panneau reduit, et la carte montre tout le parcours
+ * au-dessus de lui. Le profil pour suivre le relief au doigt ; les surfaces et les types de voies pour voir
+ * OU passe chaque categorie, mise en evidence sur le trace.
+ */
+enum class PlannerViewer { PROFILE, SURFACES, WAYS }
 
 /**
  * Une etape de l'itineraire : sa saisie, ses propositions, et ce qu'elle designe une fois choisie.
@@ -186,6 +199,50 @@ class RoutePlannerState {
         private set
 
     fun toggleProfile() { profileVisible = !profileVisible }
+
+    /** La zone "Details", sous le profil : repliee par defaut, pour la meme raison que lui. */
+    var detailsVisible by mutableStateOf(false)
+        private set
+
+    fun toggleDetails() { detailsVisible = !detailsVisible }
+
+    /** Les details a l'ecran : ouverts, sur un parcours calcule, et hors de la saisie d'une etape - comme
+     *  le profil (cf. [profileShown]), ils rendraient sinon la place aux propositions du champ. */
+    val detailsShown: Boolean get() = detailsVisible && editingId == null && route is RouteState.Done
+
+    /** L'affichage VIEWER en cours, ou null : la bande complete. */
+    var viewer by mutableStateOf<PlannerViewer?>(null)
+        private set
+
+    /**
+     * La categorie mise en evidence sur la carte dans un VIEWER des surfaces ou des types de voies : un
+     * [fr.lc4918.trailog.domain.model.SurfaceKind] ou un [fr.lc4918.trailog.domain.model.WayKind], selon
+     * le VIEWER. Nulle : rien n'est mis en evidence.
+     */
+    var highlight by mutableStateOf<Any?>(null)
+        private set
+
+    /**
+     * Ouvre un VIEWER - ou passe de l'un a l'autre. Le zoom du profil retombe : la carte se cadre sur tout
+     * le parcours en entrant (cf. PlannerEffects), et un profil reste grossi sur une portion ne lui
+     * correspondrait plus.
+     *
+     * [initial] : la categorie a mettre en evidence d'emblee, la plus longue en general.
+     */
+    fun openViewer(v: PlannerViewer, initial: Any? = null) {
+        if (done == null) return
+        if (viewer != v) resetZoom()
+        viewer = v
+        highlight = initial
+    }
+
+    /** Retour a la bande complete. */
+    fun closeViewer() {
+        viewer = null
+        highlight = null
+    }
+
+    fun select(kind: Any?) { highlight = kind }
 
     /**
      * Un champ d'etape a le focus : on est en train de saisir.
@@ -408,6 +465,7 @@ class RoutePlannerState {
         steps.add(PlannerStep(nextId++))
         steps.add(PlannerStep(nextId++))
         route = RouteState.Idle
+        closeViewer()
         recomputing = false
         computedFrom = null
         repriseDepuisPosition = false
@@ -426,6 +484,8 @@ class RoutePlannerState {
      */
     fun collapse(v: Boolean) {
         collapsed = v
+        // Rangee, la bande emporte le VIEWER : la redeployer rend la bande complete, pas un panneau oublie.
+        if (v) closeViewer()
         if (!v) pickingStep = null
     }
 
@@ -777,6 +837,7 @@ class RoutePlannerState {
             meters = fait.meters,
             seconds = fait.seconds,
             track = fait.track,
+            segments = fait.segments,
         )
     }
 
@@ -805,7 +866,7 @@ class RoutePlannerState {
         profile = RoutingProfile.of(snapshot.profile)
         open = true
         collapsed = snapshot.collapsed
-        route = RouteState.Done(snapshot.meters, snapshot.seconds, snapshot.track)
+        route = RouteState.Done(snapshot.meters, snapshot.seconds, snapshot.track, segments = snapshot.segments)
         computedFrom = null
         repriseDepuisPosition = steps.any { it.target == StepTarget.CurrentPosition }
         recomputing = false
@@ -830,6 +891,8 @@ class RoutePlannerState {
         // curseur et le zoom retombent : ils designaient un parcours qui n'aura plus la meme longueur.
         cursor = null
         resetZoom()
+        // Un VIEWER montre le parcours d'avant : on revient a la bande, qui dira le recalcul.
+        closeViewer()
         revision++
     }
 }

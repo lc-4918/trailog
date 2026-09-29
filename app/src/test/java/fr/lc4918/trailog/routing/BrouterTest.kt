@@ -105,6 +105,57 @@ class BrouterTest {
         assertNull(r.points[0].ele)
     }
 
+    /**
+     * Les attributs OSM des voies, d'ou sortent les "Details" du planificateur : une ligne par morceau
+     * du trajet dans `messages`, sa longueur dans `Distance` et ses attributs dans `WayTags`. Forme
+     * relevee sur une vraie reponse de brouter.de.
+     */
+    @Test fun `les troncons se lisent avec leur longueur et les attributs de leur voie`() {
+        val r = Brouter.parse(
+            """{"features":[{"properties":{"track-length":"1010","total-time":"300","messages":[
+               ["Longitude","Latitude","Elevation","Distance","CostPerKm","ElevCost","TurnCost","NodeCost",
+                "InitialCost","WayTags","NodeTags","Time","Energy"],
+               ["1878741","43073008","318","832","1350","0","5","0","0",
+                "reversedirection=yes highway=service surface=asphalt","","95","9532"],
+               ["1878320","43074582","320","178","3050","0","64","0","0",
+                "highway=track surface=gravel","","119","11992"]]},
+               "geometry":{"coordinates":[[1.0,2.0],[3.0,4.0]]}}]}""")!!
+        assertEquals(2, r.segments.size)
+        assertEquals(832.0, r.segments[0].meters, 1e-9)
+        assertEquals("reversedirection=yes highway=service surface=asphalt", r.segments[0].tags)
+        assertEquals(178.0, r.segments[1].meters, 1e-9)
+        assertEquals("highway=track surface=gravel", r.segments[1].tags)
+    }
+
+    /** Les colonnes se cherchent par leur NOM : une version du moteur qui les reordonne ne doit rien casser. */
+    @Test fun `les colonnes des troncons se trouvent par leur nom`() {
+        val s = Brouter.segmentsOf(listOf(
+            listOf("WayTags", "Distance"),
+            listOf("highway=path", "40"),
+        ))
+        assertEquals(listOf(fr.lc4918.trailog.domain.model.WaySegment(40.0, "highway=path")), s)
+    }
+
+    /** Une ligne abimee est ecartee sans emporter les autres ; sans en-tete connu, il n'y a pas de details. */
+    @Test fun `un troncon illisible est ecarte, un tableau sans en-tete ne donne rien`() {
+        val s = Brouter.segmentsOf(listOf(
+            listOf("Distance", "WayTags"),
+            listOf("abc", "highway=path"),
+            listOf("0", "highway=path"),
+            listOf("25"),
+            listOf("10", "highway=track"),
+        ))
+        assertEquals(listOf(25.0, 10.0), s.map { it.meters })
+        assertEquals("", s[0].tags)
+        assertTrue(Brouter.segmentsOf(listOf(listOf("Longitude", "Latitude"), listOf("1", "2"))).isEmpty())
+        assertTrue(Brouter.segmentsOf(emptyList()).isEmpty())
+    }
+
+    /** La reponse du test ci-dessus n'a pas de colonne Distance : un parcours sans details, pas une erreur. */
+    @Test fun `une reponse sans attributs de voies donne un parcours sans details`() {
+        assertTrue(Brouter.parse(REPONSE)!!.segments.isEmpty())
+    }
+
     @Test fun `une reponse sans total ne donne aucun itineraire`() {
         assertNull(Brouter.parse("""{"features":[{"properties":{"track-length":"10"}}]}"""))
         assertNull(Brouter.parse("""{"features":[]}"""))

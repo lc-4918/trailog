@@ -3,6 +3,7 @@ package fr.lc4918.trailog.routing
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.domain.model.TrackPoint
+import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.map.offline.TileHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -98,8 +99,29 @@ object Brouter {
         val points = f.geometry?.coordinates.orEmpty().mapNotNull { c ->
             if (c.size < 2) null else TrackPoint(lon = c[0], lat = c[1], ele = c.getOrNull(2))
         }
-        RouteResult(metres, secondes, points)
+        RouteResult(metres, secondes, points, segmentsOf(f.properties?.messages.orEmpty()))
     }.getOrNull()
+
+    /**
+     * Les troncons du trajet et les attributs OSM de leur voie, lus dans le tableau `messages`.
+     *
+     * Sa premiere ligne est un en-tete (`Longitude`, `Latitude`, ..., `Distance`, ..., `WayTags`, ...) : on
+     * y cherche les colonnes par leur NOM plutot que par leur rang, qu'une version du moteur peut decaler.
+     * Chaque ligne suivante couvre un morceau de trajet, dont `Distance` donne la longueur en metres - leur
+     * somme est la longueur totale -, et `WayTags` les attributs de la voie : `highway=track surface=gravel`.
+     *
+     * Une ligne illisible est ecartee, sans perdre les autres : les parts se calculent sur ce qui reste.
+     */
+    internal fun segmentsOf(messages: List<List<String>>): List<WaySegment> {
+        val entete = messages.firstOrNull() ?: return emptyList()
+        val iDist = entete.indexOf("Distance")
+        val iTags = entete.indexOf("WayTags")
+        if (iDist < 0 || iTags < 0) return emptyList()
+        return messages.drop(1).mapNotNull { ligne ->
+            val m = ligne.getOrNull(iDist)?.toDoubleOrNull() ?: return@mapNotNull null
+            if (m <= 0.0) null else WaySegment(m, ligne.getOrNull(iTags).orEmpty())
+        }
+    }
 
     /**
      * Dépose [text] et rend son identifiant, null si le service n'en veut pas.
@@ -195,6 +217,7 @@ object Brouter {
     @Serializable internal data class Props(
         @SerialName("track-length") val trackLength: String? = null,
         @SerialName("total-time") val totalTime: String? = null,
+        val messages: List<List<String>> = emptyList(),
     )
     @Serializable internal data class Geometry(val coordinates: List<List<Double>> = emptyList())
 }

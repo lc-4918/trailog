@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.planner
 
 import android.content.Context
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.geocode.GeocodePlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,6 +55,8 @@ data class PlannerSnapshot(
     val meters: Double,
     val seconds: Double,
     val track: ComputedTrack,
+    /** Les attributs des voies (cf. RouteState.Done.segments). Vide par defaut : un fichier ecrit avant se relit. */
+    val segments: List<WaySegment> = emptyList(),
 )
 
 /**

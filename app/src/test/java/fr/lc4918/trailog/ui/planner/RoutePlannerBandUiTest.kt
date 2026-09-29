@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -11,6 +12,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
@@ -227,5 +229,72 @@ class RoutePlannerBandUiTest {
         compose.onNodeWithText(ctx.getString(R.string.planner_show_profile)).performClick()
         compose.waitForIdle()
         assertTrue(!existe("slope_legend_info"))
+    }
+
+    /** Un parcours calcule par BRouter, avec les attributs de ses voies. */
+    private fun calculeAvecVoies(): RoutePlannerState = planificateurOuvert().apply {
+        val pts = List(50) { TrackPoint(5.72 + it * 0.001, 45.18, 200.0 + it * 5, null) }
+        publish(RouteState.Done(4000.0, 1200.0, TrackMath.compute(pts), segments = listOf(
+            fr.lc4918.trailog.domain.model.WaySegment(3000.0, "highway=tertiary surface=asphalt"),
+            fr.lc4918.trailog.domain.model.WaySegment(1000.0, "highway=track surface=gravel"),
+        )))
+    }
+
+    /**
+     * La zone "Details", repliee sous le profil : l'ouvrir montre les deux rubriques, avec la part de
+     * chaque categorie ; toucher une rubrique ouvre son VIEWER, la plus longue categorie en evidence.
+     *
+     * L'ecran de Robolectric est petit : la bande y est pleine avant meme les details, exactement le cas
+     * ou ils recevaient une hauteur nulle - et ou `performScrollTo` bouclait sans fin sur une fenetre vide.
+     */
+    @Test fun `les details s'ouvrent, et une rubrique ouvre son viewer`() {
+        val state = calculeAvecVoies()
+        affiche(state)
+        assertTrue(!existe("planner_details_surfaces"))
+        compose.onNodeWithText(ctx.getString(R.string.planner_show_details)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_details_surfaces)).assertExists()
+        compose.onNodeWithText(ctx.getString(R.string.planner_details_ways)).assertExists()
+        compose.onNodeWithTag("planner_details_surfaces")
+            .assert(androidx.compose.ui.test.hasText(ctx.getString(R.string.surface_asphalt)))
+            .assert(androidx.compose.ui.test.hasText("75 %"))
+        // La bande pleine ne doit pas laisser aux details une hauteur nulle : ils y etaient, mais invisibles.
+        val rubrique = compose.onNodeWithTag("planner_details_ways").performScrollTo().fetchSemanticsNode()
+        assertTrue("rubrique visible, et non ecrasee", rubrique.boundsInRoot.height > 0f)
+        compose.onNodeWithTag("planner_details_ways").performClick()
+        compose.waitForIdle()
+        assertEquals(PlannerViewer.WAYS, state.viewer)
+        assertEquals(fr.lc4918.trailog.domain.model.WayKind.ROAD, state.highlight)
+    }
+
+    /** Un parcours sans attributs de voies (Valhalla) le dit, au lieu d'afficher un trajet "inconnu". */
+    @Test fun `sans attributs de voies, les details le disent`() {
+        affiche(calcule())
+        compose.onNodeWithText(ctx.getString(R.string.planner_show_details)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_details_unavailable)).assertExists()
+        assertTrue(!existe("planner_details_surfaces"))
+    }
+
+    /** Le panneau VIEWER : sa fleche rend la bande, et son menu passe d'un VIEWER a l'autre. */
+    @Test fun `le panneau viewer change d'affichage et rend la bande`() {
+        val state = calculeAvecVoies().apply {
+            openViewer(PlannerViewer.SURFACES, fr.lc4918.trailog.domain.model.SurfaceKind.ASPHALT)
+        }
+        compose.setContent {
+            MaterialTheme { Surface(Modifier.fillMaxSize()) {
+                PlannerViewerPanel(state, imperial = false, settings = SettingsEntity(), lastLabelInsetPx = 0f)
+            } }
+        }
+        compose.onNodeWithTag("planner_viewer_bar").assertExists()
+        compose.onNodeWithText(ctx.getString(R.string.planner_details_surfaces)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_viewer_elevation)).performClick()
+        compose.waitForIdle()
+        assertEquals(PlannerViewer.PROFILE, state.viewer)
+        assertTrue(existe("planner_viewer_profile"))
+        compose.onNodeWithTag("planner_viewer_back").performClick()
+        compose.waitForIdle()
+        assertEquals(null, state.viewer)
     }
 }

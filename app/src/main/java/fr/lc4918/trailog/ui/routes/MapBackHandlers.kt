@@ -61,6 +61,8 @@ internal fun MapBackHandlers(
     // suite, plutôt que de laisser le bouton de la carte s'allumer pour une feuille vierge.
     // Placé avant les gestes du géocodage, plus anodins.
     BackHandler(enabled = planner.expanded) { planner.collapseOrClose() }
+    // Un affichage VIEWER se quitte d'abord : le retour rend la bande complete, comme sa fleche.
+    BackHandler(enabled = planner.expanded && planner.viewer != null) { planner.closeViewer() }
     BackHandler(enabled = geo.place != null) { geo.clear() }
     BackHandler(enabled = geo.searchOpen) { geo.closeSearch() }
     // Mesure sur trace, du plus général au plus prioritaire : le retour ferme d'abord le résultat affiché,

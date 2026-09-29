@@ -56,6 +56,8 @@ class PlannerStoreTest {
             hasZ = true,
             hasTime = false,
         ),
+        // Les attributs des voies reviennent avec le parcours : les "Details" ne se recalculent pas sans eux.
+        segments = listOf(fr.lc4918.trailog.domain.model.WaySegment(120.0, "highway=track surface=gravel")),
     )
 
     @Before fun disqueVierge() { File(ctx.filesDir, "planner-route.json").delete() }

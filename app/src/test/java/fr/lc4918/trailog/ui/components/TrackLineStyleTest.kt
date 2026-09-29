@@ -30,6 +30,21 @@ class TrackLineStyleTest {
         assertEquals(2, Regex("\\[6.002,45.0]").findAll(json).count())
     }
 
+    /**
+     * Le support des chevrons : chaque trace d'UN tenant, meme quand sa pente change a chaque point. Sur
+     * les troncons par couleur, MapLibre reprenait l'ecart a zero a chaque troncon, et les chevrons se
+     * tassaient la ou le relief varie.
+     */
+    @Test fun `les chevrons suivent chaque trace d'un seul tenant`() {
+        val relief = listOf(s(0, 0.0), s(1, 9.0), s(2, -9.0), s(3, 15.0), s(4, 0.0))
+        val plat = listOf(s(10, 0.0), s(11, 0.0))
+        val json = SlopeLines.continuous(listOf(relief, plat, listOf(s(20, 0.0))))
+        assertEquals("une ligne par trace, la trace d'un point ecartee", 2, Regex("LineString").findAll(json).count())
+        // Aucun point repete : sans decoupe, pas de jonction.
+        assertEquals(1, Regex("\\[6.002,45.0]").findAll(json).count())
+        assertTrue(json.startsWith("""{"type":"FeatureCollection","features":["""))
+    }
+
     @Test fun `une collection vide reste une collection valide`() {
         assertEquals("""{"type":"FeatureCollection","features":[]}""", SlopeLines.collection(emptyList(), 5))
     }

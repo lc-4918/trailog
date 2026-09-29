@@ -66,6 +66,10 @@ data class RenderLayer(
  *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
 private val LineSearchFactors = listOf(1f, 4f, 12f)
 
+/** Bleu de la mise en evidence d'une categorie de l'itineraire, sur la carte comme dans la bande (cf.
+ *  MapController.setRouteHighlight) : la meme couleur designe la meme chose aux deux endroits. */
+const val RouteHighlightColor = "#2459C4"
+
 /** Un point d'interet a poser sur la carte : ce que la couche a besoin d'en savoir, et rien de plus.
  *  [iconRes] est le pictogramme de sa categorie (cf. `ui/poi/PoiIcons.kt`), [colorHex] la teinte de son
  *  groupe. */
@@ -462,7 +466,7 @@ class MapController {
         val lines = layerKeys.flatMap { listOf(lineLayerId(it), slopeLayerId(it)) } + ROUTE_LINE
         lines.forEach { id -> (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(w)) }
         layerKeys.forEach { k -> applyArrows(s, k, src(k), pointLayerId(k)) }
-        if (s.getSource(ROUTE_SRC) != null) applyArrows(s, ROUTE_KEY, ROUTE_SRC, null)
+        if (s.getSource(ROUTE_ARROW_SRC) != null) applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, null)
     }
 
     /**
@@ -830,6 +834,15 @@ class MapController {
     private val ROUTE_SRC = "geocode-route-src"
     /** Cle des chevrons de l'itineraire (cf. [applyArrows]). */
     private val ROUTE_KEY = "geocode-route"
+    /**
+     * Source des chevrons de l'itineraire : chaque trace d'UN tenant, et non la source du trait.
+     *
+     * Le trait colorie par pente est coupe en un troncon par couleur (cf. SlopeLines), et MapLibre pose les
+     * symboles d'une ligne en repartant de son debut : sur la source du trait, les chevrons se tassaient la
+     * ou la pente change souvent et manquaient sur les troncons trop courts pour en porter un. Sur une
+     * ligne continue, ils gardent le meme ecart a tous les niveaux de zoom.
+     */
+    private val ROUTE_ARROW_SRC = "geocode-route-dir-src"
 
     /**
      * Épingle noire du géocodage : le lieu trouvé ([GEO_PLACE]) ou le point de référence d'une mesure de
@@ -959,6 +972,7 @@ class MapController {
             s.getLayer(arrowLayerId(ROUTE_KEY))?.let { s.removeLayer(it) }
             s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
             s.getSource(ROUTE_SRC)?.let { s.removeSource(it) }
+            s.getSource(ROUTE_ARROW_SRC)?.let { s.removeSource(it) }
             return
         }
         val features = drawable.joinToString(",") {
@@ -974,8 +988,49 @@ class MapController {
         } else {
             existing.setGeoJson(geojson)
         }
+        val fleches = SlopeLines.continuous(drawable.map { it.samples })
+        val sourceFleches = s.getSourceAs<GeoJsonSource>(ROUTE_ARROW_SRC)
+        if (sourceFleches == null) s.addSource(GeoJsonSource(ROUTE_ARROW_SRC, fleches)) else sourceFleches.setGeoJson(fleches)
         val belowPin = routeBelow(s)
-        applyArrows(s, ROUTE_KEY, ROUTE_SRC, belowPin)
+        applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, belowPin)
+    }
+
+    /** Calques et source de la mise en evidence d'une categorie de l'itineraire (cf. [setRouteHighlight]). */
+    private val ROUTE_HL = "planner-highlight"
+    private val ROUTE_HL_CASING = "planner-highlight-casing"
+    private val ROUTE_HL_SRC = "planner-highlight-src"
+
+    /**
+     * Met en evidence des morceaux de l'itineraire - ceux d'un revetement, ou d'un type de voie -, chacun
+     * donne en (lon, lat). Vide : rien n'est mis en evidence.
+     *
+     * Un trait plus large que celui du parcours, bleu franc borde de blanc : il doit se detacher du trace
+     * noir ou teinte par pente qu'il recouvre, sur un fond clair comme sombre. Pose juste au-dessus du
+     * trace, et donc sous les epingles et le repere de position, comme lui.
+     */
+    fun setRouteHighlight(pieces: List<List<Pair<Double, Double>>>) {
+        val s = style ?: return
+        val lignes = pieces.filter { it.size >= 2 }
+        if (lignes.isEmpty()) {
+            s.getLayer(ROUTE_HL)?.let { s.removeLayer(it) }
+            s.getLayer(ROUTE_HL_CASING)?.let { s.removeLayer(it) }
+            s.getSource(ROUTE_HL_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val coords = lignes.joinToString(",") { l -> l.joinToString(",", "[", "]") { (lon, lat) -> "[$lon,$lat]" } }
+        val geojson = """{"type":"Feature","geometry":{"type":"MultiLineString","coordinates":[$coords]},"properties":{}}"""
+        val existing = s.getSourceAs<GeoJsonSource>(ROUTE_HL_SRC)
+        if (existing != null) { existing.setGeoJson(geojson); return }
+        s.addSource(GeoJsonSource(ROUTE_HL_SRC, geojson))
+        val casing = LineLayer(ROUTE_HL_CASING, ROUTE_HL_SRC).withProperties(
+            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(trackWidthDp + 7f),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+        val ligne = LineLayer(ROUTE_HL, ROUTE_HL_SRC).withProperties(
+            PropertyFactory.lineColor(RouteHighlightColor), PropertyFactory.lineWidth(trackWidthDp + 3f),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+        val dessous = routeBelow(s)
+        if (dessous != null) { s.addLayerBelow(casing, dessous); s.addLayerBelow(ligne, dessous) }
+        else { addLayerSafe(casing); addLayerSafe(ligne) }
     }
 
     /**

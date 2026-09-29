@@ -89,6 +89,9 @@ fun ElevationProfile(
     // [onZoom] recoit le facteur de grossissement et la fraction horizontale visee (0 a gauche, 1 a droite).
     onZoom: ((Float, Float) -> Unit)? = null,
     onDoubleTap: ((Float) -> Unit)? = null,
+    // Appui simple, facultatif : remplace le deplacement du curseur au tap. La bande du planificateur s'en
+    // sert pour ouvrir le profil en grand (cf. PlannerViewer) ; le glissement, lui, deplace toujours le curseur.
+    onTap: ((Double) -> Unit)? = null,
 ) {
     if (samples.size < 2) return
     val areaColor = lineColor.copy(alpha = 0.30f)   // aire = couleur de la trace si pentes inactives
@@ -125,6 +128,7 @@ fun ElevationProfile(
     val scrub by rememberUpdatedState(onScrub)
     val zoomCb by rememberUpdatedState(onZoom)
     val doubleTapCb by rememberUpdatedState(onDoubleTap)
+    val tapCb by rememberUpdatedState(onTap)
     val toX by rememberUpdatedState<(Float, Float) -> Double> { px, w -> xAt(px, w) }
     val toFraction by rememberUpdatedState<(Float, Float) -> Float> { px, w -> fractionAt(px, w) }
     val zoomable = onZoom != null
@@ -134,7 +138,10 @@ fun ElevationProfile(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { off -> doubleTapCb?.invoke(toFraction(off.x, size.width.toFloat())) },
-                    onTap = { scrub(toX(it.x, size.width.toFloat())) },
+                    onTap = {
+                        val x = toX(it.x, size.width.toFloat())
+                        tapCb?.invoke(x) ?: scrub(x)
+                    },
                 )
             }
             .then(

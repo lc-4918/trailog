@@ -104,6 +104,7 @@ import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.PlannerEffects
+import fr.lc4918.trailog.ui.planner.PlannerViewerPanel
 import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.StepTarget
@@ -1048,7 +1049,23 @@ fun MainScreen(
                 }
                 // Bande du planificateur, sur toute la largeur du bas. Réduite, elle ne pose plus rien :
                 // c'est le bouton du coin bas-droit qui la redéploie (cf. MapBottomRightControls).
-                if (planner.open) {
+                /*
+                 * Un affichage VIEWER remplace la bande par un panneau reduit, et c'est LUI qui donne
+                 * desormais la hauteur masquee en bas : la carte se cadre au-dessus de lui (cf.
+                 * PlannerEffects), et les commandes de la carte remontent d'autant.
+                 */
+                if (planner.expanded && planner.viewer != null) {
+                    PlannerViewerPanel(
+                        state = planner,
+                        imperial = imperialUnits,
+                        settings = settings,
+                        lastLabelInsetPx = 0f,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                            .onGloballyPositioned { insets.plannerBandPx = it.size.height },
+                    )
+                } else if (planner.open) {
                     RoutePlannerBand(
                         state = planner,
                         imperial = imperialUnits,

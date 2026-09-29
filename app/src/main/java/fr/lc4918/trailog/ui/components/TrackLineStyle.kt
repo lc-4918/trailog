@@ -72,6 +72,16 @@ object SlopeLines {
         return out
     }
 
+    /**
+     * Les memes lignes d'UN tenant chacune, quelle que soit leur pente : le support des chevrons du sens de
+     * parcours. Poses sur les troncons de [features], ils repartaient de zero a chaque changement de
+     * couleur, et leur ecart variait avec le relief (cf. MapController.setRouteLines).
+     */
+    fun continuous(lines: List<List<Sample>>): String {
+        val features = lines.filter { it.size >= 2 }.joinToString(",") { features(it, null, "#000000") }
+        return """{"type":"FeatureCollection","features":[$features]}"""
+    }
+
     /** Une collection pour plusieurs lignes - les segments d'une couche. */
     fun collection(lines: List<List<Sample>>, classTenths: Int): String {
         val features = lines.filter { it.size >= 2 }.joinToString(",") { features(it, classTenths, "#000000") }
