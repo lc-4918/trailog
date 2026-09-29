@@ -97,4 +97,29 @@ class TrackLineStyleTest {
         assertTrue(carte.size < pts.size)
         assertEquals(carte.map { it.lon to it.lat }, trait.map { it.lon to it.lat })
     }
+
+    // ---------- Largeur de la mise en evidence ----------
+
+    /** Cadree sur une sortie de la journee (zoom 11 et plus) : la largeur qui convenait, inchangee. */
+    @Test fun `la mise en evidence garde sa largeur aux grandes echelles`() {
+        assertEquals(5f + 3f, HighlightWidth.at(HighlightWidth.lineStops(5f), 11f), 1e-4f)
+        assertEquals(5f + 7f, HighlightWidth.at(HighlightWidth.casingStops(5f), 14f), 1e-4f)
+    }
+
+    /** Cadree sur EV1 (zoom 6) : a peine plus large que la trace, lisere compris. */
+    @Test fun `la mise en evidence s'affine aux petites echelles`() {
+        val trait = HighlightWidth.at(HighlightWidth.lineStops(5f), 6f)
+        val lisere = HighlightWidth.at(HighlightWidth.casingStops(5f), 4f)
+        assertTrue("trait : $trait", trait <= 5f + 0.5f)
+        assertTrue("lisere : $lisere", lisere <= 5f + 2f)
+        // Toujours au-dessus du trait qu'elle recouvre, et le lisere autour d'elle.
+        assertTrue(trait > 5f && lisere > trait)
+    }
+
+    @Test fun `la mise en evidence s'elargit continument avec le zoom`() {
+        val l = HighlightWidth.lineStops(4f)
+        val largeurs = (40..130).map { HighlightWidth.at(l, it / 10f) }
+        assertTrue(largeurs.zipWithNext().all { (a, b) -> b >= a })
+        assertEquals(4f + (0.25f + 3f) / 2, HighlightWidth.at(l, 8.5f), 1e-4f)
+    }
 }

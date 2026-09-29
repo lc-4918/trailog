@@ -465,6 +465,11 @@ class MapController {
         val s = style ?: return
         val lines = layerKeys.flatMap { listOf(lineLayerId(it), slopeLayerId(it)) } + ROUTE_LINE
         lines.forEach { id -> (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(w)) }
+        // Les mises en evidence suivent le trait qu'elles recouvrent : elles s'y ajoutent.
+        HIGHLIGHT_KEYS.forEach { k ->
+            (s.getLayer(hlId(k)) as? LineLayer)?.setProperties(highlightWidth(HighlightWidth.lineStops(w)))
+            (s.getLayer(hlCasingId(k)) as? LineLayer)?.setProperties(highlightWidth(HighlightWidth.casingStops(w)))
+        }
         layerKeys.forEach { k -> applyArrows(s, k, src(k), pointLayerId(k)) }
         if (s.getSource(ROUTE_ARROW_SRC) != null) applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, null)
     }
@@ -1000,9 +1005,15 @@ class MapController {
      * l'itineraire (`planner`) et une trace de la bibliotheque (`layer`) ont chacun les leurs, et l'un ne
      * peut pas effacer ce que l'autre vient de poser.
      */
+    private val HIGHLIGHT_KEYS = listOf("planner", "layer")
     private fun hlId(key: String) = "$key-highlight"
     private fun hlCasingId(key: String) = "$key-highlight-casing"
     private fun hlSrcId(key: String) = "$key-highlight-src"
+
+    /** La largeur de la mise en evidence, interpolee sur le zoom entre les paliers [stops] (cf. HighlightWidth). */
+    private fun highlightWidth(stops: List<Pair<Float, Float>>) = PropertyFactory.lineWidth(
+        Expression.interpolate(Expression.linear(), Expression.zoom(),
+            *stops.map { (z, w) -> Expression.stop(z, w) }.toTypedArray()))
 
     /**
      * Met en evidence des morceaux de l'itineraire - ceux d'un revetement, ou d'un type de voie -, chacun
@@ -1031,10 +1042,10 @@ class MapController {
         if (existing != null) { existing.setGeoJson(geojson); return }
         s.addSource(GeoJsonSource(hlSrc, geojson))
         val casing = LineLayer(hlCasing, hlSrc).withProperties(
-            PropertyFactory.lineColor("#FFFFFF"), PropertyFactory.lineWidth(trackWidthDp + 7f),
+            PropertyFactory.lineColor("#FFFFFF"), highlightWidth(HighlightWidth.casingStops(trackWidthDp)),
             PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
         val ligne = LineLayer(hl, hlSrc).withProperties(
-            PropertyFactory.lineColor(RouteHighlightColor), PropertyFactory.lineWidth(trackWidthDp + 3f),
+            PropertyFactory.lineColor(RouteHighlightColor), highlightWidth(HighlightWidth.lineStops(trackWidthDp)),
             PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
         val dessous = routeBelow(s)
         if (dessous != null) { s.addLayerBelow(casing, dessous); s.addLayerBelow(ligne, dessous) }

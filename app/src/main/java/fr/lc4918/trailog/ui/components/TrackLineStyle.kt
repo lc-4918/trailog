@@ -117,3 +117,42 @@ object TrackChevron {
     /** Etendue de l'encre noire en travers du trait : la hauteur, moins le lisere du halo de chaque cote. */
     fun inkPx(heightPx: Int): Float = heightPx - (haloPx(heightPx) - strokePx(heightPx))
 }
+
+/**
+ * Largeur de la mise en evidence d'une categorie sur la carte (cf. MapController.setRouteHighlight), selon
+ * le zoom : ce qu'elle ajoute au trait de la trace, et son lisere blanc.
+ *
+ * **Pourquoi elle suit le zoom.** A largeur fixe, elle convenait a une sortie de la journee, cadree vers le
+ * zoom 11, et ecrasait tout sur EV1 Nantes - Hendaye, cadree vers le zoom 6 : un boudin bleu borde de blanc
+ * couvrant la cote, ou l'on ne distinguait plus les morceaux les uns des autres. La largeur d'une trace,
+ * elle, ne change pas : c'est le SURPLUS qui fond aux petites echelles, jusqu'a presque rien.
+ */
+object HighlightWidth {
+    /** En deca, le surplus est minimal : on regarde une region, voire le pays. */
+    const val LOW_ZOOM = 6f
+    /** Au-dela, le surplus est entier : celui qui convenait a une sortie de la journee. */
+    const val FULL_ZOOM = 11f
+
+    private const val LINE_LOW = 0.25f
+    private const val LINE_FULL = 3f
+    private const val CASING_LOW = 1.5f
+    private const val CASING_FULL = 7f
+
+    /** Les paliers du trait mis en evidence, (zoom, largeur en dp), pour la trace de largeur [trackDp]. */
+    fun lineStops(trackDp: Float): List<Pair<Float, Float>> =
+        listOf(LOW_ZOOM to trackDp + LINE_LOW, FULL_ZOOM to trackDp + LINE_FULL)
+
+    /** Les paliers de son lisere blanc. */
+    fun casingStops(trackDp: Float): List<Pair<Float, Float>> =
+        listOf(LOW_ZOOM to trackDp + CASING_LOW, FULL_ZOOM to trackDp + CASING_FULL)
+
+    /** La largeur au zoom [zoom], entre les paliers [stops] (lineaire, constante au-dela). Ce que calcule
+     *  la carte a partir des memes paliers ; ici pour le verifier. */
+    fun at(stops: List<Pair<Float, Float>>, zoom: Float): Float {
+        val (z0, w0) = stops.first()
+        val (z1, w1) = stops.last()
+        if (zoom <= z0) return w0
+        if (zoom >= z1) return w1
+        return w0 + (w1 - w0) * (zoom - z0) / (z1 - z0)
+    }
+}
