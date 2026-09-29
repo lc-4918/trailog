@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.routes
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
@@ -32,6 +33,13 @@ class MapInsetsState {
 
     /** Le panneau de profil, superpose a la carte, qui garde toujours sa taille pleine. */
     var profilePanelPx by mutableIntStateOf(0)
+
+    /**
+     * Le haut de ce qui recouvre le coin bas-droit quand le profil d'une trace est ouvert - le panneau, ou
+     * au-dessus de lui les infos du point courant -, en pixels de la racine ; null sans profil. Les boutons
+     * du coin qui passent dessous, meme en partie, s'effacent (cf. coveredBy).
+     */
+    var bottomRightCoverTopPx by mutableStateOf<Int?>(null)
 
     /** La bande du planificateur, dont le cadrage du parcours doit degager ce qu'elle recouvre. */
     var plannerBandPx by mutableIntStateOf(0)

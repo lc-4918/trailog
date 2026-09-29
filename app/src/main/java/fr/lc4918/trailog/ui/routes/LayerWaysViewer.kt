@@ -212,7 +212,13 @@ internal fun BoxScope.LayerWaysViewerLayer(
     LaunchedEffect(state.cursor, state.tracks, state.viewer) {
         val s = state.profileTrack?.samples
         val p = if (state.viewer == PlannerViewer.PROFILE && s != null) state.cursor?.let { TrackMath.sampleAt(s, it) } else null
-        if (p != null) { controller.setCursor(p.lon, p.lat); pose = true }
+        if (p != null) {
+            controller.setCursor(p.lon, p.lat); pose = true
+            // Un point sorti de la vue, ou sous le panneau, fait suivre la carte (cf. ProfileCursorEffects).
+            if (!controller.isInView(p.lon, p.lat, topPaddingPx, hauteur)) {
+                controller.centerInView(p.lat, p.lon, topPaddingPx, hauteur)
+            }
+        }
         else if (pose) { controller.clearCursor(); pose = false }
     }
     LaunchedEffect(state.isOpen) {

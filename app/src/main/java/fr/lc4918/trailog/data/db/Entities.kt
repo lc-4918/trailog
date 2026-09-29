@@ -484,6 +484,14 @@ fun SettingsEntity.routeUrl(engine: RouteEngine): String = when (engine) {
     RouteEngine.BROUTER -> routingUrlBrouter
 }
 
+/**
+ * Les reglages apres la suppression du fond [basemapId] : s'il etait le fond par defaut, celui des
+ * parametres d'origine le remplace. Un fond par defaut qui n'existe plus laissait la carte sans fond au
+ * demarrage suivant - ou sur un fond que plus rien ne designait dans les reglages.
+ */
+fun SettingsEntity.withoutBasemap(basemapId: String): SettingsEntity =
+    if (defaultBasemapId == basemapId) copy(defaultBasemapId = SettingsEntity().defaultBasemapId) else this
+
 /** La meme chose en ecriture : rend la copie des reglages ou seule l'URL de [engine] a change. */
 fun SettingsEntity.withRouteUrl(engine: RouteEngine, url: String): SettingsEntity = when (engine) {
     RouteEngine.VALHALLA -> copy(routingUrl = url)

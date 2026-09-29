@@ -600,6 +600,8 @@ fun MainScreen(
         cursor = cursor.takeIf { panelView.cursorShown },
         computed = computed,
         profileZoom = profileZoom,
+        topCoverPx = statusBarTopPx,
+        bottomCoverPx = insets.profilePanelPx,
     )
     // La categorie choisie dans le panneau, mise en evidence sur la ligne montree - et elle seule.
     LaunchedEffect(panelView, panelWays, computed, activeTrackIndex, styleTick) {
@@ -1056,6 +1058,7 @@ fun MainScreen(
                     },
                     onNoConnection = { dialogs.noConnection = true },
                     bottomPanelOpen = layerViewer.isOpen,
+                    coverTopPx = insets.bottomRightCoverTopPx,
                 )
 
                 /*
@@ -1296,6 +1299,7 @@ fun MainScreen(
                     onViewer = { vm.showPanel(it) },
                     onSelect = { vm.selectPanel(it) },
                     onRetryWays = { vm.retryPanelWays() },
+                    onRightCoverTop = { insets.bottomRightCoverTopPx = it },
                 )
                 LayerWaysViewerLayer(
                     state = layerViewer,

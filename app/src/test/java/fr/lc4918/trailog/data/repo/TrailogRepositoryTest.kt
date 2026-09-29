@@ -172,4 +172,41 @@ class TrailogRepositoryTest {
         val f = java.io.File(java.io.File(ctx.filesDir, "layers"), l.geometryFile + ".ways")
         assertFalse(f.exists())
     }
+
+    // ---------- Suppression du fond par defaut ----------
+
+    private suspend fun fondParDefaut(id: String) {
+        db.settings().upsert((db.settings().get() ?: SettingsEntity()).copy(defaultBasemapId = id))
+    }
+
+    /** Le fond par defaut supprime : celui des parametres d'origine le remplace. */
+    @Test fun `supprimer le fond composite par defaut rend le fond d'origine`() = runTest {
+        val id = db.composites().let { dao ->
+            dao.upsert(fr.lc4918.trailog.data.db.CompositeEntity(id = 4242, name = "Mix",
+                backgroundProviderId = "osm", foregroundProviderId = "mapbox_outdoors"))
+            4242L
+        }
+        fondParDefaut(fr.lc4918.trailog.map.compositeBasemapId(id))
+        repo.deleteComposite(db.composites().all().first().first { it.id == id })
+        assertEquals(SettingsEntity().defaultBasemapId, db.settings().get()!!.defaultBasemapId)
+    }
+
+    @Test fun `supprimer le fond telecharge par defaut rend le fond d'origine`() = runTest {
+        val fond = fr.lc4918.trailog.data.db.ProviderEntity(id = "mbtiles_test", name = "Pyrenees",
+            groupName = "Local", type = "MBTILES", urlTemplate = "file:///x.mbtiles")
+        db.providers().upsert(fond)
+        fondParDefaut(fond.id)
+        repo.deleteProvider(fond)
+        assertEquals(SettingsEntity().defaultBasemapId, db.settings().get()!!.defaultBasemapId)
+    }
+
+    /** Un autre fond supprime ne touche pas au fond par defaut. */
+    @Test fun `supprimer un autre fond garde le fond par defaut`() = runTest {
+        val fond = fr.lc4918.trailog.data.db.ProviderEntity(id = "mbtiles_autre", name = "Alpes",
+            groupName = "Local", type = "MBTILES", urlTemplate = "file:///y.mbtiles")
+        db.providers().upsert(fond)
+        fondParDefaut("osm")
+        repo.deleteProvider(fond)
+        assertEquals("osm", db.settings().get()!!.defaultBasemapId)
+    }
 }

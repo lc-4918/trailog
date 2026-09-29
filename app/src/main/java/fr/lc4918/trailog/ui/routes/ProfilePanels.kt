@@ -1,5 +1,9 @@
 package fr.lc4918.trailog.ui.routes
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.testTag
@@ -155,8 +159,16 @@ internal fun BoxScope.TrackProfileLayer(
     onViewer: (PlannerViewer) -> Unit = {},
     onSelect: (Any?) -> Unit = {},
     onRetryWays: () -> Unit = {},
+    /** Le haut de ce que le profil recouvre dans le coin bas-droit - panneau ou infos du point -, en pixels
+     *  de la racine ; null une fois le profil ferme (cf. MapInsetsState.bottomRightCoverTopPx). */
+    onRightCoverTop: (Int?) -> Unit = {},
 ) {
     val density = LocalDensity.current
+    var hautPanneau by remember { mutableStateOf<Float?>(null) }
+    var hautInfos by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(hautPanneau, hautInfos, activeLayerId) {
+        onRightCoverTop(if (activeLayerId == null) null else listOfNotNull(hautPanneau, hautInfos).minOrNull()?.toInt())
+    }
     val view = LocalView.current
 
     // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit de l'écran. On calcule
@@ -217,6 +229,8 @@ internal fun BoxScope.TrackProfileLayer(
         // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur un point
         // plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui est seul et va a
         // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
+        // Les infos parties, le coin se degage d'autant.
+        DisposableEffect(Unit) { onDispose { hautInfos = null } }
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             TrackInfoColumns(
                 cursorInfos(cursorSample, settings.cursorInfos, imperial),
@@ -227,6 +241,7 @@ internal fun BoxScope.TrackProfileLayer(
                 // coin, et non comme deux marges qui ne se repondent pas.
                 modifier = Modifier.align(Alignment.BottomEnd)
                     .padding(end = CursorInfoGap, bottom = panelBottomDp + CursorInfoGap)
+                    .onGloballyPositioned { hautInfos = it.boundsInRoot().top }
                     .shadow(3.dp, MaterialTheme.shapes.small)
                     .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
                     .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -265,8 +280,12 @@ internal fun BoxScope.TrackProfileLayer(
                 .shadow(8.dp, forme, clip = false)
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), forme)
                 .padding(start = Spacing.m, end = Spacing.m, top = 10.dp).navigationBarsPadding()
-                .onGloballyPositioned { panelHeightPx = it.size.height; onHeightChange(it.size.height) },
+                .onGloballyPositioned {
+                    panelHeightPx = it.size.height; onHeightChange(it.size.height)
+                    hautPanneau = it.boundsInRoot().top
+                },
         ) {
+            DisposableEffect(Unit) { onDispose { hautPanneau = null } }
             // Le titre a sa ligne, les infos la leur : elles s'etalent alors sur toute la largeur, en
             // colonnes libellees, la ou les serrer a la suite du titre les reduisait a une file de valeurs
             // sans nom.

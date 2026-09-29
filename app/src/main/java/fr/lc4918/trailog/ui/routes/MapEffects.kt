@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.routes
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.State
@@ -104,16 +105,21 @@ internal fun ProfileCursorEffects(
     cursor: Double?,
     computed: ComputedTrack?,
     profileZoom: IntRange?,
+    /** Ce que cachent le haut (barre de statut, boutons) et le bas (le panneau du profil) de la carte. */
+    topCoverPx: Int = 0,
+    bottomCoverPx: Int = 0,
 ) {
+    val couverture by rememberUpdatedState(topCoverPx to bottomCoverPx)
     LaunchedEffect(cursor, computed) {
         val s = computed?.samples
         val p = if (cursor != null && s != null) TrackMath.sampleAt(s, cursor) else null
         if (p != null) {
             controller.setCursor(p.lon, p.lat)
-            // Curseur sorti de l'ecran : la carte le rejoint. Deplacer le curseur sur le profil, c'est
-            // demander a voir cet endroit-la ; le laisser hors champ rendrait le geste muet des qu'on
-            // s'eloigne de la portion visible.
-            if (!controller.isOnScreen(p.lon, p.lat)) controller.centerOn(p.lat, p.lon)
+            // Curseur sorti de la VUE - hors de l'ecran, ou sous le panneau du profil : la carte le
+            // rejoint. Deplacer le curseur sur le profil, c'est demander a voir cet endroit-la ; le laisser
+            // hors champ rendrait le geste muet des qu'on s'eloigne de la portion visible.
+            val (haut, bas) = couverture
+            if (!controller.isInView(p.lon, p.lat, haut, bas)) controller.centerInView(p.lat, p.lon, haut, bas)
         } else {
             controller.clearCursor()
         }

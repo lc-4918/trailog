@@ -8,6 +8,8 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.AppDatabase
 import fr.lc4918.trailog.data.db.FolderEntity
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.data.db.withoutBasemap
+import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.MbtilesSortOrder
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
@@ -82,6 +84,27 @@ class TrailogRepository(private val ctx: Context) {
     val settings = db.settings()
     val pois = db.pois()
     val settingsFlow = settings.flow()
+
+    /**
+     * Supprime un fond - un fond telecharge, ou ajoute a la main -, et rend le fond par defaut a celui des
+     * parametres d'origine s'il l'etait (cf. SettingsEntity.withoutBasemap).
+     */
+    suspend fun deleteProvider(p: ProviderEntity) {
+        providers.delete(p)
+        forgetDefaultBasemap(p.id)
+    }
+
+    /** Supprime un fond composite, meme regle pour le fond par defaut (cf. [deleteProvider]). */
+    suspend fun deleteComposite(c: CompositeEntity) {
+        composites.delete(c)
+        forgetDefaultBasemap(fr.lc4918.trailog.map.compositeBasemapId(c.id))
+    }
+
+    private suspend fun forgetDefaultBasemap(basemapId: String) {
+        val s = settings.get() ?: return
+        val apres = s.withoutBasemap(basemapId)
+        if (apres != s) settings.upsert(apres)
+    }
 
     private val layersDir: File by lazy { File(ctx.filesDir, "layers").apply { mkdirs() } }
     private val imagesDir: File by lazy { File(ctx.filesDir, "images").apply { mkdirs() } }

@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.planner
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -254,9 +255,16 @@ fun PlannerEffects(
     }
     // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
     // planificateur fermant le profil ouvert quand il s'ouvre.
+    val couverture by rememberUpdatedState(topPaddingPx to bandHeightPx)
     LaunchedEffect(state.cursor, state.route) {
         val s = state.done?.track?.samples ?: return@LaunchedEffect
         val p = state.cursor?.let { TrackMath.sampleAt(s, it) }
-        if (p != null) controller.setCursor(p.lon, p.lat) else controller.clearCursor()
+        if (p != null) {
+            controller.setCursor(p.lon, p.lat)
+            // Comme le profil d'une trace : un point sorti de la vue - ou glisse sous la bande, sous le
+            // panneau du profil en grand - fait suivre la carte (cf. ProfileCursorEffects).
+            val (haut, bas) = couverture
+            if (!controller.isInView(p.lon, p.lat, haut, bas)) controller.centerInView(p.lat, p.lon, haut, bas)
+        } else controller.clearCursor()
     }
 }

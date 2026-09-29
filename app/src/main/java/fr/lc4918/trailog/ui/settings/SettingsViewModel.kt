@@ -183,9 +183,9 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         onDone(outcome)
     }
     fun saveProvider(p: ProviderEntity) = viewModelScope.launch { repo.providers.upsert(p) }
-    fun deleteProvider(p: ProviderEntity) = viewModelScope.launch { repo.providers.delete(p) }
+    fun deleteProvider(p: ProviderEntity) = viewModelScope.launch { repo.deleteProvider(p) }
     fun saveComposite(c: CompositeEntity) = viewModelScope.launch { repo.composites.upsert(c) }
-    fun deleteComposite(c: CompositeEntity) = viewModelScope.launch { repo.composites.delete(c) }
+    fun deleteComposite(c: CompositeEntity) = viewModelScope.launch { repo.deleteComposite(c) }
 
     /** Import d'un fichier .mbtiles choisi par l'utilisateur. */
     fun importMbtiles(uri: Uri) = viewModelScope.launch {

@@ -50,6 +50,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -336,6 +339,9 @@ internal fun BoxScope.MapBottomRightControls(
     /** Un panneau occupe le bas de l'ecran (cf. LayerWaysViewerLayer) : la colonne s'efface, comme
      *  devant la bande deployee du planificateur. */
     bottomPanelOpen: Boolean = false,
+    /** Le haut du panneau du profil ou des infos du point, dans le coin (cf. MapInsetsState) : les boutons
+     *  qui passent dessous s'effacent un a un. Null sans profil. */
+    coverTopPx: Int? = null,
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
@@ -429,7 +435,7 @@ internal fun BoxScope.MapBottomRightControls(
          * ne l'etait pas deja, actif mais decentre si le capteur a tourne sans que la camera n'ait pu
          * suivre, la bande deployee lui en ayant empeche l'occasion (cf. LocationControls.startGps).
          */
-        if (location.gpsActive) {
+        if (location.gpsActive) CoverableButton(coverTopPx) {
             val suit = settings.mapFollowPosition
             val geste = MapFollow.tapAction(following = suit, positionCentered = positionCentered)
             IconButton(
@@ -496,7 +502,7 @@ internal fun BoxScope.MapBottomRightControls(
          * ouvert, rouge quand on s'est écarté de la trace suivie, cloche armée - la bannière du haut dit
          * alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
          */
-        if (dashboardEnabled) {
+        if (dashboardEnabled) CoverableButton(coverTopPx) {
             IconButton(onClick = { onDashboardTap() }, modifier = chrome.buttonBackground) {
                 Icon(
                     Icons.Filled.Speed,
@@ -527,7 +533,7 @@ internal fun BoxScope.MapBottomRightControls(
          * choses differentes. Le marque-page dit ce qu'on cherche ici, des endroits qu'on
          * retient le long du parcours.
          */
-        if (settings.poiEnabled) {
+        if (settings.poiEnabled) CoverableButton(coverTopPx) {
             /*
              * Le bouton DIT OU IL EST, et la bulle se pose a cote depuis la racine de l'ecran
              * (cf. plus bas).
@@ -578,7 +584,7 @@ internal fun BoxScope.MapBottomRightControls(
         // et qui rouvre. La bande réduite posait auparavant son propre bouton au coin bas-gauche,
         // si bien qu'un itinéraire en cours en affichait un à chaque bout de l'écran - deux
         // cibles pour une seule fonction, et rien pour dire laquelle faisait quoi.
-        if (settings.routePlannerEnabled) {
+        if (settings.routePlannerEnabled) CoverableButton(coverTopPx) {
             IconButton(onClick = {
                 when {
                     // Trajet en cours, simplement rangé : on le redéploie tel quel. Aucune
@@ -642,4 +648,33 @@ internal fun BoxScope.MapBottomRightControls(
             )
         }
     }
+}
+
+/**
+ * Le bouton du coin passe-t-il sous ce qui recouvre le coin, meme en partie ? Son bas plus bas que le haut
+ * de la couverture suffit : un bouton a moitie cache se touche mal et se lit mal.
+ */
+internal fun coveredBy(buttonBottomPx: Float, coverTopPx: Int?): Boolean =
+    coverTopPx != null && buttonBottomPx > coverTopPx
+
+/**
+ * Un bouton du coin bas-droit qui s'efface quand le profil le recouvre (cf. [coveredBy]) : invisible, et
+ * intouchable - sa partie encore degagee ne doit pas repondre a un doigt qui ne la voit plus.
+ *
+ * Efface et non retire : la colonne garde sa hauteur, et les boutons au-dessus ne descendent pas se glisser
+ * a leur tour sous le panneau.
+ */
+@Composable
+private fun CoverableButton(coverTopPx: Int?, content: @Composable () -> Unit) {
+    var basPx by remember { mutableStateOf(0f) }
+    val cache = coveredBy(basPx, coverTopPx)
+    Box(
+        Modifier.onGloballyPositioned { basPx = it.boundsInRoot().bottom }
+            .graphicsLayer { alpha = if (cache) 0f else 1f }
+            .then(if (cache) Modifier.pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                }
+            } else Modifier),
+    ) { content() }
 }

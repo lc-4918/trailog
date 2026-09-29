@@ -1361,6 +1361,31 @@ class MapController {
     }
 
     /**
+     * Le point est-il dans la part VISIBLE de la carte - hors de ce que cachent en haut [topCoverPx] et en
+     * bas [bottomCoverPx] (cf. VisibleArea) ?
+     */
+    fun isInView(lon: Double, lat: Double, topCoverPx: Int, bottomCoverPx: Int, marginPx: Float = 96f): Boolean {
+        val m = map ?: return true
+        val p = screenOf(lon, lat) ?: return true
+        return VisibleArea(m.width.toFloat(), m.height.toFloat(), topCoverPx.toFloat(), bottomCoverPx.toFloat())
+            .contains(p.x, p.y, marginPx)
+    }
+
+    /**
+     * Amene le point au milieu de la part VISIBLE de la carte, zoom inchange (cf. VisibleArea.centerFor).
+     * Au milieu de la carte entiere, il pouvait retomber sous le panneau qui le cachait deja.
+     */
+    fun centerInView(lat: Double, lon: Double, topCoverPx: Int, bottomCoverPx: Int) {
+        val m = map ?: return
+        val p = screenOf(lon, lat) ?: return
+        val (cx, cy) = VisibleArea(m.width.toFloat(), m.height.toFloat(), topCoverPx.toFloat(), bottomCoverPx.toFloat())
+            .centerFor(p.x, p.y)
+        val cible = m.projection.fromScreenLocation(PointF(cx, cy))
+        val cam = centeredCamera(cible.latitude, cible.longitude) ?: return
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
+    }
+
+    /**
      * [topPaddingPx] / [bottomPaddingPx] : hauteurs masquees en haut (barre de statut, la carte passant
      * dessous en mode bord-a-bord) et en bas (bande du planificateur). A laisser libres pour que le
      * contenu cadre tienne dans ce qu'on voit REELLEMENT, et non sous une barre ou un panneau.

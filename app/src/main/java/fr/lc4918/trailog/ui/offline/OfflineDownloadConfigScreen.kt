@@ -39,6 +39,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +98,24 @@ import fr.lc4918.trailog.ui.settings.settingsPalette
  * carte s'arretait au bord du chemin, et le moindre detour sortait de ce qu'on avait emporte.
  */
 private val CorridorWidthKm = (1..20).map { it.toDouble() }
+
+/**
+ * De combien remonter un champ que le clavier cache, en pixels : de quoi poser son bas [gapPx] au-dessus du
+ * clavier. Zero quand il n'a pas le focus, que le clavier est ferme, ou qu'il tient deja au-dessus.
+ *
+ * L'ecran ne se redimensionne pas quand le clavier sort : le formulaire defile SOUS lui, et le nom de la
+ * couche, en bas du formulaire, disparaissait au moment precis ou l'on commencait a le taper.
+ */
+internal fun keyboardLiftPx(
+    focused: Boolean, fieldBottomPx: Float, windowHeightPx: Float, imeHeightPx: Float, gapPx: Float,
+): Float {
+    if (!focused || imeHeightPx <= 0f) return 0f
+    val hautDuClavier = windowHeightPx - imeHeightPx
+    return (fieldBottomPx + gapPx - hautDuClavier).coerceAtLeast(0f)
+}
+
+/** Opacite du champ remonte au-dessus du clavier : il flotte le temps de la saisie, pas a sa place. */
+internal const val LiftedFieldAlpha = 0.9f
 
 /** "500 m" en deca du kilometre, "2 km" au-dela : on ne dit pas "0,5 km". */
 private fun formatKm(km: Double): String = when {
@@ -180,9 +207,11 @@ fun OfflineDownloadConfigScreen(
     val sizeLabel = tileCount?.let { TileMath.formatSize(TileMath.estimateSizeBytes(it)) } ?: "..."
 
     val defilement = rememberScrollState()
+    // Hauteur de l'ecran, en pixels de la racine : le haut du clavier s'en deduit (cf. keyboardLiftPx).
+    var fenetrePx by remember { mutableStateOf(0f) }
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
-        Surface(Modifier.fillMaxSize(), color = p.screen) {
+        Surface(Modifier.fillMaxSize().onGloballyPositioned { fenetrePx = it.boundsInRoot().bottom }, color = p.screen) {
             Column(Modifier.fillMaxSize()) {
                 // Barre de titre : la surface blanche des cartes, comme celle des réglages, dont le fond
                 // bleuté de l'écran se détache.
@@ -279,6 +308,25 @@ fun OfflineDownloadConfigScreen(
                     // portion, et la carte ne saute pas a chaque cran du curseur.
                     overview(bbox, corridorPoints, portion, halfWidthKm * 1000.0)
                     Spacer(Modifier.height(12.dp))
+                    /*
+                     * Le nom se saisit au-dessus du clavier : tant qu'il a le focus et que le clavier est
+                     * ouvert, sa carte remonte juste au-dessus, un peu transparente - elle flotte le temps de
+                     * la saisie -, et reprend sa place quand le clavier se ferme. La position mesuree est
+                     * celle de la place d'origine (la boite exterieure), jamais celle de la carte deplacee.
+                     */
+                    val densite = LocalDensity.current
+                    val clavierPx = WindowInsets.ime.getBottom(densite).toFloat()
+                    var basDuChampPx by remember { mutableStateOf(0f) }
+                    var saisie by remember { mutableStateOf(false) }
+                    val remontee = keyboardLiftPx(saisie, basDuChampPx, fenetrePx, clavierPx,
+                        with(densite) { Spacing.s.toPx() })
+                    Box(Modifier.fillMaxWidth().zIndex(1f)
+                        .onGloballyPositioned { basDuChampPx = it.boundsInRoot().bottom }
+                        .onFocusChanged { saisie = it.hasFocus }) {
+                    Box(Modifier.fillMaxWidth().graphicsLayer {
+                        translationY = -remontee
+                        alpha = if (remontee > 0f) LiftedFieldAlpha else 1f
+                    }.testTag("offline_name_card")) {
                     SettingsCard {
                         FieldRow(stringResource(R.string.offline_config_name_label)) {
                             SettingsTextField(name, stringResource(R.string.offline_config_name_placeholder)) {
@@ -297,6 +345,8 @@ fun OfflineDownloadConfigScreen(
                                 SettingsSwitch(withPois) { withPois = it }
                             }
                         }
+                    }
+                    }
                     }
                 }
                 // Action principale, hors du défilement : un bouton plein, arrondi de part en part, comme les
