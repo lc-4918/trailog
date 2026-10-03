@@ -41,11 +41,7 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
         // PRODUITES au fil du telechargement, et non listees d'avance : une zone de plusieurs gigaoctets
         // compte des millions de tuiles, et la liste entiere - puis sa copie dans la file - saturait la
         // memoire avant la premiere requete.
-        val corridor = req.corridor
-        val tiles = (req.minZoom..req.maxZoom).asSequence().flatMap { z ->
-            if (corridor != null) TileMath.tileSequenceAlong(corridor.points, z, corridor.radiusM)
-            else TileMath.tileSequenceFor(req.bbox, z)
-        }
+        val tiles = TileMath.tileSequenceFor(req)
 
         val done = AtomicInteger(0)
         val failed = AtomicInteger(0)

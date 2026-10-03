@@ -84,6 +84,28 @@ object TileMath {
     fun totalTileCount(bbox: Bbox, minZoom: Int, maxZoom: Int): Long =
         (minZoom..maxZoom).sumOf { tileCount(bbox, it) }
 
+    /**
+     * Les tuiles qu'un telechargement va demander : le couloir s'il y en a un, sinon tout le rectangle.
+     *
+     * Le compte et la liste vivent ici cote a cote, pour que la progression ne puisse plus diverger de ce
+     * que le moteur telecharge : l'emprise d'un couloir est celle de la trace seule, sans sa largeur, et
+     * compter ses tuiles annoncait un total bien inferieur aux tuiles reellement recues.
+     */
+    fun tileSequenceFor(req: OfflineDownloadRequest): Sequence<Triple<Int, Int, Int>> {
+        val corridor = req.corridor
+        return (req.minZoom..req.maxZoom).asSequence().flatMap { zoom ->
+            if (corridor != null) tileSequenceAlong(corridor.points, zoom, corridor.radiusM)
+            else tileSequenceFor(req.bbox, zoom)
+        }
+    }
+
+    /** Nombre de tuiles de [tileSequenceFor], sans les enumerer une a une. */
+    fun totalTileCount(req: OfflineDownloadRequest): Long {
+        val corridor = req.corridor
+        return if (corridor != null) totalTileCountAlong(corridor.points, req.minZoom, req.maxZoom, corridor.radiusM)
+        else totalTileCount(req.bbox, req.minZoom, req.maxZoom)
+    }
+
     /** Cote d'une tuile au sol, en metres, a la latitude et au zoom donnes. */
     private fun tileMeters(lat: Double, zoom: Int): Double =
         40_075_016.686 * cos(Math.toRadians(lat.coerceIn(-85.0511, 85.0511))) / (1L shl zoom)

@@ -1056,7 +1056,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun startOfflineDownload(req: OfflineDownloadRequest) {
         val s = settings.value ?: return
         val provider = providers.value.firstOrNull { it.id == s.defaultBasemapId } ?: return
-        val total = TileMath.totalTileCount(req.bbox, req.minZoom, req.maxZoom).toInt()
+        // Le meme compte que les tuiles que le moteur va demander : couloir compris (cf. TileMath.tileSequenceFor).
+        val total = TileMath.totalTileCount(req).toInt()
         _offlineDownload.value = OfflineDownloadState(name = req.name, total = total)
         offlineJob = viewModelScope.launch {
             try {

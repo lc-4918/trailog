@@ -68,4 +68,22 @@ class TileMathTest {
         assertTrue(TileMath.formatSize(12_300_000).endsWith(" Mo"))
         assertTrue(TileMath.formatSize(2_500_000_000).endsWith(" Go"))
     }
+
+    /** Trace de Lodeve vers le sud, comme sur la capture du bug : son emprise ne compte pas la largeur. */
+    private val trackPoints = listOf(3.32 to 43.73, 3.35 to 43.65, 3.40 to 43.58)
+    private val trackBbox = Bbox.of(3.32, 43.58, 3.40, 43.73)
+
+    @Test fun `le total d'un couloir compte les tuiles du couloir et non celles de l'emprise de la trace`() {
+        val request = OfflineDownloadRequest(trackBbox, 10, 14, "couloir", continueOnError = true,
+            corridor = OfflineCorridor(trackPoints, radiusM = 5_000.0))
+        val announced = TileMath.totalTileCount(request)
+        assertEquals(TileMath.tileSequenceFor(request).count().toLong(), announced)
+        // Avec cinq kilometres de chaque cote, le couloir deborde l'emprise de la trace seule.
+        assertTrue(announced > TileMath.totalTileCount(trackBbox, 10, 14))
+    }
+
+    @Test fun `le total d'un rectangle egale les tuiles demandees`() {
+        val request = OfflineDownloadRequest(trackBbox, 10, 14, "rectangle", continueOnError = true)
+        assertEquals(TileMath.tileSequenceFor(request).count().toLong(), TileMath.totalTileCount(request))
+    }
 }
