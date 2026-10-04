@@ -749,4 +749,23 @@
         <item quantity="one">¿Eliminar %1$d elemento? Una carpeta se elimina con su contenido.</item>
         <item quantity="other">¿Eliminar %1$d elementos? Una carpeta se elimina con su contenido.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Enviar al reloj</string>
+    <string name="watch_send_title">Enviar al reloj</string>
+    <string name="watch_send_basemap">Mapa base</string>
+    <string name="watch_send_no_basemap">No se puede enviar ningún mapa: debe ser un mapa ráster opaco disponible en el zoom 15. Los mapas vectoriales no son compatibles.</string>
+    <string name="watch_send_corridor">Corredor: %1$s a cada lado</string>
+    <string name="watch_send_counting">Contando teselas…</string>
+    <string name="watch_send_estimate">%1$d teselas, unos %2$s en el reloj</string>
+    <string name="watch_send_confirm">Enviar</string>
+    <string name="watch_send_failed">No se pudo iniciar el envío. Puede que ya haya otro en curso.</string>
+    <string name="watch_send_instructions">En el reloj, abre Trailog e inicia la sincronización. El teléfono debe seguir conectado al reloj mediante Garmin Connect.</string>
+    <string name="watch_send_waiting">Esperando al reloj</string>
+    <string name="watch_send_progress">%1$d / %2$d teselas recibidas por el reloj</string>
+    <string name="watch_send_stop">Detener el envío</string>
+    <string name="watch_send_notice_title">Enviando al reloj: %1$s</string>
+    <string name="watch_send_done_title">Envío al reloj terminado</string>
+    <string name="watch_send_done_text">El reloj ha recibido las %1$d teselas de %2$s.</string>
+    <string name="watch_send_channel_name">Envío al reloj</string>
 </resources>

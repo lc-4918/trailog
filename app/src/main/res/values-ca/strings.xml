@@ -749,4 +749,23 @@
         <item quantity="one">Vols suprimir %1$d element? Una carpeta se suprimeix amb el seu contingut.</item>
         <item quantity="other">Vols suprimir %1$d elements? Una carpeta se suprimeix amb el seu contingut.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Envia al rellotge</string>
+    <string name="watch_send_title">Envia al rellotge</string>
+    <string name="watch_send_basemap">Mapa de fons</string>
+    <string name="watch_send_no_basemap">No es pot enviar cap mapa: ha de ser un mapa ràster opac disponible al zoom 15. Els mapes vectorials no són compatibles.</string>
+    <string name="watch_send_corridor">Corredor: %1$s a cada costat</string>
+    <string name="watch_send_counting">Comptant les tessel·les…</string>
+    <string name="watch_send_estimate">%1$d tessel·les, uns %2$s al rellotge</string>
+    <string name="watch_send_confirm">Envia</string>
+    <string name="watch_send_failed">No s\'ha pogut iniciar l\'enviament. Potser ja n\'hi ha un altre en curs.</string>
+    <string name="watch_send_instructions">Al rellotge, obre Trailog i inicia la sincronització. El telèfon ha de continuar connectat al rellotge mitjançant Garmin Connect.</string>
+    <string name="watch_send_waiting">Esperant el rellotge</string>
+    <string name="watch_send_progress">%1$d / %2$d tessel·les rebudes pel rellotge</string>
+    <string name="watch_send_stop">Atura l\'enviament</string>
+    <string name="watch_send_notice_title">Enviant al rellotge: %1$s</string>
+    <string name="watch_send_done_title">Enviament al rellotge acabat</string>
+    <string name="watch_send_done_text">El rellotge ha rebut les %1$d tessel·les de %2$s.</string>
+    <string name="watch_send_channel_name">Enviament al rellotge</string>
 </resources>

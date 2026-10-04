@@ -749,4 +749,23 @@
         <item quantity="one">Delete %1$d item? A folder is deleted with its contents.</item>
         <item quantity="other">Delete %1$d items? A folder is deleted with its contents.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Send to watch</string>
+    <string name="watch_send_title">Send to watch</string>
+    <string name="watch_send_basemap">Basemap</string>
+    <string name="watch_send_no_basemap">No basemap can be sent: it must be an opaque raster basemap available at zoom 15. Vector basemaps are not supported.</string>
+    <string name="watch_send_corridor">Corridor: %1$s on each side</string>
+    <string name="watch_send_counting">Counting tiles…</string>
+    <string name="watch_send_estimate">%1$d tiles, about %2$s on the watch</string>
+    <string name="watch_send_confirm">Send</string>
+    <string name="watch_send_failed">The transfer could not start. Another transfer may already be running.</string>
+    <string name="watch_send_instructions">On the watch, open Trailog and start the sync. The phone must stay connected to the watch through Garmin Connect.</string>
+    <string name="watch_send_waiting">Waiting for the watch</string>
+    <string name="watch_send_progress">%1$d / %2$d tiles received by the watch</string>
+    <string name="watch_send_stop">Stop sending</string>
+    <string name="watch_send_notice_title">Sending to watch: %1$s</string>
+    <string name="watch_send_done_title">Sending to watch finished</string>
+    <string name="watch_send_done_text">The watch received the %1$d tiles of %2$s.</string>
+    <string name="watch_send_channel_name">Sending to watch</string>
 </resources>

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.FileDownload
@@ -937,6 +938,13 @@ internal fun RowMenu(
                         open = false; telecharger(layer)
                     }
                 }
+                // Le meme couloir, pour la montre Garmin : le telephone le sert, la montre le recoit.
+                layerActions.onSendToWatch?.let { sendToWatch ->
+                    MenuEntry(Icons.Outlined.Watch, stringResource(R.string.action_send_to_watch),
+                        modifier = Modifier.testTag("menu_send_to_watch")) {
+                        open = false; sendToWatch(layer)
+                    }
+                }
                 // Colorier le trait selon la pente, puis lui rendre sa couleur : une entree qui dit ce
                 // qu'elle fera, selon l'etat. Sans altitude, pas de pente, et pas d'entree.
                 if (layer.hasZ) {
@@ -1008,6 +1016,8 @@ class LayerActions(
     val onStats: (LayerEntity) -> Unit = {},
     /** Telecharger la carte le long de la trace ; null si le fond affiche ne s'y prete pas. */
     val onDownloadMap: ((LayerEntity) -> Unit)? = null,
+    /** Envoyer le couloir de la trace a la montre Garmin ; null pour ne pas proposer l'entree. */
+    val onSendToWatch: ((LayerEntity) -> Unit)? = null,
     /** Colorier le trait selon la pente (vrai), ou lui rendre la couleur de la couche (faux). */
     val onSlopeColored: (LayerEntity, Boolean) -> Unit = { _, _ -> },
 )
@@ -1046,6 +1056,8 @@ internal fun DrawerContent(
     onFailure: (Int) -> Unit,
     /** Une rubrique touchee dans les statistiques d'une couche - elevation ou voies : son VIEWER, sur la carte. */
     onWaysViewer: (LayerEntity, LayerWays?, PlannerViewer, Any?) -> Unit = { _, _, _, _ -> },
+    /** "Envoyer a la montre" depuis le menu d'une trace. */
+    onSendToWatch: ((LayerEntity) -> Unit)? = null,
 ) {
     var renameTarget by remember { mutableStateOf<Pair<String, Long>?>(null) }
     var renameValue by remember { mutableStateOf("") }
@@ -1165,7 +1177,7 @@ internal fun DrawerContent(
     }
     var layerStatsTarget by remember { mutableStateOf<LayerEntity?>(null) }
     val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer,
-        onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap,
+        onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap, onSendToWatch = onSendToWatch,
         onSlopeColored = { l, on -> vm.setLayerSlopeColored(l, on) })
     var searchQuery by remember { mutableStateOf("") }
     var searchOpen by remember { mutableStateOf(false) }

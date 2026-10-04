@@ -102,6 +102,10 @@ import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.offline.BboxEditorOverlay
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineFlowUi
+import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.watch.WatchTileSource
+import fr.lc4918.trailog.ui.watch.WatchSendDialog
+import fr.lc4918.trailog.TrailogApp
 import fr.lc4918.trailog.ui.planner.GeocodingParams
 import fr.lc4918.trailog.ui.planner.PlannerEffects
 import fr.lc4918.trailog.ui.planner.PlannerViewerPanel
@@ -150,6 +154,11 @@ fun MainScreen(
 
     // ---------- téléchargement de carte hors-ligne (SPEC offline_map.md) ----------
     val offline = screen.offline
+    // ---------- envoi a la montre Garmin (cf. watch/) ----------
+    // La trace a envoyer et son parcours, le temps de la fenetre d'envoi ; l'envoi lui-meme vit dans
+    // l'application (TrailogApp.watchExport) et survit a cette fenetre.
+    var watchSendTarget by remember { mutableStateOf<Pair<LayerEntity, List<Pair<Double, Double>>>?>(null) }
+    var watchSendPreparing by remember { mutableStateOf(false) }
     // Ce que les bandes de l'ecran recouvrent, mesure a l'affichage : la colonne de boutons du haut, le
     // panneau de profil, la bande du planificateur, la barre de consigne du moment (cf. MapInsetsState).
     val insets = remember { MapInsetsState() }
@@ -892,6 +901,16 @@ fun MainScreen(
                         }
                     }),
                     onFailure = { message -> dialogs.failed(message) },
+                    // La geometrie se relit du disque, comme pour "Telecharger la carte" : le rond d'attente
+                    // dit que la fenetre vient.
+                    onSendToWatch = { l ->
+                        scope.launch { drawerState.close() }
+                        watchSendPreparing = true
+                        vm.trackPointsOf(l) { pts ->
+                            watchSendPreparing = false
+                            if (pts.isNotEmpty()) watchSendTarget = l to pts
+                        }
+                    },
                     /*
                      * Une rubrique touchee dans les statistiques - l'elevation ou les voies - : le tiroir se ferme, la couche
                      * s'allume si elle etait masquee, et ce qui occupait le bas de l'ecran - profil, bande
@@ -1383,9 +1402,26 @@ fun MainScreen(
                 // d'emporter ce qu'on ne peut pas afficher n'aurait aucun sens.
                 poiAvailable = settings.poiEnabled,
             )
+            watchSendTarget?.let { (layer, points) ->
+                val app = ctx.applicationContext as TrailogApp
+                val watchSession by app.watchExport.state.collectAsState()
+                WatchSendDialog(
+                    trackName = layer.name,
+                    trackPoints = points,
+                    providers = providers.filter { it.enabled && WatchTileSource.supports(it) },
+                    initialProviderId = settings.defaultBasemapId,
+                    session = watchSession,
+                    onSend = { provider, tiles ->
+                        app.watchExport.start(layer.name, tiles, provider,
+                            WatchTileSource.mbtilesFileOf(provider, app.repository.mbtilesDir(settings)))
+                    },
+                    onStop = { app.watchExport.stop() },
+                    onDismiss = { watchSendTarget = null },
+                )
+            }
             // Le rond d'attente, en DERNIER dans la pile de la carte : il annonce ce qui se prepare, et
             // doit se voir par-dessus les calques comme par-dessus les commandes.
-            if (offline.preparing) BusySpinner()
+            if (offline.preparing || watchSendPreparing) BusySpinner()
         }
     }
 

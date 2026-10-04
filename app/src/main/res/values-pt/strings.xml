@@ -749,4 +749,23 @@
         <item quantity="one">Eliminar %1$d elemento? Uma pasta é eliminada com o seu conteúdo.</item>
         <item quantity="other">Eliminar %1$d elementos? Uma pasta é eliminada com o seu conteúdo.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Enviar para o relógio</string>
+    <string name="watch_send_title">Enviar para o relógio</string>
+    <string name="watch_send_basemap">Mapa de fundo</string>
+    <string name="watch_send_no_basemap">Nenhum mapa pode ser enviado: tem de ser um mapa raster opaco disponível no zoom 15. Os mapas vetoriais não são suportados.</string>
+    <string name="watch_send_corridor">Corredor: %1$s de cada lado</string>
+    <string name="watch_send_counting">A contar os mosaicos…</string>
+    <string name="watch_send_estimate">%1$d mosaicos, cerca de %2$s no relógio</string>
+    <string name="watch_send_confirm">Enviar</string>
+    <string name="watch_send_failed">Não foi possível iniciar o envio. Talvez já exista outro em curso.</string>
+    <string name="watch_send_instructions">No relógio, abra o Trailog e inicie a sincronização. O telefone tem de continuar ligado ao relógio através do Garmin Connect.</string>
+    <string name="watch_send_waiting">À espera do relógio</string>
+    <string name="watch_send_progress">%1$d / %2$d mosaicos recebidos pelo relógio</string>
+    <string name="watch_send_stop">Parar o envio</string>
+    <string name="watch_send_notice_title">A enviar para o relógio: %1$s</string>
+    <string name="watch_send_done_title">Envio para o relógio concluído</string>
+    <string name="watch_send_done_text">O relógio recebeu os %1$d mosaicos de %2$s.</string>
+    <string name="watch_send_channel_name">Envio para o relógio</string>
 </resources>

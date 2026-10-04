@@ -749,4 +749,23 @@
         <item quantity="one">%1$d Element löschen? Ein Ordner wird mit seinem Inhalt gelöscht.</item>
         <item quantity="other">%1$d Elemente löschen? Ein Ordner wird mit seinem Inhalt gelöscht.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">An die Uhr senden</string>
+    <string name="watch_send_title">An die Uhr senden</string>
+    <string name="watch_send_basemap">Hintergrundkarte</string>
+    <string name="watch_send_no_basemap">Keine Karte kann gesendet werden: Es braucht eine deckende Rasterkarte, die bei Zoom 15 verfügbar ist. Vektorkarten werden nicht unterstützt.</string>
+    <string name="watch_send_corridor">Korridor: %1$s auf jeder Seite</string>
+    <string name="watch_send_counting">Kacheln werden gezählt…</string>
+    <string name="watch_send_estimate">%1$d Kacheln, etwa %2$s auf der Uhr</string>
+    <string name="watch_send_confirm">Senden</string>
+    <string name="watch_send_failed">Die Übertragung konnte nicht starten. Möglicherweise läuft bereits eine andere.</string>
+    <string name="watch_send_instructions">Öffne Trailog auf der Uhr und starte die Synchronisierung. Das Telefon muss über Garmin Connect mit der Uhr verbunden bleiben.</string>
+    <string name="watch_send_waiting">Warten auf die Uhr</string>
+    <string name="watch_send_progress">%1$d / %2$d Kacheln von der Uhr empfangen</string>
+    <string name="watch_send_stop">Senden beenden</string>
+    <string name="watch_send_notice_title">Senden an die Uhr: %1$s</string>
+    <string name="watch_send_done_title">Senden an die Uhr abgeschlossen</string>
+    <string name="watch_send_done_text">Die Uhr hat die %1$d Kacheln von %2$s empfangen.</string>
+    <string name="watch_send_channel_name">Senden an die Uhr</string>
 </resources>

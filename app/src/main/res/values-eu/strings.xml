@@ -749,4 +749,23 @@
         <item quantity="one">%1$d elementu ezabatu? Karpeta bat bere edukiarekin ezabatzen da.</item>
         <item quantity="other">%1$d elementu ezabatu? Karpeta bat bere edukiarekin ezabatzen da.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Bidali erlojura</string>
+    <string name="watch_send_title">Bidali erlojura</string>
+    <string name="watch_send_basemap">Oinarri-mapa</string>
+    <string name="watch_send_no_basemap">Ezin da maparik bidali: 15. zoomean erabilgarri dagoen raster mapa opaku bat behar da. Mapa bektorialak ez dira onartzen.</string>
+    <string name="watch_send_corridor">Korridorea: %1$s alde bakoitzean</string>
+    <string name="watch_send_counting">Lauzak zenbatzen…</string>
+    <string name="watch_send_estimate">%1$d lauza, %2$s inguru erlojuan</string>
+    <string name="watch_send_confirm">Bidali</string>
+    <string name="watch_send_failed">Ezin izan da bidalketa abiarazi. Agian beste bat dago martxan.</string>
+    <string name="watch_send_instructions">Erlojuan, ireki Trailog eta abiarazi sinkronizazioa. Telefonoak erlojuarekin konektatuta egon behar du Garmin Connect bidez.</string>
+    <string name="watch_send_waiting">Erlojuaren zain</string>
+    <string name="watch_send_progress">Erlojuak %1$d / %2$d lauza jaso ditu</string>
+    <string name="watch_send_stop">Gelditu bidalketa</string>
+    <string name="watch_send_notice_title">Erlojura bidaltzen: %1$s</string>
+    <string name="watch_send_done_title">Erlojurako bidalketa amaituta</string>
+    <string name="watch_send_done_text">Erlojuak %2$s ibilbideko %1$d lauzak jaso ditu.</string>
+    <string name="watch_send_channel_name">Erlojurako bidalketa</string>
 </resources>

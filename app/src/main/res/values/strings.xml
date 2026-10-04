@@ -751,4 +751,23 @@
         <item quantity="one">Supprimer %1$d élément ? Un dossier est supprimé avec son contenu.</item>
         <item quantity="other">Supprimer %1$d éléments ? Un dossier est supprimé avec son contenu.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Envoyer à la montre</string>
+    <string name="watch_send_title">Envoyer à la montre</string>
+    <string name="watch_send_basemap">Fond de carte</string>
+    <string name="watch_send_no_basemap">Aucun fond ne peut être envoyé : il faut un fond raster opaque, disponible au zoom 15. Les fonds vectoriels ne sont pas pris en charge.</string>
+    <string name="watch_send_corridor">Couloir : %1$s de chaque côté</string>
+    <string name="watch_send_counting">Calcul des tuiles…</string>
+    <string name="watch_send_estimate">%1$d tuiles, environ %2$s sur la montre</string>
+    <string name="watch_send_confirm">Envoyer</string>
+    <string name="watch_send_failed">L\'envoi n\'a pas pu s\'ouvrir. Un autre envoi est peut-être déjà en cours.</string>
+    <string name="watch_send_instructions">Sur la montre, ouvrez Trailog et lancez la synchronisation. Le téléphone doit rester connecté à la montre par Garmin Connect.</string>
+    <string name="watch_send_waiting">En attente de la montre</string>
+    <string name="watch_send_progress">%1$d / %2$d tuiles reçues par la montre</string>
+    <string name="watch_send_stop">Arrêter l\'envoi</string>
+    <string name="watch_send_notice_title">Envoi à la montre : %1$s</string>
+    <string name="watch_send_done_title">Envoi à la montre terminé</string>
+    <string name="watch_send_done_text">La montre a reçu les %1$d tuiles de %2$s.</string>
+    <string name="watch_send_channel_name">Envoi à la montre</string>
 </resources>

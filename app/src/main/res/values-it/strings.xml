@@ -749,4 +749,23 @@
         <item quantity="one">Eliminare %1$d elemento? Una cartella viene eliminata con il suo contenuto.</item>
         <item quantity="other">Eliminare %1$d elementi? Una cartella viene eliminata con il suo contenuto.</item>
     </plurals>
+
+    <!-- Envoi a la montre Garmin (cf. watch/, ui/watch/WatchSendDialog) -->
+    <string name="action_send_to_watch">Invia all\'orologio</string>
+    <string name="watch_send_title">Invia all\'orologio</string>
+    <string name="watch_send_basemap">Mappa di base</string>
+    <string name="watch_send_no_basemap">Nessuna mappa può essere inviata: serve una mappa raster opaca disponibile allo zoom 15. Le mappe vettoriali non sono supportate.</string>
+    <string name="watch_send_corridor">Corridoio: %1$s per lato</string>
+    <string name="watch_send_counting">Conteggio delle tessere…</string>
+    <string name="watch_send_estimate">%1$d tessere, circa %2$s sull\'orologio</string>
+    <string name="watch_send_confirm">Invia</string>
+    <string name="watch_send_failed">Impossibile avviare l\'invio. Forse ne è già in corso un altro.</string>
+    <string name="watch_send_instructions">Sull\'orologio, apri Trailog e avvia la sincronizzazione. Il telefono deve restare collegato all\'orologio tramite Garmin Connect.</string>
+    <string name="watch_send_waiting">In attesa dell\'orologio</string>
+    <string name="watch_send_progress">%1$d / %2$d tessere ricevute dall\'orologio</string>
+    <string name="watch_send_stop">Interrompi l\'invio</string>
+    <string name="watch_send_notice_title">Invio all\'orologio: %1$s</string>
+    <string name="watch_send_done_title">Invio all\'orologio completato</string>
+    <string name="watch_send_done_text">L\'orologio ha ricevuto le %1$d tessere di %2$s.</string>
+    <string name="watch_send_channel_name">Invio all\'orologio</string>
 </resources>

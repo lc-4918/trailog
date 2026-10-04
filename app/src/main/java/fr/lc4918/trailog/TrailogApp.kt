@@ -15,6 +15,8 @@ import coil3.svg.SvgDecoder
 import fr.lc4918.trailog.data.LocalePrefs
 import fr.lc4918.trailog.data.repo.TrailogRepository
 import fr.lc4918.trailog.update.UpdateManager
+import fr.lc4918.trailog.watch.WatchExportService
+import fr.lc4918.trailog.watch.WatchExportSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,6 +51,14 @@ open class TrailogApp : Application(), SingletonImageLoader.Factory {
     val brouterData: BrouterDownloads by lazy {
         BrouterDownloads(BrouterSegments({ BrouterLocal.segmentDir(this) }), scope,
             onBusy = { BrouterDownloadService.start(this) })
+    }
+
+    /**
+     * L'envoi de tuiles vers la montre Garmin. Ici pour la meme raison que [brouterData] : il doit survivre
+     * a l'ecran qui l'a lance, le temps qu'on passe sur la montre.
+     */
+    val watchExport: WatchExportSession by lazy {
+        WatchExportSession(scope, onStarted = { WatchExportService.start(this) })
     }
 
     override fun attachBaseContext(base: Context) {

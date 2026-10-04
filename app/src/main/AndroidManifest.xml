@@ -86,6 +86,12 @@
             android:name=".routing.offline.BrouterDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <!-- Envoi des tuiles a la montre Garmin (cf. watch/WatchExportService) : garde ouvert le serveur
+             local qu'interroge la montre, le temps qu'on passe sur elle pour synchroniser. -->
+        <service
+            android:name=".watch.WatchExportService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <activity
             android:name=".MainActivity"
