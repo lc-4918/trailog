@@ -29,6 +29,8 @@ import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.GpsMarkerStyle
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.map.AmbientCache
+import fr.lc4918.trailog.ui.planner.StepMark
+import fr.lc4918.trailog.ui.planner.StepMarkKind
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -76,6 +78,10 @@ const val RouteHighlightColor = "#2459C4"
 data class PoiMarker(
     val id: String, val lon: Double, val lat: Double, val colorHex: String, val iconRes: Int,
 )
+
+/** Delai d'un appui sur une pastille d'etape avant qu'elle se laisse deplacer, en ms : bref, sous l'appui
+ *  long de la carte (500 ms). */
+private const val StepDragDelayMs = 250L
 
 class MapController {
     var map: MapLibreMap? = null
@@ -160,18 +166,101 @@ class MapController {
 
     /** Evenements tactiles bruts de la MapView, observes sans etre consommes : MapLibre continue de gerer
      *  pan / fling / double-tap-zoom / long press normalement, on se contente d'un signal plus precoce. */
-    fun onMapTouch(e: MotionEvent) {
+    private val touchHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var dragCandidate: Long? = null
+    private var dragStart: Runnable? = null
+
+    /**
+     * @return vrai quand le geste est CONSOMME : une pastille d'etape est en train d'etre deplacee, et la
+     *   carte ne doit pas se deplacer avec elle.
+     *
+     * **Le glisser-deposer d'une pastille.** Un appui qui reste sur une pastille d'etape [StepDragDelayMs]
+     * la saisit - delai volontairement plus court que l'appui long de la carte, qui ouvrirait sinon l'infobulle
+     * du point. La carte recoit alors un ANNULER pour lacher son geste, et les mouvements suivants ne vont
+     * plus qu'a la pastille, qui suit le doigt ; au lever, l'etape prend ce point (cf. [onStepDropped]).
+     * Un doigt qui bouge avant le delai est un geste de carte : on ne saisit rien.
+     */
+    fun onMapTouch(e: MotionEvent, view: android.view.View): Boolean {
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { downX = e.x; downY = e.y; multiTouch = false; fastPicked = false }
-            MotionEvent.ACTION_POINTER_DOWN -> multiTouch = true
-            MotionEvent.ACTION_UP -> {
-                val moved = hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
-                val heldMs = e.eventTime - e.downTime
-                if (!multiTouch && moved < touchSlopPx && heldMs < ViewConfiguration.getLongPressTimeout()) {
-                    handleFastTap(PointF(e.x, e.y))
+            MotionEvent.ACTION_DOWN -> {
+                downX = e.x; downY = e.y; multiTouch = false; fastPicked = false
+                cancelDragStart()
+                val id = plannerBadgeAt(PointF(e.x, e.y))
+                if (id != null) {
+                    dragCandidate = id
+                    val start = Runnable {
+                        val candidate = dragCandidate ?: return@Runnable
+                        dragCandidate = null
+                        draggedStepId = candidate
+                        dragLonLat = lonLatAt(downX, downY)
+                        buzzOnGrab(view)
+                        val cancel = MotionEvent.obtain(e.downTime, android.os.SystemClock.uptimeMillis(),
+                            MotionEvent.ACTION_CANCEL, downX, downY, 0)
+                        view.onTouchEvent(cancel)
+                        cancel.recycle()
+                    }
+                    dragStart = start
+                    touchHandler.postDelayed(start, StepDragDelayMs)
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> { multiTouch = true; cancelDragStart() }
+            MotionEvent.ACTION_MOVE -> {
+                if (draggedStepId != null) {
+                    lonLatAt(e.x, e.y)?.let { dragLonLat = it }
+                    drawStepMarks()
+                    return true
+                }
+                if (dragCandidate != null && hypot((e.x - downX).toDouble(), (e.y - downY).toDouble()) > touchSlopPx) {
+                    cancelDragStart()
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                cancelDragStart()
+                val id = draggedStepId
+                if (id != null) {
+                    val dropped = if (e.actionMasked == MotionEvent.ACTION_UP) lonLatAt(e.x, e.y) else null
+                    draggedStepId = null
+                    dragLonLat = null
+                    if (dropped != null) onStepDropped?.invoke(id, dropped.first, dropped.second)
+                    drawStepMarks()
+                    return true
+                }
+                if (e.actionMasked == MotionEvent.ACTION_UP) {
+                    val moved = hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
+                    val heldMs = e.eventTime - e.downTime
+                    if (!multiTouch && moved < touchSlopPx && heldMs < ViewConfiguration.getLongPressTimeout()) {
+                        handleFastTap(PointF(e.x, e.y))
+                    }
                 }
             }
         }
+        return draggedStepId != null
+    }
+
+    /**
+     * Une vibration franche a la saisie d'une pastille.
+     *
+     * Le retour haptique de la vue depend du reglage "retour tactile" du telephone et reste souvent
+     * imperceptible : on commande donc le vibreur lui-meme (permission VIBRATE), et la vue ne sert que de
+     * recours si l'appareil n'en a pas.
+     */
+    private fun buzzOnGrab(view: android.view.View) {
+        val vibrator = appContext?.let {
+            if (android.os.Build.VERSION.SDK_INT >= 31)
+                (it.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+            else @Suppress("DEPRECATION") (it.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator)
+        }
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(android.os.VibrationEffect.createOneShot(45, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
+
+    private fun cancelDragStart() {
+        dragStart?.let { touchHandler.removeCallbacks(it) }
+        dragStart = null
+        dragCandidate = null
     }
 
     /**
@@ -199,6 +288,8 @@ class MapController {
         val m = map ?: return null
         val tol = tapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        // La pastille d'une etape d'itineraire, posee par-dessus tout le reste.
+        plannerBadgeAt(screen)?.let { id -> return { onPickPlannerStep?.invoke(id) } }
         // Les points d'interet d'abord, parce qu'ils sont dessines par-dessus : sous le doigt, c'est celui
         // qu'on voit qui doit repondre. Ils ne sont la que si la couche est allumee, donc rien ne change
         // pour qui ne s'en sert pas.
@@ -897,19 +988,149 @@ class MapController {
     fun setMapPointMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
         setBlackPins(MAP_POINTS, MAP_POINTS_SRC, points, heightPx)
 
-    /** Calque et source des epingles noires des etapes montrees du doigt (cf. [setPlannerMarkers]). */
+    /** Calques et source des marqueurs d'etapes (cf. [setStepMarks]) : les epingles A et B, les pastilles. */
     private val PLANNER_PTS = "planner-pins"
+    private val PLANNER_BADGES = "planner-badges"
     private val PLANNER_SRC = "planner-pins-src"
 
+    /** Les marqueurs d'etapes tels que la carte les montre : ce que le planificateur a dit, moins le
+     *  deplacement en cours d'une pastille (cf. [onMapTouch]). */
+    private var stepMarks: List<StepMark> = emptyList()
+    private var stepPinPx = 64f
+    private var draggedStepId: Long? = null
+    private var dragLonLat: Pair<Double, Double>? = null
+
+    /** Diametre d'une pastille d'etape, en dp. */
+    private val badgeDp = 26f
+
+    /** Une pastille d'etape deposee apres un appui long : (identifiant de l'etape, lon, lat). */
+    var onStepDropped: ((Long, Double, Double) -> Unit)? = null
+
+    /** Tap sur la pastille d'une etape : recoit son identifiant. */
+    var onPickPlannerStep: ((Long) -> Unit)? = null
+
     /**
-     * Épingles noires des étapes d'itinéraire désignées sur la carte (zéro à vingt-cinq).
+     * Les marqueurs des etapes : une epingle noire portant A au depart et B a l'arrivee, une petite
+     * pastille ronde numerotee pour chaque etape intermediaire.
      *
-     * Elles ont leur propre calque, comme les précédentes : le planificateur reste ouvert pendant qu'on
-     * consulte un point d'intérêt ou qu'on cherche un lieu, et les épingles des unes ne doivent pas
-     * disparaître avec celles des autres.
+     * Les deux genres ont chacun leur calque, sur la meme source : l'epingle se pose par sa pointe, la
+     * pastille par son centre. Leur propre calque, comme les precedents : le planificateur reste ouvert
+     * pendant qu'on consulte un point d'interet ou qu'on cherche un lieu.
      */
-    fun setPlannerMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
-        setBlackPins(PLANNER_PTS, PLANNER_SRC, points, heightPx)
+    fun setStepMarks(marks: List<StepMark>, heightPx: Float) {
+        stepMarks = marks
+        stepPinPx = heightPx
+        drawStepMarks()
+    }
+
+    private fun drawStepMarks() {
+        val s = style ?: return
+        if (stepMarks.isEmpty()) {
+            s.getLayer(PLANNER_PTS)?.let { s.removeLayer(it) }
+            s.getLayer(PLANNER_BADGES)?.let { s.removeLayer(it) }
+            s.getSource(PLANNER_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val badgePx = badgeDp * density
+        val features = stepMarks.joinToString(",") { m ->
+            val (lon, lat) = if (m.stepId == draggedStepId) dragLonLat ?: (m.lon to m.lat) else (m.lon to m.lat)
+            val img = when (m.kind) {
+                StepMarkKind.Start -> ensureLetterPin(s, "A")
+                StepMarkKind.End -> ensureLetterPin(s, "B")
+                StepMarkKind.Via -> ensureBadge(s, m.number, badgePx)
+            }
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{"id":${m.stepId},"via":${m.kind == StepMarkKind.Via},"img":"$img"}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(PLANNER_SRC)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(PLANNER_SRC, geojson))
+            val isVia = Expression.eq(Expression.get("via"), Expression.literal(true))
+            addLayerSafe(SymbolLayer(PLANNER_PTS, PLANNER_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("img")), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(Expression.all(pointGeometryFilter, Expression.not(isVia))))
+            addLayerSafe(SymbolLayer(PLANNER_BADGES, PLANNER_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("img")), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("center"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(Expression.all(pointGeometryFilter, isVia)))
+        } else {
+            existing.setGeoJson(geojson)
+        }
+    }
+
+    /** L'identifiant de l'etape dont la pastille est sous [screen], ou null. */
+    private fun plannerBadgeAt(screen: PointF): Long? {
+        val m = map ?: return null
+        if (style?.getLayer(PLANNER_BADGES) == null) return null
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, PLANNER_BADGES).firstOrNull()
+            ?.getNumberProperty("id")?.toLong()
+    }
+
+    /** Position ecran de la pastille de l'etape [stepId], pour y accrocher un menu. */
+    fun stepScreenPosition(stepId: Long): PointF? =
+        stepMarks.firstOrNull { it.stepId == stepId }?.let { screenOf(it.lon, it.lat) }
+
+    private fun ensureLetterPin(s: Style, letter: String): String {
+        val h = stepPinPx.toInt().coerceIn(24, 256)
+        val name = "steppin_${letter}_$h"
+        if (pinImages.add(name)) s.addImage(name, letterPinBitmap(appContext, h, letter))
+        return name
+    }
+
+    private fun ensureBadge(s: Style, number: Int, diameterPx: Float): String {
+        val d = diameterPx.toInt().coerceIn(24, 128)
+        val name = "stepbadge_${number}_$d"
+        if (pinImages.add(name)) s.addImage(name, badgeBitmap(d, number.toString()))
+        return name
+    }
+
+    /** L'epingle noire PLEINE - le trou du dessin est rebouche en noir, sans contour - et sa lettre blanche,
+     *  du meme corps que le numero d'une pastille ([badgeTextPx]). */
+    private fun letterPinBitmap(context: Context?, h: Int, letter: String): Bitmap {
+        val bmp = pinBitmap(context, android.graphics.Color.BLACK, h)
+        val c = AndroidCanvas(bmp)
+        // Centre et rayon du trou de ic_pin_fill, dans son repere 128 x 128 ; le rebouchage deborde un peu
+        // pour ne laisser aucun liseré.
+        val cx = 63.5f / 128f * h
+        val cy = 41.9f / 128f * h
+        val hole = 16.5f / 128f * h
+        c.drawCircle(cx, cy, hole, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = badgeTextPx(1)
+        }
+        c.drawText(letter, cx, cy - (text.ascent() + text.descent()) / 2f, text)
+        return bmp
+    }
+
+    /** Le corps du texte d'un marqueur d'etape : celui du numero d'une pastille, A et B le reprennent. */
+    private fun badgeTextPx(digits: Int): Float =
+        badgeDp * density * (if (digits > 1) 0.42f else 0.52f)
+
+    /** La pastille ronde d'une etape intermediaire : noire, cerclee de blanc, son numero au centre. */
+    private fun badgeBitmap(d: Int, label: String): Bitmap {
+        val bmp = createBitmap(d, d)
+        val c = AndroidCanvas(bmp)
+        val half = d / 2f
+        val ring = d * 0.08f
+        c.drawCircle(half, half, half, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE })
+        c.drawCircle(half, half, half - ring, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = badgeTextPx(label.length)
+        }
+        c.drawText(label, half, half - (text.ascent() + text.descent()) / 2f, text)
+        return bmp
+    }
 
     /** Calque et source des marqueurs noirs de la mesure sur trace (cf. [setMeasureMarkers]). */
     private val MEASURE_PTS = "measure-points"
@@ -1489,7 +1710,7 @@ fun MapLibreView(
         mapView.also { mv ->
             // Evenements tactiles bruts : servent au tap rapide (selection d'un marqueur des le lever du
             // doigt). On renvoie false = evenement non consomme, MapLibre le traite ensuite normalement.
-            mv.setOnTouchListener { _, e -> controller.onMapTouch(e); false }
+            mv.setOnTouchListener { v, e -> controller.onMapTouch(e, v) }
             mv.getMapAsync { map ->
                 controller.attachDensity(density)
                 controller.attachContext(context)

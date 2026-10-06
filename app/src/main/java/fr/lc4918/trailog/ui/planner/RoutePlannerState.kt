@@ -99,6 +99,12 @@ enum class PlannerViewer { PROFILE, SURFACES, WAYS }
  * une ligne d'une recomposition a l'autre sans confondre son champ de saisie avec celui du voisin.
  */
 @Stable
+/** Le role d'une etape sur la carte : son marqueur est un A, un B, ou une pastille numerotee. */
+enum class StepMarkKind { Start, End, Via }
+
+/** Un marqueur d'etape a poser sur la carte ; [number] ne vaut que pour une etape intermediaire. */
+data class StepMark(val stepId: Long, val lon: Double, val lat: Double, val kind: StepMarkKind, val number: Int)
+
 class PlannerStep(val id: Long) {
     var query by mutableStateOf("")
     var results by mutableStateOf<List<GeocodePlace>>(emptyList())
@@ -374,6 +380,48 @@ class RoutePlannerState {
 
     /** Epingles noires des etapes designees sur la carte (cf. [PlannerStep.pickedOnMap]). */
     val mapPins: List<Pair<Double, Double>> get() = steps.mapNotNull { it.pickedOnMap }
+
+    /**
+     * Les marqueurs des etapes sur la carte : A au depart, B a l'arrivee, et les etapes intermediaires
+     * numerotees de 1 a n dans l'ordre du trajet.
+     *
+     * Une etape sur la position actuelle n'en porte pas - le repere de position la montre deja - mais garde
+     * son numero : la carte et la liste des etapes disent le meme rang.
+     */
+    val stepMarks: List<StepMark> get() {
+        var via = 0
+        return steps.mapIndexedNotNull { index, step ->
+            val target = step.target ?: return@mapIndexedNotNull null
+            val kind = when (index) {
+                0 -> StepMarkKind.Start
+                steps.lastIndex -> StepMarkKind.End
+                else -> StepMarkKind.Via
+            }
+            val number = if (kind == StepMarkKind.Via) ++via else 0
+            val place = (target as? StepTarget.Place)?.place ?: return@mapIndexedNotNull null
+            StepMark(step.id, place.lon, place.lat, kind, number)
+        }
+    }
+
+    /** Le marqueur de l'etape [stepId] a ete depose en [lon]/[lat] : elle prend ce point, et le parcours
+     *  se recalcule. [label] est provisoire, l'adresse arrive apres (cf. [pickOnMap]). */
+    fun relocateStep(stepId: Long, lon: Double, lat: Double, label: String) {
+        val step = steps.firstOrNull { it.id == stepId } ?: return
+        choose(step, StepTarget.Place(GeocodePlace(label, lon, lat)))
+        step.pickedOnMap = lon to lat
+        step.addressPending = true
+    }
+
+    /** L'etape intermediaire [stepId] devient l'arrivee ; l'ancienne arrivee la remplace comme derniere
+     *  etape intermediaire (cf. [setEnd]). */
+    fun makeEnd(stepId: Long) {
+        val index = steps.indexOfFirst { it.id == stepId }
+        if (index <= 0 || index >= steps.lastIndex) return
+        steps.add(steps.removeAt(index))
+        invalidate()
+    }
+
+    fun removeStepById(stepId: Long) = removeStep(steps.indexOfFirst { it.id == stepId })
 
     val done: RouteState.Done? get() = route as? RouteState.Done
 

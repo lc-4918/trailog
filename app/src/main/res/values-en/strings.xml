@@ -15,6 +15,7 @@
     <string name="action_close_menu">Close menu</string>
     <string name="action_collapse">Collapse</string>
     <string name="action_refresh">Refresh</string>
+    <string name="planner_step_set_end">Set as destination</string>
     <string name="action_color">Color</string>
     <string name="action_create">Create</string>
     <string name="action_create_and_import">Create and import</string>

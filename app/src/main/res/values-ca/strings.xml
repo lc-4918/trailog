@@ -15,6 +15,7 @@
     <string name="action_close_menu">Tanca el menú</string>
     <string name="action_collapse">Replega</string>
     <string name="action_refresh">Actualitza</string>
+    <string name="planner_step_set_end">Defineix com a arribada</string>
     <string name="action_color">Color</string>
     <string name="action_create">Crea</string>
     <string name="action_create_and_import">Crea i importa</string>

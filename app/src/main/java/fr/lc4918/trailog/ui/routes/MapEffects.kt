@@ -80,11 +80,13 @@ internal fun MapOverlayEffects(
     LaunchedEffect(mapPoint.markers, styleTick, markerPx) {
         controller.setMapPointMarkers(mapPoint.markers, markerPx)
     }
-    // Épingles noires des étapes d'itinéraire montrées du doigt : rien d'autre ne dirait où elles sont -
-    // un départ de sentier ou un col ne portent ni trace ni marqueur. Calque à part, encore : le
-    // planificateur reste ouvert pendant qu'on désigne un point ou qu'on cherche un lieu.
-    LaunchedEffect(planner.mapPins, styleTick, markerPx) {
-        controller.setPlannerMarkers(planner.mapPins, markerPx)
+    // Marqueurs des étapes d'itinéraire : A au départ, B à l'arrivée, des pastilles numérotées entre les deux.
+    // Rien d'autre ne dirait où elles sont - un départ de sentier ou un col ne portent ni trace ni
+    // marqueur. Calque à part, encore : le planificateur reste ouvert pendant qu'on désigne un point ou
+    // qu'on cherche un lieu.
+    val stepMarks = planner.stepMarks
+    LaunchedEffect(stepMarks, styleTick, markerPx) {
+        controller.setStepMarks(stepMarks, markerPx)
     }
     // Symbole du repère de position, tel que les réglages le décrivent. Rejoué sur styleTick : le repère est
     // reposé avec la dernière position connue, sans attendre que le capteur en donne une nouvelle.

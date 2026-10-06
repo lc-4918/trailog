@@ -777,4 +777,57 @@ class PlannerStepsTest {
         assertEquals(2, etat.steps.size)
         assertEquals("Soreze", (etat.steps.first().target as StepTarget.Place).place.lines.first())
     }
+
+    private fun troisEtapes(): RoutePlannerState {
+        val etat = RoutePlannerState().apply { openPlanner() }
+        etat.setStart(GeocodePlace("Revel", 1.0, 43.0))
+        etat.setEnd(GeocodePlace("Malegoude", 1.5, 43.2))
+        etat.addWaypoint(GeocodePlace("Soreze", 1.2, 43.1))
+        etat.addWaypoint(GeocodePlace("Mirepoix", 1.3, 43.15))
+        return etat
+    }
+
+    /** A au depart, B a l'arrivee, les etapes intermediaires numerotees dans l'ordre du trajet. */
+    @Test fun `les marqueurs disent A, B et numerotent les etapes`() {
+        val marques = troisEtapes().stepMarks
+        assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.Via, StepMarkKind.End),
+            marques.map { it.kind })
+        assertEquals(listOf(0, 1, 2, 0), marques.map { it.number })
+    }
+
+    /** Une etape sur la position actuelle n'a pas de marqueur, mais garde son rang. */
+    @Test fun `une etape en position actuelle ne porte pas de marqueur`() {
+        val etat = troisEtapes()
+        etat.choose(etat.steps[1], StepTarget.CurrentPosition)
+        assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.End), etat.stepMarks.map { it.kind })
+        assertEquals(2, etat.stepMarks[1].number)
+    }
+
+    /** Une pastille deposee ailleurs donne son point a l'etape, et le parcours est a refaire. */
+    @Test fun `deposer une pastille deplace l'etape`() {
+        val etat = troisEtapes()
+        val etape = etat.steps[1]
+        val avant = etat.revision
+        etat.relocateStep(etape.id, 1.25, 43.12, "43.12000, 1.25000")
+        assertEquals(1.25, (etape.target as StepTarget.Place).place.lon, 0.0)
+        assertEquals(1.25 to 43.12, etape.pickedOnMap)
+        assertTrue(etat.revision > avant)
+    }
+
+    /** "Definir comme arrivee" : l'etape passe en bout, l'ancienne arrivee devient la derniere etape. */
+    @Test fun `une etape devient l'arrivee et l'ancienne arrivee la remplace`() {
+        val etat = troisEtapes()
+        val id = etat.steps[1].id
+        etat.makeEnd(id)
+        assertEquals(id, etat.steps.last().id)
+        assertEquals(4, etat.steps.size)
+        assertEquals("Malegoude", (etat.steps[2].target as StepTarget.Place).place.lines.first())
+    }
+
+    /** "Supprimer" retire l'etape et rien d'autre. */
+    @Test fun `supprimer une pastille retire l'etape`() {
+        val etat = troisEtapes()
+        etat.removeStepById(etat.steps[1].id)
+        assertEquals(3, etat.steps.size)
+    }
 }

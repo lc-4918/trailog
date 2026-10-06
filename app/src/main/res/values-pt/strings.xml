@@ -15,6 +15,7 @@
     <string name="action_close_menu">Fechar o menu</string>
     <string name="action_collapse">Recolher</string>
     <string name="action_refresh">Atualizar</string>
+    <string name="planner_step_set_end">Definir como chegada</string>
     <string name="action_color">Cor</string>
     <string name="action_create">Criar</string>
     <string name="action_create_and_import">Criar e importar</string>

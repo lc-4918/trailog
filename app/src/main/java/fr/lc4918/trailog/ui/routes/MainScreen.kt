@@ -1036,6 +1036,9 @@ fun MainScreen(
                     maxHeightPx = constraints.maxHeight,
                 )
                 PoiStatusBanner(poi = poi, controller = controller, topControlsPx = insets.topControlsPx)
+                PlannerStepMenu(controller, planner) { lon, lat ->
+                    "%.5f, %.5f".format(java.util.Locale.US, lat, lon)
+                }
                 PlaceBubblesLayer(
                     settings = settings,
                     frame = bubbleFrame,
