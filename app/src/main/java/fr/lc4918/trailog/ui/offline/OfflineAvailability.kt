@@ -3,6 +3,7 @@ package fr.lc4918.trailog.ui.offline
 import fr.lc4918.trailog.data.db.CompositeEntity
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
+import fr.lc4918.trailog.map.offline.BulkDownloadPolicy
 
 /**
  * Le fond par defaut peut-il etre telecharge pour le hors-ligne.
@@ -17,8 +18,7 @@ import fr.lc4918.trailog.map.compositeIdFromBasemapId
 fun offlineDownloadAvailable(defaultBasemapId: String, providers: List<ProviderEntity>): Boolean =
     compositeIdFromBasemapId(defaultBasemapId) == null &&
         providers.firstOrNull { it.id == defaultBasemapId }?.let {
-            it.type != "MBTILES" && it.type != "DEM" &&
-                !it.urlTemplate.contains("tile.openstreetmap.org", ignoreCase = true)
+            it.type != "MBTILES" && it.type != "DEM" && !BulkDownloadPolicy.forbids(it)
         } == true
 
 /**

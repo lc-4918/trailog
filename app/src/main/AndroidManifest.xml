@@ -35,6 +35,15 @@
     <!-- Alerte d'eloignement : allumer l'ecran et poser la carte par-dessus le verrouillage quand on
          quitte la trace suivie, telephone en poche (cf. LocationService.postOffTrackAlert). -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Etat de la montre Garmin dans la fenetre d'envoi (cf. watch/WatchLinkMonitor) : lire les appareils
+         appaires et connectes. Rien n'est ecoute ni emis, et aucune recherche n'est lancee - donc pas de
+         BLUETOOTH_SCAN. Avant Android 12, la permission ordinaire BLUETOOTH suffit. -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Savoir si Garmin Connect est installe, sans en demander la liste complete. -->
+    <queries>
+        <package android:name="com.garmin.android.apps.connectmobile" />
+    </queries>
 
     <application
         android:name=".TrailogApp"

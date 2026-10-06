@@ -104,6 +104,7 @@ import fr.lc4918.trailog.ui.offline.BboxEditorOverlay
 import fr.lc4918.trailog.ui.offline.OfflineFlowState
 import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.data.db.LayerEntity
+import fr.lc4918.trailog.watch.WatchLinkMonitor
 import fr.lc4918.trailog.watch.WatchTileSource
 import fr.lc4918.trailog.ui.watch.WatchSendDialog
 import fr.lc4918.trailog.TrailogApp
@@ -1421,12 +1422,33 @@ fun MainScreen(
             watchSendTarget?.let { (layer, points) ->
                 val app = ctx.applicationContext as TrailogApp
                 val watchSession by app.watchExport.state.collectAsState()
+                // L'etat de la montre, suivi par le Bluetooth tant que la fenetre est ouverte.
+                val watchLinkMonitor = remember { WatchLinkMonitor(app) }
+                DisposableEffect(watchLinkMonitor) {
+                    watchLinkMonitor.start()
+                    onDispose { watchLinkMonitor.stop() }
+                }
+                // L'autorisation Bluetooth (Android 12+) s'accorde dans les parametres du telephone : on y
+                // renvoie, et l'etat se relit au retour dans l'application.
+                androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                    watchLinkMonitor.refresh()
+                }
+                val watchLink by watchLinkMonitor.link.collectAsState()
                 WatchSendDialog(
                     trackName = layer.name,
                     trackPoints = points,
                     providers = providers.filter { it.enabled && WatchTileSource.supports(it) },
                     initialProviderId = settings.defaultBasemapId,
                     session = watchSession,
+                    link = watchLink,
+                    dark = chrome.dark,
+                    onOpenPermissionSettings = {
+                        ctx.startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", ctx.packageName, null))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    },
                     onSend = { provider, tiles ->
                         app.watchExport.start(layer.name, tiles, provider,
                             WatchTileSource.mbtilesFileOf(provider, app.repository.mbtilesDir(settings)))

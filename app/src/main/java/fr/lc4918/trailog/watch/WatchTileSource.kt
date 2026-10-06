@@ -2,6 +2,7 @@ package fr.lc4918.trailog.watch
 
 import android.database.sqlite.SQLiteDatabase
 import fr.lc4918.trailog.data.db.ProviderEntity
+import fr.lc4918.trailog.map.offline.BulkDownloadPolicy
 import fr.lc4918.trailog.map.offline.TileHttp
 import fr.lc4918.trailog.map.offline.TileUrl
 import java.io.Closeable
@@ -23,10 +24,14 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          *  Une surcouche transparente, seule, n'aurait rien sous elle sur la montre. */
         private val SUPPORTED_TYPES = setOf("XYZ", "WMS", "WMTS", "MBTILES")
 
-        /** Un fond envoyable a la montre : raster, opaque, et servi au zoom de la montre. */
+        /**
+         * Un fond envoyable a la montre : raster, opaque, servi au zoom de la montre - et dont le service
+         * accepte qu'on telecharge un couloir entier (cf. BulkDownloadPolicy) : l'envoi va chercher ses
+         * tuiles en ligne, comme le telechargement hors ligne.
+         */
         fun supports(provider: ProviderEntity): Boolean =
             provider.type in SUPPORTED_TYPES && !provider.transparent &&
-                WatchTiles.WATCH_ZOOM in provider.minZoom..provider.maxZoom
+                WatchTiles.WATCH_ZOOM in provider.minZoom..provider.maxZoom && !BulkDownloadPolicy.forbids(provider)
 
         /**
          * Le fichier d'un fond MBTiles : chemin absolu derriere `mbtiles://`, ou nom de fichier dans

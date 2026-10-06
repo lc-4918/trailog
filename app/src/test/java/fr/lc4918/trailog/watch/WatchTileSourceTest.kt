@@ -28,6 +28,12 @@ class WatchTileSourceTest {
         assertFalse(WatchTileSource.supports(provider("XYZ", maxZoom = 14)))
     }
 
+    /** L'envoi telecharge un couloir entier : OpenStreetMap l'interdit, et renverrait des tuiles bloquees. */
+    @Test fun `a basemap forbidding bulk download cannot be sent`() {
+        assertFalse(WatchTileSource.supports(provider("XYZ", url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png")))
+        assertTrue(WatchTileSource.supports(provider("XYZ", url = "https://tile.opentopomap.org/{z}/{x}/{y}.png")))
+    }
+
     @Test fun `mbtiles file is resolved like the map style does`() {
         val directory = File("/data/maps")
         assertEquals(File("/sd/zone.mbtiles"), WatchTileSource.mbtilesFileOf(provider("MBTILES", "mbtiles:///sd/zone.mbtiles"), directory))
