@@ -1,6 +1,8 @@
+<img src="docs/images/social-preview.png" alt="Trailog - offline maps and GPS tracks">
+
 # Trailog
 
-[<img src="app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français](docs/README.fr.md) | <img src="app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English
+[<img src="app/src/main/assets/flags/fr.svg" alt="Français" width="24">](docs/README.fr.md) <img src="app/src/main/assets/flags/gb.svg" alt="English" width="24">
 
 **Offline mapping and routes for Android.**
 
@@ -8,6 +10,7 @@
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lc-4918/trailog)
 
 Trailog is a native Android application for viewing, importing and organising GPS tracks
 (hiking, cycling, mountain biking, exploring), on customisable basemaps, and built for
@@ -48,100 +51,51 @@ offline use.
 
 ---
 
-## Table of contents
-
-- [What is Trailog?](#what-is-trailog)
-- [Main features](#main-features)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Going further](#going-further)
-- [Data & Privacy](#data--privacy)
-- [Contributing & Development](#contributing--development)
-- [Licence](#licence)
-- [Contact](#contact)
-
----
-
 ## What is Trailog?
 
-Trailog keeps your tracks and points of interest organised locally on your phone, and shows
-them on a map with a synchronised elevation profile, without depending on any online service.
+Trailog keeps your tracks organised locally on your phone, and shows them on a map with a
+synchronised elevation profile, without depending on any online service.
 
 **Typical uses:**
-- Hiking, cycling, mountain biking: follow a route prepared in advance, offline in the field.
-- Archiving personal tracks, sorted into folders.
-- Exploring specialised basemaps (national mapping agencies, hillshade, cycle routes...).
+- Prepare an outing: compute a route or import a track, and check its surfaces and elevation before leaving.
+- Download the basemap before the outing, over the whole area or along the route, to use it with no network.
+- Follow the route in the field, with an alert as soon as you stray from it.
+- Hiking, cycling, mountain biking: follow a route prepared in advance, offline.
+- Archive personal tracks, sorted into folders.
+- Explore specialised basemaps (national mapping agencies, hillshade, cycle routes...).
+
+## Quick start
+
+1. **Import a track** (*Import* button, GPX, GeoJSON or KML/KMZ), or **compute a route** between two or more stops.
+2. **Choose the destination**: an existing folder, or a new one.
+3. **View it**: tap the route in the side menu to see it on the map with its elevation profile; tapping either one moves the cursor on the other.
+4. **Check the surfaces before heading out**: the details show how much of the route is paved or unpaved, surface by surface (asphalt, gravel, ground, sand...), and the types of ways it follows.
+5. **Take the map along**: download the basemap along the route, with no network needed in the field.
+6. **Follow it with the off-track alert**: Trailog warns you as soon as you stray from the route.
 
 ## Main features
 
-- **Native map** (MapLibre) with many configurable basemaps (OpenStreetMap, national mapping
-  agencies, hillshade, cycle routes, composite basemaps pairing a base with an overlay).
-- **Track import** in **GPX**, **GeoJSON** and **KML/KMZ**, with statistics computed on the fly
-  (distance, ascent and descent, gradient, moving time). Through the *Import* button, or straight from
-  another app: Trailog shows up in the phone's **"Open with"** and **"Share to"** for a file received by
-  email, downloaded, or sitting in a file manager.
-- **Native elevation profile**, synchronised with a cursor on the map, with zoom on a section of
-  the route and an adjustable vertical scale.
-- **Folder organisation**: create, rename, move and delete folders and routes, and colour every
-  track in a folder in one go.
-- **Points of interest**: markers with info bubbles you can edit (title, text, links, photos),
-  including photos carried by GPX waypoints on your phone.
-- **Points of interest along the way** (enable in settings): lodging, food, leisure and services, from
-  **DATAtourisme** in France and **OpenStreetMap** everywhere - outside France included. Filterable by
-  category, with a photo and a link to the venue's website, and three gestures to make it a start, an end
-  or a waypoint. OpenStreetMap brings what the tourism database ignores in France too: neighbourhood
-  restaurants and bars, drinking water, public toilets, picnic areas, charging points and bicycle
-  repairers. A setting turns that complement off if you would rather have an immediate map than a complete
-  one. What has been seen once stays available offline, and *Settings / Routes* clears that cache in one
-  tap if an entry looks wrong. An eye puts the layer aside for a moment without losing your selection, and
-  a **proximity setting** keeps only the places that border a displayed track - from 500 m to 20 km, or no
-  limit at all when you are exploring an area with no track open.
-- **Offline maps**: download an area to take it along with no network, import your own **MBTiles**
-  basemaps, and tiles already viewed stay in cache. A checkbox also takes the area's **points of interest**
-  along: they stay available where there is no signal.
-- **Place and address search** (to be enabled in settings): the place found is pinned on the map,
-  with its address.
-- **Route planning** (to be enabled in settings): a band where you stack your stops, from 2 to 25 - each
-  one searched by name, or replaced by **your own position**, resolved when the route is computed rather
-  than when you pick it. Stops can be reordered and removed, the route is recomputed on
-  every change for the activity you set (road bike, gravel, hybrid bike, mountain bike, on foot), is drawn
-  on the map and carries its own elevation profile. An empty field offers you the **last eight places** you
-  came across - a stop you kept, a place you searched for, a point of interest you opened, the address of a
-  long press - so you need not type again what you have just been looking at. Each one can be forgotten with
-  a cross, and *Settings / Routes* clears the list in one go: none of it ever leaves the device, and nothing
-  settles there that you cannot remove.
-- **Three gestures towards a route**, on every info bubble that points at a place - a place you searched, a
-  point of interest, a spot you long-pressed on the map: make it the start, the end, or one more stop. The
-  planner opens already filled in.
-- **Point at a stop on the map**: when a field is empty, the planner also offers to pick a spot with your
-  finger. The band tucks itself away, the map is yours, and the place you tap becomes a stop - with a black
-  pin where you pointed and its address filled in a moment later. A trailhead, a pass, a crossing of
-  forest tracks: places no search will ever find by name.
-- **Long press on the map**: anywhere off a track, an info bubble gives the address of the spot
-  touched, and measures the distance and time to reach it - from your GPS position, or from a
-  second point you pick. The same two measurements sit on a point of interest's bubble: it is a place on
-  the map just the same, and one asks the same question of it.
-- **Measuring along a track** (to be enabled in settings): put two points on a displayed track and
-  Trailog gives the distance between them **along the route**, with no network.
-- **Off-track alert** (to be enabled in the settings): pick the track you are following from the ones
-  nearest to you, and Trailog warns you - a banner at the top of the screen, and a sound if you
-  want one - as soon as you stray from it by more than the distance you set.
-- **A dashboard while you follow a track**: once a track is picked, the popup stops offering the others and
-  shows where you stand instead - speed, time elapsed and left, distance covered and remaining, ascent and
-  descent both done and still ahead. Nine figures behind nine icons, a long press naming any of them. The
-  distance alone never tells you whether the last three kilometres are a descent or the wall of the pass.
-- **The arrow points where you are going**, not where the phone is aimed: as soon as you move, it takes its
-  heading from your travel rather than from the compass - it no longer spins on itself when you pick the
-  phone up, nor sits askew to the track you are following.
-- **Tracking survives the screen going off**: once location is on, it keeps being followed with the app
-  in the background and the phone in a pocket - which is exactly when the off-track alert matters. An
-  ongoing notification says so, shows how far off the followed track you are, and stops everything in one
-  tap. A setting also **keeps the screen on** while tracking, to read the map on a handlebar without
-  touching it: a comfort now, no longer a necessity.
-- **Built-in updates**: the app tells you about a new version and installs it for you.
-- **Multilingual**: interface available in French, English, German, Spanish, Catalan, Basque,
-  Italian and Portuguese.
-- Customisable settings: units, touch selection tolerance, avatar, info bubble position, text sizes.
+- **Native map** (MapLibre) with many configurable basemaps, including composite ones (a base plus an overlay).
+- **Track import** in GPX, GeoJSON and KML/KMZ with instant statistics, also through the phone's "Open with" and "Share to".
+- **Elevation profile** synchronised with a cursor on the map, with zoom on a section and an adjustable vertical scale.
+- **Surfaces and types of ways** of a track or a route, shown before the outing: paved or not, asphalt, gravel, ground...
+- **Folder organisation**: create, rename, move and delete folders and routes, and colour a whole folder at once.
+- **Points of interest** on the map: markers with editable info bubbles (title, text, links, photos).
+- **Points of interest along the way** (DATAtourisme in France, OpenStreetMap everywhere): lodging, food, services, water, filterable.
+- **Offline maps**: download an area or the **corridor along a track**, import your own MBTiles basemaps, take the points of interest along.
+- **Place and address search**, the place found being pinned on the map with its address.
+- **Route planning** from 2 to 25 stops, for five activities, with an elevation profile, surfaces, and a **recompute on every change**.
+- **Numbered stops on the map**: A and B for the ends, numbered dots in between, which you can move by hand or remove.
+- **Your own position as a stop**, up to date every time you reopen the planner, or on demand with the *Refresh* button.
+- **Start, end or stop in three gestures** from any info bubble, or from a long press anywhere on the map.
+- **Long press on the map**: the address of the spot, and the distance and time to reach it from your position or another point.
+- **Measuring along a track**: the distance between two points of a displayed track, along the route, with no network.
+- **Off-track alert**: pick the track you follow and get a banner, and a sound if you want one, as soon as you stray from it.
+- **Dashboard while following**: speed, time and distance done and left, ascent and descent done and ahead.
+- **Tracking survives the screen going off**, with an ongoing notification and an option to keep the screen on.
+- **Heading arrow** that follows your direction of travel rather than the compass.
+- **Send to a Garmin watch**: the corridor of a track, as map tiles, through Garmin Connect.
+- **Built-in updates**, and an interface in French, English, German, Spanish, Catalan, Basque, Italian and Portuguese.
 
 ## Installation
 
@@ -175,58 +129,25 @@ itself whether a newer version exists and offers to install it.
   distributed outside a store, and you can withdraw it at any time in the Android settings.
 - Your tracks, folders and settings are kept.
 
-## Quick start
-
-1. **Import a track**: *Import* button -> pick a GPX, GeoJSON or KML/KMZ file -> the app computes
-   the statistics and shows a preview.
-2. **Choose the destination**: an existing folder, or a new one (folder or subfolder).
-3. **View it**: tap the route in the side menu -> it appears on the map, with its elevation
-   profile. Tapping the map or the profile puts the cursor on the matching point in the other view.
-4. **Add points of interest**: import a point layer (GeoJSON/GPX/KML), tap a marker to see its info
-   bubble. The pencil opens it for editing.
-
 ## Going further
 
-- **Import/export**: GeoJSON, GPX and KML/KMZ on import; GeoJSON export of tracks. Photos
-  referenced by GPX waypoints (OruxMaps, OsmAnd, Locus, Garmin) are collected and stored in the
-  application.
-- **Editing an info bubble**: the pencil opens a form where you can change the title, fix a field,
-  add text, a link or a photo, choose the featured photo, or delete the point.
-- **Taking a map offline**: draw an area on the map, choose the zoom range, and Trailog downloads
-  the tiles into a layer usable with no network.
-- **Basemaps**: manage the list of tile providers in the settings (URL, API key, activation),
-  create **composite basemaps** (an opaque base plus an overlay, for instance OpenStreetMap with
-  mountain bike routes).
-- **Local offline basemaps**: import an `.mbtiles` file for a basemap usable without a connection.
-- **Basemap legend**: some basemaps, such as the AF3V cycle routes, show an information button on
-  the map that unfolds their legend.
-- **Searching for a place**: once geocoding is enabled in **Settings / Map**, a search button
-  appears below the menu. The chosen place is pinned in black on the map, and its info bubble gives
-  the address. Suggestions are ranked by the importance of the place, so a town comes before a
-  hamlet of the same name.
-- **Querying a point on the map**: a long press anywhere, off a track and off a marker, drops a pin
-  there and opens its info bubble. It first looks up the address of that spot, then offers two
-  measurements: the distance from your GPS position (if it is on), and the distance from a second
-  point, which you then pick with a tap on the map.
-- **Distance and time to the point**: these are not straight-line distances but those of the
-  recommended route, computed for the **discipline** set in *Settings / Routes*: road bike, gravel,
-  hybrid, mountain bike or on foot. The small "i" next to the value is the reminder. The route
-  itself is drawn on the map, tinted by gradient. The services queried are **Photon** (addresses)
-  and **Valhalla** (routes), with no account and no key; you can point them at your own instances
-  by entering their URLs in the settings.
-- **Measuring a section of a track**: once *Show the measure button* is enabled in
-  **Settings / Map**, a ruler button appears below the menu. A band then asks for two points: tap
-  the start on a displayed track, then the end on the same track, and the distance between them
-  along the route appears between the two markers. No need to aim at the line pixel by pixel: each
-  tap is snapped to the nearest track, and a tap beyond the end of a track lands on that end. You
-  can pan and zoom the map between the two points, the info bubble stays visible and settles as
-  close as it can to the middle of the measured section. Its cross clears the measurement.
+- **Import/export**: GPX, GeoJSON and KML/KMZ in; GeoJSON out; photos of GPX waypoints are collected.
+- **Editing an info bubble**: the pencil changes the title, text, link and photos, or deletes the point.
+- **Taking a map offline**: draw an area, or pick a track for its corridor, set the zoom range, and the tiles go into a layer.
+- **Basemaps**: manage tile providers (URL, API key) and create composite basemaps in the settings.
+- **Local offline basemaps**: import an `.mbtiles` file to use without a connection.
+- **Basemap legend**: some basemaps, such as the AF3V cycle routes, unfold their legend from a button on the map.
+- **Searching for a place**: enable geocoding in **Settings / Map**; results mix a place's importance and its distance.
+- **Querying a point**: a long press off a marker pins the spot, gives its address and two measurements.
+- **Distance and time to a point**: those of the recommended route for the activity set in *Settings / Trips* (Photon and Valhalla, or your own instances).
+- **Moving a stop**: tap a numbered dot for *Set as destination* or *Delete*, or hold it briefly and drop it elsewhere.
+- **Adding a stop beyond the ends**: a new start or end from the map keeps the old one as a stop.
+- **Measuring a section of a track**: enable the ruler button in **Settings / Map**, then tap two points on a track.
+- **Colour by slope**: off by default, in *Settings / Trips*, for the route on the map and its profile.
 - **Hillshade**: enable relief shading in the map settings.
-- **Elevation profile**: zoom on a section by choosing a start and an end (up to three levels),
-  adjust the smoothing and the vertical scale (for instance 1 cm = 100 m, so that the same gradient
-  always takes up the same height).
-- **Personalisation**: avatar, units (metric/imperial), how the menu opens (button or swipe), touch
-  selection tolerance, info bubble position.
+- **Elevation profile**: zoom on a section (three levels), smoothing and vertical scale such as 1 cm = 100 m.
+- **Sending to a Garmin watch**: choose the width of the corridor, then start the sync from the watch.
+- **Personalisation**: avatar, units, menu opening mode, touch tolerance, info bubble position, text sizes.
 
 ## Data & Privacy
 

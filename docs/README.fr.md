@@ -1,6 +1,8 @@
+<img src="images/social-preview.png" alt="Trailog - cartes et traces GPS, hors-ligne">
+
 # Trailog
 
-<img src="../app/src/main/assets/flags/fr.svg" alt="" width="20" align="top"> Français | [<img src="../app/src/main/assets/flags/gb.svg" alt="" width="20" align="top"> English](../README.md)
+<img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24"> [<img src="../app/src/main/assets/flags/gb.svg" alt="English" width="24">](../README.md)
 
 **Cartographie et itinéraires hors-ligne pour Android.**
 
@@ -8,6 +10,7 @@
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lc-4918/trailog)
 
 Trailog est une application Android native pour consulter, importer et organiser des
 traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,
@@ -45,110 +48,51 @@ avec un fonctionnement pensé pour le hors-ligne.
 
 ---
 
-## Table des matières
-
-- [Qu'est-ce que Trailog ?](#quest-ce-que-trailog-)
-- [Caractéristiques principales](#caractéristiques-principales)
-- [Installation](#installation)
-- [Guide de démarrage rapide](#guide-de-démarrage-rapide)
-- [Utilisation avancée](#utilisation-avancée)
-- [Données & Confidentialité](#données--confidentialité)
-- [Contribution & Développement](#contribution--développement)
-- [Licence](#licence)
-- [Contact](#contact)
-
----
-
 ## Qu'est-ce que Trailog ?
 
-Trailog permet de garder ses traces et points d'intérêt organisés localement sur son
-téléphone, et de les visualiser sur une carte avec un profil altimétrique synchronisé,
-sans dépendre d'un service en ligne.
+Trailog permet de garder ses traces organisées localement sur son téléphone, et de les
+visualiser sur une carte avec un profil altimétrique synchronisé, sans dépendre d'un service en ligne.
 
 **Cas d'usage typiques :**
-- Randonnée, vélo, VTT : consulter un itinéraire préparé à l'avance, hors-ligne sur le terrain.
-- Archivage de traces personnelles, classées en dossiers.
-- Exploration de fonds de carte spécialisés (IGN, relief, pistes cyclables...).
+- Préparer une sortie : calculer un itinéraire ou importer une trace, et en vérifier les surfaces et le dénivelé avant de partir.
+- Télécharger le fond de carte avant la sortie, sur toute la zone ou le long du parcours, pour l'utiliser sans réseau.
+- Suivre le parcours sur le terrain, avec une alerte dès que vous vous en éloignez.
+- Randonnée, vélo, VTT : consulter un itinéraire préparé à l'avance, hors-ligne.
+- Archiver des traces personnelles, classées en dossiers.
+- Explorer des fonds de carte spécialisés (IGN, relief, pistes cyclables...).
+
+## Guide de démarrage rapide
+
+1. **Importer une trace** (bouton *Importer*, GPX, GeoJSON ou KML/KMZ), ou **calculer un itinéraire** entre deux étapes ou plus.
+2. **Choisir la destination** : un dossier existant ou un nouveau.
+3. **Visualiser** : un tap sur l'itinéraire dans le menu latéral l'affiche sur la carte avec son profil altimétrique ; un tap sur l'un place le curseur sur l'autre.
+4. **Vérifier les surfaces avant de partir** : les détails montrent la part de revêtu et de non revêtu, surface par surface (asphalte, gravier, terrain, sable...), et les types de voies empruntées.
+5. **Emporter la carte** : télécharger le fond de carte le long de l'itinéraire, pour l'avoir sans réseau sur le terrain.
+6. **Le suivre avec l'alerte d'éloignement** : Trailog vous prévient dès que vous vous écartez du parcours.
 
 ## Caractéristiques principales
 
-- **Carte native** (MapLibre) avec de nombreux fonds de carte configurables (OpenStreetMap,
-  IGN, relief, pistes cyclables, fonds composites associant un fond et une surcouche).
-- **Import de traces** au format **GPX**, **GeoJSON** et **KML/KMZ**, avec calcul automatique
-  des statistiques (distance, dénivelé positif/négatif, pente, temps en mouvement). Par le bouton
-  *Importer*, ou directement depuis une autre application : Trailog apparaît dans le **"Ouvrir avec"** et
-  le **"Partager vers"** du téléphone, pour un fichier reçu par courriel, téléchargé ou posé dans un
-  gestionnaire de fichiers.
-- **Profil altimétrique** natif, synchronisé avec un curseur sur la carte, avec zoom sur une
-  portion du parcours et échelle verticale réglable.
-- **Organisation en dossiers** : créer, renommer, déplacer, supprimer des dossiers et itinéraires,
-  et donner d'un coup la même couleur à toutes les traces d'un dossier.
-- **Points d'intérêt** : marqueurs avec infobulles que vous pouvez modifier (titre, texte,
-  liens, photos), y compris les photos des waypoints GPX de votre téléphone.
-- **Points d'intérêt du parcours** (à activer dans les réglages) : hébergements, restaurants,
-  loisirs et services, tirés de **DATAtourisme** en France et d'**OpenStreetMap** partout - y compris,
-  donc, hors de France. Filtrables par catégorie, avec photo et lien vers le site du lieu, et trois gestes
-  pour en faire un départ, une arrivée ou une étape. OpenStreetMap apporte en France ce que la base
-  touristique ignore : les restaurants et les bars de quartier, les points d'eau, les toilettes, les aires
-  de pique-nique, les bornes de recharge et les réparateurs de vélos. Ce complément se coupe d'un réglage
-  si vous préférez une carte immédiate à une carte complète. Ce qui a été vu une fois reste consultable
-  sans réseau, et *Réglages / Trajets* vide ce cache d'un bouton si une fiche vous paraît fausse. Un oeil
-  range la couche un instant sans perdre votre sélection, et un **réglage de proximité** ne garde que les
-  lieux qui bordent une trace affichée - de 500 m à 20 km, ou sans limite du tout quand vous explorez une
-  région où aucune trace n'est ouverte.
-- **Cartes hors-ligne** : téléchargez une zone pour l'emporter sans réseau, importez vos
-  propres fonds **MBTiles**, et les tuiles déjà consultées restent en cache. Une case permet d'emporter
-  aussi les **points d'intérêt** de la zone : ils resteront consultables là où il n'y a pas de signal.
-- **Recherche d'un lieu ou d'une adresse** (à activer dans les réglages) : le lieu trouvé se pose
-  sur la carte, avec son adresse.
-- **Calcul d'itinéraire** (à activer dans les réglages) : une bande où vous empilez vos étapes, de 2 à
-  25 - chacune cherchée par son nom, ou remplacée par **votre position**, résolue au moment du calcul et
-  non au moment du choix. Les étapes se réordonnent et se suppriment, le parcours se
-  recalcule à chaque changement pour la discipline réglée (vélo de route, VTC, gravel, VTT, à pied), se
-  dessine sur la carte et porte son propre profil altimétrique. Un champ vide vous repropose les **huit
-  derniers lieux** que vous avez rencontrés - une étape retenue, un lieu cherché, un point d'intérêt
-  consulté, l'adresse d'un appui long - pour ne pas retaper ce que vous venez de regarder. Chacun s'oublie
-  d'une croix, et *Réglages / Itinéraires* vide la liste d'un coup : rien de tout cela ne quitte l'appareil,
-  et rien ne s'y installe sans que vous puissiez l'en retirer. La bande **se réduit** pour rendre la carte
-  entière, et c'est le bouton habituel du calcul d'itinéraire qui la redéploie - il n'y en a jamais deux à
-  l'écran. Le retour du téléphone replie la bande, puis **demande** avant de perdre le trajet.
-- **Trois gestes vers l'itinéraire**, sur toute infobulle qui désigne un endroit - un lieu cherché, un point
-  d'intérêt, un point touché longuement sur la carte : en faire le départ, l'arrivée, ou une étape de plus.
-  Le planificateur s'ouvre déjà rempli.
-- **Désigner une étape sur la carte** : au focus d'un champ vierge, le calcul d'itinéraire propose aussi de
-  montrer un point du doigt. La bande se range, la carte vous est rendue, et l'endroit touché devient une
-  étape - une épingle noire là où vous avez montré, et son adresse renseignée un instant plus tard. Un
-  départ de sentier, un col, un croisement de pistes : des endroits qu'aucune recherche ne trouve par leur
-  nom.
-- **Appui long sur la carte** : n'importe où hors d'un marqueur — une trace ne l'arrête pas —, une
-  infobulle donne l'adresse de
-  l'endroit touché, et mesure la distance et la durée pour l'atteindre — depuis votre position GPS,
-  ou depuis un second point que vous désignez. Les deux mêmes mesures figurent sur l'infobulle d'un point
-  d'intérêt : c'est un endroit de la carte au même titre, et l'on s'y pose la même question.
-- **Mesure sur une trace** (à activer dans les réglages) : deux points posés du doigt sur une trace
-  affichée, et Trailog donne la distance qui les sépare **le long du parcours**, sans réseau.
-- **Alerte d'éloignement** (à activer dans les réglages) : choisissez la trace que vous suivez parmi
-  les plus proches de vous, et Trailog vous prévient - bandeau en haut de l'écran, et son au choix -
-  dès que vous vous en écartez de plus que la distance réglée. L'**itinéraire que vous venez de calculer**
-  est proposé en premier, sans avoir à l'importer dans la bibliothèque.
-- **Un tableau de bord pendant le suivi** : une fois la trace choisie, la fenêtre cesse de proposer les
-  autres et montre où vous en êtes - vitesse, temps écoulé et restant, distance parcourue et restante,
-  dénivelé positif et négatif faits et encore devant. Neuf chiffres derrière neuf pictogrammes, qu'un appui
-  long nomme. La distance seule ne dit jamais si les trois derniers kilomètres sont une descente ou le mur
-  du col.
-- **La flèche montre où vous allez**, et non où pointe le téléphone : dès que vous avancez, elle prend le
-  cap du déplacement plutôt que celui de la boussole - elle ne tourne plus sur elle-même quand vous prenez
-  l'appareil en main, et ne s'affiche plus en biais par rapport à la piste.
-- **Le suivi continue écran éteint** : une fois la position allumée, elle est suivie même l'application
-  fermée et le téléphone en poche - c'est là que l'alerte d'éloignement sert. Une notification permanente
-  vous le rappelle, dit votre écart à la trace suivie, et permet de tout arrêter d'un tap. Un réglage
-  permet aussi de **garder l'écran allumé** pendant le suivi, pour lire la carte sur un guidon sans y
-  toucher : c'est un confort, plus une nécessité.
-- **Mises à jour intégrées** : l'app vous signale une nouvelle version et l'installe pour vous.
-- **Multilingue** : interface disponible en français, anglais, allemand, espagnol,
-  catalan, basque, italien et portugais.
-- Réglages personnalisables : unités, tolérance de sélection tactile, avatar, position des
-  infobulles, taille des textes.
+- **Carte native** (MapLibre) avec de nombreux fonds configurables, dont des fonds composites (un fond plus une surcouche).
+- **Import de traces** GPX, GeoJSON et KML/KMZ avec statistiques immédiates, aussi par le "Ouvrir avec" et le "Partager vers" du téléphone.
+- **Profil altimétrique** synchronisé avec un curseur sur la carte, zoom sur une portion et échelle verticale réglable.
+- **Surfaces et types de voies** d'une trace ou d'un itinéraire, visibles avant la sortie : revêtu ou non, asphalte, gravier, terrain...
+- **Organisation en dossiers** : créer, renommer, déplacer, supprimer, et colorer un dossier entier d'un coup.
+- **Points d'intérêt** sur la carte : marqueurs avec infobulles modifiables (titre, texte, liens, photos).
+- **Points d'intérêt du parcours** (DATAtourisme en France, OpenStreetMap partout) : hébergements, restaurants, services, eau, filtrables.
+- **Cartes hors-ligne** : une zone ou le **couloir le long d'une trace**, vos fonds MBTiles, et les points d'intérêt emportés avec.
+- **Recherche d'un lieu ou d'une adresse**, le lieu trouvé se posant sur la carte avec son adresse.
+- **Calcul d'itinéraire** de 2 à 25 étapes, pour cinq disciplines, avec profil, surfaces et **recalcul à chaque changement**.
+- **Étapes numérotées sur la carte** : A et B aux extrémités, des pastilles numérotées entre les deux, déplaçables à la main ou supprimables.
+- **Votre position comme étape**, remise à jour à chaque réouverture du calcul d'itinéraire, ou à la demande par le bouton *Actualiser*.
+- **Départ, arrivée ou étape en trois gestes** depuis toute infobulle, ou depuis un appui long n'importe où sur la carte.
+- **Appui long sur la carte** : l'adresse du lieu, et la distance et la durée pour l'atteindre depuis votre position ou un autre point.
+- **Mesure sur une trace** : la distance entre deux points d'une trace affichée, le long du parcours, sans réseau.
+- **Alerte d'éloignement** : choisissez la trace suivie, et un bandeau, et un son si vous le voulez, vous prévient dès que vous vous en écartez.
+- **Tableau de bord pendant le suivi** : vitesse, temps et distance faits et restants, dénivelés positif et négatif faits et à venir.
+- **Le suivi continue écran éteint**, avec une notification permanente et une option pour garder l'écran allumé.
+- **Flèche de cap** qui suit votre direction de déplacement plutôt que la boussole.
+- **Envoi à une montre Garmin** : le couloir d'une trace, en tuiles de carte, par Garmin Connect.
+- **Mises à jour intégrées**, et interface en français, anglais, allemand, espagnol, catalan, basque, italien et portugais.
 
 ## Installation
 
@@ -183,64 +127,25 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   dans les réglages Android.
 - Vos traces, dossiers et réglages sont conservés.
 
-## Guide de démarrage rapide
-
-1. **Importer une trace** : bouton *Importer* -> choisir un fichier GPX, GeoJSON ou KML/KMZ
-   -> l'app calcule automatiquement les statistiques et propose un aperçu.
-2. **Choisir la destination** : dossier existant ou nouveau (dossier ou sous-dossier).
-3. **Visualiser** : tap sur l'itinéraire dans le menu latéral -> affichage sur la carte et du
-   profil altimétrique. Un tap sur la carte ou sur le profil positionne le curseur au point
-   correspondant sur l'autre vue.
-4. **Ajouter des points d'intérêt** : importer une couche de points (GeoJSON/GPX/KML), tap
-   sur un marqueur pour voir son infobulle. Le crayon permet de la modifier.
-
 ## Utilisation avancée
 
-- **Import/export** : GeoJSON, GPX et KML/KMZ en import ; export GeoJSON des traces. Les
-  photos référencées par les waypoints GPX (OruxMaps, OsmAnd, Locus, Garmin) sont récupérées
-  et rangées dans l'application.
-- **Modifier une infobulle** : le crayon ouvre un formulaire où vous pouvez changer le titre,
-  corriger un champ, ajouter du texte, un lien ou une photo, choisir la photo mise en avant,
-  ou supprimer le point.
-- **Emporter une carte hors-ligne** : délimitez une zone sur la carte, choisissez la plage de
-  zoom, et Trailog télécharge les tuiles dans une couche réutilisable sans réseau.
-- **Fonds de carte** : gérer la liste des fournisseurs de tuiles dans les réglages
-  (URL, clé API, activation), créer des **fonds composites** (un fond opaque plus une
-  surcouche, par exemple OpenStreetMap avec les tracés VTT).
-- **Fonds hors-ligne locaux** : importer un fichier `.mbtiles` pour disposer d'un fond
-  utilisable sans connexion.
-- **Légende d'un fond** : certains fonds, comme les voies cyclables AF3V, affichent un bouton
-  d'information sur la carte qui déplie leur légende.
-- **Chercher un lieu** : une fois le géocodage activé dans **Réglages / Carte**, un bouton de
-  recherche apparaît sous le menu. Le lieu choisi se marque en noir sur la carte, et son infobulle
-  en donne l'adresse. Les propositions mêlent l'importance du lieu et sa distance : une ville passe
-  devant un hameau du même nom, mais un homonyme d'un autre continent passe derrière ce qui est près
-  de vous — près de votre position GPS si elle est connue, près du centre de la carte sinon.
-- **Interroger un point de la carte** : un appui long n'importe où hors d'un marqueur — y compris sur
-  une trace, un col ou un croisement de sentiers étant justement un endroit qu'on veut interroger — y pose
-  une épingle et ouvre son infobulle. Elle cherche d'abord l'adresse de cet
-  endroit, puis propose deux mesures : la distance depuis votre position GPS (si elle est active),
-  et la distance depuis un second point, que vous désignez ensuite d'un tap sur la carte.
-- **Distance et durée jusqu'au point** : ce ne sont pas des distances à vol d'oiseau mais celles de
-  l'itinéraire recommandé, calculé pour la **discipline** réglée dans *Réglages / Trajets* :
-  vélo de route, VTC, gravel, VTT ou à pied. Le petit "i" à côté de la valeur le rappelle.
-  L'itinéraire lui-même se dessine sur la carte, teinté selon la pente. Les services
-  interrogés sont **Photon** (adresses) et **Valhalla** (itinéraires), sans compte ni clé ; vous pouvez
-  leur substituer vos propres instances en renseignant leurs URL dans les réglages.
-- **Mesurer une portion de trace** : une fois *Afficher le bouton de mesure* activé dans
-  **Réglages / Carte**, un bouton en forme de règle apparaît sous le menu. Une bande vous demande
-  alors deux points : tapez le départ sur une trace affichée, puis l'arrivée sur la même trace, et
-  la distance qui les sépare le long du parcours s'affiche entre les deux marqueurs. Inutile de
-  viser la ligne au pixel près : chaque tap est ramené sur la trace la plus proche, et un tap
-  au-delà d'un bout de trace se pose sur ce bout. Vous pouvez déplacer et zoomer la carte entre les
-  deux points, l'infobulle reste visible et se cale au plus près du milieu de la portion mesurée.
-  Sa croix efface la mesure.
-- **Relief** : activer l'ombrage de relief dans les réglages carte.
-- **Profil altimétrique** : zoomer sur une portion en choisissant un début et une fin
-  (jusqu'à trois niveaux), régler le lissage et l'échelle verticale (par exemple 1 cm = 100 m,
-  pour que la même pente occupe toujours la même hauteur).
-- **Personnalisation** : avatar, unités (métrique/impérial), mode d'ouverture du menu
-  (bouton ou balayage), tolérance de sélection tactile, position des infobulles.
+- **Import/export** : GPX, GeoJSON et KML/KMZ en import ; export GeoJSON ; les photos des waypoints GPX sont récupérées.
+- **Modifier une infobulle** : le crayon change le titre, le texte, le lien et les photos, ou supprime le point.
+- **Emporter une carte hors-ligne** : délimitez une zone, ou choisissez une trace pour son couloir, réglez le zoom, et les tuiles vont dans une couche.
+- **Fonds de carte** : gérez les fournisseurs de tuiles (URL, clé API) et créez des fonds composites dans les réglages.
+- **Fonds hors-ligne locaux** : importez un fichier `.mbtiles` pour l'utiliser sans connexion.
+- **Légende d'un fond** : certains fonds, comme les voies cyclables AF3V, déplient leur légende depuis un bouton de la carte.
+- **Chercher un lieu** : activez le géocodage dans **Réglages / Carte** ; les résultats mêlent l'importance du lieu et sa distance.
+- **Interroger un point** : un appui long hors d'un marqueur pose une épingle, donne l'adresse et propose deux mesures.
+- **Distance et durée jusqu'au point** : celles de l'itinéraire recommandé pour la discipline réglée dans *Réglages / Trajets* (Photon et Valhalla, ou vos instances).
+- **Déplacer une étape** : un tap sur une pastille numérotée propose *Définir comme arrivée* ou *Supprimer* ; un appui bref la saisit pour la déposer ailleurs.
+- **Prolonger un trajet** : un nouveau départ ou une nouvelle arrivée posés depuis la carte gardent l'ancien bout comme étape.
+- **Mesurer une portion de trace** : activez le bouton règle dans **Réglages / Carte**, puis tapez deux points sur une trace.
+- **Colorer suivant la pente** : désactivé par défaut, dans *Réglages / Trajets*, pour l'itinéraire sur la carte et son profil.
+- **Relief** : activez l'ombrage de relief dans les réglages carte.
+- **Profil altimétrique** : zoom sur une portion (trois niveaux), lissage et échelle verticale, par exemple 1 cm = 100 m.
+- **Envoi à une montre Garmin** : réglez la largeur du couloir, puis lancez la synchronisation depuis la montre.
+- **Personnalisation** : avatar, unités, ouverture du menu, tolérance tactile, position des infobulles, taille des textes.
 
 ## Données & Confidentialité
 
