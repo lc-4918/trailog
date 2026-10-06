@@ -632,13 +632,43 @@ class RoutePlannerState {
      *   c'est demander a s'y rendre, et cela part d'ou l'on se tient - laisser le depart vide obligeait a
      *   deplier la bande et a le remplir a la main pour obtenir le trajet qu'on venait de demander.
      */
+    /**
+     * Comme [setEnd], a l'autre bout : sur un trajet deja compose, l'ancien depart devient la PREMIERE etape
+     * intermediaire, derriere le nouveau depart.
+     */
     fun setStart(place: GeocodePlace, completeFromCurrentPosition: Boolean = false) {
-        choose(steps.first(), StepTarget.Place(place))
+        val first = steps.first()
+        val oldStart = first.target
+        val extendsRoute = oldStart != null && steps.last().target != null && steps.size > 1 &&
+            (oldStart as? StepTarget.Place)?.place?.let { it.lon == place.lon && it.lat == place.lat } != true
+        if (extendsRoute && canAddStep) {
+            val demoted = PlannerStep(nextId++)
+            steps.add(1, demoted)
+            choose(demoted, oldStart!!)
+            demoted.pickedOnMap = first.pickedOnMap
+        }
+        choose(first, StepTarget.Place(place))
         if (completeFromCurrentPosition) useCurrentPosition(steps.last())
     }
 
+    /**
+     * **Sur un trajet deja compose, l'ancienne arrivee ne disparait pas : elle devient la derniere etape
+     * intermediaire.** Designer un nouveau bout "plus loin" prolonge le trajet, il ne l'efface pas - comme
+     * "Ajouter l'etape", qui garde tout. Remplacer ne vaut que sans trajet a prolonger : un depart vierge,
+     * une arrivee absente ou deja au meme endroit, ou un planificateur plein.
+     */
     fun setEnd(place: GeocodePlace, completeFromCurrentPosition: Boolean = false) {
-        choose(steps.last(), StepTarget.Place(place))
+        val last = steps.last()
+        val oldEnd = last.target
+        val extendsRoute = oldEnd != null && steps.first().target != null && steps.size > 1 &&
+            (oldEnd as? StepTarget.Place)?.place?.let { it.lon == place.lon && it.lat == place.lat } != true
+        if (extendsRoute && canAddStep) {
+            val demoted = PlannerStep(nextId++)
+            steps.add(steps.size - 1, demoted)
+            choose(demoted, oldEnd!!)
+            demoted.pickedOnMap = last.pickedOnMap
+        }
+        choose(last, StepTarget.Place(place))
         if (completeFromCurrentPosition) useCurrentPosition(steps.first())
     }
 

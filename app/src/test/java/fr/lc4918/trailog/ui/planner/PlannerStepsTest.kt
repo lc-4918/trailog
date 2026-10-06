@@ -739,4 +739,42 @@ class PlannerStepsTest {
         etat.close()
         assertFalse(etat.pickingOnMap)
     }
+
+    /** Sur un trajet compose, une nouvelle arrivee prolonge : l'ancienne devient la derniere etape. */
+    @Test fun `une nouvelle arrivee fait de l'ancienne la derniere etape intermediaire`() {
+        val etat = RoutePlannerState().apply { openPlanner() }
+        etat.setStart(lieu("Revel"))
+        etat.setEnd(GeocodePlace("Malegoude", 1.5, 43.2))
+        etat.setEnd(GeocodePlace("La Cassaigne", 1.6, 43.3))
+        assertEquals(listOf("Revel", "Malegoude", "La Cassaigne"),
+            etat.steps.map { (it.target as StepTarget.Place).place.lines.first() })
+    }
+
+    /** Sans depart, il n'y a pas de trajet a prolonger : l'arrivee est simplement remplacee. */
+    @Test fun `sans depart une nouvelle arrivee remplace l'ancienne`() {
+        val etat = RoutePlannerState().apply { openPlanner() }
+        etat.setEnd(GeocodePlace("Malegoude", 1.5, 43.2))
+        etat.setEnd(GeocodePlace("La Cassaigne", 1.6, 43.3))
+        assertEquals(2, etat.steps.size)
+        assertEquals("La Cassaigne", (etat.steps.last().target as StepTarget.Place).place.lines.first())
+    }
+
+    /** Symetrique : sur un trajet compose, un nouveau depart fait de l'ancien la premiere etape. */
+    @Test fun `un nouveau depart fait de l'ancien la premiere etape intermediaire`() {
+        val etat = RoutePlannerState().apply { openPlanner() }
+        etat.setStart(GeocodePlace("Revel", 1.0, 43.0))
+        etat.setEnd(GeocodePlace("Malegoude", 1.5, 43.2))
+        etat.setStart(GeocodePlace("Soreze", 0.9, 42.9))
+        assertEquals(listOf("Soreze", "Revel", "Malegoude"),
+            etat.steps.map { (it.target as StepTarget.Place).place.lines.first() })
+    }
+
+    /** Sans arrivee, il n'y a pas de trajet a prolonger : le depart est simplement remplace. */
+    @Test fun `sans arrivee un nouveau depart remplace l'ancien`() {
+        val etat = RoutePlannerState().apply { openPlanner() }
+        etat.setStart(GeocodePlace("Revel", 1.0, 43.0))
+        etat.setStart(GeocodePlace("Soreze", 0.9, 42.9))
+        assertEquals(2, etat.steps.size)
+        assertEquals("Soreze", (etat.steps.first().target as StepTarget.Place).place.lines.first())
+    }
 }
