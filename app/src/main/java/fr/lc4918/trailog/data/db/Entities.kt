@@ -373,8 +373,9 @@ data class SettingsEntity(
     // grandit avec eux.
     val dashboardFontSizes: String = "",
     // Coloration par pente de l'itineraire calcule : son trace sur la carte ET l'aire de son profil, d'un
-    // seul interrupteur. Celle des traces se regle dans le menu de chaque couche.
-    val routeSlopeLine: Boolean = true,
+    // seul interrupteur. Celle des traces se regle dans le menu de chaque couche. Eteinte par defaut : un
+    // itineraire se lit d'abord comme un trait uni, la pente se demande.
+    val routeSlopeLine: Boolean = false,
     // Ne sont plus lues, colonnes gardees comme profileSlope : le profil de l'itineraire suit
     // routeSlopeLine, et les classes de pente gardent leur largeur par defaut (SlopeRamp.DefaultClassTenths).
     val routeSlopeProfile: Boolean = true,

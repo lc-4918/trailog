@@ -277,7 +277,7 @@ class RoutePlannerBandUiTest {
      */
     @Test fun `le i de la legende suit le profil, de la ligne d'ajout a celle du profil`() {
         val state = calcule()
-        affiche(state)
+        affiche(state, SettingsEntity(routeSlopeLine = true))
         assertTrue(existe("planner_slope_legend_info"))
         assertTrue("pas de i sur la ligne du profil replie", !existe("slope_legend_info"))
         assertTrue(!existe("planner_slope_legend"))
