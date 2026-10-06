@@ -307,7 +307,9 @@ internal const val GeocodeMinZoom = 12.0
  * Posees AVANT ce qui occupe le bas, donc DESSOUS : la bande du planificateur, les consignes de saisie et
  * le profil les recouvrent au lieu de les pousser.
  *
- * @param dashboardOpen le tableau de bord est affiche : son bouton passe au bleu.
+ * @param dashboardOpen le tableau de bord est ouvert : son bouton passe au bleu.
+ * @param dashboardPanelShown le panneau du tableau de bord est a l'ecran : son bouton s'efface, le
+ *   panneau porte de quoi se ranger et se fermer. Il revient des que le panneau part.
  * @param alerting la trace suivie est perdue de vue : le bouton passe au rouge.
  * @param dashboardPx la hauteur du tableau de bord affiche : la colonne se pose au-dessus.
  */
@@ -323,6 +325,7 @@ internal fun BoxScope.MapBottomRightControls(
     routingUrl: String,
     dashboardEnabled: Boolean,
     dashboardOpen: Boolean,
+    dashboardPanelShown: Boolean,
     alerting: Boolean,
     dashboardPx: Int,
     /** Les categories de points d'interet retenues, et de quoi les changer : la bulle du bouton POI. */
@@ -502,7 +505,7 @@ internal fun BoxScope.MapBottomRightControls(
          * ouvert, rouge quand on s'est écarté de la trace suivie, cloche armée - la bannière du haut dit
          * alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
          */
-        if (dashboardEnabled) CoverableButton(coverTopPx) {
+        if (dashboardEnabled && !dashboardPanelShown) CoverableButton(coverTopPx) {
             IconButton(onClick = { onDashboardTap() }, modifier = chrome.buttonBackground) {
                 Icon(
                     Icons.Filled.Speed,

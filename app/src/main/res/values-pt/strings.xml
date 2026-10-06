@@ -674,7 +674,7 @@
     <string name="dash_set_descent">Desnível negativo</string>
     <string name="dash_reset">Repor</string>
     <!-- Titre du tableau de bord, en tete de ses compteurs. -->
-    <string name="dash_ride_title">Saída</string>
+    <string name="dash_title">Painel</string>
     <string name="dash_reset_title">Repor os contadores?</string>
     <string name="dash_reset_text">A distância, a duração e o desnível da saída voltam a zero.</string>
     <string name="settings_group_dashboard">Painel</string>

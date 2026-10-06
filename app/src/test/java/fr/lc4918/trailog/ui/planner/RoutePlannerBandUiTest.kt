@@ -12,6 +12,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -124,6 +126,29 @@ class RoutePlannerBandUiTest {
         val state = planificateurOuvert().apply { collapse(true) }
         affiche(state)
         compose.onNodeWithText(ctx.getString(R.string.planner_start)).assertDoesNotExist()
+    }
+
+    /** La poignee range la bande et garde le trajet, comme la croix. */
+    @Test fun `la poignee range la bande sans perdre le trajet`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNodeWithTag("planner_handle").performTouchInput { swipeDown(startY = top, endY = top + 300f) }
+        compose.waitForIdle()
+        assertTrue(state.collapsed)
+        assertTrue(state.open)
+        assertEquals(StepTarget.Place(grenoble), state.steps.first().target)
+    }
+
+    /** La croix, sur son rond gris, range elle aussi la bande. */
+    @Test fun `la croix de l'en-tete range la bande`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNode(
+            androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.action_close)),
+        ).performClick()
+        compose.waitForIdle()
+        assertTrue(state.collapsed)
+        assertTrue(state.open)
     }
 
     /**

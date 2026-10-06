@@ -15,6 +15,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -23,6 +25,7 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.location.LocationHub
+import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.components.MapSurface
@@ -110,7 +113,11 @@ class MainScreenUiTest {
     }
 
     /** Le concentrateur est un objet de processus : chaque test repart de l'etat eteint. */
-    @Before fun suiviEteint() { LocationHub.stopRequestedByUser() }
+    @Before fun suiviEteint() {
+        LocationHub.stopRequestedByUser()
+        // Objet de processus lui aussi : un tableau de bord laisse ouvert par un test ne passe pas au suivant.
+        TrackWatch.setDashboard(false)
+    }
 
     private fun ecran() {
         compose.setContent { MaterialTheme { MainScreen(onSettings = {}, map = surface) } }
@@ -521,6 +528,38 @@ class MainScreenUiTest {
         assertFalse("la bande s'est rangee", texteBrut("Mire"))
         compose.onNodeWithContentDescription(libelle(R.string.planner_title)).performClick()
         attend { texteBrut("Mire") }
+    }
+
+    private fun panneauDuTableauDeBord() =
+        compose.onAllNodesWithTag("dashboard").fetchSemanticsNodes().isNotEmpty()
+
+    /**
+     * **Le bouton du tableau de bord s'efface sous son panneau**, et revient des que le panneau part -
+     * range par sa poignee comme ferme par sa croix. Le panneau porte de quoi se ranger et se fermer : le
+     * bouton ne ferait que doublon.
+     */
+    @Test fun `le bouton du tableau de bord s'efface tant que son panneau est la`() {
+        reglages { it.copy(offTrackAlertEnabled = true, showGpsButton = true) }
+        ecran()
+        attend { affiche(R.string.content_desc_dashboard) }
+
+        compose.onNodeWithContentDescription(libelle(R.string.content_desc_dashboard)).performClick()
+        attend { panneauDuTableauDeBord() }
+        assertFalse("le bouton s'efface sous le panneau", affiche(R.string.content_desc_dashboard))
+
+        // Range par sa poignee : le bouton revient, et le ramene.
+        compose.onNodeWithTag("dashboard_handle").performClick()
+        attend { affiche(R.string.content_desc_dashboard) }
+        assertFalse(panneauDuTableauDeBord())
+        compose.onNodeWithContentDescription(libelle(R.string.content_desc_dashboard)).performClick()
+        attend { panneauDuTableauDeBord() }
+        assertFalse(affiche(R.string.content_desc_dashboard))
+
+        // Ferme par sa croix : le bouton revient aussi.
+        compose.onNodeWithTag("dashboard_close").performClick()
+        attend { affiche(R.string.content_desc_dashboard) }
+        assertFalse(panneauDuTableauDeBord())
+        assertFalse(TrackWatch.dashboard.value)
     }
 
     /** "Reinitialiser" est le seul geste qui efface : la feuille redevient vierge, et la bande reste

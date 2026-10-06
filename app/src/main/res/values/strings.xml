@@ -676,7 +676,7 @@
     <string name="dash_set_descent">Dénivelé négatif</string>
     <string name="dash_reset">Réinitialiser</string>
     <!-- Titre du tableau de bord, en tete de ses compteurs. -->
-    <string name="dash_ride_title">Sortie</string>
+    <string name="dash_title">Tableau de bord</string>
     <string name="dash_reset_title">Réinitialiser les compteurs ?</string>
     <string name="dash_reset_text">La distance, la durée et le dénivelé de la sortie repartent de zéro.</string>
     <string name="settings_group_dashboard">Tableau de bord</string>

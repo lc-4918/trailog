@@ -674,7 +674,7 @@
     <string name="dash_set_descent">Dislivello negativo</string>
     <string name="dash_reset">Azzera</string>
     <!-- Titre du tableau de bord, en tete de ses compteurs. -->
-    <string name="dash_ride_title">Uscita</string>
+    <string name="dash_title">Cruscotto</string>
     <string name="dash_reset_title">Azzerare i contatori?</string>
     <string name="dash_reset_text">Distanza, durata e dislivello dell\'uscita ripartono da zero.</string>
     <string name="settings_group_dashboard">Cruscotto</string>

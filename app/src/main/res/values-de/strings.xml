@@ -674,7 +674,7 @@
     <string name="dash_set_descent">Gesamtabstieg</string>
     <string name="dash_reset">Zurücksetzen</string>
     <!-- Titre du tableau de bord, en tete de ses compteurs. -->
-    <string name="dash_ride_title">Tour</string>
+    <string name="dash_title">Dashboard</string>
     <string name="dash_reset_title">Zähler zurücksetzen?</string>
     <string name="dash_reset_text">Strecke, Dauer und Höhenmeter der Tour beginnen wieder bei null.</string>
     <string name="settings_group_dashboard">Dashboard</string>

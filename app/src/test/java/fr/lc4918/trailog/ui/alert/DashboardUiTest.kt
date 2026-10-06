@@ -11,6 +11,10 @@ import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.domain.geo.Format
@@ -46,11 +50,13 @@ class DashboardUiTest {
         hidden: Set<DashboardField> = emptySet(),
         onBell: () -> Unit = {},
         onReset: () -> Unit = {},
+        onCollapse: () -> Unit = {},
+        onClose: () -> Unit = {},
     ) = compose.setContent {
         Dashboard(
             trip = trip, speedMps = 2.5f, progress = progress, trackName = trackName, armed = armed,
             alerting = false, hidden = hidden, imperial = false,
-            onBell = onBell, onReset = onReset,
+            onBell = onBell, onReset = onReset, onCollapse = onCollapse, onClose = onClose,
         )
     }
 
@@ -111,6 +117,33 @@ class DashboardUiTest {
         // Le bouton porte le meme mot que la confirmation : c'est celle de la boite qu'on touche.
         compose.onNode(hasText(texte(R.string.dash_reset)) and hasAnyAncestor(isDialog())).performClick()
         assertEquals(1, remis)
+    }
+
+    /** La poignee range le panneau, au toucher comme tiree vers le bas ; elle ne le ferme pas. */
+    @Test fun `la poignee range le panneau sans le fermer`() {
+        var ranges = 0
+        var fermes = 0
+        tableau(onCollapse = { ranges++ }, onClose = { fermes++ })
+        compose.onNodeWithTag("dashboard_handle").performClick()
+        assertEquals(1, ranges)
+        compose.onNodeWithTag("dashboard_handle").performTouchInput { swipeDown(startY = top, endY = top + 300f) }
+        assertEquals(2, ranges)
+        assertEquals(0, fermes)
+    }
+
+    /** Un glissement vers le haut n'est pas un geste de rangement. */
+    @Test fun `la poignee tiree vers le haut ne range rien`() {
+        var ranges = 0
+        tableau(onCollapse = { ranges++ })
+        compose.onNodeWithTag("dashboard_handle").performTouchInput { swipeUp(startY = bottom, endY = bottom - 300f) }
+        assertEquals(0, ranges)
+    }
+
+    @Test fun `la croix ferme le tableau de bord`() {
+        var fermes = 0
+        tableau(onClose = { fermes++ })
+        compose.onNodeWithContentDescription(texte(R.string.action_close)).performClick()
+        assertEquals(1, fermes)
     }
 
     // ---------- Les champs masques, en base ----------
@@ -213,7 +246,7 @@ class DashboardUiTest {
                 trip = trip, speedMps = 2.5f, progress = null, trackName = null, armed = false,
                 alerting = false, hidden = emptySet(),
                 fontSizes = DashboardField.entries.associateWith { corps },
-                imperial = false, onBell = {}, onReset = {},
+                imperial = false, onBell = {}, onReset = {}, onCollapse = {}, onClose = {},
             )
         }
         val petit = compose.onNodeWithTag("dashboard").fetchSemanticsNode().size.height
@@ -255,7 +288,7 @@ class DashboardUiTest {
     /** Le titre "Sortie" coiffe les compteurs, et la remise a zero lui fait face. */
     @Test fun `le panneau porte son titre`() {
         tableau()
-        compose.onNodeWithText(texte(R.string.dash_ride_title)).assertIsDisplayed()
+        compose.onNodeWithText(texte(R.string.dash_title)).assertIsDisplayed()
         compose.onNodeWithTag("dashboard_reset").assertIsDisplayed()
     }
 }

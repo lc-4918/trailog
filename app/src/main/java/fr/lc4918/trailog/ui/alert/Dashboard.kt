@@ -60,6 +60,7 @@ import androidx.compose.foundation.clickable
 import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.Trip
 import fr.lc4918.trailog.ui.routes.MapChromeActive
+import fr.lc4918.trailog.ui.components.SheetTop
 
 /**
  * Un champ du tableau de bord : sa cle en base, son nom court (sur la carte) et son nom long (dans les
@@ -217,9 +218,11 @@ private const val PanelAlpha = 0.96f
  * presque opaque -, et des compteurs en tuiles teintees : il se lit d'un coup d'oeil, telephone sur le
  * guidon, sans que la carte dessous brouille les chiffres.
  *
- * - en tete, "Sortie", et face a lui la remise a zero des compteurs, qui demande confirmation - une
+ * - au-dessus, la poignee (cf. SheetHandle), qui le range : il s'efface de la carte, mais les compteurs
+ *   et le suivi de la trace continuent, et le bouton du tableau de bord le ramene tel quel ;
+ * - en tete, "Tableau de bord", et face a lui la remise a zero des compteurs, qui demande confirmation - une
  *   sortie effacee d'un doigt qui glisse ne se retrouve pas. Elle occupait auparavant une ligne a elle
- *   seule, au bas du panneau ;
+ *   seule, au bas du panneau. Puis la croix, qui ferme le tableau de bord pour de bon, comme son bouton ;
  * - une rangee pour la sortie : vitesse, distance, duree, D+, D- ;
  * - sur une trace reconnue (cf. `AutoFollow`), sous un filet : la cloche, le nom de la trace et son
  *   avancement - une barre et un pourcentage -, puis la rangee de ce qu'il en reste.
@@ -227,6 +230,8 @@ private const val PanelAlpha = 0.96f
  * @param progress l'avancement sur la trace suivie, null hors trace.
  * @param trackName le nom de la trace suivie, null hors trace.
  * @param fontSizes le corps de chaque compteur (cf. [DashboardField.fontSizes]) ; les libelles suivent.
+ * @param onCollapse la poignee : range le panneau sans fermer le tableau de bord.
+ * @param onClose la croix : ferme le tableau de bord.
  */
 @Composable
 fun Dashboard(
@@ -241,6 +246,8 @@ fun Dashboard(
     imperial: Boolean,
     onBell: () -> Unit,
     onReset: () -> Unit,
+    onCollapse: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var confirmReset by remember { mutableStateOf(false) }
@@ -255,14 +262,17 @@ fun Dashboard(
                 .shadow(8.dp, shape, clip = false)
                 .background(scheme.surface.copy(alpha = PanelAlpha), shape)
                 .navigationBarsPadding()
-                .padding(start = Spacing.m, end = Spacing.m, top = 6.dp, bottom = Spacing.l)
+                .padding(start = Spacing.m, end = Spacing.m, bottom = Spacing.l)
                 .testTag("dashboard"),
             verticalArrangement = Arrangement.spacedBy(Spacing.s),
         ) {
-            Row(Modifier.fillMaxWidth().height(40.dp).padding(start = Spacing.xs),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.dash_ride_title), style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            SheetTop(onCollapse = onCollapse, onClose = onClose, edgeGap = Spacing.m,
+                handleModifier = Modifier.testTag("dashboard_handle"),
+                closeModifier = Modifier.testTag("dashboard_close")) {
+                // Le style des titres d'ecran, ceux de la bibliotheque et des reglages.
+                Text(stringResource(R.string.dash_title), style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = Spacing.xs))
                 ResetButton(onClick = { confirmReset = true })
             }
             FieldRow(DashboardField.shown(hidden, onTrack = false), trip, speedMps, progress, imperial, fontSizes)
@@ -294,7 +304,7 @@ fun Dashboard(
 private fun ResetButton(onClick: () -> Unit) {
     val tint = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
-        Modifier.height(36.dp).clip(CircleShape).clickable(onClick = onClick)
+        Modifier.height(32.dp).clip(CircleShape).clickable(onClick = onClick)
             .padding(start = 10.dp, end = Spacing.m).testTag("dashboard_reset"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),

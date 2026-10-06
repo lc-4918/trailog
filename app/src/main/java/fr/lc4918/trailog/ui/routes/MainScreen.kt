@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -284,6 +285,12 @@ fun MainScreen(
     val alongM by TrackWatch.alongM.collectAsState()
     // Le tableau de bord : ouvert ou non, la cloche, le sens de parcours, et les compteurs de la sortie.
     val dashboardOpen by TrackWatch.dashboard.collectAsState()
+    /*
+     * Le tableau de bord range par sa poignee : ouvert - compteurs et suivi tournent toujours -, mais
+     * efface de la carte. Son bouton le ramene ; le fermer, d'ou que ce soit, oublie qu'il etait range.
+     */
+    var dashboardCollapsed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(dashboardOpen) { if (!dashboardOpen) dashboardCollapsed = false }
     val armed by TrackWatch.armed.collectAsState()
     val direction by TrackWatch.direction.collectAsState()
     val trip by TripWatch.trip.collectAsState()
@@ -409,6 +416,13 @@ fun MainScreen(
     location.recenterOnStart = settings.gpsRecenterOnStart
     // Le reglage "Afficher la derniere position mesuree" : lu ici, applique a l'arret du suivi.
     location.showLastFix = settings.gpsShowLastFix
+    /*
+     * Le panneau du tableau de bord est a l'ecran. Il s'efface tant que le bas est occupe - le profil, la
+     * bande deployee du planificateur, le viewer des voies, une consigne de saisie - ou qu'on l'a range
+     * par sa poignee. Son bouton, lui, ne se montre que panneau absent : il le ferait doublon.
+     */
+    val dashboardPanelShown = alertEnabled && dashboardOpen && !dashboardCollapsed && activeLayerId == null &&
+        !planner.expanded && !layerViewer.isOpen && insets.promptBarPx == 0
     // ---------- retouche des traces ----------
     val edit = screen.edit
     val canUndo by vm.canUndo.collectAsState()
@@ -1051,6 +1065,7 @@ fun MainScreen(
                     vm = vm,
                     routingUrl = routingUrl,
                     dashboardEnabled = alertEnabled,
+                    dashboardPanelShown = dashboardPanelShown,
                     dashboardOpen = dashboardOpen,
                     alerting = alerting,
                     dashboardPx = insets.dashboardPx,
@@ -1062,13 +1077,15 @@ fun MainScreen(
                     maxWidthPx = constraints.maxWidth,
                     maxHeightPx = constraints.maxHeight,
                     /*
-                     * Le bouton du tableau de bord l'ouvre et le ferme. L'ouvrir allume le capteur s'il
+                     * Le bouton du tableau de bord l'ouvre et le ferme - ou le ramene, s'il a ete range par sa
+                     * poignee : on le cherchait, pas a l'eteindre. L'ouvrir allume le capteur s'il
                      * dort - les compteurs n'ont que la position pour matiere -, et c'est la fermeture qui
                      * le rendra (cf. OffTrackAlertEffects). Le CAPTEUR du telephone coupe, on propose
                      * d'aller l'allumer.
                      */
                     onDashboardTap = {
-                        if (dashboardOpen) TrackWatch.setDashboard(false)
+                        if (dashboardOpen && dashboardCollapsed) dashboardCollapsed = false
+                        else if (dashboardOpen) TrackWatch.setDashboard(false)
                         else {
                             TrackWatch.setDashboard(true)
                             alert.onOpen(location.sensorEnabled)
@@ -1260,13 +1277,10 @@ fun MainScreen(
                     DisposableEffect(Unit) { onDispose { insets.offlineBarPx = 0 } }
                 }
                 /*
-                 * Le tableau de bord, en bas de la carte. Il s'efface tant que le bas est occupe - le
-                 * profil, la bande deployee du planificateur, une consigne de saisie - et revient ensuite ;
-                 * sa hauteur remonte l'echelle et les boutons du coin (cf. MapInsetsState.dashboardPx).
+                 * Le tableau de bord, en bas de la carte (cf. dashboardPanelShown) ; sa hauteur remonte
+                 * l'echelle et les boutons du coin (cf. MapInsetsState.dashboardPx).
                  */
-                if (alertEnabled && dashboardOpen && activeLayerId == null && !planner.expanded &&
-                    !layerViewer.isOpen && insets.promptBarPx == 0
-                ) {
+                if (dashboardPanelShown) {
                     val nomSuivi = followed?.let {
                         if (it.trackCount <= 1) it.layerName
                         else stringResource(R.string.alert_track_segment, it.layerName, it.trackIndex + 1, it.trackCount)
@@ -1288,6 +1302,8 @@ fun MainScreen(
                             TripWatch.reset()
                             scope.launch { TripStore.save(ctx, TripWatch.trip.value) }
                         },
+                        onCollapse = { dashboardCollapsed = true },
+                        onClose = { TrackWatch.setDashboard(false) },
                         modifier = Modifier.align(Alignment.BottomCenter)
                             .onGloballyPositioned { insets.dashboardPx = it.size.height },
                     )

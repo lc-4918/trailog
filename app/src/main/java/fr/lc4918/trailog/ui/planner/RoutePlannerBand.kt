@@ -106,6 +106,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.ui.components.SheetTop
 import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.routes.SlopeLegendInfo
@@ -210,7 +211,7 @@ fun RoutePlannerBand(
             // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
             // nouveau deborder la bande hors de l'ecran.
             Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
-                .padding(start = Spacing.l, end = Spacing.l, top = Spacing.s, bottom = Spacing.l),
+                .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l),
         ) {
             BandHeader(
                 recomputing = state.recomputing,
@@ -276,28 +277,24 @@ fun RoutePlannerBand(
  * rattrapait et l'autre non. La croix range desormais, comme le chevron qu'elle remplace, et le seul
  * bouton qui perd quelque chose le dit dans son libelle.
  *
- * Pas de poignee au-dessus du titre, comme en portent les feuilles qu'on tire : la bande ne se tire pas,
- * et une poignee promettrait un geste qui n'existe pas.
+ * Au-dessus du titre, la poignee (cf. SheetHandle) range la bande d'un toucher ou d'un glissement vers le
+ * bas : le geste des feuilles des applications de cartographie, que la main tente d'elle-meme. Elle range
+ * comme la croix : toutes deux gardent le trajet (cf. collapseOrClose).
  */
 @Composable
 private fun BandHeader(
     recomputing: Boolean,
     onClose: () -> Unit,
 ) {
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-        Row(Modifier.height(44.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.titleMedium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
-            // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
-            if (recomputing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            // Decale de sa marge interne : c'est le DESSIN de la croix qui s'aligne sur le bord des
-            // champs, non sa cible tactile.
-            IconButton(onClick = onClose, modifier = Modifier.offset(x = Spacing.s).size(40.dp)) {
-                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
+    // La croix s'aligne sur le bord des champs, et se tient aussi loin du haut de la bande.
+    SheetTop(onCollapse = onClose, onClose = onClose, edgeGap = Spacing.l,
+        handleModifier = Modifier.testTag("planner_handle")) {
+        // Le style des titres d'ecran, ceux de la bibliotheque et des reglages.
+        Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.titleLarge,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        // Le recalcul se signale ICI, dans une ligne de hauteur fixe, et non en remplacant la zone
+        // resultats : celle-ci porte le profil, et la bande se replierait a chaque changement d'etape.
+        if (recomputing) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
     }
 }
 
