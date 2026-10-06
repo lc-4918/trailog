@@ -14,6 +14,7 @@
     <string name="elevation_in_progress">Calcolo dell\'altimetria...</string>
     <string name="action_close_menu">Chiudi il menu</string>
     <string name="action_collapse">Comprimi</string>
+    <string name="action_refresh">Aggiorna</string>
     <string name="action_color">Colore</string>
     <string name="action_create">Crea</string>
     <string name="action_create_and_import">Crea e importa</string>

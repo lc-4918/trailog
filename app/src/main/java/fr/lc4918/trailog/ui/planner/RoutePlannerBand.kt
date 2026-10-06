@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -106,6 +107,7 @@ import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
+import fr.lc4918.trailog.ui.components.SheetRoundButton
 import fr.lc4918.trailog.ui.components.SheetTop
 import fr.lc4918.trailog.ui.components.swipeDownToCollapse
 import fr.lc4918.trailog.ui.components.tintedFieldColors
@@ -217,6 +219,8 @@ fun RoutePlannerBand(
         ) {
             BandHeader(
                 recomputing = state.recomputing,
+                canRefresh = state.usesCurrentPosition,
+                onRefresh = { state.refreshCurrentPosition() },
                 onClose = { state.collapseOrClose() },
             )
             ProfileAndActions(
@@ -286,11 +290,18 @@ fun RoutePlannerBand(
 @Composable
 private fun BandHeader(
     recomputing: Boolean,
+    canRefresh: Boolean,
+    onRefresh: () -> Unit,
     onClose: () -> Unit,
 ) {
     // La croix s'aligne sur le bord des champs, et se tient aussi loin du haut de la bande.
     SheetTop(onCollapse = onClose, onClose = onClose, edgeGap = Spacing.l,
-        handleModifier = Modifier.testTag("planner_handle")) {
+        handleModifier = Modifier.testTag("planner_handle"),
+        // Une etape sur la position actuelle : le parcours se refait d'ou l'on est maintenant.
+        extraAction = if (canRefresh) { {
+            SheetRoundButton(Icons.Filled.Refresh, stringResource(R.string.action_refresh), onRefresh,
+                Modifier.testTag("planner_refresh"))
+        } } else null) {
         // Le style des titres d'ecran, ceux de la bibliotheque et des reglages.
         Text(stringResource(R.string.planner_title), style = MaterialTheme.typography.titleLarge,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

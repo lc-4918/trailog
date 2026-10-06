@@ -149,6 +149,41 @@ class RoutePlannerBandUiTest {
         assertTrue(state.collapsed)
     }
 
+    /** Le bouton Actualiser n'apparait que si une etape est posee sur la position actuelle. */
+    @Test fun `le bouton actualiser suit la presence d'une etape en position actuelle`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNodeWithTag("planner_refresh").assertDoesNotExist()
+        state.choose(state.steps.last(), StepTarget.CurrentPosition)
+        compose.waitForIdle()
+        compose.onNodeWithTag("planner_refresh").assertIsDisplayed()
+    }
+
+    /** Actualiser relance le calcul : l'empreinte des entrees change. */
+    @Test fun `actualiser relance le calcul`() {
+        val state = planificateurOuvert().apply { setStart(grenoble); choose(steps.last(), StepTarget.CurrentPosition) }
+        affiche(state)
+        val before = state.revision
+        compose.onNodeWithTag("planner_refresh").performClick()
+        compose.waitForIdle()
+        assertTrue(state.revision > before)
+    }
+
+    /** Rouvrir la bande rangee refait le parcours qui part de la position actuelle, et lui seul. */
+    @Test fun `rouvrir la bande rafraichit un parcours en position actuelle`() {
+        val withPosition = planificateurOuvert().apply { setStart(grenoble); choose(steps.last(), StepTarget.CurrentPosition) }
+        val before = withPosition.revision
+        withPosition.collapse(true)
+        withPosition.collapse(false)
+        assertTrue(withPosition.revision > before)
+
+        val fixed = planificateurOuvert().apply { setStart(grenoble); setEnd(grenoble) }
+        val fixedBefore = fixed.revision
+        fixed.collapse(true)
+        fixed.collapse(false)
+        assertEquals(fixedBefore, fixed.revision)
+    }
+
     /** La croix, sur son rond gris, range elle aussi la bande. */
     @Test fun `la croix de l'en-tete range la bande`() {
         val state = planificateurOuvert().apply { setStart(grenoble) }

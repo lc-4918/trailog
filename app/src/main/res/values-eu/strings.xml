@@ -14,6 +14,7 @@
     <string name="elevation_in_progress">Altimetria kalkulatzen...</string>
     <string name="action_close_menu">Itxi menua</string>
     <string name="action_collapse">Bildu</string>
+    <string name="action_refresh">Eguneratu</string>
     <string name="action_color">Kolorea</string>
     <string name="action_create">Sortu</string>
     <string name="action_create_and_import">Sortu eta inportatu</string>

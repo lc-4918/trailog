@@ -390,8 +390,11 @@ class RoutePlannerState {
      * depuis une infobulle, ne doit rien ecraser.
      */
     fun openPlanner(fromCurrentPosition: Boolean = false) {
+        // Rouvrir une bande rangee : la position du porteur a bouge depuis (cf. [refreshCurrentPosition]).
+        val reopened = open && collapsed
         open = true
         collapsed = false
+        if (reopened) refreshCurrentPosition()
         if (fromCurrentPosition) startFromCurrentPosition()
     }
 
@@ -483,6 +486,9 @@ class RoutePlannerState {
      * carte remplissait une etape que plus rien n'annoncait.
      */
     fun collapse(v: Boolean) {
+        // Redeployer la bande rend un parcours a jour, sauf au retour d'un choix sur la carte : annuler ne
+        // doit rien recalculer.
+        if (!v && collapsed && pickingStep == null) refreshCurrentPosition()
         collapsed = v
         // Rangee, la bande emporte le VIEWER : la redeployer rend la bande complete, pas un panneau oublie.
         if (v) closeViewer()
@@ -763,6 +769,20 @@ class RoutePlannerState {
         step.addressPending = false
         step.untouched = true
         if (had) invalidate()
+    }
+
+    /**
+     * Refait le parcours depuis la position ACTUELLE du porteur, si une etape (depart, arrivee ou point
+     * intermediaire) est posee dessus ; sans effet sinon.
+     *
+     * **Une etape "position actuelle" ne se fige jamais** (cf. [adopt]) : elle est resolue au lancement du
+     * calcul. Mais rien ne relancait le calcul quand le porteur se deplacait, et le parcours rouvert
+     * montrait donc toujours le trajet d'avant. Ce geste bouge l'empreinte des entrees, ce qui suffit.
+     * Le parcours affiche reste en place jusqu'a l'arrivee du nouveau (cf. [recomputing]).
+     */
+    fun refreshCurrentPosition() {
+        if (!usesCurrentPosition) return
+        invalidate()
     }
 
     fun beginRecompute() { recomputing = true }

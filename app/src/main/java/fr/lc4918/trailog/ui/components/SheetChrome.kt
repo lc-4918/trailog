@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.ui.theme.Spacing
@@ -92,15 +94,19 @@ fun Modifier.swipeDownToCollapse(onCollapse: () -> Unit): Modifier = composed {
 
 /** La croix d'un panneau, sur un rond gris : elle se voit sans crier, et se touche sans viser. */
 @Composable
-fun SheetCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun SheetCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) =
+    SheetRoundButton(Icons.Filled.Close, stringResource(R.string.action_close), onClick, modifier)
+
+/** Un bouton d'icone sur rond gris, celui de la croix : les actions du coin d'un panneau lui ressemblent. */
+@Composable
+fun SheetRoundButton(icon: ImageVector, description: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier.size(SheetCloseSize).clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .clickable(role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(22.dp),
-            tint = MaterialTheme.colorScheme.onSurface)
+        Icon(icon, description, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -113,7 +119,8 @@ fun SheetCloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
  * du titre a la hauteur de la croix, et le titre se lit a son niveau.
  *
  * @param edgeGap la marge laterale du panneau, que la croix reprend au-dessus d'elle.
- * @param header la ligne du titre, qui s'arrete avant la croix.
+ * @param extraAction une action posee a gauche de la croix, ou null (cf. [SheetRoundButton]).
+ * @param header la ligne du titre, qui s'arrete avant les boutons.
  */
 @Composable
 fun SheetTop(
@@ -123,17 +130,21 @@ fun SheetTop(
     modifier: Modifier = Modifier,
     handleModifier: Modifier = Modifier,
     closeModifier: Modifier = Modifier,
+    extraAction: (@Composable () -> Unit)? = null,
     header: @Composable RowScope.() -> Unit,
 ) {
     Box(modifier.fillMaxWidth()) {
         Column {
             SheetHandle(onCollapse = onCollapse, height = edgeGap, modifier = handleModifier)
             Row(
-                Modifier.fillMaxWidth().height(SheetCloseSize).padding(end = SheetCloseSize + Spacing.s),
+                Modifier.fillMaxWidth().height(SheetCloseSize).padding(end = (SheetCloseSize + Spacing.s) * (if (extraAction != null) 2 else 1)),
                 verticalAlignment = Alignment.CenterVertically,
                 content = header,
             )
         }
-        SheetCloseButton(onClick = onClose, modifier = closeModifier.align(Alignment.TopEnd).padding(top = edgeGap))
+        Row(Modifier.align(Alignment.TopEnd).padding(top = edgeGap), horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            extraAction?.invoke()
+            SheetCloseButton(onClick = onClose, modifier = closeModifier)
+        }
     }
 }
