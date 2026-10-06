@@ -139,6 +139,16 @@ class RoutePlannerBandUiTest {
         assertEquals(StepTarget.Place(grenoble), state.steps.first().target)
     }
 
+    /** Le glissement n'a pas besoin de partir de la poignee : le titre, au corps de la bande, suffit. */
+    @Test fun `un glissement vers le bas depuis le corps de la bande la range`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNodeWithText(ctx.getString(R.string.planner_title))
+            .performTouchInput { swipeDown(startY = top, endY = top + 300f) }
+        compose.waitForIdle()
+        assertTrue(state.collapsed)
+    }
+
     /** La croix, sur son rond gris, range elle aussi la bande. */
     @Test fun `la croix de l'en-tete range la bande`() {
         val state = planificateurOuvert().apply { setStart(grenoble) }

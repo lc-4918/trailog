@@ -131,6 +131,14 @@ class DashboardUiTest {
         assertEquals(0, fermes)
     }
 
+    /** Le panneau entier se tire : un glissement parti du titre, hors de la poignee, le range aussi. */
+    @Test fun `un glissement vers le bas depuis le corps du panneau le range`() {
+        var ranges = 0
+        tableau(onCollapse = { ranges++ })
+        compose.onNodeWithText(texte(R.string.dash_title)).performTouchInput { swipeDown(startY = top, endY = top + 300f) }
+        assertEquals(1, ranges)
+    }
+
     /** Un glissement vers le haut n'est pas un geste de rangement. */
     @Test fun `la poignee tiree vers le haut ne range rien`() {
         var ranges = 0

@@ -107,6 +107,7 @@ import fr.lc4918.trailog.geocode.GeocodePlace
 import fr.lc4918.trailog.geocode.Photon
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.SheetTop
+import fr.lc4918.trailog.ui.components.swipeDownToCollapse
 import fr.lc4918.trailog.ui.components.tintedFieldColors
 import fr.lc4918.trailog.ui.profile.ElevationProfile
 import fr.lc4918.trailog.ui.routes.SlopeLegendInfo
@@ -211,6 +212,7 @@ fun RoutePlannerBand(
             // moins que [BandMinHeight], et une hauteur minimale superieure au maximum ferait a
             // nouveau deborder la bande hors de l'ecran.
             Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
+                .swipeDownToCollapse { state.collapseOrClose() }
                 .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l),
         ) {
             BandHeader(

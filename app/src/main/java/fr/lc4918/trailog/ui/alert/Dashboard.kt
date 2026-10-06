@@ -61,6 +61,7 @@ import fr.lc4918.trailog.domain.geo.Format
 import fr.lc4918.trailog.domain.geo.Trip
 import fr.lc4918.trailog.ui.routes.MapChromeActive
 import fr.lc4918.trailog.ui.components.SheetTop
+import fr.lc4918.trailog.ui.components.swipeDownToCollapse
 
 /**
  * Un champ du tableau de bord : sa cle en base, son nom court (sur la carte) et son nom long (dans les
@@ -261,6 +262,7 @@ fun Dashboard(
                 .fillMaxWidth()
                 .shadow(8.dp, shape, clip = false)
                 .background(scheme.surface.copy(alpha = PanelAlpha), shape)
+                .swipeDownToCollapse(onCollapse)
                 .navigationBarsPadding()
                 .padding(start = Spacing.m, end = Spacing.m, bottom = Spacing.l)
                 .testTag("dashboard"),

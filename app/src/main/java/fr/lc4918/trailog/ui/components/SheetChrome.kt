@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -52,16 +53,9 @@ private val SheetHandleCollapseDistance = 24.dp
 @Composable
 fun SheetHandle(onCollapse: () -> Unit, height: Dp, modifier: Modifier = Modifier) {
     val currentOnCollapse by rememberUpdatedState(onCollapse)
-    val collapseDistancePx = with(LocalDensity.current) { SheetHandleCollapseDistance.toPx() }
-    var draggedPx by remember { mutableFloatStateOf(0f) }
     Box(
         modifier.fillMaxWidth().height(height)
-            .draggable(
-                state = rememberDraggableState { delta -> draggedPx += delta },
-                orientation = Orientation.Vertical,
-                onDragStarted = { draggedPx = 0f },
-                onDragStopped = { if (draggedPx > collapseDistancePx) currentOnCollapse() },
-            )
+            .swipeDownToCollapse(onCollapse)
             // Sans ondulation : elle balaierait toute la largeur du panneau pour un trait de quelques dp.
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -75,6 +69,25 @@ fun SheetHandle(onCollapse: () -> Unit, height: Dp, modifier: Modifier = Modifie
         Box(Modifier.size(width = 36.dp, height = 4.dp).clip(CircleShape)
             .background(MaterialTheme.colorScheme.outlineVariant))
     }
+}
+
+/**
+ * Un glissement vers le bas, de n'importe ou sur l'element, le range : le panneau entier se tire, pas
+ * seulement sa poignee. Un glissement trop court, ou vers le haut, ne fait rien.
+ *
+ * Les enfants qui font defiler ou glisser (liste des etapes, profil) gardent leurs gestes : un
+ * glissement qu'ils consomment ne parvient pas jusqu'ici. Les touchers passent, eux, a leurs boutons.
+ */
+fun Modifier.swipeDownToCollapse(onCollapse: () -> Unit): Modifier = composed {
+    val currentOnCollapse by rememberUpdatedState(onCollapse)
+    val collapseDistancePx = with(LocalDensity.current) { SheetHandleCollapseDistance.toPx() }
+    var draggedPx by remember { mutableFloatStateOf(0f) }
+    draggable(
+        state = rememberDraggableState { delta -> draggedPx += delta },
+        orientation = Orientation.Vertical,
+        onDragStarted = { draggedPx = 0f },
+        onDragStopped = { if (draggedPx > collapseDistancePx) currentOnCollapse() },
+    )
 }
 
 /** La croix d'un panneau, sur un rond gris : elle se voit sans crier, et se touche sans viser. */
