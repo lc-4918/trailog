@@ -1,8 +1,9 @@
 <img src="images/social-preview.png" alt="Trailog - cartes et traces GPS, hors-ligne">
 
-# Trailog
-
-<img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24"> [<img src="../app/src/main/assets/flags/gb.svg" alt="English" width="24">](../README.md)
+<h1>Trailog
+<a href="../README.md"><img src="../app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right"></a>
+<img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right">
+</h1>
 
 **Cartographie et itinéraires hors-ligne pour Android.**
 
@@ -10,7 +11,7 @@
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lc-4918/trailog)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-5A4FCF)](https://deepwiki.com/lc-4918/trailog)
 
 Trailog est une application Android native pour consulter, importer et organiser des
 traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,

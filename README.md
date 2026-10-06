@@ -1,8 +1,9 @@
 <img src="docs/images/social-preview.png" alt="Trailog - offline maps and GPS tracks">
 
-# Trailog
-
-[<img src="app/src/main/assets/flags/fr.svg" alt="Français" width="24">](docs/README.fr.md) <img src="app/src/main/assets/flags/gb.svg" alt="English" width="24">
+<h1>Trailog
+<img src="app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right">
+<a href="docs/README.fr.md"><img src="app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right"></a>
+</h1>
 
 **Offline mapping and routes for Android.**
 
@@ -10,7 +11,7 @@
 [![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lc-4918/trailog)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-5A4FCF)](https://deepwiki.com/lc-4918/trailog)
 
 Trailog is a native Android application for viewing, importing and organising GPS tracks
 (hiking, cycling, mountain biking, exploring), on customisable basemaps, and built for
