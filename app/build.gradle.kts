@@ -170,6 +170,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+    // SQLite embarque, avec FTS5 : celui du systeme n'en est pas garanti, et l'index des lieux hors ligne
+    // (cf. geocode/offline) en depend.
+    implementation(libs.sqlite.bundled)
 
     implementation(libs.coroutines.android)
     implementation(libs.serialization.json)
@@ -192,6 +195,7 @@ dependencies {
 
     // --- Tests unitaires (JVM + Robolectric) ---
     testImplementation(libs.junit)
+    testImplementation(libs.sqlite.bundled.jvm)
     testImplementation(libs.robolectric)
     // Tests d'interface : les memes que sur un appareil, joues par Robolectric sur la JVM. Le choix est
     // explique dans TESTS.md - il tient a la CI, qui n'a pas d'emulateur, et a MapLibre, dont les

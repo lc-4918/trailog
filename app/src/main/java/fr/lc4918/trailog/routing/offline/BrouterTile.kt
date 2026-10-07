@@ -20,6 +20,9 @@ data class BrouterTile(val lon0: Int, val lat0: Int) {
 
     val fileName: String get() = "$name.rd5"
 
+    /** L'index des lieux du meme carre (cf. `geocode/offline`) : il voyage avec les donnees d'itineraire. */
+    val geocodeFileName: String get() = "$name$GEOCODE_SUFFIX"
+
     val bbox: Bbox get() = Bbox(
         west = lon0.toDouble(), south = lat0.toDouble(),
         east = (lon0 + SIZE).toDouble(), north = (lat0 + SIZE).toDouble(),
@@ -27,6 +30,7 @@ data class BrouterTile(val lon0: Int, val lat0: Int) {
 
     companion object {
         const val SIZE = 5
+        const val GEOCODE_SUFFIX = ".gc.sqlite"
 
         /** Le carre qui contient ce point. Le plancher, et non la troncature : a l'ouest de Greenwich,
          *  -2,4 degres est dans W5, pas dans E0. */

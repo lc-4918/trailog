@@ -495,7 +495,8 @@ cas nominal, jamais comme une exception.
 |---|---|---|---|
 | Tuiles (IGN, OSM, MapTiler...) | Fond de carte | oui, catalogue | Cache MapLibre, puis fond gris |
 | **BRouter** (défaut) ou **Valhalla** | Itinéraires | oui | `null` ; l'écran annonce l'échec |
-| **Photon** | Géocodage direct et inverse | oui | Deux tentatives, puis état `Failed` affiché |
+| **Photon** | Géocodage direct et inverse | oui | Deux tentatives, puis l'index de lieux du téléphone s'il y en a un, sinon état `Failed` affiché |
+| **Index de lieux** (carrés BRouter) | Recherche de lieux et adresse d'un point, sans réseau | non (`BrouterSegments.DEFAULT_GEOCODE_URL`) | Carré sans index : Photon seul, comme avant |
 | **DATAtourisme** | Points d'intérêt (France) | oui | Liste vide, cache pris en relais |
 | **Overpass** | Points d'intérêt (monde, et restauration en France) | oui | `null` distinct d'une liste vide, frein de 60 s |
 | **IGN** / **OpenTopography** | Altitudes manquantes à l'import | oui | Trace importée sans altitude |
@@ -1024,3 +1025,25 @@ Ce que l'architecture actuelle accueille sans réécriture, et ce qu'elle refuse
 | Synchronisation entre appareils | Toute la section 6 : un modèle sans identifiant stable ni horodatage de modification. |
 | Publication sur un store | AD-2 tient, mais C2 tombe, D5 devient bloquant, et `REQUEST_INSTALL_PACKAGES` doit disparaître. |
 | Modularisation Gradle | AD-3 devient intenable : un graphe multi-module demande une injection explicite. |
+
+## Recherche de lieux hors ligne
+
+Le calcul d'itinéraire sans réseau (BRouter embarqué, cf. `BrouterLocal`) ne suffit pas à planifier : il faut
+aussi pouvoir désigner les étapes. Chaque carré de cinq degrés de BRouter emporte donc, à son téléchargement,
+un **index des lieux** de ce carré : `E5_N45.gc.sqlite`, à côté de `E5_N45.rd5`.
+
+- **Fabrication** : `tools/geocode-index/build_index.py` lit un extrait OSM (`.osm.pbf`) et écrit un fichier
+  compressé par carré, plus un `index.txt`. Contenu : localités (villes, villages, hameaux, lieux-dits), relief,
+  eau, refuges, gares, cols **et rues nommées**. Pas de numéros de rue ni de commerces. Pour la France entière
+  (extrait du 6 octobre 2026) : 2,9 millions de lieux, dont 1,7 million de rues.
+- **Format** : SQLite. `places` (nom, genre, point en 1e-5 degré, commune, case de 0,01 degré), `localities`
+  (communes désignées), `name_fts` et `street_fts` (FTS5 sans contenu, prefixe), index sur la case pour le
+  géocodage inverse. Les identifiants vont par ordre d'importance : une table FTS rend ses lignes dans cet
+  ordre, donc s'arrêter aux N premières, c'est garder les villes avant les hameaux.
+- **SQLite embarqué** (`androidx.sqlite:sqlite-bundled`) : FTS5 n'est pas garanti dans celui du système.
+- **Téléchargement** : `BrouterDownloads.downloadTile` enchaîne, pour un carré, ses données d'itinéraire puis
+  son index (`BrouterSegments.downloadGeocode` : transfert compressé repris si interrompu, décompressé, nommé
+  une fois entier). Une seule barre, des octets décompressés. L'index est un plus : un carré dont l'index n'est
+  pas arrivé reste utilisable pour l'itinéraire, et est donné pour périmé jusqu'à ce qu'il arrive.
+- **Usage** : `PlaceSearch` interroge Photon quand le réseau est là, l'index (`OfflinePlaces`) sinon ou quand
+  Photon n'a pas répondu. Un carré est ouvert le temps d'une requête, jamais gardé ouvert.

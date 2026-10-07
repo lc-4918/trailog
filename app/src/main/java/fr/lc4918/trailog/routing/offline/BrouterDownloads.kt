@@ -134,11 +134,7 @@ class BrouterDownloads(
                 while (true) {
                     val tile = _state.value.queued.firstOrNull() ?: break
                     _state.update { it.copy(queued = it.queued.drop(1), current = Progress(tile, 0, 0)) }
-                    val d = scope.async {
-                        segments.download(tile) { recu, total ->
-                            _state.update { it.copy(current = Progress(tile, recu, total)) }
-                        }
-                    }
+                    val d = scope.async { downloadTile(tile) }
                     transfert = d
                     val ok: Boolean? = try {
                         d.await()
@@ -165,6 +161,41 @@ class BrouterDownloads(
                 }
             }
         }
+    }
+
+    /**
+     * Un carre, avec l'index de ses lieux : les donnees d'itineraire d'abord, puis de quoi chercher un lieu
+     * par son nom sans reseau (cf. `geocode/offline`). Les deux sont un seul telechargement pour qui le
+     * lance, et une seule barre.
+     *
+     * **Les donnees d'itineraire ne se refont pas pour rien** : le serveur connu, un carre a jour n'est pas
+     * retelecharge - c'est ce qui permet de rattraper un index de lieux manquant sans payer deux cent
+     * cinquante megaoctets de plus. Sans index du serveur, on retelecharge comme avant.
+     *
+     * **L'index est un plus** : qu'il n'arrive pas - serveur muet, reseau coupe a ce moment-la - ne fait pas
+     * echouer le carre, dont l'itineraire marche. Le carre est alors donne pour perime (cf.
+     * [BrouterSegments.outdated]) et la mise a jour reprend l'index seul.
+     */
+    private suspend fun downloadTile(tile: BrouterTile): Boolean {
+        val st = _state.value
+        val local = st.installed.firstOrNull { it.tile == tile }
+        val remote = st.remote?.get(tile)
+        val rd5Needed = local == null || remote == null || BrouterSegments.rd5Outdated(local, remote) || !segments.has(tile)
+        var ok = true
+        if (rd5Needed) {
+            ok = segments.download(tile) { recu, total ->
+                _state.update { it.copy(current = Progress(tile, recu, total + (remote?.geocode?.rawBytes ?: 0L))) }
+            }
+        }
+        if (!ok) return false
+        val rd5Size = java.io.File(segments.dir, tile.fileName).length()
+        val geocode = remote?.geocode ?: segments.geocodeIndex()[tile]
+        if (geocode != null) {
+            segments.downloadGeocode(tile, geocode) { recu, total ->
+                _state.update { it.copy(current = Progress(tile, rd5Size + recu, rd5Size + total)) }
+            }
+        }
+        return true
     }
 
     /** Relit ce qui est sur le telephone - apres une suppression, ou un depot a la main. */
@@ -251,6 +282,7 @@ class BrouterDownloads(
             if (!BrouterStorage.writable(target)) return@withContext false
             val fichiers = source.listFiles().orEmpty().filter {
                 it.isFile && (it.name.endsWith(".rd5") || it.name.endsWith(".rd5.part") ||
+                    it.name.endsWith(BrouterTile.GEOCODE_SUFFIX) || it.name.contains(BrouterTile.GEOCODE_SUFFIX + ".") ||
                     it.name == "zones.txt" || it.name == "pending.txt")
             }
             for (f in fichiers) {

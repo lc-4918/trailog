@@ -27,7 +27,7 @@ class BrouterDownloadsTest {
 
     private fun poser(zone: BrouterZone) = zone.tiles.forEach { File(dir, it.fileName).writeBytes(ByteArray(8)) }
 
-    private fun file() = BrouterDownloads(BrouterSegments(dir, "http://127.0.0.1:1/"), scope)
+    private fun file() = BrouterDownloads(BrouterSegments(dir, "http://127.0.0.1:1/", "http://127.0.0.1:1/"), scope)
 
     /** Apres la France, les Pyrenees - deux carres francais - sont la sans rien telecharger. */
     @Test fun `une zone dont tous les carres sont la entre dans la liste`() {
@@ -69,7 +69,7 @@ class BrouterDownloadsTest {
         File(dir, "E5_N45.rd5.part").writeBytes(ByteArray(3))
         val cible = Files.createTempDirectory("ailleurs").toFile()
         var courant = dir
-        val f = BrouterDownloads(BrouterSegments({ courant }, "http://127.0.0.1:1/"), scope)
+        val f = BrouterDownloads(BrouterSegments({ courant }, "http://127.0.0.1:1/", "http://127.0.0.1:1/"), scope)
         assertTrue(f.moveTo(cible) { courant = cible })
         assertEquals(setOf("W5_N40.rd5", "E0_N40.rd5", "E5_N45.rd5.part", "zones.txt"),
             cible.listFiles()!!.map { it.name }.toSet())

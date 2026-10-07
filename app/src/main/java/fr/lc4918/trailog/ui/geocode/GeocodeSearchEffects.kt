@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.data.db.SettingsEntity
+import fr.lc4918.trailog.geocode.PlaceSearch
 import fr.lc4918.trailog.geocode.Photon
 import kotlinx.coroutines.delay
 
@@ -36,8 +37,8 @@ fun GeocodeSearchEffects(
         // barre de recherche de la carte n'a pas de place pour un message.
         val base = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         val lang = ctx.resources.configuration.locales[0].language
-        geo.results = (Photon.search(base, q, lang, resultLimit, center)
-            ?: Photon.search(base, q, lang, resultLimit, center)).orEmpty()
+        geo.results = (PlaceSearch.search(ctx, base, q, lang, resultLimit, center)
+            ?: PlaceSearch.search(ctx, base, q, lang, resultLimit, center)).orEmpty()
         geo.searching = false
     }
     // Le géocodage désactivé dans les réglages alors qu'une recherche est en cours efface tout : sans cela

@@ -16,7 +16,7 @@ import fr.lc4918.trailog.domain.model.WayKind
 import fr.lc4918.trailog.domain.model.ComputedTrack
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
-import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.geocode.PlaceSearch
 import fr.lc4918.trailog.routing.RouteOutcome
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.components.MapController
@@ -89,8 +89,8 @@ fun PlannerEffects(
                 if (!step.addressPending) return@LaunchedEffect
                 val (lon, lat) = point
                 val lang = ctx.resources.configuration.locales[0].language
-                val r = Photon.reverse(geocodingBase, lon, lat, lang)
-                    ?: Photon.reverse(geocodingBase, lon, lat, lang)
+                val r = PlaceSearch.reverse(ctx, geocodingBase, lon, lat, lang)
+                    ?: PlaceSearch.reverse(ctx, geocodingBase, lon, lat, lang)
                 // L'etape a pu changer de point pendant l'appel : l'adresse d'alors ne la nomme plus.
                 if (step.pickedOnMap != point) return@LaunchedEffect
                 state.nameMapPoint(step, r?.firstOrNull()?.lines)

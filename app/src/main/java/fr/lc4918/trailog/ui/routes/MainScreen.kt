@@ -69,6 +69,7 @@ import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.geocode.offline.OfflinePlaces
 import fr.lc4918.trailog.location.LocationHub
 import fr.lc4918.trailog.location.TrackWatch
 import fr.lc4918.trailog.location.TripStore
@@ -553,7 +554,8 @@ fun MainScreen(
         val base = settings.geocodingUrl.takeIf { it.isNotBlank() } ?: Photon.DEFAULT_URL
         when {
             geo.searchOpen -> geo.closeSearch()
-            ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) -> dialogs.noConnection = true
+            ServiceUrl.needsInternet(base) && !NetworkStatus.hasInternet(ctx) && !OfflinePlaces.of(ctx).available() ->
+                dialogs.noConnection = true
             else -> geo.openSearch()
         }
     }

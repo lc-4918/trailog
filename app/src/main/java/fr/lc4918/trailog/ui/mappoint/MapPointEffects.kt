@@ -8,7 +8,7 @@ import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
-import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.geocode.PlaceSearch
 import fr.lc4918.trailog.routing.Router
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,7 +46,8 @@ fun MapPointEffects(
         val (lon, lat) = state.point ?: return@LaunchedEffect
         state.publishAddress(AddressState.Loading)
         val lang = ctx.resources.configuration.locales[0].language
-        val r = Photon.reverse(geocodingBase, lon, lat, lang) ?: Photon.reverse(geocodingBase, lon, lat, lang)
+        val r = PlaceSearch.reverse(ctx, geocodingBase, lon, lat, lang)
+            ?: PlaceSearch.reverse(ctx, geocodingBase, lon, lat, lang)
         val adresse = r?.firstOrNull()
         state.publishAddress(when {
             r == null -> AddressState.Failed

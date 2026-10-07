@@ -94,6 +94,51 @@ class BrouterSegmentsTest {
         assertFalse("sans index, on ne sait pas", BrouterSegments.outdated(vieux, null))
     }
 
+    // ---------- L'index des lieux ----------
+
+    @Test fun `l'index des lieux donne pour chaque carre ses tailles et sa date`() {
+        val index = BrouterSegments.parseGeocodeIndex(
+            "E5_N45 11820 57344 1791359138373\nW10_N45 100 400 1791359138373\nn'importe quoi\nE5_N45 x 2 3\n\n"
+        )
+        assertEquals(2, index.size)
+        assertEquals(BrouterSegments.GeocodeRemote(11820, 57344, 1791359138373L), index.getValue(BrouterTile(5, 45)))
+        assertEquals(400L, index.getValue(BrouterTile(-10, 45)).rawBytes)
+    }
+
+    @Test fun `un index sans taille n'est pas retenu`() {
+        assertTrue(BrouterSegments.parseGeocodeIndex("E5_N45 0 0 1\nE5_N45 5 -1 1").isEmpty())
+    }
+
+    /** Un carre a jour mais sans index de lieux, alors que le serveur en a un : a mettre a jour. */
+    @Test fun `un index de lieux manquant rend le carre perime sans toucher aux donnees d'itineraire`() {
+        val tile = BrouterTile(5, 45)
+        val remote = BrouterSegments.Remote(tile, 300, 1_000_000L, BrouterSegments.GeocodeRemote(10, 50, 1_000_000L))
+        val without = BrouterSegments.Installed(tile, 250, 1_000_000L, hasGeocode = false)
+        assertTrue(BrouterSegments.outdated(without, remote))
+        assertFalse("les donnees d'itineraire, elles, sont a jour", BrouterSegments.rd5Outdated(without, remote))
+        assertFalse(BrouterSegments.outdated(without.copy(hasGeocode = true), remote))
+        assertFalse("rien de publie : rien a rattraper", BrouterSegments.outdated(without, remote.copy(geocode = null)))
+    }
+
+    @Test fun `un carre installe pese ses donnees et son index de lieux`() {
+        File(dir, "E5_N45.rd5").writeBytes(ByteArray(100))
+        File(dir, "E5_N45.gc.sqlite").writeBytes(ByteArray(40))
+        File(dir, "W5_N45.rd5").writeBytes(ByteArray(7))
+        val installed = segments().installed().associateBy { it.tile }
+        assertEquals(140L, installed.getValue(BrouterTile(5, 45)).bytes)
+        assertTrue(installed.getValue(BrouterTile(5, 45)).hasGeocode)
+        assertEquals(7L, installed.getValue(BrouterTile(-5, 45)).bytes)
+        assertFalse(installed.getValue(BrouterTile(-5, 45)).hasGeocode)
+    }
+
+    /** Supprimer un carre emporte l'index de ses lieux, et ses debuts de transfert. */
+    @Test fun `supprimer un carre retire aussi l'index de ses lieux`() {
+        listOf("E5_N45.rd5", "E5_N45.gc.sqlite", "E5_N45.gc.sqlite.gz.part", "E5_N45.gc.sqlite.part", "E0_N45.gc.sqlite")
+            .forEach { File(dir, it).writeBytes(ByteArray(3)) }
+        segments().delete(BrouterTile(5, 45))
+        assertEquals(listOf("E0_N45.gc.sqlite"), dir.listFiles()!!.map { it.name })
+    }
+
     // ---------- Le transfert ----------
 
     private lateinit var serveur: ServerSocket

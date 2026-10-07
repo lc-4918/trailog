@@ -105,7 +105,7 @@ import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.GeocodePlace
-import fr.lc4918.trailog.geocode.Photon
+import fr.lc4918.trailog.geocode.PlaceSearch
 import fr.lc4918.trailog.ui.components.CompactOutlinedTextField
 import fr.lc4918.trailog.ui.components.SheetRoundButton
 import fr.lc4918.trailog.ui.components.SheetTop
@@ -615,6 +615,7 @@ private fun StepRow(
     fun settle() { keyboard?.hide(); focusManager.clearFocus() }
     // Interrogation du geocodeur, une frappe stabilisee - meme delai et meme seuil que la recherche de
     // lieu de la carte : c'est le meme service, et il refuserait une requete par lettre.
+    val ctx = LocalContext.current
     LaunchedEffect(step.query, step.target, step.retry) {
         val q = step.query.trim()
         if (step.target != null || q.length < 3) {
@@ -625,10 +626,10 @@ private fun StepRow(
         delay(350)
         // Une seconde tentative avant d'abandonner : le premier appel paie l'ouverture de la liaison et
         // echoue parfois au delai, la ou le suivant, sur connexion deja etablie, repond aussitot.
-        var found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
+        var found = PlaceSearch.search(ctx, geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
         if (found == null) {
             delay(300)
-            found = Photon.search(geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
+            found = PlaceSearch.search(ctx, geocoding.base, q, geocoding.lang, geocoding.limit, geocoding.center)
         }
         step.results = found ?: emptyList()
         step.failed = found == null
