@@ -9,7 +9,7 @@ qu'une zone d'itineraire telechargee emporte avec elle de quoi chercher ses lieu
   index.txt             une ligne par carre : nom, octets compresses, octets decompresses, date (ms)
 
 Chaque base porte :
-  localities(id, name)                               les communes que les lieux designent
+  localities(id, name)                               le contexte d'un lieu : `commune, departement`
   places(id, name, kind, lat, lon, locality, cell)   lat/lon en 1e-5 degre (entiers)
   name_fts, street_fts                               FTS5 sans contenu (lieux ; rues), recherche par prefixe
   index sur cell                                     geocodage inverse (cases de 0,01 degre)
@@ -135,6 +135,113 @@ def collect(path):
     return records
 
 
+def load_boundaries(path):
+    """
+    Les communes (admin_level 8) et departements (admin_level 6) de l'extrait, en polygones.
+
+    Deux passages, sans la creation d'aires d'osmium - qui produirait un polygone par batiment : on lit
+    d'abord les relations `boundary=administrative` de ces deux niveaux et leurs voies "outer", puis les
+    voies elles-memes, dont on ferme les anneaux (shapely.polygonize). Rend (communes, departements), chacun
+    une liste de (nom, polygone) ; une relation qui ne se ferme pas - frontiere coupee par l'extrait - est
+    comptee et ecartee.
+    """
+    import shapely
+    from shapely.geometry import LineString, MultiPolygon, Polygon
+    from shapely.ops import polygonize, unary_union
+
+    relations = {}      # id -> (niveau, nom, [ids de voies])
+    wanted_ways = set()
+    start = time.time()
+    for rel in osmium.FileProcessor(path, osmium.osm.RELATION).with_filter(
+            osmium.filter.TagFilter(("boundary", "administrative"))):
+        level = rel.tags.get("admin_level")
+        name = rel.tags.get("name")
+        if level not in ("6", "8") or not name:
+            continue
+        ways = [m.ref for m in rel.members if m.type == "w" and m.role in ("outer", "")]
+        relations[rel.id] = (int(level), name, ways)
+        wanted_ways.update(ways)
+    print(f"  {len(relations)} limites, {len(wanted_ways)} voies a lire, {time.time() - start:.0f} s", file=sys.stderr)
+
+    lines = {}
+    fp = (osmium.FileProcessor(path, osmium.osm.NODE | osmium.osm.WAY)
+          .with_filter(osmium.filter.IdFilter(wanted_ways))
+          .with_locations("sparse_file_array," + path + ".nodecache2"))
+    for obj in fp:
+        if not obj.is_way():
+            continue       # un noeud de meme identifiant qu'une voie voulue
+        try:
+            lines[obj.id] = [(n.location.lon, n.location.lat) for n in obj.nodes]
+        except osmium.InvalidLocationError:
+            pass
+    try:
+        os.remove(path + ".nodecache2")
+    except OSError:
+        pass
+    print(f"  {len(lines)} voies lues, {time.time() - start:.0f} s", file=sys.stderr)
+
+    communes, departments, broken = [], [], 0
+    for level, name, way_ids in relations.values():
+        parts = [LineString(lines[w]) for w in way_ids if w in lines and len(lines[w]) >= 2]
+        polygons = list(polygonize(unary_union(parts))) if parts else []
+        if not polygons:
+            broken += 1
+            continue
+        geometry = unary_union(polygons)
+        (communes if level == 8 else departments).append((name, geometry))
+    print(f"  {len(communes)} communes, {len(departments)} departements, {broken} limites ouvertes ecartees",
+          file=sys.stderr)
+    return communes, departments
+
+
+def assign_contexts(records, communes, departments):
+    """
+    Pour chaque enregistrement, le contexte qui le distingue : `commune, departement` - ou le seul
+    departement quand le lieu EST la commune. Deux "Saint-Felix" ne se lisent autrement pas.
+
+    None quand aucune commune ne contient le point (hors de l'extrait, en mer) : l'appelant retombe alors sur
+    la localite la plus proche.
+    """
+    import numpy as np
+    import shapely
+    from shapely import STRtree
+
+    commune_tree = STRtree([g for _, g in communes])
+    department_tree = STRtree([g for _, g in departments])
+    # Le departement d'une commune : celui qui contient un point de son interieur.
+    dept_of_commune = []
+    for _, geometry in communes:
+        hit = department_tree.query(geometry.representative_point(), predicate="within")
+        dept_of_commune.append(departments[hit[0]][0] if len(hit) else None)
+
+    points = shapely.points(np.array([[r[3], r[2]] for r in records]))
+    point_idx, commune_idx = commune_tree.query(points, predicate="within")
+    commune_of = {}
+    for p, c in zip(point_idx.tolist(), commune_idx.tolist()):
+        commune_of.setdefault(p, c)         # recouvrements : la premiere suffit
+    print(f"  {len(commune_of)} lieux sur {len(records)} places dans une commune", file=sys.stderr)
+
+    contexts = []
+    for i, (name, kind, lat, lon) in enumerate(records):
+        c = commune_of.get(i)
+        if c is None:
+            contexts.append(None)
+            continue
+        commune, dept = communes[c][0], dept_of_commune[c]
+        parts = []
+        if fold(commune) != fold(name):
+            parts.append(commune)
+        if dept and fold(dept) != fold(name):
+            parts.append(dept)
+        contexts.append(", ".join(parts) or None)
+    return contexts
+
+
+def fold(text):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)).lower().strip()
+
+
 def assign_localities(records):
     """Pour chaque enregistrement, l'indice de la localite la plus proche (ville, village, hameau)."""
     grid = defaultdict(list)
@@ -180,8 +287,8 @@ def cell_of(ilat, ilon):
     return (ilat // 1000) * 100_000 + (ilon // 1000) + 20_000
 
 
-def write_tile_db(path, records, indices, localities):
-    """Une base par carre : les lieux de ce carre, et les noms des localites qu'ils designent."""
+def write_tile_db(path, records, indices, contexts):
+    """Une base par carre : les lieux de ce carre, et le contexte (commune, departement) de chacun."""
     if os.path.exists(path):
         os.remove(path)
     db = sqlite3.connect(path)
@@ -206,16 +313,16 @@ def write_tile_db(path, records, indices, localities):
     indices = sorted(indices, key=lambda i: (TIER[records[i][1]], len(records[i][0]), records[i][0]))
     for n, old in enumerate(indices, start=1):
         name, kind, lat, lon = records[old]
-        loc = localities[old]
+        context = contexts[old]
         loc_id = None
-        if loc is not None:
-            loc_id = local_ids.get(loc)
+        if context is not None:
+            loc_id = local_ids.get(context)
             if loc_id is None:
-                loc_id = local_ids[loc] = len(local_ids) + 1
+                loc_id = local_ids[context] = len(local_ids) + 1
         ilat, ilon = round(lat * 1e5), round(lon * 1e5)
         rows.append((n, name, KIND[kind], ilat, ilon, loc_id, cell_of(ilat, ilon)))
         (street_fts if kind == "street" else fts).append((n, name))
-    db.executemany("INSERT INTO localities VALUES (?,?)", [(i, records[j][0]) for j, i in local_ids.items()])
+    db.executemany("INSERT INTO localities VALUES (?,?)", [(i, text) for text, i in local_ids.items()])
     db.executemany("INSERT INTO places VALUES (?,?,?,?,?,?,?)", rows)
     db.executemany("INSERT INTO name_fts(rowid, name) VALUES (?,?)", fts)
     db.executemany("INSERT INTO street_fts(rowid, name) VALUES (?,?)", street_fts)
@@ -246,8 +353,13 @@ def main():
     t0 = time.time()
     records = collect(args.pbf)
     print(f"{len(records)} enregistrements en {time.time() - t0:.0f} s", file=sys.stderr)
-    localities = assign_localities(records)
+    nearest = assign_localities(records)
     print(f"localites assignees en {time.time() - t0:.0f} s", file=sys.stderr)
+    communes, departments = load_boundaries(args.pbf)
+    contexts = assign_contexts(records, communes, departments)
+    # Hors de toute commune connue (voisins de l'extrait, mer) : le lieu habite le plus proche, a defaut.
+    contexts = [c if c is not None else (records[j][0] if j is not None else None) for c, j in zip(contexts, nearest)]
+    print(f"contextes assignes en {time.time() - t0:.0f} s", file=sys.stderr)
 
     by_tile = defaultdict(list)
     for index, (_, _, lat, lon) in enumerate(records):
@@ -258,7 +370,7 @@ def main():
     for (lon0, lat0), indices in sorted(by_tile.items()):
         name = tile_name(lon0, lat0)
         raw_path = os.path.join(args.outdir, name + ".gc.sqlite")
-        write_tile_db(raw_path, records, indices, localities)
+        write_tile_db(raw_path, records, indices, contexts)
         raw = os.path.getsize(raw_path)
         packed = gzip_file(raw_path)
         index_lines.append(f"{name} {packed} {raw} {now_ms}")
