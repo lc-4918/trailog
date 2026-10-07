@@ -304,6 +304,19 @@ internal fun MapFailureDialog(message: String, onDismiss: () -> Unit) {
 }
 
 /**
+ * Itineraire demande sans Internet et sans zone telechargee : on dit ou en telecharger une.
+ */
+@Composable
+internal fun NoRouteDataDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dialog_no_route_data_title)) },
+        text = { Text(stringResource(R.string.dialog_no_route_data_text)) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
+    )
+}
+
+/**
  * Recherche demandee sans acces a Internet, alors que le service vise en exige un.
  *
  * Cf. ServiceUrl.needsInternet : une instance auto-hebergee sur le reseau local n'est pas concernee.
@@ -447,6 +460,10 @@ internal fun MainDialogs(
 
     if (dialogs.noConnection) {
         NoConnectionDialog(onDismiss = { dialogs.noConnection = false })
+    }
+
+    if (dialogs.noRouteData) {
+        NoRouteDataDialog(onDismiss = { dialogs.noRouteData = false })
     }
 
     dialogs.failureText?.let { texte ->

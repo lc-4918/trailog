@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import fr.lc4918.trailog.domain.model.RoutingProfile
 import fr.lc4918.trailog.geocode.NetworkStatus
 import fr.lc4918.trailog.net.ServiceUrl
+import fr.lc4918.trailog.routing.BrouterLocal
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.ui.poi.PoiFilterBubbleAnchored
 import fr.lc4918.trailog.ui.poi.PoiState
@@ -338,7 +339,7 @@ internal fun BoxScope.MapBottomRightControls(
     maxWidthPx: Int,
     maxHeightPx: Int,
     onDashboardTap: () -> Unit,
-    onNoConnection: () -> Unit,
+    onNoRouteData: () -> Unit,
     /** Un panneau occupe le bas de l'ecran (cf. LayerWaysViewerLayer) : la colonne s'efface, comme
      *  devant la bande deployee du planificateur. */
     bottomPanelOpen: Boolean = false,
@@ -594,7 +595,7 @@ internal fun BoxScope.MapBottomRightControls(
                     // requête à faire, donc rien à demander au réseau - le parcours est déjà
                     // calculé, et le sortir de sa réduction ne le recalcule pas.
                     planner.open -> { vm.closeProfile(); planner.collapse(false) }
-                    ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx) -> onNoConnection()
+                    ServiceUrl.routingBlocked(routingUrl, NetworkStatus.hasInternet(ctx), BrouterLocal.hasZones(ctx)) -> onNoRouteData()
                     else -> {
                         vm.closeProfile()          // les deux occupent le bas de l'écran
                         // Le CAPTEUR allumé suffit : on part d'où l'on est. Pas le suivi

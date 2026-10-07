@@ -211,6 +211,8 @@
     <string name="dialog_location_off_text">GPS location is not active. Do you want to enable it?</string>
     <string name="dialog_no_connection_title">No connection</string>
     <string name="dialog_no_connection_text">Place search queries an online service, and the phone has no Internet access.</string>
+    <string name="dialog_no_route_data_title">No route zone</string>
+    <string name="dialog_no_route_data_text">Without Internet, route calculation needs zones downloaded to the phone, and none is. Download some in Settings > Trips > Download zones.</string>
     <string name="error_file_not_written">The file could not be written.</string>
     <string name="error_no_app_share">No app can receive this file.</string>
     <string name="error_no_app_link">No app can open this link.</string>

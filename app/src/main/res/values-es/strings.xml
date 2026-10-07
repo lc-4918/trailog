@@ -211,6 +211,8 @@
     <string name="dialog_location_off_text">La localización GPS no está activa. ¿Quieres activarla?</string>
     <string name="dialog_no_connection_title">Sin conexión</string>
     <string name="dialog_no_connection_text">La búsqueda de lugares consulta un servicio en línea, y el teléfono no tiene acceso a Internet.</string>
+    <string name="dialog_no_route_data_title">Ninguna zona de rutas</string>
+    <string name="dialog_no_route_data_text">Sin Internet, el cálculo de rutas necesita zonas descargadas en el teléfono, y no hay ninguna. Descarga alguna en Ajustes > Trayectos > Descargar zonas.</string>
     <string name="error_file_not_written">No se ha podido escribir el archivo.</string>
     <string name="error_no_app_share">Ninguna aplicación puede recibir este archivo.</string>
     <string name="error_no_app_link">Ninguna aplicación puede abrir este enlace.</string>

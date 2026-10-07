@@ -211,6 +211,8 @@
     <string name="dialog_location_off_text">GPS kokapena ez dago aktibo. Gaitu nahi duzu?</string>
     <string name="dialog_no_connection_title">Konexiorik ez</string>
     <string name="dialog_no_connection_text">Lekuen bilaketak lineako zerbitzu bat kontsultatzen du, eta telefonoak ez du Internet sarbiderik.</string>
+    <string name="dialog_no_route_data_title">Ibilbide-eremurik ez</string>
+    <string name="dialog_no_route_data_text">Internetik gabe, ibilbideak kalkulatzeko telefonoan deskargatutako eremuak behar dira, eta ez dago bat ere. Deskargatu batzuk Ezarpenak > Bidaiak > Deskargatu eremuak atalean.</string>
     <string name="error_file_not_written">Ezin izan da fitxategia idatzi.</string>
     <string name="error_no_app_share">Ez dago fitxategi hau jaso dezakeen aplikaziorik.</string>
     <string name="error_no_app_link">Ez dago esteka hau ireki dezakeen aplikaziorik.</string>

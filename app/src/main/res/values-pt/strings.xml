@@ -211,6 +211,8 @@
     <string name="dialog_location_off_text">A localização GPS não está ativa. Pretende ativá-la?</string>
     <string name="dialog_no_connection_title">Sem ligação</string>
     <string name="dialog_no_connection_text">A procura de locais consulta um serviço online, e o telefone não tem acesso à Internet.</string>
+    <string name="dialog_no_route_data_title">Nenhuma zona de percurso</string>
+    <string name="dialog_no_route_data_text">Sem Internet, o cálculo de percursos precisa de zonas descarregadas no telefone, e não há nenhuma. Transfere algumas em Definições > Trajetos > Transferir zonas.</string>
     <string name="error_file_not_written">Não foi possível escrever o ficheiro.</string>
     <string name="error_no_app_share">Nenhuma aplicação pode receber este ficheiro.</string>
     <string name="error_no_app_link">Nenhuma aplicação pode abrir esta ligação.</string>

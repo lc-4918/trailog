@@ -19,6 +19,14 @@ object ServiceUrl {
      * URL illisible est comptee comme externe : c'est le cas courant, et prevenir a tort vaut mieux que
      * laisser une requete echouer sans explication.
      */
+    /**
+     * Le calcul d'itineraire est-il impossible ? Seulement quand le moteur vise sort du reseau local, que
+     * le telephone n'a pas Internet ET qu'aucune zone n'est telechargee : avec au moins une zone, le calcul
+     * se fait sur le telephone (cf. Router.route) et c'est lui qui dira, trajet en main, si un carre manque.
+     */
+    fun routingBlocked(routingBase: String, hasInternet: Boolean, hasOfflineZones: Boolean): Boolean =
+        needsInternet(routingBase) && !hasInternet && !hasOfflineZones
+
     fun needsInternet(base: String): Boolean {
         val host = runCatching { URI(base.trim()).host }.getOrNull()?.lowercase() ?: return true
         if (host == "localhost" || host == "::1" || host.endsWith(".local")) return false

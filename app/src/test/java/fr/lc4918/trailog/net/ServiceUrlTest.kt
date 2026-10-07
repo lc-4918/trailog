@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.net
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -41,5 +42,14 @@ class ServiceUrlTest {
     @Test fun `une url illisible est comptee comme externe`() {
         assertTrue(ServiceUrl.needsInternet("pas une url"))
         assertTrue(ServiceUrl.needsInternet(""))
+    }
+
+    /** Hors ligne, une seule zone telechargee suffit : le calcul se fait sur le telephone. */
+    @Test fun `le calcul n'est bloque que sans reseau et sans zone`() {
+        val publicEngine = "https://brouter.de/brouter"
+        assertTrue(ServiceUrl.routingBlocked(publicEngine, hasInternet = false, hasOfflineZones = false))
+        assertFalse(ServiceUrl.routingBlocked(publicEngine, hasInternet = false, hasOfflineZones = true))
+        assertFalse(ServiceUrl.routingBlocked(publicEngine, hasInternet = true, hasOfflineZones = false))
+        assertFalse(ServiceUrl.routingBlocked("http://192.168.1.10:17777", hasInternet = false, hasOfflineZones = false))
     }
 }

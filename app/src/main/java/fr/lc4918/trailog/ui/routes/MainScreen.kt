@@ -79,6 +79,7 @@ import fr.lc4918.trailog.ui.alert.DashboardMath
 import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.net.ServiceUrl
+import fr.lc4918.trailog.routing.BrouterLocal
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
@@ -532,14 +533,17 @@ fun MainScreen(
      * sans réseau la mesure ne rendrait qu'un échec, que rien n'expliquerait. Le bouton "depuis la
      * position" n'est proposé que le capteur allumé (cf. MapPointBubble), il n'a donc pas à s'en soucier.
      */
+    fun routingBlocked() =
+        ServiceUrl.routingBlocked(routingUrl, NetworkStatus.hasInternet(ctx), BrouterLocal.hasZones(ctx))
+
     fun onDistanceFromPositionTap(measures: PointMeasures) {
-        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
+        if (routingBlocked()) dialogs.noRouteData = true
         else location.withLocationPermission { measures.requestDistanceFromPosition() }
     }
 
     /** "Distance depuis un point" : passe en mode de saisie, la mesure part au tap sur la carte. */
     fun onDistanceFromPointTap(measures: PointMeasures) {
-        if (ServiceUrl.needsInternet(routingUrl) && !NetworkStatus.hasInternet(ctx)) dialogs.noConnection = true
+        if (routingBlocked()) dialogs.noRouteData = true
         else measures.startPickingPoint()
     }
 
@@ -1097,7 +1101,7 @@ fun MainScreen(
                             if (location.sensorEnabled && !location.gpsActive) location.startGps(forFollow = true)
                         }
                     },
-                    onNoConnection = { dialogs.noConnection = true },
+                    onNoRouteData = { dialogs.noRouteData = true },
                     bottomPanelOpen = layerViewer.isOpen,
                     coverTopPx = insets.bottomRightCoverTopPx,
                 )

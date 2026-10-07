@@ -31,6 +31,10 @@ object BrouterLocal {
     /** Le dossier des fichiers `.rd5` : celui des reglages, le stockage externe prive a defaut. */
     fun segmentDir(ctx: Context): File = BrouterStorage.dir(ctx)
 
+    /** Au moins une zone est-elle telechargee : de quoi calculer sans reseau, au moins quelque part. */
+    fun hasZones(ctx: Context): Boolean =
+        segmentDir(ctx).listFiles().orEmpty().any { it.isFile && it.name.endsWith(".rd5") }
+
     /** Les donnees presentes couvrent-elles tous les points du trajet. Les points seulement : le trajet
      *  peut passer par un carre voisin, et c'est le moteur qui le dira alors (cf. [route]). */
     fun covers(ctx: Context, points: List<Pair<Double, Double>>): Boolean {

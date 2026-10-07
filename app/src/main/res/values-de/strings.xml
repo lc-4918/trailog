@@ -211,6 +211,8 @@
     <string name="dialog_location_off_text">Die GPS-Ortung ist nicht aktiv. Möchten Sie sie aktivieren?</string>
     <string name="dialog_no_connection_title">Keine Verbindung</string>
     <string name="dialog_no_connection_text">Die Ortssuche fragt einen Online-Dienst ab, und das Telefon hat keinen Internetzugang.</string>
+    <string name="dialog_no_route_data_title">Keine Routenzone</string>
+    <string name="dialog_no_route_data_text">Ohne Internet braucht die Routenberechnung auf das Telefon geladene Zonen, und es ist keine geladen. Lade welche unter Einstellungen > Strecken > Zonen herunterladen.</string>
     <string name="error_file_not_written">Die Datei konnte nicht geschrieben werden.</string>
     <string name="error_no_app_share">Keine App kann diese Datei empfangen.</string>
     <string name="error_no_app_link">Keine App kann diesen Link öffnen.</string>

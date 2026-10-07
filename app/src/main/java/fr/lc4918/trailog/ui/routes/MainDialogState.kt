@@ -39,6 +39,13 @@ class MainDialogState {
     var noConnection by mutableStateOf(false)
 
     /**
+     * Pas de reseau et aucune zone d'itineraire sur le telephone : le calcul n'a aucun moteur a qui
+     * s'adresser. Distinct de [noConnection], qui parle de la recherche de lieux - avec une zone
+     * telechargee, un itineraire se calcule sans Internet, et la solution n'est pas la meme.
+     */
+    var noRouteData by mutableStateOf(false)
+
+    /**
      * Un geste demande n'a rien produit : on le DIT, plutot que de ne rien faire.
      *
      * **Un `runCatching` qui avale n'est pas une gestion d'erreur.** Ecrire un GPX par le selecteur du
