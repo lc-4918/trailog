@@ -789,18 +789,30 @@ class PlannerStepsTest {
 
     /** A au depart, B a l'arrivee, les etapes intermediaires numerotees dans l'ordre du trajet. */
     @Test fun `les marqueurs disent A, B et numerotent les etapes`() {
-        val marques = troisEtapes().stepMarks
+        val marques = troisEtapes().stepMarks()
         assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.Via, StepMarkKind.End),
             marques.map { it.kind })
         assertEquals(listOf(0, 1, 2, 0), marques.map { it.number })
     }
 
-    /** Une etape sur la position actuelle n'a pas de marqueur, mais garde son rang. */
-    @Test fun `une etape en position actuelle ne porte pas de marqueur`() {
+    /** Une etape sur la position actuelle porte sa pastille, aux coordonnees de la position. */
+    @Test fun `une etape en position actuelle porte une pastille a la position`() {
         val etat = troisEtapes()
         etat.choose(etat.steps[1], StepTarget.CurrentPosition)
-        assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.End), etat.stepMarks.map { it.kind })
-        assertEquals(2, etat.stepMarks[1].number)
+        val marques = etat.stepMarks(1.1 to 43.05)
+        assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.Via, StepMarkKind.End), marques.map { it.kind })
+        assertEquals(1.1, marques[1].lon, 0.0)
+        assertEquals(43.05, marques[1].lat, 0.0)
+        assertEquals(1, marques[1].number)
+    }
+
+    /** Position inconnue : pas de pastille, mais les suivantes gardent leur rang. */
+    @Test fun `sans position connue l'etape garde son rang sans pastille`() {
+        val etat = troisEtapes()
+        etat.choose(etat.steps[1], StepTarget.CurrentPosition)
+        val marques = etat.stepMarks(null)
+        assertEquals(listOf(StepMarkKind.Start, StepMarkKind.Via, StepMarkKind.End), marques.map { it.kind })
+        assertEquals(2, marques[1].number)
     }
 
     /** Une pastille deposee ailleurs donne son point a l'etape, et le parcours est a refaire. */

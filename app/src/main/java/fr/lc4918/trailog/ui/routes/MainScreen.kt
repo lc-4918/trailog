@@ -617,6 +617,7 @@ fun MainScreen(
         gpsMarker = gpsMarker,
         gpsMarkerColor = gpsMarkerColor,
         gpsMarkerSizeDp = gpsMarkerSizeDp,
+        currentPosition = location.lastUserLocation?.let { (lat, lon) -> lon to lat },
     )
     ProfileCursorEffects(
         controller = controller,

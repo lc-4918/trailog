@@ -59,6 +59,8 @@ internal fun MapOverlayEffects(
     gpsMarker: GpsMarkerStyle,
     gpsMarkerColor: String,
     gpsMarkerSizeDp: Float,
+    /** Derniere position connue, en (lon, lat) : celle des etapes posees sur la position actuelle. */
+    currentPosition: Pair<Double, Double>?,
 ) {
     // les couches importees
     // La largeur et les chevrons d'abord : les couches posees ensuite les prennent a leur creation.
@@ -84,7 +86,7 @@ internal fun MapOverlayEffects(
     // Rien d'autre ne dirait où elles sont - un départ de sentier ou un col ne portent ni trace ni
     // marqueur. Calque à part, encore : le planificateur reste ouvert pendant qu'on désigne un point ou
     // qu'on cherche un lieu.
-    val stepMarks = planner.stepMarks
+    val stepMarks = planner.stepMarks(currentPosition)
     LaunchedEffect(stepMarks, styleTick, markerPx) {
         controller.setStepMarks(stepMarks, markerPx)
     }

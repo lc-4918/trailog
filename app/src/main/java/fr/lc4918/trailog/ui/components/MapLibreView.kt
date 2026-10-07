@@ -1279,7 +1279,7 @@ class MapController {
      * l'epingle qui le termine, ni le repere de position.
      */
     private fun routeBelow(s: Style): String? {
-        val wanted = MapHeadOverlays.ids + setOf(GEO_PLACE, GEO_REF, MAP_POINTS)
+        val wanted = MapHeadOverlays.ids + setOf(GEO_PLACE, GEO_REF, MAP_POINTS, PLANNER_PTS, PLANNER_BADGES)
         return s.layers.firstOrNull { it.id in wanted }?.id
     }
 

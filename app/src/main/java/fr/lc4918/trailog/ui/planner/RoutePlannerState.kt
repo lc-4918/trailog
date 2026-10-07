@@ -385,10 +385,12 @@ class RoutePlannerState {
      * Les marqueurs des etapes sur la carte : A au depart, B a l'arrivee, et les etapes intermediaires
      * numerotees de 1 a n dans l'ordre du trajet.
      *
-     * Une etape sur la position actuelle n'en porte pas - le repere de position la montre deja - mais garde
-     * son numero : la carte et la liste des etapes disent le meme rang.
+     * Une etape sur la position actuelle prend les coordonnees de [currentPosition] (lon, lat) : elle porte
+     * sa pastille comme les autres, le repere de position ne disant pas son rang. Tant que la position est
+     * inconnue, elle n'en porte pas mais garde son numero : la carte et la liste des etapes disent le meme
+     * rang.
      */
-    val stepMarks: List<StepMark> get() {
+    fun stepMarks(currentPosition: Pair<Double, Double>? = null): List<StepMark> {
         var via = 0
         return steps.mapIndexedNotNull { index, step ->
             val target = step.target ?: return@mapIndexedNotNull null
@@ -398,8 +400,11 @@ class RoutePlannerState {
                 else -> StepMarkKind.Via
             }
             val number = if (kind == StepMarkKind.Via) ++via else 0
-            val place = (target as? StepTarget.Place)?.place ?: return@mapIndexedNotNull null
-            StepMark(step.id, place.lon, place.lat, kind, number)
+            val (lon, lat) = when (target) {
+                is StepTarget.Place -> target.place.lon to target.place.lat
+                StepTarget.CurrentPosition -> currentPosition ?: return@mapIndexedNotNull null
+            }
+            StepMark(step.id, lon, lat, kind, number)
         }
     }
 
