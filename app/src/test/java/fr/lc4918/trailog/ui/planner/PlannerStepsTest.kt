@@ -806,6 +806,18 @@ class PlannerStepsTest {
         assertEquals(1, marques[1].number)
     }
 
+    /** La position qu'un calcul a employee (lat, lon, comme le capteur) devient celle de la pastille (lon, lat). */
+    @Test fun `la position employee par le calcul est retenue pour la pastille`() {
+        val etat = troisEtapes()
+        etat.choose(etat.steps[1], StepTarget.CurrentPosition)
+        assertNull(etat.currentPositionUsed)
+        etat.rememberCurrentPosition(43.45 to 2.05)
+        assertEquals(2.05 to 43.45, etat.currentPositionUsed)
+        val marque = etat.stepMarks(etat.currentPositionUsed)[1]
+        assertEquals(2.05, marque.lon, 0.0)
+        assertEquals(43.45, marque.lat, 0.0)
+    }
+
     /** Position inconnue : pas de pastille, mais les suivantes gardent leur rang. */
     @Test fun `sans position connue l'etape garde son rang sans pastille`() {
         val etat = troisEtapes()

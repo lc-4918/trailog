@@ -7,7 +7,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.platform.LocalContext
 import fr.lc4918.trailog.ui.routes.strongHaptic
 import androidx.compose.runtime.key
@@ -473,9 +473,10 @@ private fun StepList(
                             else Modifier
                         ),
                     handle = Modifier.pointerInput(step.id) {
-                        // Apres un appui long, comme dans le menu lateral : le glissement ne part pas d'un
-                        // effleurement, et la vibration dit l'instant ou la ligne est prise en main.
-                        detectDragGesturesAfterLongPress(
+                        // Des que le doigt bouge, sans appui long : la poignee ne sert qu'a ca. L'ecart de
+                        // toucher du systeme fait la difference avec un effleurement, et la vibration dit
+                        // l'instant ou la ligne est prise en main.
+                        detectDragGestures(
                             onDragStart = {
                                 // Le clavier et le focus se retirent : on range des etapes, on n'en saisit plus.
                                 focusManager.clearFocus()

@@ -609,6 +609,14 @@ fun MainScreen(
     // Geometrie commune aux quatre infobulles : ce qu'elles degagent, ou elles se posent, et le glissement
     // de carte qu'elles demandent pour tenir a l'ecran (cf. BubbleFrame).
     val bubbleFrame = rememberBubbleFrame(settings, markerPx, controller)
+    // Ou poser la pastille d'une etape "position actuelle" : le suivi quand il tourne, sinon ce que le dernier
+    // calcul en a pris, sinon ce que le telephone sait (suivi eteint, il ne dit rien de ou l'on est).
+    var knownPosition by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    LaunchedEffect(planner.usesCurrentPosition, planner.currentPositionUsed) {
+        if (planner.usesCurrentPosition && planner.currentPositionUsed == null) knownPosition = location.knownPosition()
+    }
+    val markerPosition = location.lastUserLocation?.let { (lat, lon) -> lon to lat }
+        ?: planner.currentPositionUsed ?: knownPosition
     MapOverlayEffects(
         controller = controller,
         styleTick = styleTick,
@@ -623,7 +631,7 @@ fun MainScreen(
         gpsMarker = gpsMarker,
         gpsMarkerColor = gpsMarkerColor,
         gpsMarkerSizeDp = gpsMarkerSizeDp,
-        currentPosition = location.lastUserLocation?.let { (lat, lon) -> lon to lat },
+        currentPosition = markerPosition,
     )
     ProfileCursorEffects(
         controller = controller,

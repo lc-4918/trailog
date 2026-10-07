@@ -348,6 +348,20 @@ class RoutePlannerState {
     val usesCurrentPosition: Boolean get() = steps.any { it.target == StepTarget.CurrentPosition }
 
     /**
+     * La position que le dernier calcul a prise pour "position actuelle", en (lon, lat), ou null tant
+     * qu'aucun calcul n'en a eu besoin. C'est elle que la pastille de l'etape montre : le suivi de
+     * l'application peut etre eteint alors que le telephone sait ou il est (cf. LocationControls.knownPosition),
+     * et la pastille doit etre la ou le parcours part, pas ou le suivi est reste.
+     */
+    var currentPositionUsed by mutableStateOf<Pair<Double, Double>?>(null)
+        internal set
+
+    /** Retient la position qu'un calcul vient d'employer, donnee en (lat, lon) comme le capteur la rend. */
+    fun rememberCurrentPosition(latLon: Pair<Double, Double>) {
+        currentPositionUsed = latLon.second to latLon.first
+    }
+
+    /**
      * La position du porteur peut se poser sur [step] : elle est proposee la.
      *
      * La seule chose qu'on refuse est de la poser DEUX FOIS DE SUITE : le troncon entre les deux serait de

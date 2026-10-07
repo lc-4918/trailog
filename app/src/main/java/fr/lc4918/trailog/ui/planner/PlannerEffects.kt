@@ -148,9 +148,9 @@ fun PlannerEffects(
                 // soi n'oblige pas a poser sa position sur la carte.
                 // Position introuvable : on le DIT comme tel, et non "aucun itineraire" - le moteur n'a
                 // meme pas ete interroge, et chercher la faute du cote du trajet ne menerait nulle part.
-                StepTarget.CurrentPosition -> currentPosition() ?: run {
+                StepTarget.CurrentPosition -> (currentPosition() ?: run {
                     state.publish(RouteState.NoPosition); routeFramed = false; return@LaunchedEffect
-                }
+                }).also { state.rememberCurrentPosition(it) }
             }
         }
         // Le moteur injoignable se DIT comme tel, et non "aucun itineraire" : la requete n'est jamais

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -366,5 +367,28 @@ class RoutePlannerBandUiTest {
         compose.onNodeWithTag("planner_viewer_back").performClick()
         compose.waitForIdle()
         assertEquals(null, state.viewer)
+    }
+
+    /**
+     * La poignee d'une etape la range des que le doigt glisse, SANS appui long : le geste qui exigeait de
+     * rester appuye avant de bouger passait pour un defaut (la poignee ne sert qu'a ranger).
+     */
+    @Test fun `glisser la poignee d'une etape la deplace sans appui long`() {
+        val state = RoutePlannerState().apply { openPlanner() }
+        state.setStart(GeocodePlace("Revel", 1.99, 43.46))
+        state.setEnd(GeocodePlace("Malegoude", 1.5, 43.2))
+        state.addWaypoint(GeocodePlace("Soreze", 2.07, 43.45))
+        affiche(state)
+        fun names() = state.steps.map { (it.target as StepTarget.Place).place.lines.first() }
+        val before = names()
+        assertEquals(3, before.size)
+        val handle = ctx.getString(R.string.planner_drag_step)
+        // Un balayage vif vers le bas depuis la premiere poignee : bien plus qu'une ligne, rien d'appuye avant.
+        compose.onAllNodesWithContentDescription(handle)[0].performTouchInput {
+            swipeDown(startY = center.y, endY = center.y + 600f, durationMillis = 200)
+        }
+        compose.waitForIdle()
+        assertEquals("la premiere etape a quitte sa place", false, names() == before)
+        assertEquals(before.first(), names().last())
     }
 }

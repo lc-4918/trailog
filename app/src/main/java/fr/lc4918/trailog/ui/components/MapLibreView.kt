@@ -83,6 +83,9 @@ data class PoiMarker(
  *  long de la carte (500 ms). */
 private const val StepDragDelayMs = 250L
 
+/** Combien de temps au plus une pastille deposee reste tenue en place, en ms (cf. holdDroppedStep). */
+private const val DroppedHoldMs = 3_000L
+
 class MapController {
     var map: MapLibreMap? = null
     var style: Style? = null
@@ -221,7 +224,10 @@ class MapController {
                     val dropped = if (e.actionMasked == MotionEvent.ACTION_UP) lonLatAt(e.x, e.y) else null
                     draggedStepId = null
                     dragLonLat = null
-                    if (dropped != null) onStepDropped?.invoke(id, dropped.first, dropped.second)
+                    if (dropped != null) {
+                        holdDroppedStep(id, dropped)
+                        onStepDropped?.invoke(id, dropped.first, dropped.second)
+                    }
                     drawStepMarks()
                     return true
                 }
@@ -1000,6 +1006,18 @@ class MapController {
     private var draggedStepId: Long? = null
     private var dragLonLat: Pair<Double, Double>? = null
 
+    /** La pastille deposee, tenue a son point de depot le temps que le planificateur la rattrape (cf.
+     *  [DroppedStepHold]). */
+    private val dropped = DroppedStepHold()
+    private val releaseDropped = Runnable { dropped.release(); drawStepMarks() }
+
+    private fun holdDroppedStep(id: Long, at: Pair<Double, Double>) {
+        dropped.hold(id, at)
+        // Garde-fou : une etape que le planificateur n'a pas relocalisee ne doit pas rester epinglee ici.
+        touchHandler.removeCallbacks(releaseDropped)
+        touchHandler.postDelayed(releaseDropped, DroppedHoldMs)
+    }
+
     /** Diametre d'une pastille d'etape, en dp. */
     private val badgeDp = 26f
 
@@ -1018,6 +1036,7 @@ class MapController {
      * pendant qu'on consulte un point d'interet ou qu'on cherche un lieu.
      */
     fun setStepMarks(marks: List<StepMark>, heightPx: Float) {
+        if (dropped.confirm(marks)) touchHandler.removeCallbacks(releaseDropped)
         stepMarks = marks
         stepPinPx = heightPx
         drawStepMarks()
@@ -1033,7 +1052,8 @@ class MapController {
         }
         val badgePx = badgeDp * density
         val features = stepMarks.joinToString(",") { m ->
-            val (lon, lat) = if (m.stepId == draggedStepId) dragLonLat ?: (m.lon to m.lat) else (m.lon to m.lat)
+            val planned = m.lon to m.lat
+            val (lon, lat) = if (m.stepId == draggedStepId) dragLonLat ?: planned else dropped.position(m.stepId, planned)
             val img = when (m.kind) {
                 StepMarkKind.Start -> ensureLetterPin(s, "A")
                 StepMarkKind.End -> ensureLetterPin(s, "B")
