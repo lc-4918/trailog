@@ -889,4 +889,20 @@ class PlannerStepsTest {
         etat.chooseSuggestion(etat.steps.last(), lieu("Foix"))
         assertNull(etat.centerRequest)
     }
+
+    @Test fun `la position actuelle choisie seule demande a centrer la carte`() {
+        val etat = RoutePlannerState()
+        etat.chooseCurrentPosition(etat.steps.first())
+        assertTrue(etat.centerOnPositionRequest)
+        assertNull(etat.centerRequest)
+        etat.consumeCenterOnPositionRequest()
+        assertFalse(etat.centerOnPositionRequest)
+    }
+
+    @Test fun `la position actuelle ne centre rien quand un autre point existe`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.last(), StepTarget.Place(lieu("Foix")))
+        etat.chooseCurrentPosition(etat.steps.first())
+        assertFalse(etat.centerOnPositionRequest)
+    }
 }

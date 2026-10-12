@@ -683,6 +683,19 @@ class RoutePlannerState {
 
     fun consumeCenterRequest() { centerRequest = null }
 
+    /** Comme [centerRequest], pour la position actuelle : on ne la connait qu'en la demandant au capteur. */
+    var centerOnPositionRequest by mutableStateOf(false)
+        private set
+
+    fun consumeCenterOnPositionRequest() { centerOnPositionRequest = false }
+
+    /** "Position actuelle" choisie : [choose], et la carte se centre sur la position si c'est le seul point saisi. */
+    fun chooseCurrentPosition(step: PlannerStep) {
+        val centering = isLoneStep(step)
+        choose(step, StepTarget.CurrentPosition)
+        if (centering) centerOnPositionRequest = true
+    }
+
     /** Cette etape est-elle la seule a porter quelque chose : les autres sont vides, sans lieu ni frappe. */
     fun isLoneStep(step: PlannerStep): Boolean =
         steps.all { it === step || (it.target == null && it.query.isBlank()) }

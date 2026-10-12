@@ -403,8 +403,15 @@ fun MainScreen(
     // Le lieu valide seul dans le calcul d'itineraire : la carte va le montrer (cf. chooseSuggestion).
     planner.centerRequest?.let { place ->
         LaunchedEffect(place) {
-            controller.centerOnAtLeast(place.lat, place.lon, GeocodeMinZoom)
+            // Sans toucher au zoom : on regarde la ou l'on est, et le niveau choisi reste le sien.
+            controller.centerOn(place.lat, place.lon)
             planner.consumeCenterRequest()
+        }
+    }
+    if (planner.centerOnPositionRequest) {
+        LaunchedEffect(Unit) {
+            planner.consumeCenterOnPositionRequest()
+            location.currentPosition()?.let { (lat, lon) -> controller.centerOn(lat, lon) }
         }
     }
     // Le VIEWER des surfaces ou des types de voies d'une trace, ouvert depuis ses statistiques.
@@ -1180,7 +1187,7 @@ fun MainScreen(
                         lastLabelInsetPx = 0f,
                         maxHeight = plannerMaxHeight,
                         onPickCurrentPosition = { step ->
-                            location.withLocationPermission { planner.choose(step, StepTarget.CurrentPosition) }
+                            location.withLocationPermission { planner.chooseCurrentPosition(step) }
                         },
                         // La bande se range d'elle-meme pour rendre la carte, et la consigne du haut prend
                         // le relais (cf. RoutePlannerState.startPickingOnMap).
