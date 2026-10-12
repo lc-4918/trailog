@@ -34,7 +34,6 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +63,9 @@ import fr.lc4918.trailog.domain.model.PoiCategory
 import fr.lc4918.trailog.domain.model.PoiFilters
 import fr.lc4918.trailog.domain.model.PoiGroup
 import androidx.core.graphics.toColorInt
+import fr.lc4918.trailog.ui.components.SheetCloseButton
+import fr.lc4918.trailog.ui.components.SheetRoundButton
+import fr.lc4918.trailog.ui.theme.Spacing
 import fr.lc4918.trailog.ui.theme.TrailogIcons
 
 /**
@@ -177,56 +179,32 @@ private fun EnTete(
     masked: Boolean,
     onToggleMask: () -> Unit,
 ) {
+    // Le meme en-tete que le tableau de bord et le calcul d'itineraire : titre de panneau (titleLarge) et
+    // boutons ronds gris de la croix (cf. SheetRoundButton), croix a l'extremite.
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(start = Spacing.l, end = Spacing.m, top = Spacing.m, bottom = Spacing.s),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.s),
     ) {
         Text(
             stringResource(R.string.poi_layer_title),
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         if (!filters.nothingShown) {
-            IconButton(
-                onClick = onToggleMask,
-                modifier = Modifier.size(28.dp),
-            ) {
-                // L'oeil BARRE quand la couche est de cote : le dessin montre l'etat courant, non le geste
-                // qu'il declenche. C'est la convention de tous les interrupteurs de l'application - le
-                // repere de position, les couches du menu lateral - et l'inverse se lit a contresens.
-                Icon(
-                    if (masked) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                    stringResource(
-                        if (masked) R.string.poi_filter_show_layer else R.string.poi_filter_hide_layer,
-                    ),
-                    tint = if (masked) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            IconButton(
-                onClick = { onFilters(filters.hideAll()) },
-                modifier = Modifier.size(28.dp),
-            ) {
-                Icon(
-                    TrailogIcons.Trash,
-                    stringResource(R.string.poi_filter_hide_all),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-        IconButton(
-            onClick = onClose,
-            modifier = Modifier.size(28.dp),
-        ) {
-            Icon(
-                Icons.Filled.Close,
-                stringResource(R.string.action_close),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+            // L'oeil BARRE quand la couche est de cote : le dessin montre l'etat courant, non le geste
+            // qu'il declenche. C'est la convention de tous les interrupteurs de l'application - le
+            // repere de position, les couches du menu lateral - et l'inverse se lit a contresens.
+            SheetRoundButton(
+                if (masked) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                stringResource(if (masked) R.string.poi_filter_show_layer else R.string.poi_filter_hide_layer),
+                onToggleMask,
             )
+            SheetRoundButton(TrailogIcons.Trash, stringResource(R.string.poi_filter_hide_all),
+                onClick = { onFilters(filters.hideAll()) })
         }
+        SheetCloseButton(onClose)
     }
 }
 
@@ -356,7 +334,7 @@ private fun LigneCategorie(cat: PoiCategory, retenue: Boolean, onToggle: () -> U
  * La bulle, sa pointe et son animation, posee a gauche du bouton qui l'ouvre.
  *
  * **L'animation dit d'ou elle vient.** Elle grandit depuis le bord droit, la ou se trouve le bouton, avec
- * un leger depassement avant de se poser - le geste d'un objet qui sort de sous le doigt. Elle se retire
+ * un depassement a peine sensible avant de se poser - le geste d'un objet qui sort de sous le doigt. Elle se retire
  * sans rebond et deux fois plus vite : l'ouverture est une reponse, la fermeture est un rangement, et un
  * rangement qui rebondit retient l'attention pour rien.
  *
@@ -381,11 +359,10 @@ fun PoiFilterBubbleAnchored(
         // fait sortir la bulle DU BOUTON plutot que de la faire gonfler sur place.
         enter = scaleIn(
             animationSpec = keyframes {
-                durationMillis = 480
+                durationMillis = 320
                 0.25f at 0
-                1.06f at 264 using CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f)
-                0.97f at 374
-                1f at 480
+                1.015f at 210 using CubicBezierEasing(0.2f, 0.9f, 0.3f, 1f)
+                1f at 320
             },
             initialScale = 0.25f,
             transformOrigin = TransformOrigin(1f, 1f),
