@@ -496,30 +496,6 @@ internal fun BoxScope.MapBottomRightControls(
             }
         }
         /*
-         * Le tableau de bord, juste au-dessus du planificateur : il sert PENDANT la sortie, et le pouce
-         * le trouve au même endroit que le reste.
-         *
-         * **Le dessin est celui d'un compteur** : le bouton ouvre les chiffres de la sortie - vitesse,
-         * distance, dénivelé -, et le suivi d'une trace n'en est plus qu'une partie, qui se fait seule.
-         *
-         * Il se lit à la couleur de son dessin, comme les autres commandes de la carte : gris fermé, bleu
-         * ouvert, rouge quand on s'est écarté de la trace suivie, cloche armée - la bannière du haut dit
-         * alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
-         */
-        if (dashboardEnabled && !dashboardPanelShown) CoverableButton(coverTopPx) {
-            IconButton(onClick = { onDashboardTap() }, modifier = chrome.buttonBackground) {
-                Icon(
-                    Icons.Filled.Speed,
-                    stringResource(R.string.content_desc_dashboard),
-                    tint = when {
-                        alerting -> OffTrackAlertColor
-                        dashboardOpen -> MapChromeActive
-                        else -> chrome.fg
-                    },
-                )
-            }
-        }
-        /*
          * Points d'interet : le bouton OUVRE LA BULLE ou l'on choisit ce qu'on veut voir.
          *
          * Il allumait la couche, et les vingt-sept categories se cochaient dans Reglages >
@@ -582,6 +558,30 @@ internal fun BoxScope.MapBottomRightControls(
                         tint = teinte,
                     )
                 }
+            }
+        }
+        /*
+         * Le tableau de bord, juste au-dessus du planificateur : il sert PENDANT la sortie, et le pouce
+         * le trouve au même endroit que le reste.
+         *
+         * **Le dessin est celui d'un compteur** : le bouton ouvre les chiffres de la sortie - vitesse,
+         * distance, dénivelé -, et le suivi d'une trace n'en est plus qu'une partie, qui se fait seule.
+         *
+         * Il se lit à la couleur de son dessin, comme les autres commandes de la carte : gris fermé, bleu
+         * ouvert, rouge quand on s'est écarté de la trace suivie, cloche armée - la bannière du haut dit
+         * alors de combien, mais le bouton l'annonce déjà à qui regarde la carte.
+         */
+        if (dashboardEnabled && !dashboardPanelShown) CoverableButton(coverTopPx) {
+            IconButton(onClick = { onDashboardTap() }, modifier = chrome.buttonBackground) {
+                Icon(
+                    Icons.Filled.Speed,
+                    stringResource(R.string.content_desc_dashboard),
+                    tint = when {
+                        alerting -> OffTrackAlertColor
+                        dashboardOpen -> MapChromeActive
+                        else -> chrome.fg
+                    },
+                )
             }
         }
         // Réduite, il reparaît et redéploie le trajet en cours : c'est le MÊME bouton qui ouvre
