@@ -854,4 +854,39 @@ class PlannerStepsTest {
         etat.removeStepById(etat.steps[1].id)
         assertEquals(3, etat.steps.size)
     }
+
+    @Test fun `le depart valide seul demande a centrer la carte`() {
+        val etat = RoutePlannerState()
+        etat.chooseSuggestion(etat.steps.first(), lieu("Pamiers"))
+        assertEquals("Pamiers", etat.centerRequest?.label)
+        etat.consumeCenterRequest()
+        assertNull(etat.centerRequest)
+    }
+
+    @Test fun `un depart valide quand un autre point existe ne centre rien`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.last(), StepTarget.Place(lieu("Foix")))
+        etat.chooseSuggestion(etat.steps.first(), lieu("Pamiers"))
+        assertNull(etat.centerRequest)
+    }
+
+    @Test fun `une frappe en cours dans une autre etape empeche le centrage`() {
+        val etat = RoutePlannerState()
+        etat.steps.last().query = "Foi"
+        etat.chooseSuggestion(etat.steps.first(), lieu("Pamiers"))
+        assertNull(etat.centerRequest)
+    }
+
+    @Test fun `une arrivee validee seule centre la carte`() {
+        val etat = RoutePlannerState()
+        etat.chooseSuggestion(etat.steps.last(), lieu("Foix"))
+        assertEquals("Foix", etat.centerRequest?.label)
+    }
+
+    @Test fun `une arrivee validee quand le depart est pose ne centre rien`() {
+        val etat = RoutePlannerState()
+        etat.choose(etat.steps.first(), StepTarget.Place(lieu("Pamiers")))
+        etat.chooseSuggestion(etat.steps.last(), lieu("Foix"))
+        assertNull(etat.centerRequest)
+    }
 }

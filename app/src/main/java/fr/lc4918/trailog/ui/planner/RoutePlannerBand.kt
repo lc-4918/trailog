@@ -824,7 +824,7 @@ private fun StepRow(
                         label = lieu.label,
                         icon = true,
                         image = Icons.Filled.History,
-                        onClick = { onPlaceChosen(lieu); state.choose(step, StepTarget.Place(lieu)); settle() },
+                        onClick = { onPlaceChosen(lieu); state.chooseSuggestion(step, lieu); settle() },
                         onForget = { onPlaceForgotten(lieu) },
                     )
                 }
@@ -846,7 +846,7 @@ private fun StepRow(
             }
             step.results.forEach { place ->
                 SuggestionRow(label = place.label, icon = false,
-                    onClick = { onPlaceChosen(place); state.choose(step, StepTarget.Place(place)); settle() })
+                    onClick = { onPlaceChosen(place); state.chooseSuggestion(step, place); settle() })
             }
             }
             }

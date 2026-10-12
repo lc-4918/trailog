@@ -400,6 +400,13 @@ fun MainScreen(
 
     // ---------- planificateur d'itinéraire ----------
     val planner = screen.planner
+    // Le lieu valide seul dans le calcul d'itineraire : la carte va le montrer (cf. chooseSuggestion).
+    planner.centerRequest?.let { place ->
+        LaunchedEffect(place) {
+            controller.centerOnAtLeast(place.lat, place.lon, GeocodeMinZoom)
+            planner.consumeCenterRequest()
+        }
+    }
     // Le VIEWER des surfaces ou des types de voies d'une trace, ouvert depuis ses statistiques.
     val layerViewer = remember { LayerWaysViewerState() }
     /*

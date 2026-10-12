@@ -672,6 +672,28 @@ class RoutePlannerState {
         if (steps.mapNotNull { it.target } != avant) invalidate()
     }
 
+    /**
+     * Le lieu sur lequel la carte doit se centrer : celui qu'on vient de valider (depart, etape ou arrivee)
+     * alors que rien d'autre n'est saisi. Aucun trajet ne se calcule avec un seul point, et sans cela la carte resterait la ou elle
+     * est, sans rien montrer du lieu choisi. Poste ici, consomme par l'ecran qui tient la carte (cf.
+     * [consumeCenterRequest]).
+     */
+    var centerRequest by mutableStateOf<GeocodePlace?>(null)
+        private set
+
+    fun consumeCenterRequest() { centerRequest = null }
+
+    /** Cette etape est-elle la seule a porter quelque chose : les autres sont vides, sans lieu ni frappe. */
+    fun isLoneStep(step: PlannerStep): Boolean =
+        steps.all { it === step || (it.target == null && it.query.isBlank()) }
+
+    /** Un lieu choisi dans les propositions : [choose], et la carte se centre dessus si c'est le seul point saisi. */
+    fun chooseSuggestion(step: PlannerStep, place: GeocodePlace) {
+        val centering = isLoneStep(step)
+        choose(step, StepTarget.Place(place))
+        if (centering) centerRequest = place
+    }
+
     fun choose(step: PlannerStep, target: StepTarget) {
         step.target = target
         step.untouched = false
