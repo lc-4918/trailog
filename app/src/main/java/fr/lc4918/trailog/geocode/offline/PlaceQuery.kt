@@ -54,6 +54,9 @@ object PlaceQuery {
      *  qu'a cette condition, son point etant le milieu d'un troncon et non son axe. */
     const val STREET_REACH_M = 150.0
 
+    /** Deux lieux de meme libelle a moins de cela l'un de l'autre sont le meme. */
+    const val DUPLICATE_REACH_M = 5_000.0
+
     /** Au-dela, un lieu ne dit plus "ou l'on est". */
     const val REVERSE_REACH_M = 5_000.0
 
@@ -100,18 +103,29 @@ object PlaceQuery {
 
     /**
      * L'ordre des propositions avant la prise en compte de la distance : le nom exactement tape d'abord,
-     * puis l'importance du genre (une ville avant un hameau), puis le nom le plus court. Les doublons - le
-     * meme nom, du meme genre, au meme endroit a un kilometre pres - ne comptent qu'une fois : une commune
-     * est souvent a la fois un `place=town` et un `place=village` d'un carre voisin.
+     * puis l'importance du genre (une ville avant un hameau), puis le nom le plus court. Les doublons - la
+     * meme ligne affichee (nom et commune) - ne comptent qu'une fois : une commune est souvent a la fois un
+     * `place=town` et un `place=village`, ou un noeud et un polygone, a quelques centaines de metres l'un de
+     * l'autre ; une rue coupee en troncons donne autant de points. Une rue est fusionnee sans condition de
+     * distance, un lieu seulement a moins de [DUPLICATE_REACH_M] d'un lieu deja garde (deux hameaux du meme
+     * nom dans un departement restent deux).
      */
     fun order(hits: List<PlaceHit>, typed: String): List<PlaceHit> {
         val wanted = fold(typed.trim())
-        val seen = HashSet<Triple<String, Long, Long>>()
+        val kept = HashMap<Pair<String, String>, MutableList<PlaceHit>>()
         return hits
             .sortedWith(
                 compareBy<PlaceHit>({ if (fold(it.name) == wanted) 0 else 1 }, { PlaceKind.tier(it.kind) }, { it.name.length })
             )
-            .filter { seen.add(Triple(fold(it.name), Math.round(it.lat * 100), Math.round(it.lon * 100))) }
+            .filter { hit ->
+                val sameLabel = kept.getOrPut(fold(hit.name) to fold(hit.locality.orEmpty())) { ArrayList() }
+                val duplicate = sameLabel.any {
+                    hit.kind == PlaceKind.STREET && it.kind == PlaceKind.STREET ||
+                        TrackMath.haversine(hit.lon, hit.lat, it.lon, it.lat) <= DUPLICATE_REACH_M
+                }
+                if (!duplicate) sameLabel += hit
+                !duplicate
+            }
     }
 
     /**

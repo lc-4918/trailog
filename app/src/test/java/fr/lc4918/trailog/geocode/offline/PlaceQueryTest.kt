@@ -112,6 +112,40 @@ class PlaceQueryTest {
         assertEquals(PlaceKind.TOWN, ordered[0].kind)
     }
 
+    @Test fun `deux noeuds de meme libelle a quelques centaines de metres ne comptent qu'une fois`() {
+        val ordered = PlaceQuery.order(
+            listOf(
+                hit("Pamiers", PlaceKind.TOWN, 1.6100, 43.1160, "Ariege"),
+                hit("Pamiers", PlaceKind.TOWN, 1.6150, 43.1210, "Ariege"),
+            ),
+            "Pamiers",
+        )
+        assertEquals(1, ordered.size)
+    }
+
+    @Test fun `deux hameaux de meme nom eloignes restent deux`() {
+        val ordered = PlaceQuery.order(
+            listOf(
+                hit("Les Pujols", PlaceKind.HAMLET, 1.0, 43.0, "Ariege"),
+                hit("Les Pujols", PlaceKind.HAMLET, 1.5, 43.3, "Ariege"),
+            ),
+            "Les Pujols",
+        )
+        assertEquals(2, ordered.size)
+    }
+
+    @Test fun `une rue en plusieurs troncons de meme commune ne compte qu'une fois`() {
+        val ordered = PlaceQuery.order(
+            listOf(
+                hit("Route de Pamiers", PlaceKind.STREET, 1.60, 43.30, "Madiere"),
+                hit("Route de Pamiers", PlaceKind.STREET, 1.70, 43.35, "Madiere"),
+                hit("Route de Pamiers", PlaceKind.STREET, 1.60, 43.30, "Rieux-de-Pelleport"),
+            ),
+            "Pamiers",
+        )
+        assertEquals(listOf("Madiere", "Rieux-de-Pelleport"), ordered.map { it.locality }.sortedBy { it })
+    }
+
     @Test fun `les rues viennent apres les lieux a nom egal`() {
         val ordered = PlaceQuery.order(
             listOf(hit("Rue Revel", PlaceKind.STREET, lat = 43.1), hit("Revel", PlaceKind.LOCALITY, lat = 43.2)), "revel")
