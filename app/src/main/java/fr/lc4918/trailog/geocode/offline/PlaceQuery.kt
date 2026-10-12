@@ -118,7 +118,7 @@ object PlaceQuery {
                 compareBy<PlaceHit>({ if (fold(it.name) == wanted) 0 else 1 }, { PlaceKind.tier(it.kind) }, { it.name.length })
             )
             .filter { hit ->
-                val sameLabel = kept.getOrPut(fold(hit.name) to fold(hit.locality.orEmpty())) { ArrayList() }
+                val sameLabel = kept.getOrPut(fold(hit.name) to fold(hit.toPlace().lines.drop(1).joinToString())) { ArrayList() }
                 val duplicate = sameLabel.any {
                     hit.kind == PlaceKind.STREET && it.kind == PlaceKind.STREET ||
                         TrackMath.haversine(hit.lon, hit.lat, it.lon, it.lat) <= DUPLICATE_REACH_M

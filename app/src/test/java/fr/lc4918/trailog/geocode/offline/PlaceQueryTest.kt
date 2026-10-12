@@ -123,6 +123,18 @@ class PlaceQueryTest {
         assertEquals(1, ordered.size)
     }
 
+    /** Une localite egale au nom n'est pas affichee : sans localite ou avec la meme, la ligne est identique. */
+    @Test fun `une localite egale au nom ne distingue pas deux lieux`() {
+        val ordered = PlaceQuery.order(
+            listOf(
+                hit("Pamiers", PlaceKind.TOWN, 1.6082, 43.1147, null),
+                hit("Pamiers", 43, 1.6194, 43.1162, "Pamiers"),
+            ),
+            "Pamiers",
+        )
+        assertEquals(1, ordered.size)
+    }
+
     @Test fun `deux hameaux de meme nom eloignes restent deux`() {
         val ordered = PlaceQuery.order(
             listOf(
