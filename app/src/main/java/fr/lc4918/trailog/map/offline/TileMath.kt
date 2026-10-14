@@ -74,7 +74,8 @@ object TileMath {
     fun tileSequenceAlong(points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double): Sequence<Triple<Int, Int, Int>> =
         sequence {
             val c = corridor(points, zoom, radiusM) ?: return@sequence
-            c.rows.forEachIndexed { i, row ->
+            for (i in 0 until c.height) {
+                val row = c.row(i)
                 var x = row.nextSetBit(0)
                 while (x >= 0) { yield(Triple(c.x0 + x, c.y0 + i, zoom)); x = row.nextSetBit(x + 1) }
             }
@@ -125,7 +126,8 @@ object TileMath {
     ): List<Triple<Int, Int, Int>> {
         val c = corridor(points, zoom, radiusM) ?: return emptyList()
         val out = ArrayList<Triple<Int, Int, Int>>(c.count().toInt())
-        c.rows.forEachIndexed { i, row ->
+        for (i in 0 until c.height) {
+            val row = c.row(i)
             var x = row.nextSetBit(0)
             while (x >= 0) { out.add(Triple(c.x0 + x, c.y0 + i, zoom)); x = row.nextSetBit(x + 1) }
         }
@@ -133,14 +135,83 @@ object TileMath {
     }
 
     /** Tuiles du couloir sur toute la plage de zoom. Chaque niveau a son propre ensemble : une meme tuile
-     *  ne peut pas exister a deux zooms differents. Compte sans rien construire tuile par tuile. */
+     *  ne peut pas exister a deux zooms differents. Compte sans rien construire tuile par tuile.
+     *
+     *  [checkCancelled] est appele a chaque rangee : il leve pour interrompre le calcul. Sans lui, un calcul
+     *  remplace par le suivant (un cran de curseur de plus) continuait jusqu'au bout, et les calculs
+     *  s'empilaient en parallele jusqu'a saturer la memoire. */
     fun totalTileCountAlong(
         points: List<Pair<Double, Double>>, minZoom: Int, maxZoom: Int, radiusM: Double,
-    ): Long = (minZoom..maxZoom).sumOf { corridor(points, it, radiusM)?.count() ?: 0L }
+        checkCancelled: () -> Unit = {},
+    ): Long = (minZoom..maxZoom).sumOf { corridor(points, it, radiusM, checkCancelled)?.count(checkCancelled) ?: 0L }
+
+    /**
+     * Estimation du total du couloir pour l'ecran de configuration : exacte tant que le calcul reste
+     * raisonnable, extrapolee au-dela.
+     *
+     * Le cout d'un niveau quadruple a chaque zoom - la grille grandit en largeur, en hauteur, et l'elargissement
+     * se compte en plus de tuiles - et sur une longue trace aux derniers niveaux, il se chiffre en dizaines de
+     * secondes sur un telephone. Quand un niveau depasserait [budget], lui et les suivants valent quatre fois le
+     * niveau d'avant : le nombre de tuiles d'une forme quadruple a chaque zoom, et l'ecart tombe sous le
+     * pour cent des que le couloir est large devant une tuile. Le telechargement, lui, garde le compte exact
+     * ([totalTileCountAlong]).
+     */
+    fun estimateTileCountAlong(
+        points: List<Pair<Double, Double>>, minZoom: Int, maxZoom: Int, radiusM: Double,
+        budget: Double = CORRIDOR_COST_BUDGET, checkCancelled: () -> Unit = {},
+    ): Long {
+        var total = 0L
+        var previousCount = -1L
+        for (zoom in minZoom..maxZoom) {
+            val count = if (previousCount >= 0 && corridorCost(points, zoom, radiusM) > budget) {
+                previousCount * 4
+            } else {
+                corridor(points, zoom, radiusM, checkCancelled)?.count(checkCancelled) ?: 0L
+            }
+            total += count
+            previousCount = count
+        }
+        return total
+    }
+
+    /** Ordre de grandeur du travail d'un niveau : rangees x elargissement vertical x mots d'une rangee. */
+    private fun corridorCost(points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double): Double {
+        if (points.isEmpty()) return 0.0
+        val n = 1 shl zoom
+        val width = points.maxOf { tileXf(it.first, n) } - points.minOf { tileXf(it.first, n) }
+        val height = points.maxOf { tileYf(it.second, n) } - points.minOf { tileYf(it.second, n) }
+        val latMax = points.maxOf { kotlin.math.abs(it.second) }
+        val range = radiusM.coerceAtLeast(0.0) / tileMeters(latMax, zoom).coerceAtLeast(1.0)
+        return (height + 2 * range) * (2 * range + 1) * ((width + 2 * range) / 64 + 1)
+    }
+
+    /** Cout au-dela duquel un niveau est extrapole : environ trois secondes de calcul sur un telephone. */
+    private const val CORRIDOR_COST_BUDGET = 3e9
 
     /** Le couloir a un zoom : une grille de bits, une rangee par ligne de tuiles, a partir de ([x0], [y0]). */
-    private class Couloir(val x0: Int, val y0: Int, val rows: Array<java.util.BitSet>) {
-        fun count(): Long = rows.sumOf { it.cardinality().toLong() }
+    private class Couloir(
+        val x0: Int, val y0: Int,
+        private val large: Array<java.util.BitSet>, private val portee: IntArray,
+    ) {
+        val height: Int get() = large.size
+
+        /** La rangee [j] du couloir : l'union des rangees elargies dont la portee atteint [j]. Calculee a la
+         *  demande, une a la fois, au lieu de garder toute la grille en memoire. */
+        fun row(j: Int): java.util.BitSet {
+            val union = java.util.BitSet()
+            for (i in (j - maxRange).coerceAtLeast(0)..(j + maxRange).coerceAtMost(large.size - 1)) {
+                if (kotlin.math.abs(i - j) <= portee[i]) union.or(large[i])
+            }
+            return union
+        }
+
+        private val maxRange: Int = portee.maxOrNull() ?: 0
+
+        fun count(checkCancelled: () -> Unit = {}): Long {
+            var total = 0L
+            for (j in 0 until large.size) { checkCancelled(); total += row(j).cardinality() }
+            return total
+        }
     }
 
     private fun tileXf(lon: Double, n: Int): Double = (lon + 180.0) / 360.0 * n
@@ -171,7 +242,9 @@ object TileMath {
      * ligne droite tracee a la regle - sauteraient sinon les tuiles entre eux. L'elargissement se prend a la
      * latitude de chaque rangee, ou une tuile n'a pas la meme taille au sol.
      */
-    private fun corridor(points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double): Couloir? {
+    private fun corridor(
+        points: List<Pair<Double, Double>>, zoom: Int, radiusM: Double, checkCancelled: () -> Unit = {},
+    ): Couloir? {
         if (points.isEmpty()) return null
         val n = 1 shl zoom
         val xs = points.map { tileXf(it.first, n) }
@@ -194,6 +267,7 @@ object TileMath {
         }
         poser(xs[0], ys[0])
         for (i in 0 until points.size - 1) {
+            if (i % 256 == 0) checkCancelled()
             val dx = xs[i + 1] - xs[i]
             val dy = ys[i + 1] - ys[i]
             val pas = kotlin.math.ceil(kotlin.math.max(kotlin.math.abs(dx), kotlin.math.abs(dy)) * 2).toInt().coerceAtLeast(1)
@@ -208,6 +282,7 @@ object TileMath {
         }
         // Le long des rangees d'abord : chaque tuile de la ligne s'etend de sa portee a gauche et a droite.
         val large = Array(hauteur) { i ->
+            checkCancelled()
             val r = portee[i]
             val src = ligne[i]
             val dst = java.util.BitSet()
@@ -218,14 +293,9 @@ object TileMath {
             }
             dst
         }
-        // Puis d'une rangee aux voisines : le carre de portee autour de chaque tuile de la ligne.
-        val rows = Array(hauteur) { java.util.BitSet() }
-        for (i in 0 until hauteur) {
-            if (large[i].isEmpty) continue
-            val r = portee[i]
-            for (j in (i - r).coerceAtLeast(0)..(i + r).coerceAtMost(hauteur - 1)) rows[j].or(large[i])
-        }
-        return Couloir(x0, y0, rows)
+        // Puis d'une rangee aux voisines : le carre de portee autour de chaque tuile de la ligne, ce que
+        // [Couloir.row] fait rangee par rangee, a la demande.
+        return Couloir(x0, y0, large, portee)
     }
 
     fun estimateSizeBytes(tileCount: Long): Long = tileCount * AVG_TILE_BYTES

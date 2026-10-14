@@ -6,6 +6,8 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.CircularProgressIndicator
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -199,7 +201,10 @@ fun OfflineDownloadConfigScreen(
         calcul = true
         delay(300)
         tileCount = withContext(Dispatchers.Default) {
-            if (portion != null) TileMath.totalTileCountAlong(portion, minZ, maxZ, halfWidthKm * 1000.0)
+            // Interrompu des que le reglage change : le calcul n'est sinon pas annulable, et ceux des crans
+            // successifs du curseur s'accumulaient en parallele jusqu'a saturer la memoire.
+            val job = coroutineContext[Job]
+            if (portion != null) TileMath.estimateTileCountAlong(portion, minZ, maxZ, halfWidthKm * 1000.0) { job?.ensureActive() }
             else TileMath.totalTileCount(bbox, minZ, maxZ)
         }
         calcul = false

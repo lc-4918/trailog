@@ -105,4 +105,55 @@ class TileCorridorTest {
         val attendu = (12..15).sumOf { tiles(est, it, 300.0).size.toLong() }
         assertEquals(attendu, TileMath.totalTileCountAlong(est, 12, 15, 300.0))
     }
+
+    /** Un calcul remplace doit pouvoir s'arreter : sinon les calculs des crans du curseur s'empilent. */
+    @Test fun `le calcul du total s'interrompt quand l'annulation leve`() {
+        var checkCount = 0
+        try {
+            TileMath.totalTileCountAlong(est, 10, 17, 300.0) {
+                checkCount++
+                if (checkCount >= 3) throw IllegalStateException("annule")
+            }
+            org.junit.Assert.fail("le calcul n'a pas ete interrompu")
+        } catch (expected: IllegalStateException) {
+            assertEquals(3, checkCount)
+        }
+    }
+
+    /** Une longue trace aux grands zooms tient dans le tas d'un telephone : la grille n'est pas gardee entiere. */
+    @Test fun `une longue trace au zoom maximal se compte sans saturer la memoire`() {
+        val boucle = (0..20000).map { index ->
+            val angle = index / 20000.0 * 2 * Math.PI
+            (-0.5 + 2.8 * Math.cos(angle)) to (42.4 + 1.2 * Math.sin(angle))
+        }
+        assertTrue(TileMath.totalTileCountAlong(boucle, 17, 19, 1000.0) > 0L)
+    }
+
+    private val longLoop = (0..20000).map { index ->
+        val angle = index / 20000.0 * 2 * Math.PI
+        (-0.5 + 2.8 * Math.cos(angle)) to (42.4 + 1.2 * Math.sin(angle))
+    }
+
+    /** Sous le budget, l'estimation est le compte exact. */
+    @Test fun `l'estimation egale le compte exact quand le calcul reste raisonnable`() {
+        assertEquals(
+            TileMath.totalTileCountAlong(est, 10, 16, 300.0),
+            TileMath.estimateTileCountAlong(est, 10, 16, 300.0),
+        )
+    }
+
+    /** Au-dela du budget, un niveau vaut quatre fois le precedent, a moins de 2 % du compte exact. */
+    @Test fun `l'estimation extrapolee reste proche du compte exact`() {
+        val exact = TileMath.totalTileCountAlong(longLoop, 10, 17, 20_000.0)
+        val estimated = TileMath.estimateTileCountAlong(longLoop, 10, 17, 20_000.0, budget = 1e7)
+        assertTrue("exact=$exact estime=$estimated", kotlin.math.abs(estimated - exact) < exact * 0.02)
+    }
+
+    /** Les derniers niveaux ne sont pas calcules : l'estimation d'une plage jusqu'au zoom 21 est instantanee. */
+    @Test fun `l'estimation jusqu'au zoom 21 ne calcule pas les niveaux couteux`() {
+        var checkCount = 0
+        TileMath.estimateTileCountAlong(longLoop, 0, 21, 20_000.0) { checkCount++ }
+        // les niveaux calcules se comptent en rangees ; un niveau 21 exact en demanderait des dizaines de milliers
+        assertTrue("checkCount=$checkCount", checkCount < 100_000)
+    }
 }
