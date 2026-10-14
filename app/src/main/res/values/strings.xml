@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Téléchargement interrompu : %1$d tuile(s) manquante(s)</string>
     <string name="offline_action_minimize">Réduire</string>
     <string name="offline_action_reopen">Rouvrir le téléchargement</string>
+    <string name="offline_stage_writing">Écriture du fichier de carte...</string>
+    <string name="offline_stage_thumbnails">Création des miniatures...</string>
+    <string name="offline_stage_pois">Récupération des points d\'intérêt...</string>
 
     <!-- Libellés génériques -->
     <string name="label_root">- Racine -</string>

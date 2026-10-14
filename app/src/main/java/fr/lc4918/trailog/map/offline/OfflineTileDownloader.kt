@@ -34,6 +34,7 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
         req: OfflineDownloadRequest,
         writer: MbtilesWriter,
         onProgress: (done: Int, failed: Int) -> Unit,
+        onStage: (OfflineStage) -> Unit = {},
     ): Outcome {
         // Couloir : seules les tuiles qui bordent le parcours, sans doublon quand il revient sur lui-meme
         // (cf. TileMath.tilesAlong). Sinon, tout le rectangle.
@@ -105,6 +106,8 @@ class OfflineTileDownloader(private val provider: ProviderEntity) {
                     }
                 }
                 workers.joinAll()
+                // Plus aucune tuile a recevoir : reste a vider la file d'ecriture et a fermer le fichier.
+                onStage(OfflineStage.WRITING)
                 // Des telechargeurs arretes sur erreur laisseraient le producteur bloque sur une file pleine.
                 producer.cancel()
                 writeChannel.close()

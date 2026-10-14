@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.offline
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,11 +19,11 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,10 +34,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
+import fr.lc4918.trailog.map.offline.OfflineStage
+import fr.lc4918.trailog.ui.components.SheetRoundButton
 import fr.lc4918.trailog.ui.routes.ControlButtonRadius
 import fr.lc4918.trailog.ui.theme.Spacing
 import java.text.NumberFormat
@@ -91,22 +95,23 @@ fun OfflineDownloadCard(
 }
 
 /**
- * En cours : le titre et le chevron qui reduit, les trois comptes en tuiles - comme les compteurs du
- * tableau de bord -, la barre, puis les deux issues. "Annuler" est en rouge : il arrete le telechargement.
- * "Reduire" est a sa droite, a la place de l'action qu'on attend d'une popup qui dure.
+ * En cours : l'en-tete des autres panneaux (titre de panneau, sur deux lignes s'il le faut, et le chevron qui
+ * reduit sur un rond gris), les trois comptes en tuiles - comme les compteurs du tableau de bord -, la barre,
+ * puis les deux issues, de 44 dp comme celles des autres etapes du telechargement : "Annuler" en contour, en
+ * rouge parce qu'il arrete tout, et "Reduire" en aplat, a la place de l'action qu'on attend d'une popup qui dure.
+ *
+ * Une fois les tuiles recues, la barre est pleine et pourtant le travail continue (fichier, miniatures, lieux) :
+ * le nom de l'etape prend alors sa place, avec un rond qui tourne.
  */
 @Composable
 private fun RunningContent(state: OfflineDownloadState, onMinimize: () -> Unit, onCancel: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     val nombre = NumberFormat.getIntegerInstance()
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.m)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.offline_progress_title), style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f))
-            IconButton(onClick = onMinimize, modifier = Modifier.padding(start = Spacing.s).size(36.dp)) {
-                Icon(Icons.Filled.ExpandMore, stringResource(R.string.offline_action_minimize),
-                    tint = scheme.onSurfaceVariant)
-            }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.s)) {
+            Text(stringResource(R.string.offline_progress_title), style = MaterialTheme.typography.titleLarge,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            SheetRoundButton(Icons.Filled.ExpandMore, stringResource(R.string.offline_action_minimize), onMinimize)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             StatTile(stringResource(R.string.offline_stat_total), nombre.format(state.total), Modifier.weight(1f))
@@ -114,28 +119,75 @@ private fun RunningContent(state: OfflineDownloadState, onMinimize: () -> Unit, 
             StatTile(stringResource(R.string.offline_stat_failed), nombre.format(state.failed), Modifier.weight(1f),
                 valueColor = if (state.failed > 0) scheme.error else scheme.onSurface)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)) {
-                Box(Modifier.fillMaxWidth((state.percent / 100f).coerceIn(0f, 1f)).height(6.dp)
-                    .clip(CircleShape).background(scheme.primary))
+        if (state.stage == OfflineStage.TILES) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(scheme.surfaceContainerHigh)) {
+                    Box(Modifier.fillMaxWidth((state.percent / 100f).coerceIn(0f, 1f)).height(6.dp)
+                        .clip(CircleShape).background(scheme.primary))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${state.percent} %",
+                        style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                        fontWeight = FontWeight.SemiBold)
+                    Text("${nombre.format(state.done + state.failed)} / ${nombre.format(state.total)}",
+                        style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                        color = scheme.onSurfaceVariant)
+                }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${state.percent} %",
-                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
-                    fontWeight = FontWeight.SemiBold)
-                Text("${nombre.format(state.done + state.failed)} / ${nombre.format(state.total)}",
-                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
-                    color = scheme.onSurfaceVariant)
-            }
+        } else {
+            StageList(state)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onCancel) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(onClick = onCancel, modifier = Modifier.height(44.dp),
+                border = BorderStroke(1.dp, scheme.outlineVariant)) {
                 Text(stringResource(R.string.action_cancel), color = scheme.error)
             }
-            TextButton(onClick = onMinimize) { Text(stringResource(R.string.offline_action_minimize)) }
+            Button(onClick = onMinimize, modifier = Modifier.height(44.dp)) {
+                Text(stringResource(R.string.offline_action_minimize))
+            }
         }
     }
 }
+
+/**
+ * Les etapes qui suivent les tuiles, chacune sur sa ligne : faite (coche), en cours (rond qui tourne) ou a
+ * venir (rond vide). La barre est pleine mais le travail continue : on dit lequel, et ce qu'il en reste.
+ */
+@Composable
+private fun StageList(state: OfflineDownloadState) {
+    val scheme = MaterialTheme.colorScheme
+    val steps = state.stagesAfterTiles
+    val current = steps.indexOf(state.stage)
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        steps.forEachIndexed { index, step ->
+            Row(Modifier.fillMaxWidth().height(StageLineHeight), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                    when {
+                        index < current -> Icon(Icons.Filled.CheckCircle, null, Modifier.size(20.dp), tint = scheme.secondary)
+                        index == current -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp,
+                            strokeCap = StrokeCap.Round)
+                        else -> Box(Modifier.size(12.dp).clip(CircleShape).background(scheme.surfaceContainerHigh))
+                    }
+                }
+                Text(
+                    stringResource(when (step) {
+                        OfflineStage.POIS -> R.string.offline_stage_pois
+                        OfflineStage.THUMBNAILS -> R.string.offline_stage_thumbnails
+                        else -> R.string.offline_stage_writing
+                    }),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (index == current) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (index <= current) scheme.onSurface else scheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Hauteur d'une ligne d'etape. */
+private val StageLineHeight = 28.dp
 
 /** Un compte : son libelle en petites capitales grises, sa valeur a chiffres de chasse fixe. */
 @Composable
@@ -168,8 +220,8 @@ private fun ResultContent(
             }
         }
     }
-    Row(Modifier.fillMaxWidth().padding(top = Spacing.xs), horizontalArrangement = Arrangement.End) {
-        TextButton(onClick = onClose) { Text(stringResource(R.string.action_close)) }
+    Row(Modifier.fillMaxWidth().padding(top = Spacing.m), horizontalArrangement = Arrangement.End) {
+        Button(onClick = onClose, modifier = Modifier.height(44.dp)) { Text(stringResource(R.string.action_close)) }
     }
 }
 

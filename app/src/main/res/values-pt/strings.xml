@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Descarga interrompida: faltam %1$d mosaico(s)</string>
     <string name="offline_action_minimize">Minimizar</string>
     <string name="offline_action_reopen">Reabrir a descarga</string>
+    <string name="offline_stage_writing">A escrever o ficheiro do mapa...</string>
+    <string name="offline_stage_thumbnails">A criar miniaturas...</string>
+    <string name="offline_stage_pois">A obter pontos de interesse...</string>
 
     <!-- Etiquetas genéricas -->
     <string name="label_root">- Raiz -</string>

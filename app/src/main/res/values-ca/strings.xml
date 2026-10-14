@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Baixada aturada: falten %1$d tessel·la/es</string>
     <string name="offline_action_minimize">Minimitza</string>
     <string name="offline_action_reopen">Torna a obrir la baixada</string>
+    <string name="offline_stage_writing">Escrivint el fitxer del mapa...</string>
+    <string name="offline_stage_thumbnails">Creant miniatures...</string>
+    <string name="offline_stage_pois">Recuperant punts d\'interès...</string>
 
     <!-- Etiquetes genèriques -->
     <string name="label_root">- Arrel -</string>

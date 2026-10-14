@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Descarga interrumpida: faltan %1$d tesela(s)</string>
     <string name="offline_action_minimize">Minimizar</string>
     <string name="offline_action_reopen">Reabrir la descarga</string>
+    <string name="offline_stage_writing">Escribiendo el archivo del mapa...</string>
+    <string name="offline_stage_thumbnails">Creando miniaturas...</string>
+    <string name="offline_stage_pois">Obteniendo puntos de interés...</string>
 
     <!-- Etiquetas genéricas -->
     <string name="label_root">- Raíz -</string>

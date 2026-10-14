@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Deskarga eten da: %1$d lauza falta dira</string>
     <string name="offline_action_minimize">Txikitu</string>
     <string name="offline_action_reopen">Deskarga berriz ireki</string>
+    <string name="offline_stage_writing">Mapa-fitxategia idazten...</string>
+    <string name="offline_stage_thumbnails">Miniaturak sortzen...</string>
+    <string name="offline_stage_pois">Interes-puntuak eskuratzen...</string>
 
     <!-- Etiketa orokorrak -->
     <string name="label_root">- Erroa -</string>

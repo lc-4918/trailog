@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
+import fr.lc4918.trailog.map.offline.OfflineStage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -68,5 +69,37 @@ class OfflineDownloadProgressUiTest {
         compose.onNodeWithText("51").assertIsDisplayed()
         compose.onNodeWithContentDescription(ctx.getString(R.string.offline_action_reopen)).performClick()
         assertTrue(rouvert)
+    }
+
+    @Test fun `apres les tuiles, la popup liste chaque etape a la place de la barre`() {
+        compose.setContent {
+            OfflineDownloadCard(
+                encours.copy(done = 198, failed = 2, stage = OfflineStage.THUMBNAILS, withPois = true),
+                onMinimize = {}, onCancel = {}, onClose = {},
+            )
+        }
+        compose.onNodeWithText(ctx.getString(R.string.offline_stage_writing)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.offline_stage_thumbnails)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.offline_stage_pois)).assertIsDisplayed()
+        compose.onNodeWithText("100 %").assertDoesNotExist()
+    }
+
+    @Test fun `sans lieux demandes, l'etape des lieux n'est pas annoncee`() {
+        compose.setContent {
+            OfflineDownloadCard(encours.copy(stage = OfflineStage.WRITING), onMinimize = {}, onCancel = {}, onClose = {})
+        }
+        compose.onNodeWithText(ctx.getString(R.string.offline_stage_writing)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.offline_stage_pois)).assertDoesNotExist()
+    }
+
+    @Test fun `les etapes d'apres les tuiles suivent le choix des lieux`() {
+        assertEquals(
+            listOf(OfflineStage.WRITING, OfflineStage.THUMBNAILS),
+            encours.stagesAfterTiles,
+        )
+        assertEquals(
+            listOf(OfflineStage.WRITING, OfflineStage.THUMBNAILS, OfflineStage.POIS),
+            encours.copy(withPois = true).stagesAfterTiles,
+        )
     }
 }

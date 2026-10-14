@@ -33,6 +33,7 @@ import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.map.offline.MbtilesWriter
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
+import fr.lc4918.trailog.map.offline.OfflineStage
 import fr.lc4918.trailog.map.offline.OfflineThumbnails
 import fr.lc4918.trailog.map.offline.OfflineTileDownloader
 import fr.lc4918.trailog.map.offline.OfflineDownloadRequest
@@ -848,6 +849,7 @@ class TrailogRepository(private val ctx: Context) {
         provider: ProviderEntity,
         req: OfflineDownloadRequest,
         settings: SettingsEntity,
+        onStage: (OfflineStage) -> Unit = {},
         onProgress: (done: Int, failed: Int) -> Unit,
     ): OfflineDownloadResult = withContext(Dispatchers.IO) {
         val dir = mbtilesDir(settings)
@@ -857,7 +859,7 @@ class TrailogRepository(private val ctx: Context) {
         // décide que du sort du fichier et de l'enregistrement du provider selon l'issue.
         val writer = MbtilesWriter(file)
         try {
-            when (val outcome = OfflineTileDownloader(provider).download(req, writer, onProgress)) {
+            when (val outcome = OfflineTileDownloader(provider).download(req, writer, onProgress, onStage)) {
                 is OfflineTileDownloader.Outcome.Failed -> {
                     file.delete()
                     OfflineDownloadResult.Failed(outcome.failed)
@@ -880,6 +882,7 @@ class TrailogRepository(private val ctx: Context) {
                     db.providers().upsert(prov)
                     // Miniatures (SPEC section 6) : best-effort et bornées, elles n'empêchent jamais le succès
                     // ni ne le retardent au-delà de 30 s si le réseau se dégrade juste après le DL.
+                    onStage(OfflineStage.THUMBNAILS)
                     runCatching {
                         withTimeoutOrNull(30_000) {
                             OfflineThumbnails.generate(ctx, provider, req.bbox, req.minZoom, req.maxZoom, file.name)

@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Download abgebrochen: %1$d Kachel(n) fehlen</string>
     <string name="offline_action_minimize">Minimieren</string>
     <string name="offline_action_reopen">Download wieder öffnen</string>
+    <string name="offline_stage_writing">Kartendatei wird geschrieben...</string>
+    <string name="offline_stage_thumbnails">Vorschaubilder werden erstellt...</string>
+    <string name="offline_stage_pois">Sehenswürdigkeiten werden abgerufen...</string>
 
     <!-- Allgemeine Bezeichnungen -->
     <string name="label_root">- Stammverzeichnis -</string>

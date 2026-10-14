@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Download stopped: %1$d tile(s) missing</string>
     <string name="offline_action_minimize">Minimize</string>
     <string name="offline_action_reopen">Reopen download</string>
+    <string name="offline_stage_writing">Writing the map file...</string>
+    <string name="offline_stage_thumbnails">Creating thumbnails...</string>
+    <string name="offline_stage_pois">Fetching points of interest...</string>
 
     <!-- Generic labels -->
     <string name="label_root">- Root -</string>

@@ -39,6 +39,7 @@ import fr.lc4918.trailog.map.compositeIdFromBasemapId
 import fr.lc4918.trailog.map.offline.OfflineDownloadResult
 import fr.lc4918.trailog.map.offline.OfflineDownloadState
 import fr.lc4918.trailog.map.offline.OfflinePhase
+import fr.lc4918.trailog.map.offline.OfflineStage
 import fr.lc4918.trailog.map.offline.TileMath
 import fr.lc4918.trailog.ui.components.RenderLayer
 import fr.lc4918.trailog.data.repo.LayerGeoJson
@@ -1058,10 +1059,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val provider = providers.value.firstOrNull { it.id == s.defaultBasemapId } ?: return
         // Le meme compte que les tuiles que le moteur va demander : couloir compris (cf. TileMath.tileSequenceFor).
         val total = TileMath.totalTileCount(req).toInt()
-        _offlineDownload.value = OfflineDownloadState(name = req.name, total = total)
+        _offlineDownload.value = OfflineDownloadState(name = req.name, total = total, withPois = req.withPois)
         offlineJob = viewModelScope.launch {
             try {
-                val result = repo.downloadOfflineMap(provider, req, s) { done, failed ->
+                val result = repo.downloadOfflineMap(
+                    provider, req, s,
+                    // Les etapes d'apres les tuiles : la popup les nomme a la place de la barre pleine.
+                    onStage = { stage -> _offlineDownload.update { it?.copy(stage = stage) } },
+                ) { done, failed ->
                     // Le moteur rappelle depuis plusieurs threads : update() (CAS) est thread-safe.
                     _offlineDownload.update { it?.copy(done = done, failed = failed) }
                 }
@@ -1076,6 +1081,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                  * L'ecran de fin le dit en une ligne, sans se transformer en erreur.
                  */
                 val lieux = if (req.withPois && result is OfflineDownloadResult.Success) {
+                    _offlineDownload.update { it?.copy(stage = OfflineStage.POIS) }
                     val filtres = PoiFilters.of(s.poiHiddenCategories)
                     runCatching {
                         poiRepository.pinArea(

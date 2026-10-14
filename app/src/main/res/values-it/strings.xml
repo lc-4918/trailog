@@ -138,6 +138,9 @@
     <string name="offline_progress_error">Download interrotto: %1$d tessera/e mancante/i</string>
     <string name="offline_action_minimize">Riduci</string>
     <string name="offline_action_reopen">Riapri il download</string>
+    <string name="offline_stage_writing">Scrittura del file della mappa...</string>
+    <string name="offline_stage_thumbnails">Creazione delle miniature...</string>
+    <string name="offline_stage_pois">Recupero dei punti di interesse...</string>
 
     <!-- Etichette generiche -->
     <string name="label_root">- Radice -</string>
