@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
@@ -59,7 +60,10 @@ fun UnknownSourcesDialog(onOpenSettings: () -> Unit, onCancel: () -> Unit) {
  * souvent - laisse l'installation suspendue.
  */
 @Composable
-fun UpdateProgressDialog(state: InstallState, retrying: Boolean = false, onCancel: () -> Unit, onClose: () -> Unit) {
+fun UpdateProgressDialog(
+    state: InstallState, retrying: Boolean = false, downloadProgress: Float? = null,
+    onCancel: () -> Unit, onClose: () -> Unit,
+) {
     val failed = state as? InstallState.Failed
     AlertDialog(
         onDismissRequest = {},
@@ -78,10 +82,25 @@ fun UpdateProgressDialog(state: InstallState, retrying: Boolean = false, onCance
                         modifier = androidx.compose.ui.Modifier.padding(top = 8.dp))
                 }
                 if (failed == null) {
-                    androidx.compose.material3.LinearProgressIndicator(
-                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 16.dp))
+                    // Le telechargement se mesure : une vraie barre, avec son pourcentage. Le reste - copie,
+                    // verification, remplacement - ne rapporte aucun avancement : une roue, pas une barre qui
+                    // fait semblant.
+                    if (state is InstallState.Downloading && downloadProgress != null) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 16.dp))
+                        Text("${(downloadProgress * 100).toInt()} %",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            modifier = androidx.compose.ui.Modifier.padding(top = 4.dp))
+                    } else {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = androidx.compose.ui.Modifier.padding(top = 16.dp).size(32.dp))
+                    }
                 }
                 if (state is InstallState.Installing) {
+                    Text(stringResource(R.string.update_install_closes),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        modifier = androidx.compose.ui.Modifier.padding(top = 12.dp))
                     Text(stringResource(R.string.update_install_hint),
                         style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         modifier = androidx.compose.ui.Modifier.padding(top = 12.dp))
@@ -109,6 +128,7 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     var askInstallPermission by remember { mutableStateOf(false) }
     var downloadId by remember { mutableStateOf<Long?>(null) }
     var attempt by remember { mutableStateOf(0) }
+    var downloadProgress by remember { mutableStateOf<Float?>(null) }
     val state by UpdateInstaller.state.collectAsState()
     val stalled = stringResource(R.string.update_install_stalled)
     val title = stringResource(R.string.update_download_title)
@@ -154,6 +174,15 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
             else UpdateInstaller.set(InstallState.Failed(null))
         }
     }
+    // L'avancement du telechargement : DownloadManager ne le pousse pas, on le relit tant qu'il dure.
+    androidx.compose.runtime.LaunchedEffect(downloadId, state is InstallState.Downloading) {
+        val watched = downloadId
+        if (watched == null || state !is InstallState.Downloading) return@LaunchedEffect
+        while (true) {
+            downloadProgress = UpdateInstaller.downloadProgress(ctx, watched)
+            kotlinx.coroutines.delay(400)
+        }
+    }
     // De retour dans l'appli, la fenetre de confirmation d'Android est fermee : le systeme installe.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
@@ -186,6 +215,7 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
         UpdateProgressDialog(
             state = state,
             retrying = attempt > 0,
+            downloadProgress = downloadProgress,
             onCancel = {
                 if (state is InstallState.Downloading) {
                     (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).remove(id!!)

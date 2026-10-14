@@ -434,6 +434,10 @@
     <string name="update_install_hint">Si se abre una ventana de Play Protect, respóndela enseguida: pasado un plazo, Android deja la instalación en suspenso. Cancelar la libera.</string>
     <string name="update_state_retrying">Instalación bloqueada, nuevo intento…</string>
     <string name="update_install_stalled">Android no ha terminado la instalación. Inténtalo más tarde o desactiva el análisis de aplicaciones de Play Protect en Play Store.</string>
+    <string name="update_install_closes">La aplicación se cerrará para instalarse. Vuelve a abrirla después.</string>
+    <string name="update_done_title">Trailog: actualización terminada</string>
+    <string name="update_done_open">Abrir</string>
+    <string name="update_done_channel">Actualizaciones</string>
 
     <string name="dialog_import_result_title">Importación</string>
     <plurals name="import_invalid_files">

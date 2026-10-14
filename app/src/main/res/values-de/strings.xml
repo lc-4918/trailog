@@ -434,6 +434,10 @@
     <string name="update_install_hint">Öffnet sich ein Play-Protect-Fenster, antworten Sie sofort: Nach einer Frist lässt Android die Installation hängen. Abbrechen gibt sie frei.</string>
     <string name="update_state_retrying">Installation hängt, neuer Versuch…</string>
     <string name="update_install_stalled">Android hat die Installation nicht abgeschlossen. Versuchen Sie es später erneut oder deaktivieren Sie die App-Prüfung von Play Protect im Play Store.</string>
+    <string name="update_install_closes">Die App schließt sich zur Installation. Öffnen Sie sie danach erneut.</string>
+    <string name="update_done_title">Trailog: Update abgeschlossen</string>
+    <string name="update_done_open">Öffnen</string>
+    <string name="update_done_channel">Updates</string>
 
     <string name="dialog_import_result_title">Import</string>
     <plurals name="import_invalid_files">

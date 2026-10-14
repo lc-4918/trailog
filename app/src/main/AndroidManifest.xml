@@ -91,6 +91,14 @@
         <receiver
             android:name=".update.UpdateInstallReceiver"
             android:exported="false" />
+        <!-- Annonce la fin d'une mise a jour par une notification (cf. update/UpdateDone). -->
+        <receiver
+            android:name=".update.UpdateDoneReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <service
             android:name=".location.LocationService"
             android:exported="false"

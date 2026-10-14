@@ -84,6 +84,24 @@ object UpdateInstaller {
 
     fun set(state: InstallState) { _state.value = state }
 
+    /**
+     * La part [downloaded]/[total] d'un telechargement, de 0 a 1, ou null tant que la taille n'est pas
+     * connue (DownloadManager rend -1 avant la reponse du serveur) : il n'y a alors rien a mesurer.
+     */
+    fun progressFraction(downloaded: Long, total: Long): Float? =
+        if (total <= 0L) null else (downloaded.toFloat() / total).coerceIn(0f, 1f)
+
+    /** L'avancement du telechargement [downloadId] (cf. [progressFraction]), ou null s'il est inconnu. */
+    fun downloadProgress(context: Context, downloadId: Long): Float? {
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        dm.query(DownloadManager.Query().setFilterById(downloadId)).use { c ->
+            if (!c.moveToFirst()) return null
+            val downloaded = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+            val total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+            return progressFraction(downloaded, total)
+        }
+    }
+
     /** Le telechargement [downloadId] est-il arrive entier ? Un echec ne doit pas mener a l'installateur. */
     fun downloadSucceeded(context: Context, downloadId: Long): Boolean {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager

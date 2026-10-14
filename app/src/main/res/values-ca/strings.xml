@@ -434,6 +434,10 @@
     <string name="update_install_hint">Si s\'obre una finestra de Play Protect, respon-hi de seguida: passat un termini, Android deixa la instal·lació en suspens. Cancel·lar l\'allibera.</string>
     <string name="update_state_retrying">Instal·lació bloquejada, nou intent…</string>
     <string name="update_install_stalled">Android no ha acabat la instal·lació. Torna-ho a provar més tard o desactiva l\'anàlisi d\'aplicacions de Play Protect a Play Store.</string>
+    <string name="update_install_closes">L\'aplicació es tancarà per instal·lar-se. Torna-la a obrir després.</string>
+    <string name="update_done_title">Trailog: actualització acabada</string>
+    <string name="update_done_open">Obre</string>
+    <string name="update_done_channel">Actualitzacions</string>
 
     <string name="dialog_import_result_title">Importació</string>
     <plurals name="import_invalid_files">

@@ -58,3 +58,23 @@ class InstallProgressRulesTest {
         assertEquals(StallAction.GIVE_UP, UpdateInstaller.onStall(attempt = 2, maxRetries = 2))
     }
 }
+
+/** La part d'un telechargement, pour la barre de progression. */
+class DownloadProgressTest {
+
+    @Test fun `la part est le rapport des octets recus a la taille`() {
+        assertEquals(0.25f, UpdateInstaller.progressFraction(25L, 100L)!!, 1e-6f)
+        assertEquals(1f, UpdateInstaller.progressFraction(100L, 100L)!!, 1e-6f)
+    }
+
+    @Test fun `une taille inconnue ne donne aucune part`() {
+        // DownloadManager rend -1 tant que le serveur n'a pas repondu.
+        assertNull(UpdateInstaller.progressFraction(0L, -1L))
+        assertNull(UpdateInstaller.progressFraction(10L, 0L))
+    }
+
+    @Test fun `la part reste entre 0 et 1`() {
+        assertEquals(1f, UpdateInstaller.progressFraction(150L, 100L)!!, 1e-6f)
+        assertEquals(0f, UpdateInstaller.progressFraction(-5L, 100L)!!, 1e-6f)
+    }
+}
