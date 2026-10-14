@@ -111,7 +111,9 @@ object UpdateManager {
             setTitle(title)
             setDescription(description)
             setDestinationInExternalFilesDir(context, null, "trailog-${release.version}.apk")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            // Visible pendant le telechargement seulement : la fin est annoncee par notre propre notification
+            // (cf. UpdateDone.showDownloaded), dont le texte et le bouton sont ceux des autres.
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
             setMimeType(APK_MIME)
         }
         return dm.enqueue(request)

@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.content.ContextCompat
 import fr.lc4918.trailog.R
 
 /** Propose la mise a jour : l'utilisateur accepte ou repousse (repousser ne fait que fermer, la
@@ -126,7 +125,9 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     val ctx = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askInstallPermission by remember { mutableStateOf(false) }
-    var downloadId by remember { mutableStateOf<Long?>(null) }
+    // Le telechargement vit dans UpdateInstaller : sa fin arrive par le manifeste, application fermee
+    // comprise, et la notification "mise a jour telechargee" reprend l'installation a ce point.
+    val downloadId by UpdateInstaller.downloadId.collectAsState()
     var attempt by remember { mutableStateOf(0) }
     var downloadProgress by remember { mutableStateOf<Float?>(null) }
     val state by UpdateInstaller.state.collectAsState()
@@ -135,16 +136,12 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     val desc = release?.let { stringResource(R.string.update_download_desc, it.version) } ?: ""
 
     fun close() {
-        UpdateInstaller.set(InstallState.Idle)
-        downloadId = null
+        UpdateInstaller.finish()
         attempt = 0
         onDone()
     }
 
-    fun startDownload(r: ReleaseInfo) {
-        downloadId = UpdateManager.enqueueDownload(ctx, r, title, desc)
-        UpdateInstaller.set(InstallState.Downloading)
-    }
+    fun startDownload(r: ReleaseInfo) = UpdateInstaller.startDownload(ctx, r, title, desc)
 
     if (release != null && downloadId == null && !askInstallPermission) {
         UpdateDialog(
@@ -164,15 +161,6 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
             },
             onCancel = { askInstallPermission = false; onDone() },
         )
-    }
-    // L'APK arrive de facon asynchrone : on attend la diffusion de fin de telechargement, plutot que de
-    // sonder DownloadManager. Un telechargement echoue ne mene pas a l'installation.
-    val id = downloadId
-    if (id != null && state is InstallState.Downloading) {
-        DisposableDownloadListener(ctx, id) {
-            if (UpdateInstaller.downloadSucceeded(ctx, id)) scope.launch { UpdateInstaller.install(ctx, id) }
-            else UpdateInstaller.set(InstallState.Failed(null))
-        }
     }
     // L'avancement du telechargement : DownloadManager ne le pousse pas, on le relit tant qu'il dure.
     androidx.compose.runtime.LaunchedEffect(downloadId, state is InstallState.Downloading) {
@@ -218,27 +206,11 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
             downloadProgress = downloadProgress,
             onCancel = {
                 if (state is InstallState.Downloading) {
-                    (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).remove(id!!)
+                    (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).remove(downloadId!!)
                 } else UpdateInstaller.abandon(ctx)
                 close()
             },
             onClose = { close() },
         )
-    }
-}
-
-/** Ecoute ACTION_DOWNLOAD_COMPLETE pour [downloadId] le temps que le telechargement dure. */
-@Composable
-private fun DisposableDownloadListener(ctx: Context, downloadId: Long, onComplete: (Boolean) -> Unit) {
-    androidx.compose.runtime.DisposableEffect(downloadId) {
-        val filter = android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        val receiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(c: Context?, i: android.content.Intent?) {
-                val got = i?.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
-                if (got == downloadId) onComplete(true)
-            }
-        }
-        ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
-        onDispose { runCatching { ctx.unregisterReceiver(receiver) } }
     }
 }

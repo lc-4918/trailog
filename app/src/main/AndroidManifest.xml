@@ -91,6 +91,15 @@
         <receiver
             android:name=".update.UpdateInstallReceiver"
             android:exported="false" />
+        <!-- Fin du telechargement d'une mise a jour, application fermee comprise (cf. update/UpdateInstaller). Exporte
+             parce que c'est le systeme qui l'envoie ; l'action est protegee, une autre appli ne peut pas l'emettre. -->
+        <receiver
+            android:name=".update.UpdateDownloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
         <!-- Annonce la fin d'une mise a jour par une notification (cf. update/UpdateDone). -->
         <receiver
             android:name=".update.UpdateDoneReceiver"

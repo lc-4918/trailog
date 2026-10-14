@@ -438,6 +438,8 @@
     <string name="update_done_title">Trailog: eguneratzea amaituta</string>
     <string name="update_done_open">Ireki</string>
     <string name="update_done_channel">Eguneratzeak</string>
+    <string name="update_downloaded_title">Trailog: eguneratzea deskargatuta</string>
+    <string name="update_done_install">Instalatu</string>
 
     <string name="dialog_import_result_title">Inportazioa</string>
     <plurals name="import_invalid_files">

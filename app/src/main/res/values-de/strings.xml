@@ -438,6 +438,8 @@
     <string name="update_done_title">Trailog: Update abgeschlossen</string>
     <string name="update_done_open">Öffnen</string>
     <string name="update_done_channel">Updates</string>
+    <string name="update_downloaded_title">Trailog: Update heruntergeladen</string>
+    <string name="update_done_install">Installieren</string>
 
     <string name="dialog_import_result_title">Import</string>
     <plurals name="import_invalid_files">

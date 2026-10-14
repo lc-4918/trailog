@@ -78,3 +78,21 @@ class DownloadProgressTest {
         assertEquals(0f, UpdateInstaller.progressFraction(-5L, 100L)!!, 1e-6f)
     }
 }
+
+/** Que faire d'un telechargement qui vient de se terminer : l'installer, l'annoncer, ou le signaler en echec. */
+class CompletionActionTest {
+
+    @Test fun `un telechargement reussi, l'ecran visible, s'installe aussitot`() {
+        assertEquals(CompletionAction.INSTALL_NOW, UpdateInstaller.completionAction(succeeded = true, appVisible = true))
+    }
+
+    @Test fun `un telechargement reussi, l'ecran masque, s'annonce par notification`() {
+        // Hors de l'ecran, Android interdit d'ouvrir la fenetre de confirmation de l'installation.
+        assertEquals(CompletionAction.NOTIFY, UpdateInstaller.completionAction(succeeded = true, appVisible = false))
+    }
+
+    @Test fun `un telechargement rate n'est jamais installe`() {
+        assertEquals(CompletionAction.FAIL, UpdateInstaller.completionAction(succeeded = false, appVisible = true))
+        assertEquals(CompletionAction.FAIL, UpdateInstaller.completionAction(succeeded = false, appVisible = false))
+    }
+}

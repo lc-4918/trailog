@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import fr.lc4918.trailog.update.UpdateDone
+import fr.lc4918.trailog.update.UpdateInstaller
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
         // la boite, l'ecran lui demandera son dossier des qu'il sera compose.
         ImportInbox.offer(ImportInbox.urisOf(intent))
         answerOffTrackAlert(intent)
+        resumeUpdateIfAsked(intent)
         val repo = (application as TrailogApp).repository
         // Lu de façon synchrone, avant la première composition : le Flow des réglages (Room) ne livre sa
         // première valeur qu'un instant plus tard, et sans ce repli la première image affichait le thème
@@ -57,11 +60,27 @@ class MainActivity : ComponentActivity() {
      * arrive ici plutot que dans [onCreate]. Sans ce relais, ouvrir un GPX depuis un gestionnaire de
      * fichiers avec Trailog deja ouvert ne faisait que ramener la carte a l'ecran, sans rien importer.
      */
+    override fun onStart() {
+        super.onStart()
+        UpdateInstaller.appVisible = true
+    }
+
+    override fun onStop() {
+        UpdateInstaller.appVisible = false
+        super.onStop()
+    }
+
+    /** "Installer" dans la notification "mise a jour telechargee" : le telechargement fini passe a l'installation. */
+    private fun resumeUpdateIfAsked(intent: Intent?) {
+        if (intent?.action == UpdateDone.ACTION_INSTALL_UPDATE) UpdateInstaller.resumeInstall(this)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         ImportInbox.offer(ImportInbox.urisOf(intent))
         answerOffTrackAlert(intent)
+        resumeUpdateIfAsked(intent)
     }
 
     /**

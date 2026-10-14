@@ -438,6 +438,8 @@
     <string name="update_done_title">Trailog: actualització acabada</string>
     <string name="update_done_open">Obre</string>
     <string name="update_done_channel">Actualitzacions</string>
+    <string name="update_downloaded_title">Trailog: actualització baixada</string>
+    <string name="update_done_install">Instal·la</string>
 
     <string name="dialog_import_result_title">Importació</string>
     <plurals name="import_invalid_files">

@@ -8,7 +8,10 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import androidx.core.content.IntentCompat
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +61,9 @@ sealed interface InstallState {
     }
 }
 
+/** Que faire d'un telechargement qui vient de se terminer. */
+enum class CompletionAction { INSTALL_NOW, NOTIFY, FAIL }
+
 /** Que faire d'une installation restee sans nouvelles du systeme. */
 enum class StallAction { RETRY, GIVE_UP }
 
@@ -78,6 +84,67 @@ object UpdateInstaller {
 
     private val _state = MutableStateFlow<InstallState>(InstallState.Idle)
     val state: StateFlow<InstallState> = _state.asStateFlow()
+
+    private const val PREFS = "update_install"
+    private const val KEY_DOWNLOAD = "download_id"
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val _downloadId = MutableStateFlow<Long?>(null)
+    /** Le telechargement de la mise a jour en cours, le temps que sa progression est montree ; null sinon. */
+    val downloadId: StateFlow<Long?> = _downloadId.asStateFlow()
+
+    /** L'ecran est-il visible ? Hors de l'ecran, Android interdit d'ouvrir la fenetre de confirmation : on notifie. */
+    @Volatile var appVisible = false
+
+    /**
+     * Que faire d'un telechargement fini : l'installer tout de suite si l'utilisateur est la pour confirmer,
+     * l'annoncer par une notification sinon - un echec n'est jamais installe.
+     */
+    fun completionAction(succeeded: Boolean, appVisible: Boolean): CompletionAction = when {
+        !succeeded -> CompletionAction.FAIL
+        appVisible -> CompletionAction.INSTALL_NOW
+        else -> CompletionAction.NOTIFY
+    }
+
+    /** Met la mise a jour en telechargement ; son identifiant est gardé pour la fin, qui peut arriver application fermee. */
+    fun startDownload(context: Context, release: ReleaseInfo, title: String, description: String) {
+        val id = UpdateManager.enqueueDownload(context, release, title, description)
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_DOWNLOAD, id).apply()
+        _downloadId.value = id
+        set(InstallState.Downloading)
+    }
+
+    private fun storedDownload(context: Context): Long? =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_DOWNLOAD, -1L).takeIf { it >= 0 }
+
+    /** Le systeme annonce la fin du telechargement [id] (cf. [UpdateDownloadReceiver]) ; un autre telechargement n'est pas le notre. */
+    fun onDownloadComplete(context: Context, id: Long) {
+        if (id != storedDownload(context)) return
+        when (completionAction(downloadSucceeded(context, id), appVisible)) {
+            CompletionAction.INSTALL_NOW -> { _downloadId.value = id; scope.launch { install(context, id) } }
+            // La progression se ferme : c'est la notification qui reprend, et "Installer" relance l'installation
+            // depuis l'etat de repos. Une progression laissee sur "Telechargement" resterait figee au retour.
+            CompletionAction.NOTIFY -> { _downloadId.value = null; set(InstallState.Idle); UpdateDone.showDownloaded(context) }
+            CompletionAction.FAIL -> { _downloadId.value = id; set(InstallState.Failed(null)) }
+        }
+    }
+
+    /** L'utilisateur touche "Installer" dans la notification : le telechargement fini passe a l'installation. */
+    fun resumeInstall(context: Context) {
+        val id = storedDownload(context) ?: return
+        UpdateDone.cancelDownloaded(context)
+        if (state.value !is InstallState.Idle) return
+        _downloadId.value = id
+        // Avant le lancement : un etat Idle avec un telechargement ferait fermer la progression aussitot.
+        set(InstallState.Staging)
+        scope.launch { install(context, id) }
+    }
+
+    /** Fin du parcours, reussi ou non : plus de telechargement a suivre. */
+    fun finish() {
+        _downloadId.value = null
+        set(InstallState.Idle)
+    }
 
     /** La session ouverte, pour l'abandonner si l'utilisateur renonce ; -1 sinon. */
     @Volatile private var sessionId = -1
