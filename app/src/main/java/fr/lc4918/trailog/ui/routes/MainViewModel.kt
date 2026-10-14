@@ -89,6 +89,8 @@ internal fun sameStyleSettings(a: SettingsEntity?, b: SettingsEntity?): Boolean 
         a?.mbtilesDir == b?.mbtilesDir &&
         a?.hillshadeOn == b?.hillshadeOn
 
+// FlowPreview : pour debounce, seul usage d'une API en apercu ici (la camera enregistree).
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = (app as TrailogApp).repository
     /**

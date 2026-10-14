@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.DirectionsBike
-import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PedalBike
@@ -611,11 +611,11 @@ import kotlinx.coroutines.launch
 /** Icône d'une discipline. Le libellé l'accompagne toujours : les cinq pictogrammes se distinguent bien
  *  entre eux, mais aucun ne dit à lui seul "gravel" plutôt que "VTC". */
 internal fun routingProfileIcon(p: RoutingProfile): ImageVector = when (p) {
-    RoutingProfile.ROAD_BIKE -> Icons.Filled.DirectionsBike
+    RoutingProfile.ROAD_BIKE -> Icons.AutoMirrored.Filled.DirectionsBike
     RoutingProfile.GRAVEL -> Icons.Filled.Grain
     RoutingProfile.HYBRID_BIKE -> Icons.Filled.PedalBike
     RoutingProfile.MOUNTAIN_BIKE -> Icons.Filled.Terrain
-    RoutingProfile.FOOT -> Icons.Filled.DirectionsWalk
+    RoutingProfile.FOOT -> Icons.AutoMirrored.Filled.DirectionsWalk
 }
 
 /**

@@ -24,7 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CenterFocusWeak
-import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Landscape
@@ -967,7 +967,7 @@ internal fun RowMenu(
             }
             MenuEntry(Icons.Outlined.Edit, stringResource(R.string.action_rename)) { open = false; onRename() }
             if (onMove != null) {
-                MenuEntry(Icons.Outlined.DriveFileMove, stringResource(R.string.action_move)) { open = false; onMove() }
+                MenuEntry(Icons.AutoMirrored.Outlined.DriveFileMove, stringResource(R.string.action_move)) { open = false; onMove() }
             }
             if (onNewSub != null) {
                 MenuEntry(Icons.Outlined.CreateNewFolder, stringResource(R.string.action_new_subfolder)) {
