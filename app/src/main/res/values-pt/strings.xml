@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Camadas de marcadores</string>
     <string name="action_export">Exportar</string>
     <string name="action_export_layer">Exportar...</string>
+    <string name="action_export_folder_layers">Exportar camadas...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Lido em todo o lado: relógios, aplicações de caminhada, sites de partilha. Guarda apenas os campos padrão - as fotos, as ligações e os campos livres não cabem.</string>

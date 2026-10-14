@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Markatzaile-geruzak</string>
     <string name="action_export">Esportatu</string>
     <string name="action_export_layer">Esportatu...</string>
+    <string name="action_export_folder_layers">Esportatu geruzak...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Nonahi irakurtzen da: erlojuak, mendi-aplikazioak, partekatze-guneak. Eremu estandarrak baino ez ditu gordetzen: argazkiek, estekek eta eremu askeek ez dute lekurik.</string>

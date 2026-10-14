@@ -82,6 +82,9 @@ import fr.lc4918.trailog.map.offline.Bbox
 import fr.lc4918.trailog.net.ServiceUrl
 import fr.lc4918.trailog.routing.BrouterLocal
 import fr.lc4918.trailog.routing.GpxWriter
+import fr.lc4918.trailog.ui.theme.isDarkTheme
+import fr.lc4918.trailog.data.repo.LayerGeoJson
+import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.ui.alert.OffTrackAlertState
 import fr.lc4918.trailog.ui.alert.FollowProgressMath
@@ -527,18 +530,28 @@ fun MainScreen(
         return GpxWriter.write(name, t.samples, t.hasZ)
     }
 
+    /** Le parcours calculé en GeoJSON : une seule ligne, sans marqueurs (cf. LayerGeoJson.write). */
+    fun routeGeoJson(): ByteArray? {
+        val t = planner.done?.track ?: return null
+        val line = t.samples.map { TrackPoint(it.lon, it.lat, if (t.hasZ) it.z else null) }
+        return LayerGeoJson.write(emptyList(), listOf(line)).toByteArray()
+    }
+
     val currentPositionLabel = stringResource(R.string.planner_current_position)
     // Téléchargement : on laisse le système choisir où écrire (SAF), plutôt que d'imposer un dossier -
     // le fichier a vocation à sortir de l'application, vers un GPS ou un autre appareil.
+    // Le format se demande en mode expert seulement, comme pour l'export d'une couche ou d'un dossier.
+    var routeExportGeoJson by remember { mutableStateOf(false) }
+    var routeFormatDialog by remember { mutableStateOf(false) }
     val gpxSaver = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/gpx+xml")
+        ActivityResultContracts.CreateDocument("*/*")
     ) { uri ->
         // Renoncer au selecteur (uri null) n'est pas un echec : on n'a rien demande de plus. Tout le
         // reste en est un, et se DIT - un tap qui ne rend ni fichier ni message laisse croire au fichier
         // ecrit, et c'est la pire des deux issues.
         if (uri == null) return@rememberLauncherForActivityResult
         val name = defaultRouteName(planner.targets, currentPositionLabel)
-        val bytes = routeGpx(name)
+        val bytes = if (routeExportGeoJson) routeGeoJson() else routeGpx(name)
         val ecrit = bytes != null && runCatching {
             ctx.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } != null
         }.getOrDefault(false)
@@ -1206,8 +1219,11 @@ fun MainScreen(
                         onPlaceForgotten = { lieu -> vm.forgetPlannerPlace(lieu.label) },
                         onImport = { planner.importDialog = true },
                         onDownload = {
-                            val name = defaultRouteName(planner.targets, currentPositionLabel)
-                            gpxSaver.launch(GpxWriter.fileName(name))
+                            if (settings.expertMode) routeFormatDialog = true
+                            else {
+                                routeExportGeoJson = false
+                                gpxSaver.launch(GpxWriter.fileName(defaultRouteName(planner.targets, currentPositionLabel)))
+                            }
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -1223,6 +1239,18 @@ fun MainScreen(
                 }
                 // Consigne de la mesure sur trace : le point à poser, et la croix qui referme la fonction.
                 // Elle s'efface d'elle-même une fois le second point posé (cf. TrackMeasureState.chooseEnd).
+                if (routeFormatDialog) {
+                    ExportFormatDialog(
+                        dark = isDarkTheme(settings.theme),
+                        onDismiss = { routeFormatDialog = false },
+                        onPick = { geoJson ->
+                            routeFormatDialog = false
+                            routeExportGeoJson = geoJson
+                            val name = defaultRouteName(planner.targets, currentPositionLabel)
+                            gpxSaver.launch(GpxWriter.fileName(name, if (geoJson) "geojson" else "gpx"))
+                        },
+                    )
+                }
                 if (measure.picking) {
                     val started = measure.start
                     MapPromptBar(

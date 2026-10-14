@@ -29,6 +29,7 @@ import fr.lc4918.trailog.data.db.routeUrl
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.routing.TraceMatch
 import fr.lc4918.trailog.ui.planner.PlannerViewer
+import fr.lc4918.trailog.routing.FolderExport
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.domain.model.PlannerHistory
 import fr.lc4918.trailog.poi.Overpass
@@ -548,6 +549,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** La couche en GeoJSON, telle qu'elle est stockée : le seul export qui ne perde rien. */
     fun layerGeoJson(layer: LayerEntity, onReady: (ByteArray) -> Unit) = viewModelScope.launch {
         onReady(repo.layerGeoJson(layer))
+    }
+
+    /** Les traces du dossier, sous-dossiers compris, en archive ZIP écrite dans [out] ; [onDone] dit si tout s'est écrit. */
+    fun exportFolderZip(
+        folder: FolderEntity, geoJson: Boolean, out: java.io.OutputStream, onDone: (Boolean) -> Unit,
+    ) = viewModelScope.launch {
+        val entries = FolderExport.entries(folder.id, folders.value, layers.value, if (geoJson) "geojson" else "gpx")
+        onDone(runCatching { repo.writeFolderZip(entries, geoJson, out) }.isSuccess)
     }
 
     /** La couche en GPX, posée dans un fichier qu'une autre application a le droit de lire. */

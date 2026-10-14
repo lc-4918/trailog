@@ -239,7 +239,8 @@ internal fun FolderNode(
                 onNewSub = { onNewFolder(folder.id) }, onDelete = { onDeleteFolder(folder) },
                 onZoom = { onZoom("folder", folder.id) },
                 onColor = if (contents.isEmpty()) null else ({ showColor = true }),
-                onStats = { onStats(folder) })
+                onStats = { onStats(folder) },
+                onExportLayers = if (contents.isEmpty()) null else ({ layerActions.onExportFolder(folder) }))
         }
     }
     if (hoverZone == HoverZone.AFTER) DropIndicatorLine()
@@ -906,6 +907,8 @@ internal fun RowMenu(
     // Le total de ce que le dossier contient, sous-dossiers compris. Pour une couche, ses propres chiffres
     // passent par [layerActions].
     onStats: (() -> Unit)? = null,
+    // Propre au dossier, et seulement s'il porte au moins une couche : un dossier vide n'a rien a exporter.
+    onExportLayers: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box {
@@ -924,6 +927,10 @@ internal fun RowMenu(
             }
             if (onStats != null) {
                 MenuEntry(Icons.Outlined.BarChart, stringResource(R.string.action_folder_stats)) { open = false; onStats() }
+            }
+            if (onExportLayers != null) {
+                MenuEntry(Icons.Outlined.FileUpload, stringResource(R.string.action_export_folder_layers),
+                    modifier = Modifier.testTag("menu_export_layers")) { open = false; onExportLayers() }
             }
             // Une couche de marqueurs n'a ni longueur ni denivele : l'entree n'y apparait pas, plutot que
             // d'ouvrir une fenetre de zeros.
@@ -1020,6 +1027,8 @@ class LayerActions(
     val onSendToWatch: ((LayerEntity) -> Unit)? = null,
     /** Colorier le trait selon la pente (vrai), ou lui rendre la couleur de la couche (faux). */
     val onSlopeColored: (LayerEntity, Boolean) -> Unit = { _, _ -> },
+    /** Exporter les traces d'un dossier, sous-dossiers compris, en archive ZIP. */
+    val onExportFolder: (FolderEntity) -> Unit = {},
 )
 
 /** Les couches que porte un dossier, sous-dossiers compris : ce sur quoi portent ses actions (oeil,
@@ -1156,8 +1165,40 @@ internal fun DrawerContent(
     // L'export se fait en DEUX temps : on choisit d'abord le format, on nomme le fichier ensuite. Les deux
     // formats ne portent pas la meme chose (cf. ExportFormatDialog), et ce choix ne se devine pas depuis le
     // selecteur de fichier du systeme, qui ne montre qu'un nom et un dossier.
+    // Hors mode expert, le format ne se demande pas : GPX, celui que tout lecteur de trace sait ouvrir.
     var exportTarget by remember { mutableStateOf<LayerEntity?>(null) }
-    val onExportLayer: (LayerEntity) -> Unit = { layer -> exportTarget = layer }
+    val exportLayer: (LayerEntity, Boolean) -> Unit = { layer, geoJson ->
+        val extension = if (geoJson) "geojson" else "gpx"
+        val ready: (ByteArray) -> Unit = { bytes ->
+            gpxPending = bytes
+            gpxExporter.launch(GpxWriter.fileName(layer.name, extension))
+        }
+        if (geoJson) vm.layerGeoJson(layer, ready) else vm.layerGpx(layer, ready)
+    }
+    val onExportLayer: (LayerEntity) -> Unit = { layer ->
+        if (settings.expertMode) exportTarget = layer else exportLayer(layer, false)
+    }
+    // Les traces d'un dossier : une archive ZIP, ecrite directement dans le fichier choisi plutot que
+    // montee en memoire. Meme logique de format que pour une couche.
+    var folderZipPending by remember { mutableStateOf<Pair<FolderEntity, Boolean>?>(null) }
+    var folderExportTarget by remember { mutableStateOf<FolderEntity?>(null) }
+    val folderZipExporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        val pending = folderZipPending
+        folderZipPending = null
+        if (uri == null || pending == null) return@rememberLauncherForActivityResult
+        val out = runCatching { drawerCtx.contentResolver.openOutputStream(uri) }.getOrNull()
+        if (out == null) { onFailure(R.string.error_file_not_written); return@rememberLauncherForActivityResult }
+        vm.exportFolderZip(pending.first, pending.second, out) { ok -> if (!ok) onFailure(R.string.error_file_not_written) }
+    }
+    val exportFolder: (FolderEntity, Boolean) -> Unit = { folder, geoJson ->
+        folderZipPending = folder to geoJson
+        folderZipExporter.launch(GpxWriter.fileName(folder.name, "zip"))
+    }
+    val onExportFolder: (FolderEntity) -> Unit = { folder ->
+        if (settings.expertMode) folderExportTarget = folder else exportFolder(folder, false)
+    }
     val shareLabel = stringResource(R.string.action_share)
     val onShareLayer: (LayerEntity) -> Unit = { layer ->
         vm.shareLayerGpx(layer) { uri ->
@@ -1176,7 +1217,7 @@ internal fun DrawerContent(
         }
     }
     var layerStatsTarget by remember { mutableStateOf<LayerEntity?>(null) }
-    val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer,
+    val layerActions = LayerActions(onExport = onExportLayer, onShare = onShareLayer, onExportFolder = onExportFolder,
         onStats = { layerStatsTarget = it }, onDownloadMap = onDownloadMap, onSendToWatch = onSendToWatch,
         onSlopeColored = { l, on -> vm.setLayerSlopeColored(l, on) })
     var searchQuery by remember { mutableStateOf("") }
@@ -1343,15 +1384,16 @@ internal fun DrawerContent(
         ExportFormatDialog(
             dark = isDarkTheme(settings.theme),
             onDismiss = { exportTarget = null },
-            onPick = { geoJson ->
-                exportTarget = null
-                val extension = if (geoJson) "geojson" else "gpx"
-                val ready: (ByteArray) -> Unit = { bytes ->
-                    gpxPending = bytes
-                    gpxExporter.launch(GpxWriter.fileName(layer.name, extension))
-                }
-                if (geoJson) vm.layerGeoJson(layer, ready) else vm.layerGpx(layer, ready)
-            },
+            onPick = { geoJson -> exportTarget = null; exportLayer(layer, geoJson) },
+        )
+    }
+
+    folderExportTarget?.let { folder ->
+        ExportFormatDialog(
+            dark = isDarkTheme(settings.theme),
+            title = R.string.action_export_folder_layers,
+            onDismiss = { folderExportTarget = null },
+            onPick = { geoJson -> folderExportTarget = null; exportFolder(folder, geoJson) },
         )
     }
 

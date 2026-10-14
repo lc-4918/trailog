@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Couches de marqueurs</string>
     <string name="action_export">Exporter</string>
     <string name="action_export_layer">Exporter...</string>
+    <string name="action_export_folder_layers">Exporter les couches...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Lu partout : montres, applications de randonnée, sites de partage. Ne garde que les champs standard - les photos, les liens et les champs libres n\'y ont pas de place.</string>

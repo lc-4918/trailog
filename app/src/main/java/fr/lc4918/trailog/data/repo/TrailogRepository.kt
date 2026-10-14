@@ -29,6 +29,7 @@ import fr.lc4918.trailog.data.db.routePrefs
 import fr.lc4918.trailog.domain.model.RouteEngine
 import fr.lc4918.trailog.domain.model.RoutingPrefs
 import fr.lc4918.trailog.domain.model.RoutingProfile
+import fr.lc4918.trailog.routing.FolderExport
 import fr.lc4918.trailog.routing.GpxWriter
 import fr.lc4918.trailog.routing.Router
 import fr.lc4918.trailog.map.offline.MbtilesWriter
@@ -56,6 +57,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.InputStream
+import java.io.OutputStream
 
 class TrailogRepository(private val ctx: Context) {
     /**
@@ -418,6 +420,23 @@ class TrailogRepository(private val ctx: Context) {
         val f = File(layersDir, layer.geometryFile)
         if (f.exists()) f.readBytes() else ByteArray(0)
     }
+
+    /**
+     * Écrit dans [out] une archive ZIP des [entries], une trace après l'autre : GPX ou GeoJSON selon
+     * [geoJson]. Chaque trace est lue, convertie et écrite avant la suivante : un dossier de plusieurs
+     * centaines de traces ne tient pas en mémoire d'un coup.
+     */
+    suspend fun writeFolderZip(entries: List<FolderExport.Entry>, geoJson: Boolean, out: OutputStream) =
+        withContext(Dispatchers.IO) {
+            java.util.zip.ZipOutputStream(out).use { zip ->
+                for (entry in entries) {
+                    val bytes = if (geoJson) layerGeoJson(entry.layer) else layerGpx(entry.layer)
+                    zip.putNextEntry(java.util.zip.ZipEntry(entry.path))
+                    zip.write(bytes)
+                    zip.closeEntry()
+                }
+            }
+        }
 
     /**
      * Écrit [bytes] dans un fichier du cache de partage et rend son URI `content://`.

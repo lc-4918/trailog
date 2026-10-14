@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Capas de marcadores</string>
     <string name="action_export">Exportar</string>
     <string name="action_export_layer">Exportar...</string>
+    <string name="action_export_folder_layers">Exportar capas...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Se lee en todas partes: relojes, aplicaciones de senderismo, webs de rutas. Solo conserva los campos estándar: las fotos, los enlaces y los campos libres no caben.</string>

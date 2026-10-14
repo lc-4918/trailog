@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Marker layers</string>
     <string name="action_export">Export</string>
     <string name="action_export_layer">Export...</string>
+    <string name="action_export_folder_layers">Export layers...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Read everywhere: watches, hiking apps, sharing sites. Keeps only the standard fields - photos, links and custom fields have no place in it.</string>

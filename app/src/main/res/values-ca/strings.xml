@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Capes de marcadors</string>
     <string name="action_export">Exporta</string>
     <string name="action_export_layer">Exporta...</string>
+    <string name="action_export_folder_layers">Exporta les capes...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Es llegeix a tot arreu: rellotges, aplicacions d\'excursionisme, webs de rutes. Només conserva els camps estàndard: les fotos, els enllaços i els camps lliures no hi caben.</string>

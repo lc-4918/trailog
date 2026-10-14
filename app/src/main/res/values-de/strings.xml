@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Markerebenen</string>
     <string name="action_export">Exportieren</string>
     <string name="action_export_layer">Exportieren...</string>
+    <string name="action_export_folder_layers">Ebenen exportieren...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Überall lesbar: Uhren, Wander-Apps, Tourenportale. Behält nur die Standardfelder - Fotos, Links und freie Felder haben darin keinen Platz.</string>

@@ -68,13 +68,16 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
  * choix explique.
  */
 @Composable
-internal fun ExportFormatDialog(dark: Boolean, onDismiss: () -> Unit, onPick: (geoJson: Boolean) -> Unit) {
+internal fun ExportFormatDialog(
+    dark: Boolean, onDismiss: () -> Unit, onPick: (geoJson: Boolean) -> Unit,
+    @androidx.annotation.StringRes title: Int = R.string.action_export_layer,
+) {
     ProvideSettingsPalette(dark = dark) {
         val p = settingsPalette
         AlertDialog(
             onDismissRequest = onDismiss,
             containerColor = p.screen,
-            title = { Text(stringResource(R.string.action_export_layer), color = p.label) },
+            title = { Text(stringResource(title), color = p.label) },
             text = {
                 SettingsCard {
                     ChoiceBlock(stringResource(R.string.export_format_gpx),

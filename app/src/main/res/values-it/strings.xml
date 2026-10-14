@@ -74,6 +74,7 @@
     <string name="stats_marker_layers">Livelli di marcatori</string>
     <string name="action_export">Esporta</string>
     <string name="action_export_layer">Esporta...</string>
+    <string name="action_export_folder_layers">Esporta i livelli...</string>
     <string name="export_format_gpx">GPX</string>
     <string name="export_format_geojson">GeoJSON</string>
     <string name="export_format_gpx_hint">Letto ovunque: orologi, app di escursionismo, siti di condivisione. Conserva solo i campi standard: foto, link e campi liberi non ci stanno.</string>

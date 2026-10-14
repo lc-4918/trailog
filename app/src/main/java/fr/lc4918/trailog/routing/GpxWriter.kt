@@ -118,10 +118,13 @@ object GpxWriter {
      * Le titre est libre, et l'utilisateur y met volontiers une barre oblique ("Grenoble / Vizille") ou
      * deux-points, qu'un système de fichiers refuse ou interprète comme un chemin.
      */
-    fun fileName(name: String, extension: String = "gpx"): String {
+    fun fileName(name: String, extension: String = "gpx"): String = safeName(name) + "." + extension
+
+    /** Le titre ramene a des caracteres que tout systeme de fichiers accepte ; "itineraire" s'il n'en reste rien. */
+    fun safeName(name: String, fallback: String = "itineraire"): String {
         val base = name.trim().map { if (it.isLetterOrDigit() || it == '-') it else '-' }
             .joinToString("").trim('-').replace(Regex("-{2,}"), "-")
-        return (base.ifBlank { "itineraire" }) + "." + extension
+        return base.ifBlank { fallback }
     }
 
     /** Les cinq entités XML. Le titre vient d'une saisie libre, une esperluette y suffit à casser le fichier. */

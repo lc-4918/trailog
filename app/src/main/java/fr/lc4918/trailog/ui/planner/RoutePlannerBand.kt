@@ -84,6 +84,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -336,7 +337,7 @@ private fun ProfileAndActions(
         ProfileSelect(state.profile, { state.chooseProfile(it) }, Modifier.weight(1f))
         val neutre = MaterialTheme.colorScheme.onSurfaceVariant
         BandAction(Icons.Outlined.Folder, stringResource(R.string.planner_action_save), neutre, calcule, onImport)
-        BandAction(Icons.Filled.Download, stringResource(R.string.planner_action_export), neutre, calcule, onDownload)
+        BandAction(Icons.Outlined.FileUpload, stringResource(R.string.planner_action_export), neutre, calcule, onDownload)
         BandAction(TrailogIcons.Trash, stringResource(R.string.planner_reset),
             MaterialTheme.colorScheme.error, true, onReset)
     }
