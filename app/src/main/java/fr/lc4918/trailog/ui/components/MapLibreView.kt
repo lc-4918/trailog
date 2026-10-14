@@ -68,6 +68,20 @@ data class RenderLayer(
  *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
 private val LineSearchFactors = listOf(1f, 4f, 12f)
 
+/** Ecart, en dp, en dessous duquel deux traces comptent pour confondues sous le doigt. */
+private const val LineOverlapDp = 4f
+
+/**
+ * La couche a choisir parmi celles qui se confondent sous le doigt, de la plus haute ([topFirst]) a la plus
+ * basse : la plus basse tant qu'aucune n'est montree - c'est celle qu'on ne peut pas atteindre -, puis, a
+ * chaque tap, celle qui suit la couche [shown], en reboucle.
+ */
+internal fun pickAmongOverlapping(topFirst: List<String>, shown: String?): String? {
+    if (topFirst.isEmpty()) return null
+    val position = topFirst.indexOf(shown)
+    return if (position < 0) topFirst.last() else topFirst[(position + 1) % topFirst.size]
+}
+
 /** Bleu de la mise en evidence d'une categorie de l'itineraire, sur la carte comme dans la bande (cf.
  *  MapController.setRouteHighlight) : la meme couleur designe la meme chose aux deux endroits. */
 const val RouteHighlightColor = "#2459C4"
@@ -313,13 +327,64 @@ class MapController {
         return null
     }
 
-    /** Cle de la couche dont une ligne passe sous [screen], ou null. Tolerance propre aux traces, plus
-     *  large que celle des marqueurs (cf. [lineTapToleranceDp]). */
+    /** La couche dont la trace est montree au profil ("ly<id>") : un tap sur un chevauchement passe alors a la suivante. */
+    var activeLineKey: String? = null
+
+    /**
+     * Cle de la couche dont une ligne passe sous [screen], ou null. Tolerance propre aux traces, plus
+     * large que celle des marqueurs (cf. [lineTapToleranceDp]).
+     *
+     * Parmi les couches a portee du doigt, la plus PROCHE l'emporte : prendre la premiere trouvee donnait
+     * toujours la meme trace quand la tolerance en couvrait plusieurs, et la plus basse ne se touchait
+     * jamais. Quand plusieurs se confondent sous le doigt (a [LineOverlapDp] pres), on les parcourt de la
+     * plus haute a la plus basse : la plus basse d'abord - c'est celle qu'on ne peut pas atteindre -, puis,
+     * a chaque tap, celle qui suit la couche deja montree.
+     */
     private fun lineKeyAt(screen: PointF): String? {
         val m = map ?: return null
+        val s = style ?: return null
         val tol = lineTapToleranceDp * density
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
-        return layerKeys.firstOrNull { m.queryRenderedFeatures(rect, *lineLayerIds(it)).isNotEmpty() }
+        val distances = layerKeys.mapNotNull { key ->
+            val features = m.queryRenderedFeatures(rect, *lineLayerIds(key))
+            if (features.isEmpty()) return@mapNotNull null
+            val nearest = features.minOf { screenDistance(m, it.geometry(), screen) }
+            key to nearest
+        }
+        if (distances.isEmpty()) return null
+        val closest = distances.minOf { it.second }
+        val overlapping = distances.filter { it.second <= closest + LineOverlapDp * density }.map { it.first }
+        if (overlapping.size == 1) return overlapping.first()
+        val order = s.layers.map { it.id }
+        return pickAmongOverlapping(overlapping.sortedByDescending { order.indexOf(lineLayerId(it)) }, activeLineKey)
+    }
+
+    /** Distance en pixels de [screen] a la ligne [geometry] (en lon/lat) ; infinie si ce n'en est pas une. */
+    private fun screenDistance(m: MapLibreMap, geometry: org.maplibre.geojson.Geometry?, screen: PointF): Float {
+        val lines: List<List<org.maplibre.geojson.Point>> = when (geometry) {
+            is org.maplibre.geojson.LineString -> listOf(geometry.coordinates())
+            is org.maplibre.geojson.MultiLineString -> geometry.coordinates()
+            else -> return Float.MAX_VALUE
+        }
+        var best = Float.MAX_VALUE
+        for (line in lines) {
+            var previous: PointF? = null
+            for (point in line) {
+                val current = m.projection.toScreenLocation(LatLng(point.latitude(), point.longitude()))
+                val from = previous
+                best = minOf(best, if (from == null) hypot(current.x - screen.x, current.y - screen.y)
+                    else distanceToSegment(screen, from, current))
+                previous = current
+            }
+        }
+        return best
+    }
+
+    private fun distanceToSegment(p: PointF, a: PointF, b: PointF): Float {
+        val dx = b.x - a.x; val dy = b.y - a.y
+        val lengthSquared = dx * dx + dy * dy
+        val t = if (lengthSquared == 0f) 0f else (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).coerceIn(0f, 1f)
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
     }
 
     /**
@@ -412,19 +477,22 @@ class MapController {
 
     /**
      * Remonte le trait de la couche [key] au-dessus des traits des autres couches : une trace qu'on touche
-     * pour son profil ou ses voies se lit sans qu'une autre la recouvre. Le trait se glisse sous les
-     * epingles, les mises en evidence et les calques de tete, comme a sa creation - il ne les masque pas.
+     * pour son profil ou ses voies se lit sans qu'une autre la recouvre. Il passe au-dessus du dernier trait
+     * des autres couches, donc sous les calques de tete : le repere de position reste visible.
      */
     fun bringLayerToFront(key: String) {
         val s = style ?: return
         if (s.getLayer(lineLayerId(key)) == null) return
-        val above = layerKeys.map { pointLayerId(it) }.toSet()
-        val anchor = s.layers.map { it.id }
-            .firstOrNull { it in above || it.endsWith("-highlight-casing") || it in MapHeadOverlays.ids }
+        // Le dernier trait des AUTRES couches : les calques d'une couche s'ajoutent par paquets (trait, pins),
+        // un point d'ancrage pris sur les pins ne depasserait qu'un seul trait.
+        val others = layerKeys.filter { it != key }
+            .flatMap { listOf(lineLayerId(it), slopeLayerId(it), arrowLayerId(it)) }.toSet()
+        var anchor = s.layers.map { it.id }.lastOrNull { it in others } ?: return
         for (id in listOf(lineLayerId(key), slopeLayerId(key), arrowLayerId(key))) {
             val layer = s.getLayer(id) ?: continue
             s.removeLayer(layer)
-            if (anchor != null) s.addLayerBelow(layer, anchor) else s.addLayer(layer)
+            s.addLayerAbove(layer, anchor)
+            anchor = id
         }
     }
 

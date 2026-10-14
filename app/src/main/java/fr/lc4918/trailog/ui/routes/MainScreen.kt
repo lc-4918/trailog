@@ -211,6 +211,7 @@ fun MainScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val controller = remember { MapController() }
+    controller.activeLineKey = activeLayerId?.let { "ly$it" }
     val ctx = LocalContext.current
 
     val mode = settings.sideMenuMode
