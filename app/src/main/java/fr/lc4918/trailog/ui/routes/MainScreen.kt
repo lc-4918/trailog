@@ -968,6 +968,7 @@ fun MainScreen(
                             vm.closeProfile()
                             if (planner.expanded) planner.collapse(true)
                             val profils = vm.layerProfiles(l)
+                            controller.bringLayerToFront("ly${l.id}")
                             val detailed = vm.layerDetailedSamples(l)
                             layerViewer.open(l.copy(visible = true), w, profils, v, initial, detailed)
                         }

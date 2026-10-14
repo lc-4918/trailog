@@ -98,7 +98,7 @@ internal fun MapTapRouting(
             else -> {
                 controller.onRawTap = null
                 controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
-                controller.onPickLine = { key, lon, lat -> vm.onPickLine(key, lon, lat) }
+                controller.onPickLine = { key, lon, lat -> controller.bringLayerToFront(key); vm.onPickLine(key, lon, lat) }
                 controller.onTapEmpty = { vm.closeOnEmpty() }
             }
         }

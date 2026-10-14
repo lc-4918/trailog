@@ -410,6 +410,24 @@ class MapController {
         }
     }
 
+    /**
+     * Remonte le trait de la couche [key] au-dessus des traits des autres couches : une trace qu'on touche
+     * pour son profil ou ses voies se lit sans qu'une autre la recouvre. Le trait se glisse sous les
+     * epingles, les mises en evidence et les calques de tete, comme a sa creation - il ne les masque pas.
+     */
+    fun bringLayerToFront(key: String) {
+        val s = style ?: return
+        if (s.getLayer(lineLayerId(key)) == null) return
+        val above = layerKeys.map { pointLayerId(it) }.toSet()
+        val anchor = s.layers.map { it.id }
+            .firstOrNull { it in above || it.endsWith("-highlight-casing") || it in MapHeadOverlays.ids }
+        for (id in listOf(lineLayerId(key), slopeLayerId(key), arrowLayerId(key))) {
+            val layer = s.getLayer(id) ?: continue
+            s.removeLayer(layer)
+            if (anchor != null) s.addLayerBelow(layer, anchor) else s.addLayer(layer)
+        }
+    }
+
     private fun src(key: String) = "src-$key"
     private fun lineLayerId(key: String) = "$key-ln"
     private fun pointLayerId(key: String) = "$key-pt"
