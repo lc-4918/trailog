@@ -34,3 +34,27 @@ class InstallStateTest {
         assertEquals(InstallState.Failed(null), InstallState.fromStatus(PackageInstaller.STATUS_FAILURE_STORAGE, null))
     }
 }
+
+/** Les deux regles de la progression : ce que veut dire le retour dans l'appli, et que faire d'une installation figee. */
+class InstallProgressRulesTest {
+
+    @Test fun `de retour dans l'appli apres la confirmation, le systeme installe`() {
+        assertEquals(InstallState.Installing, InstallState.afterReturn(InstallState.WaitingUser))
+    }
+
+    @Test fun `le retour dans l'appli ne change aucun autre etat`() {
+        listOf(InstallState.Idle, InstallState.Downloading, InstallState.Staging, InstallState.Installing, InstallState.Failed("x"))
+            .forEach { assertEquals(it, InstallState.afterReturn(it)) }
+    }
+
+    @Test fun `une installation figee se relance une fois puis on y renonce`() {
+        assertEquals(StallAction.RETRY, UpdateInstaller.onStall(attempt = 0))
+        assertEquals(StallAction.GIVE_UP, UpdateInstaller.onStall(attempt = 1))
+        assertEquals(StallAction.GIVE_UP, UpdateInstaller.onStall(attempt = 5))
+    }
+
+    @Test fun `le nombre de relances se regle`() {
+        assertEquals(StallAction.RETRY, UpdateInstaller.onStall(attempt = 1, maxRetries = 2))
+        assertEquals(StallAction.GIVE_UP, UpdateInstaller.onStall(attempt = 2, maxRetries = 2))
+    }
+}

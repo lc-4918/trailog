@@ -432,6 +432,8 @@
     <string name="update_state_waiting_user">Conferma l\'installazione nella finestra di Android.</string>
     <string name="update_install_failed">L\'installazione non è riuscita.</string>
     <string name="update_install_hint">Se si apre una finestra di Play Protect, rispondi subito: trascorso un certo tempo Android lascia l\'installazione in sospeso. Annulla la libera.</string>
+    <string name="update_state_retrying">Installazione bloccata, nuovo tentativo…</string>
+    <string name="update_install_stalled">Android non ha completato l\'installazione. Riprova più tardi o disattiva la scansione delle app di Play Protect nel Play Store.</string>
 
     <string name="dialog_import_result_title">Importazione</string>
     <plurals name="import_invalid_files">

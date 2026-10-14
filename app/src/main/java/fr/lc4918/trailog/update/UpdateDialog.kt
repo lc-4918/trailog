@@ -59,7 +59,7 @@ fun UnknownSourcesDialog(onOpenSettings: () -> Unit, onCancel: () -> Unit) {
  * souvent - laisse l'installation suspendue.
  */
 @Composable
-fun UpdateProgressDialog(state: InstallState, onCancel: () -> Unit, onClose: () -> Unit) {
+fun UpdateProgressDialog(state: InstallState, retrying: Boolean = false, onCancel: () -> Unit, onClose: () -> Unit) {
     val failed = state as? InstallState.Failed
     AlertDialog(
         onDismissRequest = {},
@@ -68,7 +68,7 @@ fun UpdateProgressDialog(state: InstallState, onCancel: () -> Unit, onClose: () 
             androidx.compose.foundation.layout.Column {
                 Text(stringResource(when (state) {
                     is InstallState.Downloading -> R.string.update_state_downloading
-                    is InstallState.Staging -> R.string.update_state_installing
+                    is InstallState.Staging -> if (retrying) R.string.update_state_retrying else R.string.update_state_installing
                     is InstallState.Installing -> R.string.update_state_installing
                     is InstallState.WaitingUser -> R.string.update_state_waiting_user
                     else -> R.string.update_install_failed
@@ -108,13 +108,16 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askInstallPermission by remember { mutableStateOf(false) }
     var downloadId by remember { mutableStateOf<Long?>(null) }
+    var attempt by remember { mutableStateOf(0) }
     val state by UpdateInstaller.state.collectAsState()
+    val stalled = stringResource(R.string.update_install_stalled)
     val title = stringResource(R.string.update_download_title)
     val desc = release?.let { stringResource(R.string.update_download_desc, it.version) } ?: ""
 
     fun close() {
         UpdateInstaller.set(InstallState.Idle)
         downloadId = null
+        attempt = 0
         onDone()
     }
 
@@ -151,6 +154,30 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
             else UpdateInstaller.set(InstallState.Failed(null))
         }
     }
+    // De retour dans l'appli, la fenetre de confirmation d'Android est fermee : le systeme installe.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                UpdateInstaller.set(InstallState.afterReturn(UpdateInstaller.state.value))
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // Une installation sans nouvelles du systeme : on la relance une fois, puis on y renonce (cf. UpdateInstaller.onStall).
+    androidx.compose.runtime.LaunchedEffect(state, attempt) {
+        if (state !is InstallState.Installing) return@LaunchedEffect
+        kotlinx.coroutines.delay(UpdateInstaller.STALL_TIMEOUT_MS)
+        UpdateInstaller.abandon(ctx)
+        when (UpdateInstaller.onStall(attempt)) {
+            StallAction.RETRY -> {
+                attempt += 1
+                downloadId?.let { UpdateInstaller.install(ctx, it) }
+            }
+            StallAction.GIVE_UP -> UpdateInstaller.set(InstallState.Failed(stalled))
+        }
+    }
     // Annulee depuis la fenetre d'Android : l'etat retombe a Idle, et la progression n'a plus lieu d'etre.
     androidx.compose.runtime.LaunchedEffect(state, downloadId) {
         if (downloadId != null && state is InstallState.Idle) close()
@@ -158,6 +185,7 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     if (downloadId != null && state !is InstallState.Idle) {
         UpdateProgressDialog(
             state = state,
+            retrying = attempt > 0,
             onCancel = {
                 if (state is InstallState.Downloading) {
                     (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).remove(id!!)

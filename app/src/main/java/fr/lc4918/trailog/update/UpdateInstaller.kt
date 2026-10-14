@@ -48,11 +48,32 @@ sealed interface InstallState {
             PackageInstaller.STATUS_FAILURE_ABORTED -> Idle
             else -> Failed(message)
         }
+
+        /**
+         * L'etat une fois de retour dans l'appli : la fenetre de confirmation d'Android est fermee, donc
+         * l'utilisateur a repondu, et le systeme installe. Il n'envoie aucun rapport de cette transition ;
+         * sans cette deduction, la progression restait sur "Confirmez l'installation" pendant toute l'installation.
+         */
+        fun afterReturn(state: InstallState): InstallState = if (state is WaitingUser) Installing else state
     }
 }
 
+/** Que faire d'une installation restee sans nouvelles du systeme. */
+enum class StallAction { RETRY, GIVE_UP }
+
 /** L'installation de la mise a jour par session `PackageInstaller`, et son etat observable. */
 object UpdateInstaller {
+    /**
+     * Delai, une fois l'installation confirmee, passe lequel on la tient pour figee. Une installation qui
+     * aboutit remplace l'appli en une quinzaine de secondes ; quand le delai de verification du systeme expire
+     * pendant que Play Protect attend un choix, l'installation reste suspendue sans jamais rapporter d'echec.
+     */
+    const val STALL_TIMEOUT_MS = 60_000L
+
+    /** Une installation figee se relance [maxRetries] fois (l'analyse de Play Protect est alors en cache), puis on y renonce. */
+    fun onStall(attempt: Int, maxRetries: Int = 1): StallAction =
+        if (attempt < maxRetries) StallAction.RETRY else StallAction.GIVE_UP
+
     private const val ACTION_STATUS = "fr.lc4918.trailog.update.INSTALL_STATUS"
 
     private val _state = MutableStateFlow<InstallState>(InstallState.Idle)
