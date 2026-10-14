@@ -189,6 +189,7 @@ fun MainScreen(
     val offlineDownload by vm.offlineDownload.collectAsState()
     val activeLayerId by vm.activeLayerId.collectAsState()
     val computed by vm.computed.collectAsState()
+    val highlightSamples by vm.highlightSamples.collectAsState()
     val profileLoading by vm.profileLoading.collectAsState()
     val cursor by vm.cursor.collectAsState()
     // Ce que montre le panneau du profil (profil, surfaces, types de voies), et les voies qu'il lit.
@@ -657,9 +658,9 @@ fun MainScreen(
         bottomCoverPx = insets.profilePanelPx,
     )
     // La categorie choisie dans le panneau, mise en evidence sur la ligne montree - et elle seule.
-    LaunchedEffect(panelView, panelWays, computed, activeTrackIndex, styleTick) {
+    LaunchedEffect(panelView, panelWays, computed, highlightSamples, activeTrackIndex, styleTick) {
         val w = (panelWays as? WaysLoad.Done)?.ways
-        val s = computed?.samples
+        val s = highlightSamples ?: computed?.samples
         val pieces = if (w == null || s == null || panelView.cursorShown) emptyList()
             else kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 layerHighlightPieces(LayerWays(listOf(lineWays(w, activeTrackIndex))), listOf(s), panelView.highlight)
@@ -967,7 +968,8 @@ fun MainScreen(
                             vm.closeProfile()
                             if (planner.expanded) planner.collapse(true)
                             val profils = vm.layerProfiles(l)
-                            layerViewer.open(l.copy(visible = true), w, profils, v, initial)
+                            val detailed = vm.layerDetailedSamples(l)
+                            layerViewer.open(l.copy(visible = true), w, profils, v, initial, detailed)
                         }
                     },
                     onZoom = { kind, id ->

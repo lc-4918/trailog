@@ -79,6 +79,17 @@ class LayerWaysViewerState {
     val samples: List<List<Sample>> get() = tracks.map { it.samples }
 
     /**
+     * Les echantillons de chaque ligne sur lesquels se pose la mise en evidence : tous les points de la
+     * trace quand on les a. Le profil, lui, est decime (2000 echantillons) : sur une longue trace, deux
+     * echantillons sont a des kilometres l'un de l'autre, et un morceau pose dessus devient une corde qui
+     * quitte le trace des qu'on zoome.
+     */
+    var detailedSamples by mutableStateOf<List<List<Sample>>?>(null)
+        private set
+
+    val highlightSamples: List<List<Sample>> get() = detailedSamples ?: samples
+
+    /**
      * La ligne dont on montre le profil : la plus longue. Une couche a plusieurs lignes n'a pas UN profil,
      * et mettre les leurs bout a bout inventerait un trajet qui saute d'une ligne a l'autre.
      */
@@ -95,8 +106,12 @@ class LayerWaysViewerState {
      * Ouvre le VIEWER [v] sur [layer]. [initial] : la categorie a mettre en evidence pour les voies, le
      * point du profil (en metres) pour le profil - celui qu'on vient de toucher dans les statistiques.
      */
-    fun open(layer: LayerEntity, ways: LayerWays?, tracks: List<ComputedTrack>, v: PlannerViewer, initial: Any?) {
+    fun open(
+        layer: LayerEntity, ways: LayerWays?, tracks: List<ComputedTrack>, v: PlannerViewer, initial: Any?,
+        detailedSamples: List<List<Sample>>? = null,
+    ) {
         this.layer = layer
+        this.detailedSamples = detailedSamples
         this.ways = ways
         this.tracks = tracks
         zoomRange = null
@@ -138,6 +153,7 @@ class LayerWaysViewerState {
         layer = null
         ways = null
         tracks = emptyList()
+        detailedSamples = null
         highlight = null
         cursor = null
         zoomRange = null
@@ -198,10 +214,10 @@ internal fun BoxScope.LayerWaysViewerLayer(
         controller.fitTo(l.west, l.south, l.east, l.north, topPaddingPx = topPaddingPx, bottomPaddingPx = hauteur)
     }
     // Les voies seulement : dans le VIEWER du profil, c'est le curseur qui parle.
-    LaunchedEffect(ways, state.tracks, state.highlight, state.viewer, styleTick) {
+    LaunchedEffect(ways, state.tracks, state.detailedSamples, state.highlight, state.viewer, styleTick) {
         val w = ways
         val pieces = if (w == null || state.viewer == PlannerViewer.PROFILE) emptyList()
-            else withContext(Dispatchers.Default) { layerHighlightPieces(w, state.samples, state.highlight) }
+            else withContext(Dispatchers.Default) { layerHighlightPieces(w, state.highlightSamples, state.highlight) }
         controller.setRouteHighlight(pieces, key = "layer")
     }
     /*

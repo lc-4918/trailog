@@ -19,6 +19,7 @@ import fr.lc4918.trailog.domain.geo.TrackEdit
 import fr.lc4918.trailog.domain.geo.TrackMath
 import fr.lc4918.trailog.domain.geo.TrackMeasure
 import fr.lc4918.trailog.domain.model.ComputedTrack
+import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.domain.model.PointFeature
 import fr.lc4918.trailog.domain.model.PointLayerData
 import fr.lc4918.trailog.domain.model.TrackPoint
@@ -170,6 +171,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val activeLayerId = _activeLayerId.asStateFlow()
     private val _computed = MutableStateFlow<ComputedTrack?>(null)
     val computed = _computed.asStateFlow()
+
+    /**
+     * Tous les points de la ligne montree, sur lesquels se pose la mise en evidence des voies : le profil
+     * est decime (2000 echantillons), et sur une longue trace un morceau pose dessus quitte le trace des
+     * qu'on zoome. Null tant qu'ils ne sont pas lus : la mise en evidence retombe alors sur le profil.
+     */
+    private val _highlightSamples = MutableStateFlow<List<Sample>?>(null)
+    val highlightSamples = _highlightSamples.asStateFlow()
     /**
      * Point courant sur la trace, en **metres depuis son debut** et non en indice d'echantillon.
      *
@@ -305,6 +314,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // Affichage immédiat du panneau (titre + spinner) : on remet le profil à zéro et on marque le chargement.
         _activeLayerId.value = id
         _computed.value = null
+        _highlightSamples.value = null
         _cursor.value = null
         _profileLoading.value = true
         resetProfileZoom()
@@ -327,7 +337,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _cursor.value = result?.second
                 _activeTrackIndex.value = result?.third ?: 0
                 _profileLoading.value = false
+                loadHighlightSamples(layer, id, _activeTrackIndex.value)
             }
+        }
+    }
+
+    /** Lit tous les points de la ligne [index] de [layer] pour la mise en evidence, si cette couche est toujours montree. */
+    private fun loadHighlightSamples(layer: LayerEntity, id: Long, index: Int) {
+        viewModelScope.launch {
+            val samples = withContext(Dispatchers.Default) {
+                repo.loadTrackLines(layer).getOrNull(index)
+                    ?.let { TrackMath.compute(it, maxPoints = 0, ignoreStops = false).samples }
+            }
+            if (_activeLayerId.value == id) _highlightSamples.value = samples
         }
     }
 
@@ -419,7 +441,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeProfile() {
-        _activeLayerId.value = null; _computed.value = null; _cursor.value = null; _profileLoading.value = false
+        _activeLayerId.value = null; _computed.value = null; _highlightSamples.value = null; _cursor.value = null; _profileLoading.value = false
         resetPanelView()
         // Les zooms disparaissent mais la carte ne bouge pas (pas d'effet de bord ici, juste l'etat local).
         resetProfileZoom()
@@ -798,6 +820,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Le profil de chaque ligne de la couche, dans l'ordre des lignes : ce que montrent la rubrique et le
      *  VIEWER "Elevation", et ce sur quoi se posent les categories mises en evidence (cf. RouteDetails.pieces). */
     suspend fun layerProfiles(layer: LayerEntity): List<ComputedTrack> = repo.loadProfiles(layer)
+
+    /** Les echantillons de chaque ligne de la couche, tous les points de la trace (cf. LayerWaysViewerState.detailedSamples). */
+    suspend fun layerDetailedSamples(layer: LayerEntity): List<List<fr.lc4918.trailog.domain.model.Sample>> =
+        withContext(Dispatchers.Default) {
+            repo.loadTrackLines(layer).map { TrackMath.compute(it, maxPoints = 0, ignoreStops = false).samples }
+        }
 
     /** La couche des points d'interet mise de cote, ou remise, par l'oeil de sa bulle. */
     fun savePoiMasked(masked: Boolean) = viewModelScope.launch {

@@ -78,6 +78,26 @@ class LayerWaysViewerTest {
 
     // ---------- Mise en evidence ----------
 
+    /** Le profil decime ne garde que les bouts : la mise en evidence doit suivre les points detailles. */
+    @Test fun `la mise en evidence se pose sur les echantillons detailles quand on les a`() {
+        val coarse = listOf(profil(listOf(ligne(2.0, 11).first(), ligne(2.0, 11).last())))
+        val detailed = listOf(ligne(2.0, 11))
+        val s = LayerWaysViewerState()
+        s.open(couche, voies, coarse, PlannerViewer.SURFACES, SurfaceKind.GRAVEL, detailed)
+        assertEquals(detailed, s.highlightSamples)
+        val pieces = layerHighlightPieces(LayerWays(listOf(voies.lines[0])), s.highlightSamples, SurfaceKind.GRAVEL)
+        // Premiere moitie du km : cinq echantillons intermediaires, pas une corde de deux points.
+        assertTrue(pieces[0].size > 2)
+    }
+
+    @Test fun `sans echantillons detailles la mise en evidence retombe sur le profil`() {
+        val s = LayerWaysViewerState()
+        s.open(couche, voies, profils, PlannerViewer.SURFACES, SurfaceKind.GRAVEL)
+        assertEquals(s.samples, s.highlightSamples)
+        s.close()
+        assertNull(s.detailedSamples)
+    }
+
     /** La premiere ligne fait 1 km, la seconde 200 m : le gravier est au debut de l'une et partout sur l'autre. */
     @Test fun `chaque ligne se met en evidence sur ses propres echantillons`() {
         val a = ligne(2.0, 11)          // 0 a 1000 m
