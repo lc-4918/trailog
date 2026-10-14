@@ -63,6 +63,28 @@ class DrawerSelectionUiTest {
         assertEquals(0, bulles())
     }
 
+    /** Un dossier : l'appui sur son nom l'ouvre ou le ferme, et ne montre aucune infobulle. */
+    @Test fun `un appui sur le nom d'un dossier declenche son action, sans infobulle`() {
+        var taps = 0
+        menu { RowLabel(long, TextStyle.Default, Color.Black, null, onLongPress = {}, onClick = { taps++ }) }
+        compose.onNodeWithTag("row_label").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("row_label").performClick()
+        compose.waitForIdle()
+        assertEquals(2, taps)
+        assertEquals(0, bulles())
+    }
+
+    /** L'appui long d'un dossier ouvre toujours la selection. */
+    @Test fun `l'appui long sur le nom d'un dossier ouvre la selection`() {
+        var longs = 0
+        menu { RowLabel(long, TextStyle.Default, Color.Black, null, onLongPress = { longs++ }, onClick = {}) }
+        compose.onNodeWithTag("row_label").performTouchInput { longClick() }
+        compose.waitForIdle()
+        assertEquals(1, longs)
+        assertEquals(0, bulles())
+    }
+
     /** Un appui sur le nom d'un AUTRE element ferme la bulle ouverte, sans en ouvrir une seconde. */
     @Test fun `un appui sur un autre nom ferme la bulle sans en ouvrir d'autre`() {
         menu {

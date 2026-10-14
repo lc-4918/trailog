@@ -249,7 +249,8 @@ internal fun Modifier.closesTooltips(holder: TooltipHolder): Modifier = pointerI
 
 /**
  * Le nom d'un dossier ou d'une couche, et ses deux gestes :
- * - l'appui simple montre le nom entier dans une infobulle au-dessus - il est souvent coupe ;
+ * - l'appui simple montre le nom entier dans une infobulle au-dessus - il est souvent coupe - ; sur un
+ *   dossier, c'est [onClick] qui le remplace : l'appui ouvre ou ferme le dossier, sans infobulle ;
  * - l'appui long vibre et ouvre la selection multiple ([onLongPress]).
  *
  * L'infobulle se referme au second appui, ou a un appui n'importe ou ailleurs - y compris sur le nom d'un
@@ -267,6 +268,7 @@ internal fun RowLabel(
     fontWeight: FontWeight?,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val bulles = LocalTooltipHolder.current
     // Une identite propre a CE nom : deux elements peuvent porter le meme.
@@ -277,8 +279,8 @@ internal fun RowLabel(
             modifier = Modifier.fillMaxWidth()
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = if (bulles.pressFeedback) ripple() else null,
-                    onClick = { bulles.onLabelClick(cle) },
+                    indication = if (onClick != null || bulles.pressFeedback) ripple() else null,
+                    onClick = if (onClick != null) ({ bulles.close(); onClick() }) else ({ bulles.onLabelClick(cle) }),
                     onLongClick = { bulles.close(); onLongPress() },
                 )
                 .testTag("row_label"))

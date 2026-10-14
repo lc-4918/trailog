@@ -12,6 +12,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -168,6 +169,7 @@ internal fun applyMove(vm: MainViewModel, kind: String, id: Long, target: Long?)
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 internal fun FolderNode(
     folder: FolderEntity, allFolders: List<FolderEntity>, allLayers: List<LayerEntity>,
     depth: Int, vm: MainViewModel, dctx: DragCtx,
@@ -207,25 +209,42 @@ internal fun FolderNode(
             if (allVisible) stringResource(R.string.action_hide_folder) else stringResource(R.string.action_show_folder),
             onClick = { vm.setFolderVisible(folder.id, !allVisible) },
         )
-        // Couleur adaptée au thème (clair/sombre), pas figée : contour (fermé) ou remplissage (ouvert)
-        // noir en thème clair, blanc en thème sombre (bug 4.1). Même silhouette pleine (Filled.Folder) dans
-        // les deux états : Filled.FolderOpen ne remplit que l'onglet arrière, pas tout le dossier.
-        Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null,
-            Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        // Nom d'un dossier : demi-gras. Il ne porte pas de couleur, contrairement a une couche, et n'a que
-        // sa graisse pour se distinguer de ce qu'il contient. Plus de capitales : elles criaient, et
-        // allongeaient les noms au point de les couper plus tot que ceux des couches.
-        RowLabel(folder.name, MaterialTheme.typography.bodyMedium, MaterialTheme.colorScheme.onSurface,
-            FontWeight.SemiBold, onLongPress = { vibre(); selection.start("folder" to folder.id) },
-            modifier = Modifier.weight(1f))
-        // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
-        // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
-        if (contents.isNotEmpty()) {
-            Text("${contents.size}",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                    .padding(horizontal = 7.dp, vertical = 2.dp))
+        /*
+         * De l'icone du dossier jusqu'a la poignee (exclue), tout appui simple ouvre ou ferme le dossier : le
+         * caret seul etait une cible trop petite pour un geste aussi frequent. Pas d'infobulle ici, a la
+         * difference d'une couche : le nom d'un dossier se lit en l'ouvrant. L'appui long ouvre la
+         * selection, comme sur le nom.
+         */
+        Row(
+            Modifier.weight(1f).fillMaxHeight()
+                .combinedClickable(
+                    onClick = { expanded = !expanded },
+                    onLongClick = { vibre(); selection.start("folder" to folder.id) },
+                )
+                .testTag("folder_toggle_${folder.id}"),
+            horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Couleur adaptée au thème (clair/sombre), pas figée : contour (fermé) ou remplissage (ouvert)
+            // noir en thème clair, blanc en thème sombre (bug 4.1). Même silhouette pleine (Filled.Folder) dans
+            // les deux états : Filled.FolderOpen ne remplit que l'onglet arrière, pas tout le dossier.
+            Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null,
+                Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Nom d'un dossier : demi-gras. Il ne porte pas de couleur, contrairement a une couche, et n'a que
+            // sa graisse pour se distinguer de ce qu'il contient. Plus de capitales : elles criaient, et
+            // allongeaient les noms au point de les couper plus tot que ceux des couches.
+            RowLabel(folder.name, MaterialTheme.typography.bodyMedium, MaterialTheme.colorScheme.onSurface,
+                FontWeight.SemiBold, onLongPress = { vibre(); selection.start("folder" to folder.id) },
+                modifier = Modifier.weight(1f), onClick = { expanded = !expanded })
+            // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
+            // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
+            if (contents.isNotEmpty()) {
+                Text("${contents.size}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                        .padding(horizontal = 7.dp, vertical = 2.dp))
+            }
         }
         // Poignee et menu colles : ce sont les deux prises de la ligne, pas deux elements a distinguer.
         // L'ecart de la ligne les separerait autant que le nom du compteur, qui n'ont rien a voir entre eux.
