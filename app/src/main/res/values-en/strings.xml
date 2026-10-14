@@ -427,6 +427,11 @@
     <string name="update_unknown_sources_text">Android must ask you to allow Trailog to install apps. Open the setting, grant the permission, then start the update again.</string>
     <string name="update_download_title">Trailog update</string>
     <string name="update_download_desc">Downloading version %1$s</string>
+    <string name="update_state_downloading">Downloading the update…</string>
+    <string name="update_state_installing">Installing…</string>
+    <string name="update_state_waiting_user">Confirm the installation in Android\'s window.</string>
+    <string name="update_install_failed">The installation failed.</string>
+    <string name="update_install_hint">If a Play Protect window opens, answer it right away: after a delay, Android leaves the installation hanging. Cancel frees it.</string>
 
     <string name="dialog_import_result_title">Import</string>
     <plurals name="import_invalid_files">

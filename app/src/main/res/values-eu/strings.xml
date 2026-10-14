@@ -427,6 +427,11 @@
     <string name="update_unknown_sources_text">Androidek Trailog-i aplikazioak instalatzeko baimena emateko eskatu behar dizu. Ireki ezarpena, eman baimena eta abiarazi berriro eguneraketa.</string>
     <string name="update_download_title">Trailog eguneraketa</string>
     <string name="update_download_desc">%1$s bertsioa deskargatzen</string>
+    <string name="update_state_downloading">Eguneratzea deskargatzen…</string>
+    <string name="update_state_installing">Instalatzen…</string>
+    <string name="update_state_waiting_user">Berretsi instalazioa Androiden leihoan.</string>
+    <string name="update_install_failed">Instalazioak huts egin du.</string>
+    <string name="update_install_hint">Play Protect-en leihorik irekitzen bada, erantzun berehala: epe bat igarota, Androidek instalazioa zintzilik uzten du. Utzi egiteak askatzen du.</string>
 
     <string name="dialog_import_result_title">Inportazioa</string>
     <plurals name="import_invalid_files">

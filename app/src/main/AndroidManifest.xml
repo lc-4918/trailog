@@ -87,6 +87,10 @@
             sans que l'application soit visible, et Android 14 refuse le demarrage sans lui. Non exporte :
             personne d'autre que l'application n'a a l'allumer.
         -->
+        <!-- Rapports de la session d'installation d'une mise a jour (cf. update/UpdateInstaller). -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false" />
         <service
             android:name=".location.LocationService"
             android:exported="false"

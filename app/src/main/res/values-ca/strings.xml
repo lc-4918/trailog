@@ -427,6 +427,11 @@
     <string name="update_unknown_sources_text">L\'Android us ha de demanar que autoritzeu el Trailog a instal·lar aplicacions. Obriu el paràmetre, concediu l\'autorització i torneu a iniciar l\'actualització.</string>
     <string name="update_download_title">Actualització del Trailog</string>
     <string name="update_download_desc">S\'està baixant la versió %1$s</string>
+    <string name="update_state_downloading">Baixant l\'actualització…</string>
+    <string name="update_state_installing">Instal·lant…</string>
+    <string name="update_state_waiting_user">Confirma la instal·lació a la finestra d\'Android.</string>
+    <string name="update_install_failed">La instal·lació ha fallat.</string>
+    <string name="update_install_hint">Si s\'obre una finestra de Play Protect, respon-hi de seguida: passat un termini, Android deixa la instal·lació en suspens. Cancel·lar l\'allibera.</string>
 
     <string name="dialog_import_result_title">Importació</string>
     <plurals name="import_invalid_files">

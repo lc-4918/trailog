@@ -5,6 +5,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,19 +54,73 @@ fun UnknownSourcesDialog(onOpenSettings: () -> Unit, onCancel: () -> Unit) {
 }
 
 /**
+ * La progression de la mise a jour, du telechargement a l'installation, avec un bouton Annuler qui marche :
+ * il abandonne la session d'installation, ce qui rend la main quand le systeme - Play Protect, le plus
+ * souvent - laisse l'installation suspendue.
+ */
+@Composable
+fun UpdateProgressDialog(state: InstallState, onCancel: () -> Unit, onClose: () -> Unit) {
+    val failed = state as? InstallState.Failed
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(stringResource(R.string.update_download_title)) },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                Text(stringResource(when (state) {
+                    is InstallState.Downloading -> R.string.update_state_downloading
+                    is InstallState.Staging -> R.string.update_state_installing
+                    is InstallState.Installing -> R.string.update_state_installing
+                    is InstallState.WaitingUser -> R.string.update_state_waiting_user
+                    else -> R.string.update_install_failed
+                }))
+                failed?.message?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        modifier = androidx.compose.ui.Modifier.padding(top = 8.dp))
+                }
+                if (failed == null) {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 16.dp))
+                }
+                if (state is InstallState.Installing) {
+                    Text(stringResource(R.string.update_install_hint),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        modifier = androidx.compose.ui.Modifier.padding(top = 12.dp))
+                }
+            }
+        },
+        confirmButton = {
+            if (failed != null) TextButton(onClick = onClose) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = {
+            if (failed == null) TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+/**
  * Enchaine la proposition de mise a jour : dialogue, autorisation d'installer si besoin, telechargement,
- * puis lancement de l'installateur des que l'APK est la. [release] non nul = une version est disponible.
+ * puis installation par session (cf. [UpdateInstaller]) une fois l'APK la. [release] non nul = une version
+ * est disponible.
  */
 @Composable
 fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
     val ctx = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var askInstallPermission by remember { mutableStateOf(false) }
     var downloadId by remember { mutableStateOf<Long?>(null) }
+    val state by UpdateInstaller.state.collectAsState()
     val title = stringResource(R.string.update_download_title)
     val desc = release?.let { stringResource(R.string.update_download_desc, it.version) } ?: ""
 
+    fun close() {
+        UpdateInstaller.set(InstallState.Idle)
+        downloadId = null
+        onDone()
+    }
+
     fun startDownload(r: ReleaseInfo) {
         downloadId = UpdateManager.enqueueDownload(ctx, r, title, desc)
+        UpdateInstaller.set(InstallState.Downloading)
     }
 
     if (release != null && downloadId == null && !askInstallPermission) {
@@ -83,14 +142,30 @@ fun UpdateFlow(release: ReleaseInfo?, onDone: () -> Unit) {
             onCancel = { askInstallPermission = false; onDone() },
         )
     }
-    // L'APK arrive de facon asynchrone : on attend la diffusion de fin de telechargement pour lancer
-    // l'installateur, plutot que de sonder DownloadManager.
+    // L'APK arrive de facon asynchrone : on attend la diffusion de fin de telechargement, plutot que de
+    // sonder DownloadManager. Un telechargement echoue ne mene pas a l'installation.
     val id = downloadId
-    if (id != null) {
-        DisposableDownloadListener(ctx, id) { ok ->
-            if (ok) UpdateManager.installIntent(ctx, id)?.let { ctx.startActivity(it) }
-            onDone()
+    if (id != null && state is InstallState.Downloading) {
+        DisposableDownloadListener(ctx, id) {
+            if (UpdateInstaller.downloadSucceeded(ctx, id)) scope.launch { UpdateInstaller.install(ctx, id) }
+            else UpdateInstaller.set(InstallState.Failed(null))
         }
+    }
+    // Annulee depuis la fenetre d'Android : l'etat retombe a Idle, et la progression n'a plus lieu d'etre.
+    androidx.compose.runtime.LaunchedEffect(state, downloadId) {
+        if (downloadId != null && state is InstallState.Idle) close()
+    }
+    if (downloadId != null && state !is InstallState.Idle) {
+        UpdateProgressDialog(
+            state = state,
+            onCancel = {
+                if (state is InstallState.Downloading) {
+                    (ctx.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager).remove(id!!)
+                } else UpdateInstaller.abandon(ctx)
+                close()
+            },
+            onClose = { close() },
+        )
     }
 }
 

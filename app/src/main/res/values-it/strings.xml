@@ -427,6 +427,11 @@
     <string name="update_unknown_sources_text">Android deve chiederti di autorizzare Trailog a installare applicazioni. Apri l\'impostazione, concedi l\'autorizzazione, poi riavvia l\'aggiornamento.</string>
     <string name="update_download_title">Aggiornamento di Trailog</string>
     <string name="update_download_desc">Download della versione %1$s</string>
+    <string name="update_state_downloading">Download dell\'aggiornamento…</string>
+    <string name="update_state_installing">Installazione in corso…</string>
+    <string name="update_state_waiting_user">Conferma l\'installazione nella finestra di Android.</string>
+    <string name="update_install_failed">L\'installazione non è riuscita.</string>
+    <string name="update_install_hint">Se si apre una finestra di Play Protect, rispondi subito: trascorso un certo tempo Android lascia l\'installazione in sospeso. Annulla la libera.</string>
 
     <string name="dialog_import_result_title">Importazione</string>
     <plurals name="import_invalid_files">

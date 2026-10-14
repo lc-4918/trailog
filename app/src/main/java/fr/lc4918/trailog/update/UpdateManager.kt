@@ -3,7 +3,6 @@ package fr.lc4918.trailog.update
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.net.toUri
@@ -102,8 +101,8 @@ object UpdateManager {
 
     /**
      * Met l'APK en file de telechargement et rend son id. Destination : le dossier prive de l'app, ce qui
-     * evite toute permission de stockage et le FileProvider, DownloadManager sachant rendre un URI
-     * installable pour ses propres fichiers (cf. [installIntent]).
+     * evite toute permission de stockage et le FileProvider : l'APK est relu par DownloadManager pour
+     * alimenter la session d'installation (cf. [UpdateInstaller.install]).
      */
     fun enqueueDownload(context: Context, release: ReleaseInfo, title: String, description: String): Long {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -116,16 +115,6 @@ object UpdateManager {
             setMimeType(APK_MIME)
         }
         return dm.enqueue(request)
-    }
-
-    /** Intent d'installation pour un APK telecharge, ou null si l'id n'est pas (ou plus) connu. */
-    fun installIntent(context: Context, downloadId: Long): Intent? {
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val uri: Uri = dm.getUriForDownloadedFile(downloadId) ?: return null
-        return Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, APK_MIME)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-        }
     }
 
     /**
