@@ -2,7 +2,7 @@
 
 <h1>Trailog
 <a href="../README.md"><img src="../app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right"></a>
-<img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right">
+<a href="README.fr.md"><img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right"></a>
 </h1>
 
 **Cartographie et itinéraires hors-ligne pour Android.**

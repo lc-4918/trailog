@@ -1,7 +1,7 @@
 <img src="docs/images/social-preview.png" alt="Trailog - offline maps and GPS tracks">
 
 <h1>Trailog
-<img src="app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right">
+<a href="README.md"><img src="app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right"></a>
 <a href="docs/README.fr.md"><img src="app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right"></a>
 </h1>
 
