@@ -279,7 +279,8 @@ internal fun RowLabel(
             modifier = Modifier.fillMaxWidth()
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = if (onClick != null || bulles.pressFeedback) ripple() else null,
+                    // Un nom qui ouvre un dossier n'a pas de ripple : la ligne entiere en porte deja la cible.
+                    indication = if (onClick == null && bulles.pressFeedback) ripple() else null,
                     onClick = if (onClick != null) ({ bulles.close(); onClick() }) else ({ bulles.onLabelClick(cle) }),
                     onLongClick = { bulles.close(); onLongPress() },
                 )
