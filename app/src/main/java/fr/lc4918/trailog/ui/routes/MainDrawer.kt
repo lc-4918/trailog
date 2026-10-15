@@ -13,6 +13,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
@@ -34,7 +36,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Settings
@@ -790,6 +792,11 @@ internal val DrawerHitSize = 32.dp
 @Composable
 internal fun HeaderButton(
     icon: ImageVector, label: String, primary: Boolean, contentDescription: String? = null, onClick: () -> Unit,
+) = HeaderButton(rememberVectorPainter(icon), label, primary, contentDescription, onClick)
+
+@Composable
+internal fun HeaderButton(
+    icon: Painter, label: String, primary: Boolean, contentDescription: String? = null, onClick: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -963,7 +970,7 @@ internal fun RowMenu(
                 // La carte le long de la trace, pour le hors-ligne : ici, sur la trace elle-meme, plutot que
                 // dans un parcours qui demandait d'abord ce qu'on telecharge, puis quelle trace.
                 layerActions.onDownloadMap?.let { telecharger ->
-                    MenuEntry(Icons.Outlined.FileDownload, stringResource(R.string.action_download_map)) {
+                    MenuEntry(Icons.Outlined.CloudDownload, stringResource(R.string.action_download_map)) {
                         open = false; telecharger(layer)
                     }
                 }
@@ -1307,7 +1314,7 @@ internal fun DrawerContent(
             horizontalArrangement = Arrangement.spacedBy(Spacing.s),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            HeaderButton(Icons.Outlined.FileUpload, stringResource(R.string.action_import), primary = true,
+            HeaderButton(painterResource(R.drawable.ic_settings_import), stringResource(R.string.action_import), primary = true,
                 onClick = onImport)
             HeaderButton(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_folder_short), primary = false,
                 contentDescription = stringResource(R.string.label_new_folder)) { openNewFolder(null) }

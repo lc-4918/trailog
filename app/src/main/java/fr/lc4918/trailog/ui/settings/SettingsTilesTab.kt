@@ -2,7 +2,7 @@ package fr.lc4918.trailog.ui.settings
 
 import fr.lc4918.trailog.ui.offline.offlineDownloadAvailable
 import fr.lc4918.trailog.ui.offline.basemapLabel
-import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -194,7 +194,7 @@ private fun margesDePaire(premier: Boolean) = PaddingValues(
             )
             CardButton(
                 stringResource(R.string.offline_action_download),
-                rememberVectorPainter(Icons.Outlined.FileDownload),
+                rememberVectorPainter(Icons.Outlined.CloudDownload),
                 modifier = Modifier.weight(1f),
                 margins = margesDePaire(premier = false),
                 // Le "i" DANS le bouton, et non pose a cote : il explique ce que ce bouton fait, pas la
