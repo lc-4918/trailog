@@ -15,7 +15,7 @@ class WatchTileServerTest {
     private lateinit var server: WatchTileServer
 
     @Before fun startServer() {
-        val routes = WatchRoutes("Essai", listOf(WatchTile(1, 2)), { pixels })
+        val routes = WatchRoutes("Essai", 15.0, listOf(WatchTile(1, 2)), { pixels })
         server = WatchTileServer(routes, port = 0).also { it.start() }
     }
 
@@ -29,7 +29,7 @@ class WatchTileServerTest {
         assertEquals(200, connection.responseCode)
         assertEquals("application/json", connection.contentType)
         val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
-        assertEquals("""{"version":2,"name":"Essai","zoom":15,"tilePixels":128,"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],"tileCount":1,"pointCount":0,"turnCount":0}""", body)
+        assertEquals("""{"version":2,"name":"Essai","zoom":15.0,"tilePixels":128,"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],"tileCount":1,"pointCount":0,"turnCount":0}""", body)
     }
 
     @Test fun `tile pixels arrive intact`() {

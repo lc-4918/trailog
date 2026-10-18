@@ -27,14 +27,15 @@ class HttpReply(val status: Int, val contentType: String, val body: ByteArray) {
  *   (cf. [WatchTurns]).
  * - `GET /watch/tiles?from=F&count=C` : les tuiles F a F+C-1, en `[[x, y], ...]`. La liste entiere ne
  *   tiendrait pas dans une seule reponse : la montre manque de memoire et le lien Bluetooth limite la taille.
- * - `GET /watch/tile/Z/X/Y` : les pixels d'une tuile, `{"x":X,"y":Y,"pixels":"..."}`, en base64 : indices de
- *   la palette du manifeste, deux par octet (cf. [WatchTilePixels]). En JSON et non en image : seules les
+ * - `GET /watch/tile/Z/X/Y` (Z : le zoom de l'envoi, entier ou fractionnaire) : les pixels d'une tuile, `{"x":X,"y":Y,"pixels":"..."}`, en base64 : indices de
+ *   la palette du manifeste, codes par plages (cf. [WatchTilePixels.encode]). En JSON et non en image : seules les
  *   requetes JSON de la montre joignent le serveur local dans le simulateur. Seules les tuiles de l'envoi
  *   sont servies.
  */
 @OptIn(ExperimentalEncodingApi::class)
 class WatchRoutes(
     private val exportName: String,
+    private val zoom: Double,
     private val tiles: List<WatchTile>,
     private val pixelsOf: (WatchTile) -> ByteArray?,
     private val track: List<WatchTrackPoint> = emptyList(),
@@ -46,7 +47,7 @@ class WatchRoutes(
         const val MAX_TILES_PER_PAGE = 100
         const val MAX_TRACK_POINTS_PER_PAGE = 250
         const val MAX_TURNS_PER_PAGE = 100
-        private val TILE_PATH = Regex("""/watch/tile/(\d+)/(\d+)/(\d+)""")
+        private val TILE_PATH = Regex("""/watch/tile/(\d+(?:\.\d+)?)/(\d+)/(\d+)""")
     }
 
     private val tileSet = tiles.toHashSet()
@@ -66,7 +67,7 @@ class WatchRoutes(
     }
 
     private fun manifest(): String =
-        """{"version":$PROTOCOL_VERSION,"name":${jsonString(exportName)},"zoom":${WatchTiles.WATCH_ZOOM},""" +
+        """{"version":$PROTOCOL_VERSION,"name":${jsonString(exportName)},"zoom":$zoom,""" +
             """"tilePixels":${WatchTiles.WATCH_TILE_PIXELS},"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],""" +
             """"tileCount":${tiles.size},"pointCount":${track.size},"turnCount":${turns.size}}"""
 
@@ -94,8 +95,8 @@ class WatchRoutes(
     }
 
     private fun tileImage(match: MatchResult): HttpReply {
-        val (zoom, x, y) = match.destructured
-        if (zoom.toInt() != WatchTiles.WATCH_ZOOM) return HttpReply.notFound()
+        val (requestedZoom, x, y) = match.destructured
+        if (kotlin.math.abs(requestedZoom.toDouble() - zoom) > 1e-6) return HttpReply.notFound()
         val tile = WatchTile(x.toInt(), y.toInt())
         if (tile !in tileSet) return HttpReply.notFound()
         val pixels = pixelsOf(tile) ?: return HttpReply.notFound()

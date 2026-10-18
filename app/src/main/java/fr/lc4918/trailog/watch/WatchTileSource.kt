@@ -31,7 +31,24 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          */
         fun supports(provider: ProviderEntity): Boolean =
             provider.type in SUPPORTED_TYPES && !provider.transparent &&
-                WatchTiles.WATCH_ZOOM in provider.minZoom..provider.maxZoom && !BulkDownloadPolicy.forbids(provider)
+                WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) && !BulkDownloadPolicy.forbids(provider)
+
+        /**
+         * Le dernier zoom ou un fond a du detail propre, quand il en sert davantage : le Scan 25 de l'IGN est un raster qui
+         * s'arrete au zoom 16, et sa couche sert au zoom 17 un autre produit (sans courbes de niveau ni symbologie du
+         * Scan 25).
+         */
+        private val NATIVE_MAX_ZOOM = mapOf("ign_fr" to 16)
+
+        /** Le zoom maximal ou le fond a du detail : le sien, ou le dernier zoom du Scan 25 pour la couche de l'IGN. */
+        fun usableMaxZoom(provider: ProviderEntity): Int = minOf(provider.maxZoom, NATIVE_MAX_ZOOM[provider.id] ?: provider.maxZoom)
+
+        /**
+         * Les niveaux de detail que ce fond sait remplir : ceux dont le zoom du fond existe. Au-dela de son zoom
+         * maximal un fond n'apporte pas plus de detail, il ne ferait qu'agrandir ses pixels.
+         */
+        fun availableDetails(provider: ProviderEntity): List<WatchTiles.Detail> =
+            WatchTiles.Detail.entries.filter { it.sourceZoom in provider.minZoom..usableMaxZoom(provider) }
 
         /**
          * Le fichier d'un fond MBTiles : chemin absolu derriere `mbtiles://`, ou nom de fichier dans

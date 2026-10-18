@@ -19,13 +19,13 @@ class WatchTileSourceTest {
         ProviderEntity(id = "p", name = "p", groupName = "g", type = type, urlTemplate = url,
             minZoom = minZoom, maxZoom = maxZoom, transparent = transparent)
 
-    @Test fun `only opaque raster basemaps serving zoom 15 can be sent`() {
+    @Test fun `only opaque raster basemaps serving zoom 16 can be sent`() {
         assertTrue(WatchTileSource.supports(provider("XYZ")))
         assertTrue(WatchTileSource.supports(provider("MBTILES")))
         assertFalse(WatchTileSource.supports(provider("VECTOR")))
         assertFalse(WatchTileSource.supports(provider("DEM")))
         assertFalse(WatchTileSource.supports(provider("XYZ", transparent = true)))
-        assertFalse(WatchTileSource.supports(provider("XYZ", maxZoom = 14)))
+        assertFalse(WatchTileSource.supports(provider("XYZ", maxZoom = 15)))
     }
 
     /** L'envoi telecharge un couloir entier : OpenStreetMap l'interdit, et renverrait des tuiles bloquees. */
@@ -60,5 +60,12 @@ class WatchTileSourceTest {
         WatchTileSource(provider("MBTILES", maxZoom = 14), File("/missing")).use { source ->
             assertNull(source.sourceImage(15, 0, 0))
         }
+    }
+
+    @Test fun `the Scan 25 offers the levels up to zoom 16 only, its zoom 17 being another product`() {
+        val scan25 = provider("WMTS", "https://example/{z}/{x}/{y}").copy(id = "ign_fr", maxZoom = 17)
+        assertEquals(listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE), WatchTileSource.availableDetails(scan25))
+        val other = provider("XYZ", "https://example/{z}/{x}/{y}.png")
+        assertEquals(WatchTiles.Detail.entries.toList(), WatchTileSource.availableDetails(other))
     }
 }

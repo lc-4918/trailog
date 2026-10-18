@@ -28,7 +28,7 @@ class WatchExportSession(
     companion object {
         /** Sans requete de la montre pendant ce delai, l'envoi se referme : un serveur oublie ouvert ne sert a rien. */
         const val IDLE_TIMEOUT_MS = 15 * 60_000L
-        /** Les tuiles standard gardees en memoire : chacune donne quatre tuiles montre, demandees a des moments differents. */
+        /** Les tuiles du fond gardees en memoire : chacune sert a plusieurs tuiles montre, demandees a des moments differents. */
         private const val SOURCE_CACHE_ENTRIES = 64
     }
 
@@ -56,11 +56,15 @@ class WatchExportSession(
         provider: ProviderEntity,
         mbtilesFile: File?,
         track: List<WatchTrack.WatchTrackPoint> = emptyList(),
+        detail: WatchTiles.Detail = WatchTiles.Detail.DEFAULT,
     ): Boolean {
         stop()
         val tileSource = WatchTileSource(provider, mbtilesFile)
-        val sourceCache = object : LinkedHashMap<WatchTiles.SourceQuarter, ByteArray?>(SOURCE_CACHE_ENTRIES, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<WatchTiles.SourceQuarter, ByteArray?>) =
+        // Les tuiles du fond gardees en memoire : une tuile montre en recouvre jusqu'a quatre, et les voisines
+        // en partagent.
+        val sourceZoom = detail.sourceZoom
+        val sourceCache = object : LinkedHashMap<Triple<Int, Int, Int>, ByteArray?>(SOURCE_CACHE_ENTRIES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Triple<Int, Int, Int>, ByteArray?>) =
                 size > SOURCE_CACHE_ENTRIES
         }
         val routes = WatchRoutes(
@@ -68,11 +72,11 @@ class WatchExportSession(
             tiles = tiles,
             track = track,
             turns = WatchTurns.detect(track),
+            zoom = detail.zoom,
             pixelsOf = { tile ->
-                val quarter = WatchTiles.sourceQuarterOf(tile)
-                val sourceKey = quarter.copy(quarterColumn = 0, quarterRow = 0)
-                val sourceImage = sourceCache.getOrPut(sourceKey) { tileSource.sourceImage(quarter.zoom, quarter.x, quarter.y) }
-                sourceImage?.let { WatchTileImages.quarter(it, quarter.quarterColumn, quarter.quarterRow) }
+                WatchTileImages.render(tile, detail.zoom, sourceZoom) { x, y ->
+                    sourceCache.getOrPut(Triple(sourceZoom, x, y)) { tileSource.sourceImage(sourceZoom, x, y) }
+                }
             },
             onTileServed = { servedCount, tileCount ->
                 mutableState.value = State(name, servedCount, tileCount)

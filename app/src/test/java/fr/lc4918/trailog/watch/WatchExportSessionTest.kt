@@ -44,7 +44,7 @@ class WatchExportSessionTest {
     private val session = WatchExportSession(scope, onStarted = { startedCount++ }, port = port)
     private val mbtilesFile = File.createTempFile("export", ".mbtiles").apply { delete() }
 
-    // La tuile standard (15, 16918, 11771) : rouge en haut a gauche, vert en haut a droite, bleu en bas.
+    // La tuile standard (16, 16918, 11771), source du niveau FINE (grille de zoom 16) : rouge en haut a gauche, vert en haut a droite, bleu en bas. : rouge en haut a gauche, vert en haut a droite, bleu en bas.
     private val tiles = listOf(WatchTile(33836, 23542), WatchTile(33837, 23542), WatchTile(33836, 23543))
 
     private val provider = ProviderEntity(id = "zone", name = "Zone", groupName = "Local", type = "MBTILES", urlTemplate = "zone.mbtiles")
@@ -57,7 +57,7 @@ class WatchExportSessionTest {
         val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
         SQLiteDatabase.openOrCreateDatabase(mbtilesFile, null).use { database ->
             database.execSQL("CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB)")
-            database.execSQL("INSERT INTO tiles VALUES (15, 16918, ?, ?)", arrayOf((1 shl 15) - 1 - 11771, png))
+            database.execSQL("INSERT INTO tiles VALUES (16, 16918, ?, ?)", arrayOf((1 shl 16) - 1 - 11771, png))
         }
     }
 
@@ -71,13 +71,13 @@ class WatchExportSessionTest {
 
     @Test fun `the watch receives each quarter of the basemap tile and progress follows`() {
         writeMbtiles()
-        assertTrue(session.start("Tour", tiles, provider, mbtilesFile))
+        assertTrue(session.start("Tour", tiles, provider, mbtilesFile, detail = WatchTiles.Detail.FINE))
         assertEquals(1, startedCount)
         assertEquals(WatchExportSession.State("Tour", 0, 3), session.state.value)
 
         val expectedColors = listOf(paletteRed, paletteGreen, paletteBlue)
         tiles.forEachIndexed { index, tile ->
-            val connection = get("/watch/tile/15/${tile.x}/${tile.y}")
+            val connection = get("/watch/tile/16/${tile.x}/${tile.y}")
             assertEquals(200, connection.responseCode)
             val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
             val packed = Base64.decode(Regex(""""pixels":"([^"]+)"""").find(body)!!.groupValues[1])
@@ -91,7 +91,7 @@ class WatchExportSessionTest {
 
     @Test fun `stopping closes the server`() {
         writeMbtiles()
-        session.start("Tour", tiles, provider, mbtilesFile)
+        session.start("Tour", tiles, provider, mbtilesFile, detail = WatchTiles.Detail.FINE)
         session.stop()
         assertNull(session.state.value)
         assertFalse(runCatching { get("/watch/manifest").responseCode }.isSuccess)
@@ -99,7 +99,7 @@ class WatchExportSessionTest {
 
     @Test fun `the export closes itself after a long silence from the watch`() {
         writeMbtiles()
-        session.start("Tour", tiles, provider, mbtilesFile)
+        session.start("Tour", tiles, provider, mbtilesFile, detail = WatchTiles.Detail.FINE)
         scope.advanceTimeBy(WatchExportSession.IDLE_TIMEOUT_MS - 1_000)
         scope.runCurrent()
         assertEquals(3, session.state.value?.tileCount)

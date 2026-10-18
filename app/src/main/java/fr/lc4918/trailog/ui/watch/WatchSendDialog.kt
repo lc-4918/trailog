@@ -66,11 +66,13 @@ internal val WatchCorridorRadiiMeters = listOf(250.0, 500.0, 1000.0, 2000.0)
 private const val DEFAULT_RADIUS_INDEX = 1
 
 /**
- * Place d'une tuile sur la montre : 8192 octets de pixels (128 x 128 a quatre bits) et le surcout du
- * stockage, soit 1260 tuiles dans les 10 Mo du simulateur fenix 6X. Sert a l'estimation affichee, pas a
- * une limite : la place reelle depend de l'appareil.
+ * Place d'une tuile sur la montre : une tuile codee par plages fait de 5 a 7 Ko en moyenne selon le niveau de detail
+ * (mesure sur 1019 tuiles du Scan 25 d'un parcours de 28 km), plus un surcout de stockage d'environ 130 octets.
+ * Le simulateur fenix 6X en range 1700 de 6000 octets dans ses 10 Mo. 7300 octets est la moyenne la plus haute, celle du
+ * niveau STANDARD, arrondie : l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la
+ * limite pas : la place reelle depend de l'appareil et du fond.
  */
-internal const val WATCH_BYTES_PER_TILE = 8_320L
+internal const val WATCH_BYTES_PER_TILE = 7_300L
 
 /**
  * La fenetre d'envoi d'une trace a la montre Garmin : l'etat de la montre, le fond, la largeur du couloir,

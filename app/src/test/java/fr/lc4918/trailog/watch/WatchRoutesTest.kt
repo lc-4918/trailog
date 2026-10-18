@@ -16,7 +16,7 @@ class WatchRoutesTest {
     private val turns = listOf(WatchTurn(200, 45_001_000, 5_000_000, 90, 90), WatchTurn(450, 45_001_000, 5_003_000, -75, 15))
 
     private fun routes(onTileServed: (Int, Int) -> Unit = { _, _ -> }) =
-        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, track, turns, onTileServed)
+        WatchRoutes("Tour \"du\" lac", 15.0, tiles, { pixels }, track, turns, onTileServed)
 
     private fun HttpReply.text() = body.toString(Charsets.UTF_8)
 
@@ -26,7 +26,7 @@ class WatchRoutesTest {
         assertEquals("application/json", reply.contentType)
         val palette = WatchTilePixels.PALETTE.joinToString(",")
         assertEquals(
-            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3,"turnCount":2}""",
+            """{"version":2,"name":"Tour \"du\" lac","zoom":15.0,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3,"turnCount":2}""",
             reply.text(),
         )
     }
@@ -64,7 +64,7 @@ class WatchRoutesTest {
     }
 
     @Test fun `a tile without image answers not found`() {
-        val reply = WatchRoutes("x", tiles, { null }).respond("/watch/tile/15/1001/2000")
+        val reply = WatchRoutes("x", 15.0, tiles, { null }).respond("/watch/tile/15/1001/2000")
         assertEquals(404, reply.status)
     }
 
@@ -90,7 +90,7 @@ class WatchRoutesTest {
 
     @Test fun `a track page never exceeds the maximum size`() {
         val longTrack = (0 until 600).map { WatchTrackPoint(it, it) }
-        val reply = WatchRoutes("x", tiles, { pixels }, longTrack).respond("/watch/track?from=0&count=1000")
+        val reply = WatchRoutes("x", 15.0, tiles, { pixels }, longTrack).respond("/watch/track?from=0&count=1000")
         assertEquals(WatchRoutes.MAX_TRACK_POINTS_PER_PAGE, Regex("""\[-?\d+,-?\d+,-?\d+]""").findAll(reply.text()).count())
     }
 
@@ -101,7 +101,7 @@ class WatchRoutesTest {
     }
 
     @Test fun `an export without track announces no points`() {
-        assertEquals(true, WatchRoutes("x", tiles, { pixels }).respond("/watch/manifest").text().endsWith(""""pointCount":0,"turnCount":0}"""))
+        assertEquals(true, WatchRoutes("x", 15.0, tiles, { pixels }).respond("/watch/manifest").text().endsWith(""""pointCount":0,"turnCount":0}"""))
     }
 
     @Test fun `turns are served by pages`() {
@@ -112,7 +112,7 @@ class WatchRoutesTest {
 
     @Test fun `a turn page never exceeds the maximum size`() {
         val manyTurns = (0 until 300).map { WatchTurn(it, it, it, 90, 0) }
-        val reply = WatchRoutes("x", tiles, { pixels }, emptyList(), manyTurns).respond("/watch/turns?from=0&count=1000")
+        val reply = WatchRoutes("x", 15.0, tiles, { pixels }, emptyList(), manyTurns).respond("/watch/turns?from=0&count=1000")
         assertEquals(WatchRoutes.MAX_TURNS_PER_PAGE, Regex("""\[\d+,\d+,\d+,-?\d+,\d+]""").findAll(reply.text()).count())
     }
 
