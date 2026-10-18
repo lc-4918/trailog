@@ -2,6 +2,7 @@ package fr.lc4918.trailog.watch
 
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
 import fr.lc4918.trailog.watch.WatchTrack.WatchTrackPoint
+import fr.lc4918.trailog.watch.WatchTurns.WatchTurn
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -12,8 +13,10 @@ class WatchRoutesTest {
 
     private val track = listOf(WatchTrackPoint(45_121_000, 5_877_000, 0), WatchTrackPoint(45_122_500, 5_878_250, 190), WatchTrackPoint(-45_000_000, -5_000_000, 9_000_000))
 
+    private val turns = listOf(WatchTurn(200, 45_001_000, 5_000_000, 90, 90), WatchTurn(450, 45_001_000, 5_003_000, -75, 15))
+
     private fun routes(onTileServed: (Int, Int) -> Unit = { _, _ -> }) =
-        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, track, onTileServed)
+        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, track, turns, onTileServed)
 
     private fun HttpReply.text() = body.toString(Charsets.UTF_8)
 
@@ -23,7 +26,7 @@ class WatchRoutesTest {
         assertEquals("application/json", reply.contentType)
         val palette = WatchTilePixels.PALETTE.joinToString(",")
         assertEquals(
-            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3}""",
+            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3,"turnCount":2}""",
             reply.text(),
         )
     }
@@ -98,6 +101,24 @@ class WatchRoutesTest {
     }
 
     @Test fun `an export without track announces no points`() {
-        assertEquals(true, WatchRoutes("x", tiles, { pixels }).respond("/watch/manifest").text().endsWith(""""pointCount":0}"""))
+        assertEquals(true, WatchRoutes("x", tiles, { pixels }).respond("/watch/manifest").text().endsWith(""""pointCount":0,"turnCount":0}"""))
+    }
+
+    @Test fun `turns are served by pages`() {
+        val reply = routes().respond("/watch/turns?from=1&count=5")
+        assertEquals(200, reply.status)
+        assertEquals("""{"from":1,"turns":[[450,45001000,5003000,-75,15]]}""", reply.text())
+    }
+
+    @Test fun `a turn page never exceeds the maximum size`() {
+        val manyTurns = (0 until 300).map { WatchTurn(it, it, it, 90, 0) }
+        val reply = WatchRoutes("x", tiles, { pixels }, emptyList(), manyTurns).respond("/watch/turns?from=0&count=1000")
+        assertEquals(WatchRoutes.MAX_TURNS_PER_PAGE, Regex("""\[\d+,\d+,\d+,-?\d+,\d+]""").findAll(reply.text()).count())
+    }
+
+    @Test fun `past the end the turn page is empty and a malformed request is refused`() {
+        assertEquals("""{"from":9,"turns":[]}""", routes().respond("/watch/turns?from=9&count=10").text())
+        assertEquals(404, routes().respond("/watch/turns?from=-1&count=10").status)
+        assertEquals(404, routes().respond("/watch/turns?count=10").status)
     }
 }

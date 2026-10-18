@@ -67,6 +67,7 @@ class WatchExportSession(
             exportName = name,
             tiles = tiles,
             track = track,
+            turns = WatchTurns.detect(track),
             pixelsOf = { tile ->
                 val quarter = WatchTiles.sourceQuarterOf(tile)
                 val sourceKey = quarter.copy(quarterColumn = 0, quarterRow = 0)
