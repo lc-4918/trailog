@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.watch
 
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
+import fr.lc4918.trailog.watch.WatchTrack.WatchTrackPoint
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -9,8 +10,10 @@ class WatchRoutesTest {
     private val tiles = (0 until 250).map { WatchTile(1000 + it, 2000) }
     private val pixels = byteArrayOf(1, 2, 3)
 
+    private val track = listOf(WatchTrackPoint(45_121_000, 5_877_000), WatchTrackPoint(45_122_500, 5_878_250), WatchTrackPoint(-45_000_000, -5_000_000))
+
     private fun routes(onTileServed: (Int, Int) -> Unit = { _, _ -> }) =
-        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, onTileServed)
+        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, track, onTileServed)
 
     private fun HttpReply.text() = body.toString(Charsets.UTF_8)
 
@@ -20,7 +23,7 @@ class WatchRoutesTest {
         assertEquals("application/json", reply.contentType)
         val palette = WatchTilePixels.PALETTE.joinToString(",")
         assertEquals(
-            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250}""",
+            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3}""",
             reply.text(),
         )
     }
@@ -74,5 +77,27 @@ class WatchRoutesTest {
     @Test fun `unknown paths answer not found`() {
         assertEquals(404, routes().respond("/").status)
         assertEquals(404, routes().respond("/watch/tile/15/a/b").status)
+    }
+
+    @Test fun `track points are served by pages in micro-degrees`() {
+        val reply = routes().respond("/watch/track?from=1&count=2")
+        assertEquals(200, reply.status)
+        assertEquals("""{"from":1,"points":[[45122500,5878250],[-45000000,-5000000]]}""", reply.text())
+    }
+
+    @Test fun `a track page never exceeds the maximum size`() {
+        val longTrack = (0 until 600).map { WatchTrackPoint(it, it) }
+        val reply = WatchRoutes("x", tiles, { pixels }, longTrack).respond("/watch/track?from=0&count=1000")
+        assertEquals(WatchRoutes.MAX_TRACK_POINTS_PER_PAGE, Regex("""\[-?\d+,-?\d+]""").findAll(reply.text()).count())
+    }
+
+    @Test fun `past the end of the track the page is empty and a malformed request is refused`() {
+        assertEquals("""{"from":9,"points":[]}""", routes().respond("/watch/track?from=9&count=10").text())
+        assertEquals(404, routes().respond("/watch/track?from=-1&count=10").status)
+        assertEquals(404, routes().respond("/watch/track?count=10").status)
+    }
+
+    @Test fun `an export without track announces no points`() {
+        assertEquals(true, WatchRoutes("x", tiles, { pixels }).respond("/watch/manifest").text().endsWith(""""pointCount":0}"""))
     }
 }

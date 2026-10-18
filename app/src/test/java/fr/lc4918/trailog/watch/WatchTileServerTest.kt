@@ -29,7 +29,7 @@ class WatchTileServerTest {
         assertEquals(200, connection.responseCode)
         assertEquals("application/json", connection.contentType)
         val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
-        assertEquals("""{"version":2,"name":"Essai","zoom":15,"tilePixels":128,"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],"tileCount":1}""", body)
+        assertEquals("""{"version":2,"name":"Essai","zoom":15,"tilePixels":128,"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],"tileCount":1,"pointCount":0}""", body)
     }
 
     @Test fun `tile pixels arrive intact`() {

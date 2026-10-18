@@ -111,6 +111,7 @@ import fr.lc4918.trailog.ui.offline.OfflineFlowUi
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.watch.WatchLinkMonitor
 import fr.lc4918.trailog.watch.WatchTileSource
+import fr.lc4918.trailog.watch.WatchTrack
 import fr.lc4918.trailog.ui.watch.WatchSendDialog
 import fr.lc4918.trailog.TrailogApp
 import fr.lc4918.trailog.ui.planner.GeocodingParams
@@ -1515,7 +1516,8 @@ fun MainScreen(
                     },
                     onSend = { provider, tiles ->
                         app.watchExport.start(layer.name, tiles, provider,
-                            WatchTileSource.mbtilesFileOf(provider, app.repository.mbtilesDir(settings)))
+                            WatchTileSource.mbtilesFileOf(provider, app.repository.mbtilesDir(settings)),
+                            WatchTrack.prepare(points))
                     },
                     onStop = { app.watchExport.stop() },
                     onDismiss = { watchSendTarget = null },

@@ -50,7 +50,13 @@ class WatchExportSession(
      */
     // Synchronise : le serveur rappelle depuis son propre fil, la minuterie depuis une coroutine.
     @Synchronized
-    fun start(name: String, tiles: List<WatchTile>, provider: ProviderEntity, mbtilesFile: File?): Boolean {
+    fun start(
+        name: String,
+        tiles: List<WatchTile>,
+        provider: ProviderEntity,
+        mbtilesFile: File?,
+        track: List<WatchTrack.WatchTrackPoint> = emptyList(),
+    ): Boolean {
         stop()
         val tileSource = WatchTileSource(provider, mbtilesFile)
         val sourceCache = object : LinkedHashMap<WatchTiles.SourceQuarter, ByteArray?>(SOURCE_CACHE_ENTRIES, 0.75f, true) {
@@ -60,6 +66,7 @@ class WatchExportSession(
         val routes = WatchRoutes(
             exportName = name,
             tiles = tiles,
+            track = track,
             pixelsOf = { tile ->
                 val quarter = WatchTiles.sourceQuarterOf(tile)
                 val sourceKey = quarter.copy(quarterColumn = 0, quarterRow = 0)
