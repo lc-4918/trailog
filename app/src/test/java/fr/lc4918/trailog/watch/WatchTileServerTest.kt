@@ -2,7 +2,6 @@ package fr.lc4918.trailog.watch
 
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
 import org.junit.After
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -12,11 +11,11 @@ import java.net.URL
 /** Le serveur sur une vraie socket de bouclage, interroge comme le ferait Garmin Connect Mobile. */
 class WatchTileServerTest {
 
-    private val image = byteArrayOf(9, 8, 7, 6)
+    private val pixels = byteArrayOf(9, 8, 7, 6)
     private lateinit var server: WatchTileServer
 
     @Before fun startServer() {
-        val routes = WatchRoutes("Essai", listOf(WatchTile(1, 2)), { image })
+        val routes = WatchRoutes("Essai", listOf(WatchTile(1, 2)), { pixels })
         server = WatchTileServer(routes, port = 0).also { it.start() }
     }
 
@@ -30,14 +29,15 @@ class WatchTileServerTest {
         assertEquals(200, connection.responseCode)
         assertEquals("application/json", connection.contentType)
         val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
-        assertEquals("""{"version":1,"name":"Essai","zoom":15,"tilePixels":128,"tileCount":1}""", body)
+        assertEquals("""{"version":2,"name":"Essai","zoom":15,"tilePixels":128,"palette":[${WatchTilePixels.PALETTE.joinToString(",")}],"tileCount":1}""", body)
     }
 
-    @Test fun `tile image bytes arrive intact`() {
+    @Test fun `tile pixels arrive intact`() {
         val connection = get("/watch/tile/15/1/2")
         assertEquals(200, connection.responseCode)
-        assertEquals("image/png", connection.contentType)
-        assertArrayEquals(image, connection.inputStream.use { it.readBytes() })
+        assertEquals("application/json", connection.contentType)
+        val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
+        assertEquals("""{"x":1,"y":2,"pixels":"CQgHBg=="}""", body)
     }
 
     @Test fun `several requests in a row are answered`() {

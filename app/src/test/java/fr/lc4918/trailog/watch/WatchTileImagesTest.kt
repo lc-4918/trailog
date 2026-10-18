@@ -1,7 +1,6 @@
 package fr.lc4918.trailog.watch
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -22,9 +21,9 @@ class WatchTileImagesTest {
         val half = size / 2
         for (y in 0 until size) for (x in 0 until size) {
             val color = when {
-                x < half && y < half -> Color.RED
-                x >= half && y < half -> Color.GREEN
-                x < half -> Color.BLUE
+                x < half && y < half -> Color.rgb(0xFF, 0x00, 0x00)
+                x >= half && y < half -> Color.rgb(0x55, 0xAA, 0x55)
+                x < half -> Color.rgb(0x00, 0x55, 0xAA)
                 else -> Color.BLACK
             }
             bitmap.setPixel(x, y, color)
@@ -34,31 +33,32 @@ class WatchTileImagesTest {
         return output.toByteArray()
     }
 
-    private fun decode(png: ByteArray): Bitmap = BitmapFactory.decodeByteArray(png, 0, png.size)
+    /** La couleur de palette du pixel (x, y) d'une tuile rangee. */
+    private fun colorAt(packed: ByteArray, x: Int, y: Int): Int =
+        WatchTilePixels.PALETTE[WatchTilePixels.unpack(packed)[y * 128 + x]]
 
     @Test fun `each quarter of a 256 px tile becomes a 128 px watch tile`() {
         val source = quarteredTile(256)
-        val expectedColors = mapOf((0 to 0) to Color.RED, (1 to 0) to Color.GREEN, (0 to 1) to Color.BLUE, (1 to 1) to Color.BLACK)
+        val expectedColors = mapOf((0 to 0) to Color.rgb(0xFF, 0x00, 0x00), (1 to 0) to Color.rgb(0x55, 0xAA, 0x55), (0 to 1) to Color.rgb(0x00, 0x55, 0xAA), (1 to 1) to Color.BLACK)
         for ((quarter, expectedColor) in expectedColors) {
-            val tile = decode(WatchTileImages.quarter(source, quarter.first, quarter.second)!!)
-            assertEquals(128, tile.width)
-            assertEquals(128, tile.height)
-            assertEquals(expectedColor, tile.getPixel(64, 64))
+            val tile = WatchTileImages.quarter(source, quarter.first, quarter.second)!!
+            assertEquals(WatchTilePixels.PACKED_BYTES, tile.size)
+            assertEquals(expectedColor, colorAt(tile, 64, 64) or 0xFF000000.toInt())
         }
     }
 
     @Test fun `a 512 px tile is reduced to 128 px`() {
-        val tile = decode(WatchTileImages.quarter(quarteredTile(512), 1, 0)!!)
-        assertEquals(128, tile.width)
-        assertEquals(Color.GREEN, tile.getPixel(64, 64))
+        val tile = WatchTileImages.quarter(quarteredTile(512), 1, 0)!!
+        assertEquals(WatchTilePixels.PACKED_BYTES, tile.size)
+        assertEquals(Color.rgb(0x55, 0xAA, 0x55), colorAt(tile, 64, 64) or 0xFF000000.toInt())
     }
 
     @Test fun `transparent areas become white`() {
         val transparent = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
         val output = ByteArrayOutputStream()
         transparent.compress(Bitmap.CompressFormat.PNG, 100, output)
-        val tile = decode(WatchTileImages.quarter(output.toByteArray(), 0, 0)!!)
-        assertEquals(Color.WHITE, tile.getPixel(10, 10))
+        val tile = WatchTileImages.quarter(output.toByteArray(), 0, 0)!!
+        assertEquals(0xFFFFFF, colorAt(tile, 10, 10))
     }
 
     @Test fun `unreadable bytes give no tile`() {

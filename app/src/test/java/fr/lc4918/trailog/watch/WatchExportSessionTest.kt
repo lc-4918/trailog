@@ -2,7 +2,6 @@ package fr.lc4918.trailog.watch
 
 import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
@@ -24,12 +23,20 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.ServerSocket
 import java.net.URL
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /** Un envoi complet : un fond MBTiles, le serveur, et la montre simulee par des requetes HTTP. */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalEncodingApi::class)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class WatchExportSessionTest {
+
+    // Des couleurs exactes de la palette : un aplat uni n'est pas trame et ressort a l'identique.
+    private val paletteRed = Color.rgb(0xFF, 0x00, 0x00)
+    private val paletteGreen = Color.rgb(0x55, 0xAA, 0x55)
+    private val paletteBlue = Color.rgb(0x00, 0x55, 0xAA)
+
 
     private val scope = TestScope()
     private val port = ServerSocket(0).use { it.localPort }
@@ -45,7 +52,7 @@ class WatchExportSessionTest {
     private fun writeMbtiles() {
         val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
         for (y in 0 until 256) for (x in 0 until 256) {
-            bitmap.setPixel(x, y, if (y >= 128) Color.BLUE else if (x < 128) Color.RED else Color.GREEN)
+            bitmap.setPixel(x, y, if (y >= 128) paletteBlue else if (x < 128) paletteRed else paletteGreen)
         }
         val png = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
         SQLiteDatabase.openOrCreateDatabase(mbtilesFile, null).use { database ->
@@ -68,13 +75,14 @@ class WatchExportSessionTest {
         assertEquals(1, startedCount)
         assertEquals(WatchExportSession.State("Tour", 0, 3), session.state.value)
 
-        val expectedColors = listOf(Color.RED, Color.GREEN, Color.BLUE)
+        val expectedColors = listOf(paletteRed, paletteGreen, paletteBlue)
         tiles.forEachIndexed { index, tile ->
             val connection = get("/watch/tile/15/${tile.x}/${tile.y}")
             assertEquals(200, connection.responseCode)
-            val bytes = connection.inputStream.use { it.readBytes() }
-            val image = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-            assertEquals(expectedColors[index], image.getPixel(64, 64))
+            val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
+            val packed = Base64.decode(Regex(""""pixels":"([^"]+)"""").find(body)!!.groupValues[1])
+            val paletteIndex = WatchTilePixels.unpack(packed)[64 * 128 + 64]
+            assertEquals(expectedColors[index], WatchTilePixels.PALETTE[paletteIndex] or 0xFF000000.toInt())
         }
         val finalState = session.state.value!!
         assertEquals(3, finalState.servedCount)

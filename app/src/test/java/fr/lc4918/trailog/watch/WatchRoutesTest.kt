@@ -1,17 +1,16 @@
 package fr.lc4918.trailog.watch
 
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WatchRoutesTest {
 
     private val tiles = (0 until 250).map { WatchTile(1000 + it, 2000) }
-    private val image = byteArrayOf(1, 2, 3)
+    private val pixels = byteArrayOf(1, 2, 3)
 
     private fun routes(onTileServed: (Int, Int) -> Unit = { _, _ -> }) =
-        WatchRoutes("Tour \"du\" lac", tiles, { image }, onTileServed)
+        WatchRoutes("Tour \"du\" lac", tiles, { pixels }, onTileServed)
 
     private fun HttpReply.text() = body.toString(Charsets.UTF_8)
 
@@ -19,8 +18,9 @@ class WatchRoutesTest {
         val reply = routes().respond("/watch/manifest")
         assertEquals(200, reply.status)
         assertEquals("application/json", reply.contentType)
+        val palette = WatchTilePixels.PALETTE.joinToString(",")
         assertEquals(
-            """{"version":1,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"tileCount":250}""",
+            """{"version":2,"name":"Tour \"du\" lac","zoom":15,"tilePixels":128,"palette":[$palette],"tileCount":250}""",
             reply.text(),
         )
     }
@@ -45,11 +45,11 @@ class WatchRoutesTest {
         assertEquals(404, routes().respond("/watch/tiles?count=10").status)
     }
 
-    @Test fun `a tile of the export is served as png`() {
+    @Test fun `a tile of the export is served as base64 pixels`() {
         val reply = routes().respond("/watch/tile/15/1001/2000")
         assertEquals(200, reply.status)
-        assertEquals("image/png", reply.contentType)
-        assertArrayEquals(image, reply.body)
+        assertEquals("application/json", reply.contentType)
+        assertEquals("""{"x":1001,"y":2000,"pixels":"AQID"}""", reply.text())
     }
 
     @Test fun `tiles outside the export or at another zoom are refused`() {

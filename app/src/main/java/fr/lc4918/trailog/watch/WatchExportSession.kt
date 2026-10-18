@@ -60,7 +60,7 @@ class WatchExportSession(
         val routes = WatchRoutes(
             exportName = name,
             tiles = tiles,
-            imageOf = { tile ->
+            pixelsOf = { tile ->
                 val quarter = WatchTiles.sourceQuarterOf(tile)
                 val sourceKey = quarter.copy(quarterColumn = 0, quarterRow = 0)
                 val sourceImage = sourceCache.getOrPut(sourceKey) { tileSource.sourceImage(quarter.zoom, quarter.x, quarter.y) }
