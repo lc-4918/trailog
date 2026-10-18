@@ -19,8 +19,8 @@ class HttpReply(val status: Int, val contentType: String, val body: ByteArray) {
  *
  * Le protocole, cote montre dans l'application Trailog Garmin :
  * - `GET /watch/manifest` : nom de l'envoi, zoom, taille des tuiles, palette, nombre de tuiles et de points de trace.
- * - `GET /watch/track?from=F&count=C` : les points F a F+C-1 de la trace, `[[latitude, longitude], ...]` en
- *   micro-degres entiers (cf. [WatchTrack]).
+ * - `GET /watch/track?from=F&count=C` : les points F a F+C-1 de la trace, `[[latitude, longitude, distance], ...]`
+ *   en micro-degres entiers et metres depuis le depart (cf. [WatchTrack]).
  * - `GET /watch/tiles?from=F&count=C` : les tuiles F a F+C-1, en `[[x, y], ...]`. La liste entiere ne
  *   tiendrait pas dans une seule reponse : la montre manque de memoire et le lien Bluetooth limite la taille.
  * - `GET /watch/tile/Z/X/Y` : les pixels d'une tuile, `{"x":X,"y":Y,"pixels":"..."}`, en base64 : indices de
@@ -73,7 +73,7 @@ class WatchRoutes(
     private fun trackPage(from: Int?, count: Int?): HttpReply {
         if (from == null || count == null || from < 0 || count <= 0) return HttpReply.notFound()
         val page = track.drop(from).take(minOf(count, MAX_TRACK_POINTS_PER_PAGE))
-        val items = page.joinToString(",") { "[${it.latitudeMicro},${it.longitudeMicro}]" }
+        val items = page.joinToString(",") { "[${it.latitudeMicro},${it.longitudeMicro},${it.distanceMeters}]" }
         return HttpReply.json("""{"from":$from,"points":[$items]}""")
     }
 
