@@ -66,10 +66,11 @@ internal val WatchCorridorRadiiMeters = listOf(250.0, 500.0, 1000.0, 2000.0)
 private const val DEFAULT_RADIUS_INDEX = 1
 
 /**
- * Place d'une tuile sur la montre, mesuree dans le simulateur fenix 6X avec la palette de 15 couleurs
- * de l'application montre. Sert a l'estimation affichee, pas a une limite.
+ * Place d'une tuile sur la montre : 8192 octets de pixels (128 x 128 a quatre bits) et le surcout du
+ * stockage, soit 1260 tuiles dans les 10 Mo du simulateur fenix 6X. Sert a l'estimation affichee, pas a
+ * une limite : la place reelle depend de l'appareil.
  */
-internal const val WATCH_BYTES_PER_TILE = 12_500L
+internal const val WATCH_BYTES_PER_TILE = 8_320L
 
 /**
  * La fenetre d'envoi d'une trace a la montre Garmin : l'etat de la montre, le fond, la largeur du couloir,
