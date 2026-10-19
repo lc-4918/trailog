@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Typeface
 import fr.lc4918.trailog.watch.WatchTileImages
 import fr.lc4918.trailog.watch.WatchTilePixels
 import fr.lc4918.trailog.watch.WatchTiles
@@ -27,13 +28,14 @@ object WatchVectorRenderer {
     private const val HATCH_STEP = 4f
     private const val DOT_STEP = 4
     private const val NATURAL_ROAD_LEVEL = "n0"
+    private const val TEXT_BASELINE = 3f
 
     /**
      * Les indices de palette (cf. [WatchTilePixels.PALETTE]) de [tile], ligne par ligne, ou null si aucune tuile source n'est
-     * lisible. [sourceTile] donne la tuile PLAN.IGN (x, y au zoom [sourceZoom]) ou null.
+     * lisible. [withText] a false ne dessine que la carte (essais du trace sans le texte par-dessus). [sourceTile] donne la tuile PLAN.IGN (x, y au zoom [sourceZoom]) ou null.
      */
     fun render(
-        tile: WatchTiles.WatchTile, zoom: Double, sourceZoom: Int, sourceTile: (x: Int, y: Int) -> VectorTile?,
+        tile: WatchTiles.WatchTile, zoom: Double, sourceZoom: Int, withText: Boolean = true, sourceTile: (x: Int, y: Int) -> VectorTile?,
     ): IntArray? {
         val pieces = WatchTileImages.sourcePieces(tile, zoom, sourceZoom).mapNotNull { piece ->
             sourceTile(piece.x, piece.y)?.let { Piece(piece, it) }
@@ -47,6 +49,7 @@ object WatchVectorRenderer {
         pieces.forEach { drawContours(canvas, it) }
         drawRoads(canvas, pieces, zoom)
         pieces.forEach { drawLines(canvas, it) }
+        if (withText) drawLabels(canvas, pieces)
         val pixels = IntArray(size * size)
         bitmap.getPixels(pixels, 0, size, 0, 0, size, size)
         bitmap.recycle()
@@ -236,6 +239,55 @@ object WatchVectorRenderer {
                 val stroke = WatchVectorStyle.LIMITS[feature.text("symbo")] ?: continue
                 canvas.drawPath(path(piece, layer, feature, false), strokePaint(stroke))
             }
+        }
+    }
+
+    // --- texte : noms de rues, de ruisseaux, de lieux et de batiments ---
+
+    private val textPaints = HashMap<Pair<Boolean, Boolean>, Paint>()
+
+    private fun textPaint(bold: Boolean, italic: Boolean): Paint = textPaints.getOrPut(bold to italic) {
+        val style = when { bold && italic -> Typeface.BOLD_ITALIC; bold -> Typeface.BOLD; italic -> Typeface.ITALIC; else -> Typeface.NORMAL }
+        Paint().apply { isAntiAlias = true; typeface = Typeface.create(Typeface.SANS_SERIF, style); isFakeBoldText = bold }
+    }
+
+    private fun measure(text: String, size: Float, bold: Boolean, italic: Boolean): Float =
+        textPaint(bold, italic).let { it.textSize = size; it.measureText(text) }
+
+    private fun labelsOf(
+        pieces: List<Piece>, layerName: String, kind: WatchVectorLabels.Kind, size: Float, bold: Boolean, italic: Boolean, color: Int,
+        textOf: (VectorTile.Feature) -> String?,
+    ): List<WatchVectorLabels.Label> = pieces.flatMap { piece ->
+        val layer = piece.tile.layers[layerName] ?: return@flatMap emptyList()
+        layer.features.mapNotNull { feature ->
+            val text = textOf(feature)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val parts = feature.parts.map { part -> part.map { piece.x(it, layer) to piece.y(it, layer) } }
+            WatchVectorLabels.Label(kind, text, parts, size, bold, italic, color)
+        }
+    }
+
+    private fun drawLabels(canvas: Canvas, pieces: List<Piece>) {
+        val labels = labelsOf(pieces, "toponyme_routier_odonyme_lin", WatchVectorLabels.Kind.STREET, WatchVectorStyle.TEXT_STREET_SIZE, true, false,
+            WatchVectorStyle.TEXT_STREET) { it.text("nom_gauche") ?: it.text("nom_desabrege") } +
+            labelsOf(pieces, "toponyme_hydro_lin", WatchVectorLabels.Kind.WATER, WatchVectorStyle.TEXT_WATER_SIZE, false, true,
+                WatchVectorStyle.TEXT_WATER) { it.text("texte") } +
+            labelsOf(pieces, "toponyme_localite_ponc", WatchVectorLabels.Kind.LOCALITY, WatchVectorStyle.TEXT_LOCALITY_SIZE, false, true,
+                WatchVectorStyle.TEXT_LIGHT) { it.text("texte") } +
+            labelsOf(pieces, "toponyme_bati_ponc", WatchVectorLabels.Kind.BUILDING, WatchVectorStyle.TEXT_BUILDING_SIZE, false, false,
+                WatchVectorStyle.TEXT_LIGHT) { it.text("texte") }
+        val placed = WatchVectorLabels.place(labels, WatchTiles.WATCH_TILE_PIXELS.toFloat(), ::measure)
+        for (label in placed) {
+            val halo = Paint(textPaint(label.bold, label.italic)).apply {
+                textSize = label.size; style = Paint.Style.STROKE; strokeWidth = WatchVectorStyle.TEXT_HALO_WIDTH
+                strokeJoin = Paint.Join.ROUND; color = WatchVectorStyle.TEXT_HALO
+            }
+            val ink = Paint(textPaint(label.bold, label.italic)).apply { textSize = label.size; style = Paint.Style.FILL; color = label.color }
+            canvas.save()
+            canvas.translate(label.x, label.y)
+            canvas.rotate(label.angleDegrees)
+            canvas.drawText(label.text, -label.width / 2, TEXT_BASELINE, halo)
+            canvas.drawText(label.text, -label.width / 2, TEXT_BASELINE, ink)
+            canvas.restore()
         }
     }
 

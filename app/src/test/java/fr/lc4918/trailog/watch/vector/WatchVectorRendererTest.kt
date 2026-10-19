@@ -31,9 +31,9 @@ class WatchVectorRendererTest {
     private fun index(rgb: Int) = WatchTilePixels.PALETTE.indexOf(rgb)
 
     /** Le quart (column, row) de la tuile source (x, y), rendu seul : toutes les autres tuiles sont absentes. */
-    private fun render(source: VectorTile, x: Int, y: Int, column: Int, row: Int, zoom: Double = 17.0): IntArray {
+    private fun render(source: VectorTile, x: Int, y: Int, column: Int, row: Int, zoom: Double = 17.0, withText: Boolean = false): IntArray {
         val tile = WatchTile(2 * x + column, 2 * y + row)
-        return WatchVectorRenderer.render(tile, zoom, 17) { sx, sy -> if (sx == x && sy == y) source else null }!!
+        return WatchVectorRenderer.render(tile, zoom, 17, withText) { sx, sy -> if (sx == x && sy == y) source else null }!!
     }
 
     private fun IntArray.at(x: Double, y: Double) = this[y.toInt().coerceIn(0, tileSize - 1) * tileSize + x.toInt().coerceIn(0, tileSize - 1)]
@@ -55,7 +55,7 @@ class WatchVectorRendererTest {
         source.layers.getValue(layer).features.filter { it.text("symbo") == symbo }
 
     @Test fun `a tile without any readable source tile has no drawing`() {
-        assertNull(WatchVectorRenderer.render(WatchTile(0, 0), 17.0, 17) { _, _ -> null })
+        assertNull(WatchVectorRenderer.render(WatchTile(0, 0), 17.0, 17, true) { _, _ -> null })
     }
 
     @Test fun `only colours of the 64 colour grid are used`() {
@@ -128,6 +128,15 @@ class WatchVectorRendererTest {
         }
         assertTrue("sentier en tirets", dashed)
         assertTrue("courbe de niveau brune", brown)
+    }
+
+    /** Les noms de rues sont ecrits en noir : sans texte une tuile de ville n'a aucun pixel noir, avec texte elle en a. */
+    @Test fun `street names are written in black with a white halo`() {
+        val pixels = render(city, 66062, 47861, 0, 0, withText = true)
+        val withoutText = render(city, 66062, 47861, 0, 0)
+        assertEquals(0, withoutText.count { it == index(0x000000) })
+        val black = pixels.count { it == index(0x000000) }
+        assertTrue("pixels noirs : $black", black > 40)
     }
 
     @Test fun `roads are drawn thinner at a lower level of detail`() {

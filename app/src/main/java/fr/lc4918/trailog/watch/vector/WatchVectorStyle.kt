@@ -35,6 +35,17 @@ internal object WatchVectorStyle {
     const val HYDRO_LINE_WIDTH = 2.0f
     const val RAIL_WIDTH = 1.5f
 
+    // Texte : tailles en pixels de la montre, quel que soit le niveau de detail ; halo blanc de chaque cote pour se lire sur tout fond.
+    val TEXT_STREET = grid(0x000000)
+    val TEXT_WATER = grid(0x0055AA)
+    val TEXT_LIGHT = grid(0x555555)
+    val TEXT_HALO = grid(0xFFFFFF)
+    const val TEXT_HALO_WIDTH = 2.4f
+    const val TEXT_STREET_SIZE = 7.5f
+    const val TEXT_WATER_SIZE = 7.5f
+    const val TEXT_LOCALITY_SIZE = 9.0f
+    const val TEXT_BUILDING_SIZE = 6.5f
+
     /** Une surface : pleine, hachuree (obliques) ou semee de points. */
     enum class FillKind { SOLID, HATCH, DOTS }
 
