@@ -776,6 +776,10 @@
     <string name="watch_send_title">Invia all\'orologio</string>
     <string name="watch_send_basemap">Mappa di base</string>
     <string name="watch_send_no_basemap">Nessuna mappa può essere inviata: serve una mappa raster opaca disponibile allo zoom 15. Le mappe vettoriali e OpenStreetMap, che vieta il download massivo, non sono supportate.</string>
+    <string name="watch_send_detail_label">Dettaglio</string>
+    <string name="watch_send_detail_standard">Standard</string>
+    <string name="watch_send_detail_fine">Fine</string>
+    <string name="watch_send_detail_very_fine">Molto fine</string>
     <string name="watch_send_corridor_label">Corridoio</string>
     <string name="watch_send_corridor_value">%1$s per lato</string>
     <string name="watch_send_size_label">Sull\'orologio</string>

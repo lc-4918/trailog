@@ -6,6 +6,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
@@ -26,7 +28,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "fr")
+@Config(qualifiers = "fr-w411dp-h891dp")
 class WatchSendDialogTest {
 
     @get:Rule val compose = createComposeRule()
@@ -35,7 +37,10 @@ class WatchSendDialogTest {
     private val osm = ProviderEntity(id = "osm", name = "OpenStreetMap", groupName = "Monde", type = "XYZ", urlTemplate = "x")
     private val track = listOf(5.85 to 45.10, 5.90 to 45.13)
 
+    private val scan25Native = ProviderEntity(id = "ign_fr", name = "IGN", groupName = "Pays", type = "WMTS", urlTemplate = "x")
+
     private var sentProvider: ProviderEntity? = null
+    private var sentDetail: WatchTiles.Detail? = null
     private var sentTiles: List<WatchTiles.WatchTile>? = null
     private var stopCount = 0
 
@@ -47,7 +52,7 @@ class WatchSendDialogTest {
             WatchSendDialog(
                 trackName = "Tour de Chamrousse", trackPoints = track, providers = providers,
                 initialProviderId = "osm", session = session, link = link, dark = false,
-                onSend = { provider, tiles -> sentProvider = provider; sentTiles = tiles; sendSucceeds },
+                onSend = { provider, tiles, detail -> sentProvider = provider; sentTiles = tiles; sentDetail = detail; sendSucceeds },
                 onStop = { stopCount++ }, onDismiss = {},
             )
         }
@@ -61,6 +66,39 @@ class WatchSendDialogTest {
         compose.onNodeWithTag("watch_send_confirm").performClick()
         assertEquals("osm", sentProvider?.id)
         assertEquals(expectedTiles, sentTiles)
+    }
+
+    @Test fun `the default detail is sent when the user does not choose`() {
+        show(listOf(osm))
+        compose.onNodeWithTag("watch_send_confirm").performClick()
+        assertEquals(WatchTiles.Detail.DEFAULT, sentDetail)
+    }
+
+    /** Un niveau choisi part avec ses propres tuiles, plus nombreuses qu'au niveau par defaut. */
+    @Test fun `a chosen detail is sent with its own tiles`() {
+        show(listOf(osm))
+        compose.onNodeWithTag("watch_detail_VERY_FINE").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("watch_send_estimate").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("watch_send_confirm").performClick()
+        val expectedTiles = WatchTiles.tilesAlong(track, 500.0, WatchTiles.Detail.VERY_FINE)
+        assertEquals(WatchTiles.Detail.VERY_FINE, sentDetail)
+        assertEquals(expectedTiles, sentTiles)
+        assertTrue(expectedTiles.size > WatchTiles.tilesAlong(track, 500.0).size)
+    }
+
+    /** Le Scan 25 n'a pas de detail propre au-dela du zoom 16 : le niveau le plus fin n'est pas offert. */
+    @Test fun `a basemap without finer zoom does not offer the finest level`() {
+        show(listOf(scan25Native))
+        compose.onNodeWithTag("watch_detail_STANDARD").assertExists()
+        compose.onNodeWithTag("watch_detail_FINE").assertExists()
+        compose.onNodeWithTag("watch_detail_VERY_FINE").assertDoesNotExist()
+    }
+
+    @Test fun `the requested detail falls back when the basemap lacks it`() {
+        val all = WatchTiles.Detail.entries
+        assertEquals(WatchTiles.Detail.VERY_FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, all))
+        assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, all.dropLast(1)))
+        assertEquals(WatchTiles.Detail.STANDARD, chooseDetail(WatchTiles.Detail.VERY_FINE, listOf(WatchTiles.Detail.STANDARD)))
     }
 
     @Test fun `another basemap can be chosen`() {
@@ -158,7 +196,7 @@ class WatchSendDialogTest {
             WatchSendDialog(
                 trackName = "Tour", trackPoints = track, providers = listOf(osm), initialProviderId = "osm",
                 session = null, link = WatchLink.PermissionNeeded, dark = false,
-                onSend = { _, _ -> true }, onStop = {}, onDismiss = {}, onOpenPermissionSettings = { opened++ },
+                onSend = { _, _, _ -> true }, onStop = {}, onDismiss = {}, onOpenPermissionSettings = { opened++ },
             )
         }
         compose.onNodeWithText("Autoriser").performClick()

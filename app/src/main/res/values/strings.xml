@@ -778,6 +778,10 @@
     <string name="watch_send_title">Envoyer à la montre</string>
     <string name="watch_send_basemap">Fond de carte</string>
     <string name="watch_send_no_basemap">Aucun fond ne peut être envoyé : il faut un fond raster opaque, disponible au zoom 15. Les fonds vectoriels et OpenStreetMap, qui interdit le téléchargement en masse, ne sont pas pris en charge.</string>
+    <string name="watch_send_detail_label">Détail</string>
+    <string name="watch_send_detail_standard">Standard</string>
+    <string name="watch_send_detail_fine">Fin</string>
+    <string name="watch_send_detail_very_fine">Très fin</string>
     <string name="watch_send_corridor_label">Couloir</string>
     <string name="watch_send_corridor_value">%1$s de chaque côté</string>
     <string name="watch_send_size_label">Sur la montre</string>

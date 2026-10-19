@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material3.Icon
@@ -28,6 +30,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +61,7 @@ import fr.lc4918.trailog.ui.settings.ValueText
 import fr.lc4918.trailog.ui.settings.settingsPalette
 import fr.lc4918.trailog.watch.WatchExportSession
 import fr.lc4918.trailog.watch.WatchLink
+import fr.lc4918.trailog.watch.WatchTileSource
 import fr.lc4918.trailog.watch.WatchTiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,7 +94,7 @@ internal const val WATCH_BYTES_PER_TILE = 7_300L
  * @param providers les fonds envoyables (cf. WatchTileSource.supports), dans l'ordre du gestionnaire.
  * @param link l'etat de la montre aupres de Garmin Connect (cf. WatchLinkMonitor).
  * @param dark la palette sombre, comme le reste de l'application.
- * @param onSend ouvre l'envoi ; rend false si le serveur n'a pas pu demarrer.
+ * @param onSend ouvre l'envoi, au niveau de detail choisi (parmi ceux que le fond sait remplir) ; rend false si le serveur n'a pas pu demarrer.
  */
 @Composable
 fun WatchSendDialog(
@@ -99,7 +105,7 @@ fun WatchSendDialog(
     session: WatchExportSession.State?,
     link: WatchLink,
     dark: Boolean,
-    onSend: (provider: ProviderEntity, tiles: List<WatchTiles.WatchTile>) -> Boolean,
+    onSend: (provider: ProviderEntity, tiles: List<WatchTiles.WatchTile>, detail: WatchTiles.Detail) -> Boolean,
     onStop: () -> Unit,
     onDismiss: () -> Unit,
     onOpenPermissionSettings: () -> Unit = {},
@@ -118,7 +124,7 @@ private fun WatchSendSetupDialog(
     providers: List<ProviderEntity>,
     initialProviderId: String?,
     link: WatchLink,
-    onSend: (provider: ProviderEntity, tiles: List<WatchTiles.WatchTile>) -> Boolean,
+    onSend: (provider: ProviderEntity, tiles: List<WatchTiles.WatchTile>, detail: WatchTiles.Detail) -> Boolean,
     onDismiss: () -> Unit,
     onOpenPermissionSettings: () -> Unit,
 ) {
@@ -127,24 +133,29 @@ private fun WatchSendSetupDialog(
     }
     var radiusIndex by remember { mutableIntStateOf(DEFAULT_RADIUS_INDEX) }
     val radiusMeters = WatchCorridorRadiiMeters[radiusIndex]
+    val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
+    // Les niveaux que le fond choisi sait remplir ; le niveau retenu retombe sur le niveau par defaut, ou sur le
+    // plus fin qui reste, quand on change pour un fond qui ne l'a pas.
+    val availableDetails = selectedProvider?.let { WatchTileSource.availableDetails(it) }.orEmpty()
+    var requestedDetail by remember { mutableStateOf(WatchTiles.Detail.DEFAULT) }
+    val detail = chooseDetail(requestedDetail, availableDetails)
     // Les tuiles du dernier calcul restent gardees pendant le suivant : la fenetre garde sa hauteur, et
     // seul l'envoi attend que le calcul en cours aboutisse.
     var tiles by remember { mutableStateOf<List<WatchTiles.WatchTile>?>(null) }
     var computing by remember { mutableStateOf(true) }
     var sendFailed by remember { mutableStateOf(false) }
-    LaunchedEffect(radiusMeters, trackPoints) {
+    LaunchedEffect(radiusMeters, trackPoints, detail) {
         computing = true
-        tiles = withContext(Dispatchers.Default) { WatchTiles.tilesAlong(trackPoints, radiusMeters) }
+        tiles = withContext(Dispatchers.Default) { WatchTiles.tilesAlong(trackPoints, radiusMeters, detail) }
         computing = false
     }
-    val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
     val palette = settingsPalette
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.watch_send_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 WatchLinkLine(link, onOpenPermissionSettings)
                 Text(trackName, style = MaterialTheme.typography.titleSmall)
                 if (providers.isEmpty()) {
@@ -154,6 +165,13 @@ private fun WatchSendSetupDialog(
                         Text(stringResource(R.string.watch_send_basemap), style = MaterialTheme.typography.bodyMedium,
                             color = palette.label)
                         BasemapSelect(providers, selectedProvider) { selectedProviderId = it.id }
+                    }
+                }
+                if (availableDetails.size > 1) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(stringResource(R.string.watch_send_detail_label), style = MaterialTheme.typography.bodyMedium,
+                            color = palette.label)
+                        DetailSelect(availableDetails, detail) { requestedDetail = it }
                     }
                 }
                 Column {
@@ -192,7 +210,7 @@ private fun WatchSendSetupDialog(
                 enabled = selectedProvider != null && !computing && !tiles.isNullOrEmpty(),
                 onClick = {
                     val provider = selectedProvider ?: return@Button
-                    sendFailed = !onSend(provider, tiles.orEmpty())
+                    sendFailed = !onSend(provider, tiles.orEmpty(), detail)
                 },
                 modifier = Modifier.height(44.dp).testTag("watch_send_confirm"),
             ) { Text(stringResource(R.string.watch_send_confirm)) }
@@ -204,6 +222,39 @@ private fun WatchSendSetupDialog(
             ) { Text(stringResource(R.string.action_cancel)) }
         },
     )
+}
+
+/**
+ * Le niveau de detail a utiliser : [requested] s'il est offert, sinon le niveau par defaut, sinon le plus fin
+ * des niveaux offerts ; le niveau par defaut quand le fond n'en offre aucun (rien ne sera envoye).
+ */
+internal fun chooseDetail(requested: WatchTiles.Detail, available: List<WatchTiles.Detail>): WatchTiles.Detail = when {
+    requested in available -> requested
+    WatchTiles.Detail.DEFAULT in available -> WatchTiles.Detail.DEFAULT
+    else -> available.lastOrNull() ?: WatchTiles.Detail.DEFAULT
+}
+
+/** Les niveaux de detail en boutons accoles, du plus grossier au plus fin. */
+@Composable
+private fun DetailSelect(
+    available: List<WatchTiles.Detail>, selected: WatchTiles.Detail, onSelect: (WatchTiles.Detail) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().testTag("watch_detail_select")) {
+        available.forEachIndexed { index, level ->
+            SegmentedButton(
+                selected = level == selected,
+                onClick = { onSelect(level) },
+                shape = SegmentedButtonDefaults.itemShape(index, available.size),
+                modifier = Modifier.testTag("watch_detail_${level.name}"),
+            ) {
+                Text(stringResource(when (level) {
+                    WatchTiles.Detail.STANDARD -> R.string.watch_send_detail_standard
+                    WatchTiles.Detail.FINE -> R.string.watch_send_detail_fine
+                    WatchTiles.Detail.VERY_FINE -> R.string.watch_send_detail_very_fine
+                }), maxLines = 1)
+            }
+        }
+    }
 }
 
 /** Hauteur de la ligne de l'estimation : celle du rond qui tourne comme celle du texte qu'il remplace. */

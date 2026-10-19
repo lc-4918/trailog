@@ -1514,10 +1514,10 @@ fun MainScreen(
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                         )
                     },
-                    onSend = { provider, tiles ->
+                    onSend = { provider, tiles, detail ->
                         app.watchExport.start(layer.name, tiles, provider,
                             WatchTileSource.mbtilesFileOf(provider, app.repository.mbtilesDir(settings)),
-                            WatchTrack.prepare(points))
+                            WatchTrack.prepare(points), detail)
                     },
                     onStop = { app.watchExport.stop() },
                     onDismiss = { watchSendTarget = null },

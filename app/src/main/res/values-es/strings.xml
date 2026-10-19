@@ -776,6 +776,10 @@
     <string name="watch_send_title">Enviar al reloj</string>
     <string name="watch_send_basemap">Mapa base</string>
     <string name="watch_send_no_basemap">No se puede enviar ningún mapa: debe ser un mapa ráster opaco disponible en el zoom 15. Los mapas vectoriales y OpenStreetMap, que prohíbe la descarga masiva, no son compatibles.</string>
+    <string name="watch_send_detail_label">Detalle</string>
+    <string name="watch_send_detail_standard">Estándar</string>
+    <string name="watch_send_detail_fine">Fino</string>
+    <string name="watch_send_detail_very_fine">Muy fino</string>
     <string name="watch_send_corridor_label">Corredor</string>
     <string name="watch_send_corridor_value">%1$s a cada lado</string>
     <string name="watch_send_size_label">En el reloj</string>
