@@ -780,6 +780,8 @@
     <string name="watch_send_detail_standard">Padrão</string>
     <string name="watch_send_detail_fine">Fino</string>
     <string name="watch_send_detail_very_fine">Muito fino</string>
+    <string name="watch_send_detail_ultra_fine">Ultrafino</string>
+    <string name="watch_send_provider_vector">Scan 25 vetorial</string>
     <string name="watch_send_corridor_label">Corredor</string>
     <string name="watch_send_corridor_value">%1$s de cada lado</string>
     <string name="watch_send_size_label">No relógio</string>

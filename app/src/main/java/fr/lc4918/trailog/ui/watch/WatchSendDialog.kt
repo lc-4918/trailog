@@ -62,6 +62,7 @@ import fr.lc4918.trailog.ui.settings.settingsPalette
 import fr.lc4918.trailog.watch.WatchExportSession
 import fr.lc4918.trailog.watch.WatchLink
 import fr.lc4918.trailog.watch.WatchTileSource
+import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import fr.lc4918.trailog.watch.WatchTiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -79,6 +80,20 @@ private const val DEFAULT_RADIUS_INDEX = 1
  * limite pas : la place reelle depend de l'appareil et du fond.
  */
 internal const val WATCH_BYTES_PER_TILE = 7_300L
+
+/**
+ * Place d'une tuile du fond vectoriel, par niveau de detail : le plus haut des moyennes mesurees sur une ville dense (Toulouse), une
+ * campagne (La Force) et un massif (Morgiou), arrondi a 500 octets. Une carte vectorielle pese plus qu'un raster la ou elle est chargee
+ * (hachures de foret, courbes de niveau, noms) et moins la ou elle est vide. Quelques tuiles frolent le plafond de 11000 octets.
+ */
+private val WATCH_VECTOR_BYTES_PER_TILE = mapOf(
+    WatchTiles.Detail.STANDARD to 9_500L, WatchTiles.Detail.FINE to 9_500L,
+    WatchTiles.Detail.VERY_FINE to 8_500L, WatchTiles.Detail.ULTRA_FINE to 6_500L,
+)
+
+/** Octets que prend une tuile sur la montre pour ce fond a ce niveau de detail (estimation affichee, pas une limite). */
+internal fun estimatedBytesPerTile(provider: ProviderEntity?, detail: WatchTiles.Detail): Long =
+    if (provider != null && WatchVectorSource.isVector(provider)) WATCH_VECTOR_BYTES_PER_TILE.getValue(detail) else WATCH_BYTES_PER_TILE
 
 /**
  * La fenetre d'envoi d'une trace a la montre Garmin : l'etat de la montre, le fond, la largeur du couloir,
@@ -196,7 +211,7 @@ private fun WatchSendSetupDialog(
                 EstimateLine(
                     if (computing || tileCount == null) null
                     else stringResource(R.string.watch_send_size_value, tileCount,
-                        TileMath.formatSize(tileCount * WATCH_BYTES_PER_TILE)),
+                        TileMath.formatSize(tileCount * estimatedBytesPerTile(selectedProvider, detail))),
                 )
                 if (sendFailed) {
                     Text(stringResource(R.string.watch_send_failed), color = MaterialTheme.colorScheme.error)
@@ -251,6 +266,7 @@ private fun DetailSelect(
                     WatchTiles.Detail.STANDARD -> R.string.watch_send_detail_standard
                     WatchTiles.Detail.FINE -> R.string.watch_send_detail_fine
                     WatchTiles.Detail.VERY_FINE -> R.string.watch_send_detail_very_fine
+                    WatchTiles.Detail.ULTRA_FINE -> R.string.watch_send_detail_ultra_fine
                 }), maxLines = 1)
             }
         }

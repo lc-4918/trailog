@@ -33,6 +33,9 @@ object WatchTiles {
         STANDARD(15.5),
         FINE(16.0),
         VERY_FINE(16.5),
+
+        /** Seul le fond vectoriel (cf. [WatchTileSource.availableDetails]) l'offre : un fond raster n'a pas plus de detail a donner au zoom 17. */
+        ULTRA_FINE(17.0),
         ;
 
         /** Le zoom entier du fond dont on tire les tuiles : celui qui a au moins ce detail. */

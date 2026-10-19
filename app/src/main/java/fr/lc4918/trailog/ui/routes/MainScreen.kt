@@ -1502,7 +1502,8 @@ fun MainScreen(
                 WatchSendDialog(
                     trackName = layer.name,
                     trackPoints = points,
-                    providers = providers.filter { it.enabled && WatchTileSource.supports(it) },
+                    providers = providers.filter { it.enabled && WatchTileSource.supports(it) } +
+                        fr.lc4918.trailog.watch.vector.WatchVectorSource.provider(stringResource(R.string.watch_send_provider_vector)),
                     initialProviderId = settings.defaultBasemapId,
                     session = watchSession,
                     link = watchLink,

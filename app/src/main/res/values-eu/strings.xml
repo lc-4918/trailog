@@ -780,6 +780,8 @@
     <string name="watch_send_detail_standard">Estandarra</string>
     <string name="watch_send_detail_fine">Fina</string>
     <string name="watch_send_detail_very_fine">Oso fina</string>
+    <string name="watch_send_detail_ultra_fine">Ultrafina</string>
+    <string name="watch_send_provider_vector">Scan 25 bektorial</string>
     <string name="watch_send_corridor_label">Korridorea</string>
     <string name="watch_send_corridor_value">%1$s alde bakoitzean</string>
     <string name="watch_send_size_label">Erlojuan</string>

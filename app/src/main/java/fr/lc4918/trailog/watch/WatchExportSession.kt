@@ -1,7 +1,11 @@
 package fr.lc4918.trailog.watch
 
 import fr.lc4918.trailog.data.db.ProviderEntity
+import fr.lc4918.trailog.map.offline.TileHttp
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
+import fr.lc4918.trailog.watch.vector.VectorTile
+import fr.lc4918.trailog.watch.vector.WatchVectorRenderer
+import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -9,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.Closeable
 import java.io.File
 
 /**
@@ -24,12 +29,15 @@ class WatchExportSession(
     private val scope: CoroutineScope,
     private val onStarted: () -> Unit,
     private val port: Int = WatchTileServer.DEFAULT_PORT,
+    private val vectorFetch: (String) -> ByteArray? = TileHttp::get,
 ) {
     companion object {
         /** Sans requete de la montre pendant ce delai, l'envoi se referme : un serveur oublie ouvert ne sert a rien. */
         const val IDLE_TIMEOUT_MS = 15 * 60_000L
         /** Les tuiles du fond gardees en memoire : chacune sert a plusieurs tuiles montre, demandees a des moments differents. */
         private const val SOURCE_CACHE_ENTRIES = 64
+        /** Tuiles vectorielles decodees gardees en memoire : un objet par entite, bien plus gros que l'image compressee d'une tuile raster. */
+        private const val VECTOR_CACHE_ENTRIES = 24
     }
 
     data class State(val name: String, val servedCount: Int, val tileCount: Int) {
@@ -41,7 +49,7 @@ class WatchExportSession(
     val state: StateFlow<State?> = mutableState.asStateFlow()
 
     private var server: WatchTileServer? = null
-    private var source: WatchTileSource? = null
+    private var source: Closeable? = null
     private var idleTimer: Job? = null
 
     /**
@@ -59,13 +67,34 @@ class WatchExportSession(
         detail: WatchTiles.Detail = WatchTiles.Detail.DEFAULT,
     ): Boolean {
         stop()
-        val tileSource = WatchTileSource(provider, mbtilesFile)
+        val sourceZoom = detail.sourceZoom
         // Les tuiles du fond gardees en memoire : une tuile montre en recouvre jusqu'a quatre, et les voisines
         // en partagent.
-        val sourceZoom = detail.sourceZoom
-        val sourceCache = object : LinkedHashMap<Triple<Int, Int, Int>, ByteArray?>(SOURCE_CACHE_ENTRIES, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Triple<Int, Int, Int>, ByteArray?>) =
-                size > SOURCE_CACHE_ENTRIES
+        val tileSource: Closeable
+        val pixelsOf: (WatchTile) -> ByteArray?
+        if (WatchVectorSource.isVector(provider)) {
+            val vectorSource = WatchVectorSource(fetch = vectorFetch)
+            val vectorCache = object : LinkedHashMap<Pair<Int, Int>, VectorTile?>(VECTOR_CACHE_ENTRIES, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Pair<Int, Int>, VectorTile?>) = size > VECTOR_CACHE_ENTRIES
+            }
+            tileSource = vectorSource
+            pixelsOf = { tile ->
+                WatchVectorRenderer.render(tile, detail.zoom, sourceZoom) { x, y ->
+                    vectorCache.getOrPut(x to y) { vectorSource.tile(sourceZoom, x, y) }
+                }?.let { WatchTilePixels.encode(it, WatchTiles.WATCH_TILE_PIXELS) }
+            }
+        } else {
+            val rasterSource = WatchTileSource(provider, mbtilesFile)
+            val sourceCache = object : LinkedHashMap<Triple<Int, Int, Int>, ByteArray?>(SOURCE_CACHE_ENTRIES, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Triple<Int, Int, Int>, ByteArray?>) =
+                    size > SOURCE_CACHE_ENTRIES
+            }
+            tileSource = rasterSource
+            pixelsOf = { tile ->
+                WatchTileImages.render(tile, detail.zoom, sourceZoom) { x, y ->
+                    sourceCache.getOrPut(Triple(sourceZoom, x, y)) { rasterSource.sourceImage(sourceZoom, x, y) }
+                }
+            }
         }
         val routes = WatchRoutes(
             exportName = name,
@@ -73,11 +102,7 @@ class WatchExportSession(
             track = track,
             turns = WatchTurns.detect(track),
             zoom = detail.zoom,
-            pixelsOf = { tile ->
-                WatchTileImages.render(tile, detail.zoom, sourceZoom) { x, y ->
-                    sourceCache.getOrPut(Triple(sourceZoom, x, y)) { tileSource.sourceImage(sourceZoom, x, y) }
-                }
-            },
+            pixelsOf = pixelsOf,
             onTileServed = { servedCount, tileCount ->
                 mutableState.value = State(name, servedCount, tileCount)
                 restartIdleTimer()

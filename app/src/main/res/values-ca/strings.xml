@@ -780,6 +780,8 @@
     <string name="watch_send_detail_standard">Estàndard</string>
     <string name="watch_send_detail_fine">Fi</string>
     <string name="watch_send_detail_very_fine">Molt fi</string>
+    <string name="watch_send_detail_ultra_fine">Ultrafi</string>
+    <string name="watch_send_provider_vector">Scan 25 vectorial</string>
     <string name="watch_send_corridor_label">Corredor</string>
     <string name="watch_send_corridor_value">%1$s a cada costat</string>
     <string name="watch_send_size_label">Al rellotge</string>

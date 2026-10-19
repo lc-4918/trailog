@@ -95,9 +95,10 @@ class WatchSendDialogTest {
     }
 
     @Test fun `the requested detail falls back when the basemap lacks it`() {
-        val all = WatchTiles.Detail.entries
-        assertEquals(WatchTiles.Detail.VERY_FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, all))
-        assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, all.dropLast(1)))
+        val raster = listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE)
+        assertEquals(WatchTiles.Detail.VERY_FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, raster))
+        assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, raster.dropLast(1)))
+        assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.ULTRA_FINE, raster))
         assertEquals(WatchTiles.Detail.STANDARD, chooseDetail(WatchTiles.Detail.VERY_FINE, listOf(WatchTiles.Detail.STANDARD)))
     }
 
@@ -212,5 +213,32 @@ class WatchSendDialogTest {
     @Test fun `radius is written in meters then kilometers`() {
         assertEquals("250 m", formatRadius(250.0))
         assertEquals("2 km", formatRadius(2000.0))
+    }
+
+    private val vector = fr.lc4918.trailog.watch.vector.WatchVectorSource.provider("Scan 25 vectoriel")
+
+    /** Le fond vectoriel offre les quatre niveaux, dont "Ultra fin" (17,0) ; ce niveau part avec l'envoi. */
+    @Test fun `the vector basemap offers the ultra fine level and it is sent`() {
+        show(listOf(vector))
+        compose.onNodeWithTag("watch_detail_STANDARD").assertExists()
+        compose.onNodeWithTag("watch_detail_VERY_FINE").assertExists()
+        compose.onNodeWithTag("watch_detail_ULTRA_FINE").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("watch_send_estimate").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("watch_send_confirm").performClick()
+        assertEquals(WatchTiles.Detail.ULTRA_FINE, sentDetail)
+        assertEquals("plan_ign_vector", sentProvider?.id)
+        assertEquals(WatchTiles.tilesAlong(track, 500.0, WatchTiles.Detail.ULTRA_FINE), sentTiles)
+    }
+
+    @Test fun `a raster basemap never offers the ultra fine level in the dialog`() {
+        show(listOf(osm))
+        compose.onNodeWithTag("watch_detail_ULTRA_FINE").assertDoesNotExist()
+    }
+
+    @Test fun `the estimated size per tile depends on the basemap and the level`() {
+        assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(osm, WatchTiles.Detail.FINE))
+        assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(null, WatchTiles.Detail.FINE))
+        assertTrue(estimatedBytesPerTile(vector, WatchTiles.Detail.ULTRA_FINE) < estimatedBytesPerTile(vector, WatchTiles.Detail.FINE))
+        assertTrue(estimatedBytesPerTile(vector, WatchTiles.Detail.FINE) > WATCH_BYTES_PER_TILE)
     }
 }

@@ -5,6 +5,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.map.offline.BulkDownloadPolicy
 import fr.lc4918.trailog.map.offline.TileHttp
 import fr.lc4918.trailog.map.offline.TileUrl
+import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import java.io.Closeable
 import java.io.File
 
@@ -39,9 +40,11 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          * BulkDownloadPolicy) : l'envoi va chercher ses tuiles en ligne, comme le telechargement hors ligne.
          */
         fun supports(provider: ProviderEntity): Boolean =
-            provider.type in SUPPORTED_TYPES && !provider.transparent &&
-                WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
-                !BulkDownloadPolicy.forbids(provider) && !forbiddenForWatch(provider)
+            WatchVectorSource.isVector(provider) || (
+                provider.type in SUPPORTED_TYPES && !provider.transparent &&
+                    WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
+                    !BulkDownloadPolicy.forbids(provider) && !forbiddenForWatch(provider)
+                )
 
         /**
          * Le dernier zoom ou un fond a du detail propre, quand il en sert davantage : le Scan 25 de l'IGN est un raster qui
@@ -58,7 +61,8 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          * maximal un fond n'apporte pas plus de detail, il ne ferait qu'agrandir ses pixels.
          */
         fun availableDetails(provider: ProviderEntity): List<WatchTiles.Detail> =
-            WatchTiles.Detail.entries.filter { it.sourceZoom in provider.minZoom..usableMaxZoom(provider) }
+            if (WatchVectorSource.isVector(provider)) WatchTiles.Detail.entries
+            else WatchTiles.Detail.entries.filter { it != WatchTiles.Detail.ULTRA_FINE && it.sourceZoom in provider.minZoom..usableMaxZoom(provider) }
 
         /**
          * Le fichier d'un fond MBTiles : chemin absolu derriere `mbtiles://`, ou nom de fichier dans
