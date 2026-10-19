@@ -25,13 +25,23 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
         private val SUPPORTED_TYPES = setOf("XYZ", "WMS", "WMTS", "MBTILES")
 
         /**
-         * Un fond envoyable a la montre : raster, opaque, servi au zoom de la montre - et dont le service
-         * accepte qu'on telecharge un couloir entier (cf. BulkDownloadPolicy) : l'envoi va chercher ses
-         * tuiles en ligne, comme le telechargement hors ligne.
+         * Les services dont les conditions n'autorisent pas de ranger leurs tuiles dans une montre : Google. Ils restent
+         * des fonds du telephone ; seul l'envoi les refuse (le telechargement hors ligne, lui, suit BulkDownloadPolicy).
+         */
+        private val FORBIDDEN_FOR_WATCH_HOSTS = listOf("google.com")
+
+        private fun forbiddenForWatch(provider: ProviderEntity): Boolean =
+            FORBIDDEN_FOR_WATCH_HOSTS.any { provider.urlTemplate.contains(it, ignoreCase = true) }
+
+        /**
+         * Un fond envoyable a la montre : raster, opaque, servi au zoom de la montre, autorise a y etre range (cf.
+         * [FORBIDDEN_FOR_WATCH_HOSTS]) - et dont le service accepte qu'on telecharge un couloir entier (cf.
+         * BulkDownloadPolicy) : l'envoi va chercher ses tuiles en ligne, comme le telechargement hors ligne.
          */
         fun supports(provider: ProviderEntity): Boolean =
             provider.type in SUPPORTED_TYPES && !provider.transparent &&
-                WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) && !BulkDownloadPolicy.forbids(provider)
+                WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
+                !BulkDownloadPolicy.forbids(provider) && !forbiddenForWatch(provider)
 
         /**
          * Le dernier zoom ou un fond a du detail propre, quand il en sert davantage : le Scan 25 de l'IGN est un raster qui

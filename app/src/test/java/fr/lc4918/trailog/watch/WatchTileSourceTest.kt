@@ -34,6 +34,45 @@ class WatchTileSourceTest {
         assertTrue(WatchTileSource.supports(provider("XYZ", url = "https://tile.opentopomap.org/{z}/{x}/{y}.png")))
     }
 
+    /** Google ne s'envoie pas a la montre, quelle que soit sa variante (rue, satellite, relief) ; l'URL du fond decide, pas son identifiant. */
+    @Test fun `a google basemap cannot be sent to the watch`() {
+        listOf("m", "s", "p").forEach { layer ->
+            assertFalse(WatchTileSource.supports(provider("XYZ", url = "https://mt{s}.google.com/vt/lyrs=$layer&x={x}&y={y}&z={z}")))
+        }
+        assertTrue(WatchTileSource.supports(provider("XYZ", url = "https://example.com/{z}/{x}/{y}.png")))
+    }
+
+    /** L'URL (et la cle) reglees dans le provider decident seules de ce qui est demande : rien en dur dans l'envoi. */
+    @Test fun `source tiles are fetched from the url set in the provider`() {
+        val requested = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val server = java.net.ServerSocket(0, 5, java.net.InetAddress.getByName("127.0.0.1"))
+        val serving = Thread {
+            while (!server.isClosed) {
+                runCatching {
+                    server.accept().use { socket ->
+                        val line = socket.getInputStream().bufferedReader().readLine().orEmpty()
+                        requested.add(line.split(" ")[1])
+                        socket.getOutputStream().apply {
+                            write("HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: close\r\n\r\n".toByteArray())
+                            write(byteArrayOf(1, 2, 3)); flush()
+                        }
+                    }
+                }
+            }
+        }.apply { isDaemon = true; start() }
+        try {
+            val base = "http://127.0.0.1:${server.localPort}"
+            val withKey = provider("WMTS", url = "$base/wmts?KEY={KEY}&z={z}&col={x}&row={y}").copy(apiKey = "user_key")
+            WatchTileSource(withKey, null).use { assertArrayEquals(byteArrayOf(1, 2, 3), it.sourceImage(16, 33031, 23930)) }
+            val moved = provider("WMTS", url = "$base/other/{z}/{x}/{y}.jpg")
+            WatchTileSource(moved, null).use { it.sourceImage(16, 5, 6) }
+            assertEquals(listOf("/wmts?KEY=user_key&z=16&col=33031&row=23930", "/other/16/5/6.jpg"), requested)
+        } finally {
+            server.close()
+            serving.join(2_000)
+        }
+    }
+
     @Test fun `mbtiles file is resolved like the map style does`() {
         val directory = File("/data/maps")
         assertEquals(File("/sd/zone.mbtiles"), WatchTileSource.mbtilesFileOf(provider("MBTILES", "mbtiles:///sd/zone.mbtiles"), directory))
