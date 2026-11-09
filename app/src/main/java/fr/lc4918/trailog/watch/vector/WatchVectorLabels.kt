@@ -7,8 +7,8 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
- * Le placement du texte sur une tuile montre : noms de rues posees sur leur portion la plus droite, noms de lieux et de
- * batiments autour de leur point. Sans dessin (la mesure d'un texte est donnee par l'appelant), donc testable seul ; le dessin
+ * Le placement du texte sur une tuile montre : noms de rues et de ruisseaux ecrits le long de leur trace (le texte en suit la
+ * courbure), sur sa portion la plus droite et lisible, noms de lieux et de batiments autour de leur point. Sans dessin (la mesure d'un texte est donnee par l'appelant), donc testable seul ; le dessin
  * est celui de [WatchVectorRenderer].
  *
  * Un nom trop long pour sa rue est d'abord reduit (15 % de moins), puis raccourci par mots entiers, avec un point final, sans
@@ -24,16 +24,32 @@ internal object WatchVectorLabels {
         val bold: Boolean, val italic: Boolean, val color: Int,
     )
 
-    /** Un texte place : son centre, son angle (degres, lisible : entre -90 et 90) et ce qu'il faut pour le dessiner. */
+    /**
+     * Un texte place : son centre, son angle (degres, lisible : entre -90 et 90) et ce qu'il faut pour le dessiner. Un nom de rue ou
+     * de ruisseau porte en plus le [path] qu'il suit, lu de gauche a droite, et le decalage [pathOffset] de son premier caractere
+     * sur ce trace ; sans [path], le texte est droit, a son angle.
+     */
     class Placed(
         val text: String, val x: Float, val y: Float, val angleDegrees: Float, val size: Float,
         val bold: Boolean, val italic: Boolean, val color: Int, val width: Float,
+        val path: List<Pair<Float, Float>> = emptyList(), val pathOffset: Float = 0f,
     )
+
+    /** Une fenetre de la ligne : le premier point, et si le texte la parcourt a l'envers pour se lire de gauche a droite. */
+    class Window(val start: Int, val reversed: Boolean)
 
     private const val SHRINK = 0.85f
     private const val FIT_MARGIN = 1.1f
     private const val MIN_TRUNCATED_LENGTH = 6
     private const val CURVATURE_WEIGHT = 0.02f
+
+    /** Rapport minimal corde / arc d'une fenetre de texte : 0,74 est un virage d'environ 150 degres. */
+    private const val MIN_STRAIGHTNESS = 0.74f
+
+    /** Un texte reste lisible tant que son trace ne depasse pas la verticale de plus de dix degres (cosinus -0,17 au plus). */
+    private const val MIN_READABLE_COSINE = -0.17f
+    private const val SMOOTHING_RADIUS = 2
+    private val SHORTENING_FACTORS = listOf(1f, 0.8f, 0.6f)
     private const val DEDUPLICATION_CELL = 30f
     private val LINKING_WORDS = setOf("de", "du", "des", "la", "le", "les", "l'", "d'", "et", "au", "aux", "sur", "sous", "en", "a", "à")
 
@@ -73,24 +89,61 @@ internal object WatchVectorLabels {
     }
 
     /**
-     * Le debut de la fenetre de [window] points de [dense] la plus droite (le trace y est le plus proche de sa corde), a egalite la
-     * plus proche du milieu de la ligne.
+     * La fenetre de [window] points de [dense] la plus droite (le trace y est le plus proche de sa corde), a egalite la plus proche
+     * du milieu de la ligne, et qu'un texte peut suivre : pas plus de virage que [MIN_STRAIGHTNESS], et lisible de gauche a droite
+     * sur toute sa longueur (a l'endroit ou a l'envers). null si aucune fenetre ne convient.
      */
-    fun straightestWindow(dense: List<Pair<Float, Float>>, window: Int): Int {
-        var best = 0
+    fun bestWindow(dense: List<Pair<Float, Float>>, window: Int): Window? {
+        var best: Window? = null
         var bestCost = Float.MAX_VALUE
         var start = 0
         while (start <= dense.size - 1 - window) {
             val end = start + window
-            var length = 0f
-            var index = start
-            while (index < end) { length += hypot(dense[index + 1].first - dense[index].first, dense[index + 1].second - dense[index].second); index++ }
-            val chord = hypot(dense[end].first - dense[start].first, dense[end].second - dense[start].second)
+            val length = length(dense.subList(start, end + 1))
+            val chordX = dense[end].first - dense[start].first
+            val chordY = dense[end].second - dense[start].second
+            val chord = hypot(chordX, chordY)
             val cost = (length - chord) + CURVATURE_WEIGHT * abs(start + window / 2f - dense.size / 2f)
-            if (cost < bestCost) { bestCost = cost; best = start }
+            if (cost < bestCost && chord >= MIN_STRAIGHTNESS * length) {
+                val forward = isReadable(dense, start, end, false)
+                val backward = isReadable(dense, start, end, true)
+                if (forward || backward) {
+                    best = Window(start, when { chordX < 0 && backward -> true; forward -> false; else -> true })
+                    bestCost = cost
+                }
+            }
             start += 2
         }
         return best
+    }
+
+    /** Le trace de [start] a [end], parcouru dans le sens voulu, se lit-il de gauche a droite d'un bout a l'autre ? */
+    private fun isReadable(dense: List<Pair<Float, Float>>, start: Int, end: Int, reversed: Boolean): Boolean {
+        val step = 4
+        var index = start
+        while (index < end) {
+            val next = minOf(index + step, end)
+            val dx = dense[next].first - dense[index].first
+            val dy = dense[next].second - dense[index].second
+            val norm = hypot(dx, dy)
+            if (norm > 0f && (if (reversed) -dx else dx) / norm < MIN_READABLE_COSINE) return false
+            index = next
+        }
+        return true
+    }
+
+    /** Les points de [dense] de [start] a [end], adoucis (moyenne sur 5 points) pour que les lettres tournent sans a-coups, dans le sens du texte. */
+    fun smoothedPath(dense: List<Pair<Float, Float>>, start: Int, end: Int, reversed: Boolean): List<Pair<Float, Float>> {
+        val points = dense.subList(start, end + 1).let { if (reversed) it.reversed() else it }
+        return points.indices.map { index ->
+            if (index == 0 || index == points.size - 1) points[index] else {
+                val from = maxOf(0, index - SMOOTHING_RADIUS)
+                val to = minOf(points.size - 1, index + SMOOTHING_RADIUS)
+                val radius = minOf(index - from, to - index)
+                val slice = points.subList(index - radius, index + radius + 1)
+                slice.sumOf { it.first.toDouble() }.toFloat() / slice.size to slice.sumOf { it.second.toDouble() }.toFloat() / slice.size
+            }
+        }
     }
 
     /** L'angle (degres) d'une direction, retourne pour que le texte se lise de gauche a droite. */
@@ -116,8 +169,8 @@ internal object WatchVectorLabels {
             val key = Triple(candidate.text, (candidate.x / DEDUPLICATION_CELL).roundToInt(), (candidate.y / DEDUPLICATION_CELL).roundToInt())
             if (!seen.add(key)) continue
             val halfWidth = candidate.width / 2 + 2
-            val box = if (label.kind == Kind.STREET || label.kind == Kind.WATER) {
-                floatArrayOf(candidate.x - halfWidth, candidate.y - 6, candidate.x + halfWidth, candidate.y + 6)
+            val box = if (candidate.path.isNotEmpty()) {
+                floatArrayOf(candidate.path.minOf { it.first } - 2, candidate.path.minOf { it.second } - 6, candidate.path.maxOf { it.first } + 2, candidate.path.maxOf { it.second } + 6)
             } else floatArrayOf(candidate.x - halfWidth, candidate.y - 8, candidate.x + halfWidth, candidate.y + 4)
             if (boxes.any { overlaps(it, box) }) continue
             boxes.add(box)
@@ -131,14 +184,21 @@ internal object WatchVectorLabels {
     private fun placeOnLine(label: Label, measure: (String, Float, Boolean, Boolean) -> Float): Placed? {
         val part = label.parts.maxByOrNull { length(it) } ?: return null
         val dense = densify(part)
-        val fitted = fit(label.text, label.size, dense.size.toFloat()) { text, size -> measure(text, size, label.bold, label.italic) } ?: return null
-        val window = fitted.third.toInt().coerceAtLeast(1)
-        if (dense.size <= window) return null
-        val start = straightestWindow(dense, window)
-        val a = dense[start]
-        val b = dense[start + window]
-        return Placed(fitted.first, (a.first + b.first) / 2, (a.second + b.second) / 2, readableAngle(b.first - a.first, b.second - a.second),
-            fitted.second, label.bold, label.italic, label.color, fitted.third)
+        // Un nom que la courbe de sa rue ne laisse pas ecrire en entier est raccourci : on cherche sur une longueur plus courte.
+        for (factor in SHORTENING_FACTORS) {
+            val fitted = fit(label.text, label.size, dense.size * factor) { text, size -> measure(text, size, label.bold, label.italic) } ?: return null
+            val window = fitted.third.toInt().coerceAtLeast(1)
+            if (dense.size <= window) return null
+            val best = bestWindow(dense, window) ?: continue
+            val path = smoothedPath(dense, best.start, best.start + window, best.reversed)
+            val first = path.first()
+            val last = path.last()
+            val offset = ((length(path) - fitted.third) / 2).coerceAtLeast(0f)
+            return Placed(fitted.first, (first.first + last.first) / 2, (first.second + last.second) / 2,
+                readableAngle(last.first - first.first, last.second - first.second), fitted.second, label.bold, label.italic, label.color, fitted.third,
+                path, offset)
+        }
+        return null
     }
 
     private fun placeAtPoint(label: Label, measure: (String, Float, Boolean, Boolean) -> Float): Placed? {

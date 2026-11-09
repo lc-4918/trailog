@@ -282,6 +282,15 @@ object WatchVectorRenderer {
                 strokeJoin = Paint.Join.ROUND; color = WatchVectorStyle.TEXT_HALO
             }
             val ink = Paint(textPaint(label.bold, label.italic)).apply { textSize = label.size; style = Paint.Style.FILL; color = label.color }
+            if (label.path.size >= 2) {
+                val path = Path().apply {
+                    moveTo(label.path.first().first, label.path.first().second)
+                    for (point in label.path.drop(1)) lineTo(point.first, point.second)
+                }
+                canvas.drawTextOnPath(label.text, path, label.pathOffset, TEXT_BASELINE, halo)
+                canvas.drawTextOnPath(label.text, path, label.pathOffset, TEXT_BASELINE, ink)
+                continue
+            }
             canvas.save()
             canvas.translate(label.x, label.y)
             canvas.rotate(label.angleDegrees)

@@ -57,10 +57,46 @@ class WatchVectorLabelsTest {
     @Test fun `the straightest part of a bent street is chosen`() {
         // Une rue qui tourne en equerre : 60 px vers l'est puis 60 px vers le sud. Un texte de 30 px se pose sur l'un des deux bras.
         val dense = WatchVectorLabels.densify(listOf(0f to 0f, 60f to 0f, 60f to 60f))
-        val start = WatchVectorLabels.straightestWindow(dense, 30)
+        val start = WatchVectorLabels.bestWindow(dense, 30)!!.start
         val a = dense[start]
         val b = dense[start + 30]
         assertTrue("fenetre droite : $a -> $b", (a.second == b.second) || (a.first == b.first))
+    }
+
+    /** Un demi-cercle de rayon 30 px, de gauche a droite par le haut (y vers le bas) : environ 94 px d'arc. */
+    private fun arc(from: Double, to: Double, radius: Double = 30.0, steps: Int = 60) =
+        (0..steps).map { (64 + radius * Math.cos(from + (to - from) * it / steps)).toFloat() to (64 + radius * Math.sin(from + (to - from) * it / steps)).toFloat() }
+
+    @Test fun `a street name follows the curve of its street`() {
+        val arcPoints = arc(Math.PI, 2 * Math.PI)
+        val placed = WatchVectorLabels.place(listOf(Label(Kind.STREET, "RUE COURBE", listOf(arcPoints), 7.5f, true, false, 0)), 128f, measureStyled).single()
+        // Le texte suit un trace courbe : il ne s'est pas pose sur une corde droite.
+        assertTrue(placed.path.size > 10)
+        val chord = Math.hypot((placed.path.last().first - placed.path.first().first).toDouble(), (placed.path.last().second - placed.path.first().second).toDouble())
+        var arcLength = 0.0
+        for (index in 0 until placed.path.size - 1) arcLength += Math.hypot((placed.path[index + 1].first - placed.path[index].first).toDouble(), (placed.path[index + 1].second - placed.path[index].second).toDouble())
+        assertTrue("arc $arcLength corde $chord", chord < arcLength - 0.5)
+        // Chaque point du trace reste sur le cercle de la rue.
+        for (point in placed.path) assertEquals(30.0, Math.hypot((point.first - 64f).toDouble(), (point.second - 64f).toDouble()), 1.5)
+        // Lu de gauche a droite.
+        assertTrue(placed.path.first().first < placed.path.last().first)
+    }
+
+    @Test fun `a street name is read left to right whichever way the street is drawn`() {
+        val arcPoints = arc(Math.PI, 2 * Math.PI).reversed()
+        val placed = WatchVectorLabels.place(listOf(Label(Kind.STREET, "RUE COURBE", listOf(arcPoints), 7.5f, true, false, 0)), 128f, measureStyled).single()
+        assertTrue(placed.path.first().first < placed.path.last().first)
+    }
+
+    @Test fun `a name too long for a tight ring is shortened rather than written upside down`() {
+        // Un cercle complet de 12 px de rayon : 75 px de pourtour, un texte de 12 caracteres n'y tient pas sans retourner les lettres.
+        val ring = arc(0.0, 2 * Math.PI, radius = 12.0, steps = 90)
+        val placed = WatchVectorLabels.place(listOf(Label(Kind.STREET, "R DU CHATEAU", listOf(ring), 7.5f, true, false, 0)), 128f, measureStyled)
+        for (label in placed) {
+            val first = label.path.first()
+            val last = label.path.last()
+            assertTrue("${label.text} : le texte fait moins d'un demi-tour", Math.hypot((last.first - first.first).toDouble(), (last.second - first.second).toDouble()) > 0.74 * 0.9 * label.width)
+        }
     }
 
     @Test fun `text is upright whatever the direction of the street`() {
