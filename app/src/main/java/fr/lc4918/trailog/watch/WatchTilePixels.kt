@@ -233,6 +233,44 @@ object WatchTilePixels {
     /** L'indice de la couleur de palette la plus proche de [rgb] en espace Lab. */
     internal fun nearestPaletteIndex(rgb: Int): Int = nearestLabIndex(lab(rgb))
 
+    /**
+     * L'indice de la couleur de palette la plus proche de [rgb] parmi celles de la meme famille de teinte (a [hueTolerance] degres
+     * au plus) : un vert d'herbe ne devient pas un jaune pale parce que la grille n'a pas de vert aussi clair. Une couleur peu
+     * saturee (gris, blanc) n'a pas de teinte : la plus proche tout court.
+     */
+    internal fun nearestPaletteIndexKeepingHue(rgb: Int, hueTolerance: Double): Int {
+        val hue = hueOf(rgb) ?: return nearestPaletteIndex(rgb)
+        val pixel = lab(rgb)
+        var bestIndex = -1
+        var bestDistance = Double.MAX_VALUE
+        for (index in PALETTE.indices) {
+            val paletteHue = hueOf(PALETTE[index]) ?: continue
+            val gap = Math.abs(hue - paletteHue).let { if (it > 180) 360 - it else it }
+            if (gap > hueTolerance) continue
+            val reference = paletteLab[index]
+            val distance = (pixel[0] - reference[0]).let { it * it } + (pixel[1] - reference[1]).let { it * it } + (pixel[2] - reference[2]).let { it * it }
+            if (distance < bestDistance) { bestDistance = distance; bestIndex = index }
+        }
+        return if (bestIndex >= 0) bestIndex else nearestPaletteIndex(rgb)
+    }
+
+    /** La teinte (degres, 0 a 360) de [rgb], ou null s'il est presque gris (saturation sous 0,15). */
+    private fun hueOf(rgb: Int): Double? {
+        val red = (rgb shr 16 and 0xFF) / 255.0
+        val green = (rgb shr 8 and 0xFF) / 255.0
+        val blue = (rgb and 0xFF) / 255.0
+        val maximum = maxOf(red, green, blue)
+        val minimum = minOf(red, green, blue)
+        val chroma = maximum - minimum
+        if (maximum == 0.0 || chroma / maximum < 0.15) return null
+        val hue = when (maximum) {
+            red -> ((green - blue) / chroma) % 6
+            green -> (blue - red) / chroma + 2
+            else -> (red - green) / chroma + 4
+        } * 60
+        return if (hue < 0) hue + 360 else hue
+    }
+
     private fun nearestLabIndex(pixel: DoubleArray): Int {
         var bestIndex = 0
         var bestDistance = Double.MAX_VALUE

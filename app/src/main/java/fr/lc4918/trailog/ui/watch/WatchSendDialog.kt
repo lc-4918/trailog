@@ -62,6 +62,7 @@ import fr.lc4918.trailog.ui.settings.settingsPalette
 import fr.lc4918.trailog.watch.WatchExportSession
 import fr.lc4918.trailog.watch.WatchLink
 import fr.lc4918.trailog.watch.WatchTileSource
+import fr.lc4918.trailog.watch.vector.WatchOsmSource
 import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import fr.lc4918.trailog.watch.WatchTiles
 import kotlinx.coroutines.Dispatchers
@@ -89,9 +90,21 @@ private val WATCH_VECTOR_BYTES_PER_TILE = mapOf(
     WatchTiles.Detail.FINE to 6_500L, WatchTiles.Detail.VERY_FINE to 5_500L, WatchTiles.Detail.ULTRA_FINE to 4_500L,
 )
 
+/**
+ * Place d'une tuile du fond Trailmap (OpenStreetMap), par niveau de detail : le plus haut des moyennes mesurees sur 9 tuiles d'une ville
+ * dense (Toulouse), d'une campagne (La Force) et d'un massif (Morgiou), arrondi a 500 octets. Moins charge que le vectoriel IGN : pas de
+ * courbes de niveau ni de hachures.
+ */
+private val WATCH_OSM_BYTES_PER_TILE = mapOf(
+    WatchTiles.Detail.FINE to 7_000L, WatchTiles.Detail.VERY_FINE to 5_500L, WatchTiles.Detail.ULTRA_FINE to 4_500L,
+)
+
 /** Octets que prend une tuile sur la montre pour ce fond a ce niveau de detail (estimation affichee, pas une limite). */
-internal fun estimatedBytesPerTile(provider: ProviderEntity?, detail: WatchTiles.Detail): Long =
-    if (provider != null && WatchVectorSource.isVector(provider)) WATCH_VECTOR_BYTES_PER_TILE.getValue(detail) else WATCH_BYTES_PER_TILE
+internal fun estimatedBytesPerTile(provider: ProviderEntity?, detail: WatchTiles.Detail): Long = when {
+    provider != null && WatchVectorSource.isVector(provider) -> WATCH_VECTOR_BYTES_PER_TILE.getValue(detail)
+    provider != null && WatchOsmSource.isOsm(provider) -> WATCH_OSM_BYTES_PER_TILE.getValue(detail)
+    else -> WATCH_BYTES_PER_TILE
+}
 
 /**
  * La fenetre d'envoi d'une trace a la montre Garmin : l'etat de la montre, le fond, la largeur du couloir,

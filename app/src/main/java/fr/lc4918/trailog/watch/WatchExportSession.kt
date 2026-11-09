@@ -5,6 +5,8 @@ import fr.lc4918.trailog.map.offline.TileHttp
 import fr.lc4918.trailog.watch.WatchTiles.WatchTile
 import fr.lc4918.trailog.watch.vector.VectorTile
 import fr.lc4918.trailog.watch.vector.WatchVectorRenderer
+import fr.lc4918.trailog.watch.vector.WatchOsmRenderer
+import fr.lc4918.trailog.watch.vector.WatchOsmSource
 import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -81,6 +83,19 @@ class WatchExportSession(
             pixelsOf = { tile ->
                 WatchVectorRenderer.render(tile, detail.zoom, sourceZoom) { x, y ->
                     vectorCache.getOrPut(x to y) { vectorSource.tile(sourceZoom, x, y) }
+                }?.let { WatchTilePixels.encode(it, WatchTiles.WATCH_TILE_PIXELS) }
+            }
+        } else if (WatchOsmSource.isOsm(provider)) {
+            // Les tuiles OpenMapTiles s'arretent au zoom 14 : les niveaux plus fins en agrandissent la geometrie.
+            val osmZoom = minOf(sourceZoom, WatchOsmRenderer.MAX_SOURCE_ZOOM)
+            val osmSource = WatchOsmSource(fetch = vectorFetch)
+            val osmCache = object : LinkedHashMap<Pair<Int, Int>, VectorTile?>(VECTOR_CACHE_ENTRIES, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Pair<Int, Int>, VectorTile?>) = size > VECTOR_CACHE_ENTRIES
+            }
+            tileSource = osmSource
+            pixelsOf = { tile ->
+                WatchOsmRenderer.render(tile, detail.zoom, osmZoom) { x, y ->
+                    osmCache.getOrPut(x to y) { osmSource.tile(osmZoom, x, y) }
                 }?.let { WatchTilePixels.encode(it, WatchTiles.WATCH_TILE_PIXELS) }
             }
         } else {

@@ -781,6 +781,7 @@
     <string name="watch_send_detail_very_fine">Very fine</string>
     <string name="watch_send_detail_ultra_fine">Ultra fine</string>
     <string name="watch_send_provider_vector">Scan 25 vector</string>
+    <string name="watch_send_provider_osm">Trailmap (OpenStreetMap)</string>
     <string name="watch_send_corridor_label">Corridor</string>
     <string name="watch_send_corridor_value">%1$s on each side</string>
     <string name="watch_send_size_label">On the watch</string>

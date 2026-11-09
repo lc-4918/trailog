@@ -5,6 +5,7 @@ import fr.lc4918.trailog.data.db.ProviderEntity
 import fr.lc4918.trailog.map.offline.BulkDownloadPolicy
 import fr.lc4918.trailog.map.offline.TileHttp
 import fr.lc4918.trailog.map.offline.TileUrl
+import fr.lc4918.trailog.watch.vector.WatchOsmSource
 import fr.lc4918.trailog.watch.vector.WatchVectorSource
 import java.io.Closeable
 import java.io.File
@@ -40,7 +41,7 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          * BulkDownloadPolicy) : l'envoi va chercher ses tuiles en ligne, comme le telechargement hors ligne.
          */
         fun supports(provider: ProviderEntity): Boolean =
-            WatchVectorSource.isVector(provider) || (
+            WatchVectorSource.isVector(provider) || WatchOsmSource.isOsm(provider) || (
                 provider.type in SUPPORTED_TYPES && !provider.transparent &&
                     WatchTiles.Detail.FINE.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
                     !BulkDownloadPolicy.forbids(provider) && !forbiddenForWatch(provider)
@@ -62,6 +63,7 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
          */
         fun availableDetails(provider: ProviderEntity): List<WatchTiles.Detail> =
             if (WatchVectorSource.isVector(provider)) WatchTiles.Detail.entries
+            else if (WatchOsmSource.isOsm(provider)) WatchTiles.Detail.entries
             else WatchTiles.Detail.entries.filter { it != WatchTiles.Detail.ULTRA_FINE && it.sourceZoom in provider.minZoom..usableMaxZoom(provider) }
 
         /**

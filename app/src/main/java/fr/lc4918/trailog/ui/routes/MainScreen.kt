@@ -1503,7 +1503,8 @@ fun MainScreen(
                     trackName = layer.name,
                     trackPoints = points,
                     providers = providers.filter { it.enabled && WatchTileSource.supports(it) } +
-                        fr.lc4918.trailog.watch.vector.WatchVectorSource.provider(stringResource(R.string.watch_send_provider_vector)),
+                        fr.lc4918.trailog.watch.vector.WatchVectorSource.provider(stringResource(R.string.watch_send_provider_vector)) +
+                        fr.lc4918.trailog.watch.vector.WatchOsmSource.provider(stringResource(R.string.watch_send_provider_osm)),
                     initialProviderId = settings.defaultBasemapId,
                     session = watchSession,
                     link = watchLink,
