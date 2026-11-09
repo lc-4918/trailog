@@ -39,6 +39,14 @@ object WatchTilePixels {
 
     private const val MAX_RUN = 255
 
+    /** Regularisation spatiale de [quantize] : passes, et cout (en distance Lab au carre) d'un voisin de couleur differente. */
+    private const val SMOOTHING_PASSES = 3
+    private const val SMOOTHING_WEIGHT = 60.0
+
+    /** Stabilisation des aplats de [steadied] : rayon de la fenetre (5 x 5 pixels) et ecart Lab sous lequel un pixel prend la moyenne. */
+    private const val FLAT_RADIUS = 2
+    private const val FLAT_TOLERANCE = 10.0
+
     /** Les plages de cette longueur au plus tiennent sur un octet (cf. [encode]). */
     private const val MAX_SHORT_RUN = 3
     private const val LONG_RUN_MARKER = 3
@@ -158,12 +166,74 @@ object WatchTilePixels {
         return coarse
     }
 
-    internal fun quantize(rgbPixels: IntArray, @Suppress("UNUSED_PARAMETER") size: Int): IntArray =
-        IntArray(rgbPixels.size) { nearestPaletteIndex(rgbPixels[it]) }
+    /**
+     * Chaque pixel prend sa couleur de palette la plus proche, puis une regularisation spatiale retire le grain : un pixel dont la
+     * couleur est presque aussi proche de celle de ses voisins que de sa couleur de palette la plus proche prend celle de ses voisins
+     * (cf. [SMOOTHING_WEIGHT]). Un trait fin ou un contour net, dont la couleur est loin de celle du fond, garde la sienne.
+     */
+    internal fun quantize(rgbPixels: IntArray, size: Int): IntArray {
+        val labs = steadied(Array(rgbPixels.size) { lab(rgbPixels[it]) }, size)
+        val labels = IntArray(rgbPixels.size) { nearestLabIndex(labs[it]) }
+        if (size < 3) return labels
+        val own = IntArray(rgbPixels.size) { labels[it] }
+        repeat(SMOOTHING_PASSES) {
+            for (row in 0 until size) for (column in 0 until size) {
+                val position = row * size + column
+                var bestLabel = labels[position]
+                var bestCost = Double.MAX_VALUE
+                val neighbourLabels = intArrayOf(
+                    if (column > 0) labels[position - 1] else -1, if (column < size - 1) labels[position + 1] else -1,
+                    if (row > 0) labels[position - size] else -1, if (row < size - 1) labels[position + size] else -1,
+                )
+                // Candidats : la couleur de palette la plus proche et les couleurs des quatre voisins.
+                val candidates = intArrayOf(own[position], neighbourLabels[0], neighbourLabels[1], neighbourLabels[2], neighbourLabels[3])
+                for (candidate in candidates) {
+                    if (candidate < 0) continue
+                    val reference = paletteLab[candidate]
+                    val lightnessGap = labs[position][0] - reference[0]
+                    val greenRedGap = labs[position][1] - reference[1]
+                    val blueYellowGap = labs[position][2] - reference[2]
+                    var cost = lightnessGap * lightnessGap + greenRedGap * greenRedGap + blueYellowGap * blueYellowGap
+                    for (neighbour in neighbourLabels) if (neighbour >= 0 && neighbour != candidate) cost += SMOOTHING_WEIGHT
+                    if (cost < bestCost) { bestCost = cost; bestLabel = candidate }
+                }
+                labels[position] = bestLabel
+            }
+        }
+        return labels
+    }
+
+    /**
+     * Les couleurs Lab de [labs] (tuile de [size] pixels de cote) ou chaque pixel proche de la moyenne de ses voisins (a moins de
+     * [FLAT_TOLERANCE] de distance Lab) prend cette moyenne : un fond d'ombrage doux, dont la couleur flotte autour d'un seuil de la
+     * palette, devient un aplat au lieu d'un semis de deux couleurs. Un trait, un contour, un bord net s'ecartent plus que la
+     * tolerance de la moyenne et gardent leur couleur.
+     */
+    private fun steadied(labs: Array<DoubleArray>, size: Int): Array<DoubleArray> {
+        if (size < 2 * FLAT_RADIUS + 1) return labs
+        val steadied = Array(labs.size) { labs[it] }
+        for (row in 0 until size) for (column in 0 until size) {
+            val mean = DoubleArray(3)
+            var count = 0
+            for (rowOffset in -FLAT_RADIUS..FLAT_RADIUS) for (columnOffset in -FLAT_RADIUS..FLAT_RADIUS) {
+                val neighbour = labs[(row + rowOffset).coerceIn(0, size - 1) * size + (column + columnOffset).coerceIn(0, size - 1)]
+                for (channel in 0 until 3) mean[channel] += neighbour[channel]
+                count++
+            }
+            for (channel in 0 until 3) mean[channel] /= count
+            val own = labs[row * size + column]
+            val gapL = own[0] - mean[0]
+            val gapA = own[1] - mean[1]
+            val gapB = own[2] - mean[2]
+            if (gapL * gapL + gapA * gapA + gapB * gapB < FLAT_TOLERANCE * FLAT_TOLERANCE) steadied[row * size + column] = mean
+        }
+        return steadied
+    }
 
     /** L'indice de la couleur de palette la plus proche de [rgb] en espace Lab. */
-    internal fun nearestPaletteIndex(rgb: Int): Int {
-        val pixel = lab(rgb)
+    internal fun nearestPaletteIndex(rgb: Int): Int = nearestLabIndex(lab(rgb))
+
+    private fun nearestLabIndex(pixel: DoubleArray): Int {
         var bestIndex = 0
         var bestDistance = Double.MAX_VALUE
         for (index in PALETTE.indices) {

@@ -87,6 +87,25 @@ class WatchTilePixelsTest {
         assertEquals(0x000000, colorOf(WatchTilePixels.quantize(pixels, 5)[0]))
     }
 
+    @Test fun `a soft shading hovering around a palette threshold becomes one flat colour`() {
+        // Deux gris voisins de part et d'autre d'un seuil de la palette, en damier : sans regularisation, un semis de deux couleurs.
+        val threshold = (0..254).first { WatchTilePixels.nearestPaletteIndex(grey(it)) != WatchTilePixels.nearestPaletteIndex(grey(it + 1)) }
+        val side = 12
+        val pixels = IntArray(side * side) { grey(threshold + (it % side + it / side) % 2) }
+        assertEquals(1, WatchTilePixels.quantize(pixels, side).toSet().size)
+    }
+
+    @Test fun `a pale thin line on a flat ground keeps its own colour`() {
+        // Un trait gris clair d'un pixel sur du blanc : loin de la mediane de ses voisins (plus que la tolerance), il ne disparait pas.
+        val side = 12
+        val pixels = IntArray(side * side) { if (it % side == 6) 0xAAAAAA else 0xFFFFFF }
+        val indices = WatchTilePixels.quantize(pixels, side)
+        assertEquals(colorOf(WatchTilePixels.nearestPaletteIndex(0xAAAAAA)), colorOf(indices[6 * side + 6]))
+        assertEquals(0xFFFFFF, colorOf(indices[6 * side + 3]))
+    }
+
+    private fun grey(level: Int) = (level shl 16) or (level shl 8) or level
+
     @Test fun `a thin line two pixels wide survives`() {
         val side = 10
         val pixels = IntArray(side * side) { if (it % side in 4..5) 0xFF0000 else 0xFFFFFF }
