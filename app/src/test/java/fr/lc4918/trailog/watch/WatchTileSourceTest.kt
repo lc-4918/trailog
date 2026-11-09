@@ -108,6 +108,12 @@ class WatchTileSourceTest {
         assertEquals(listOf(WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE), WatchTileSource.availableDetails(other))
     }
 
+    @Test fun `the osm basemap is sendable and offers the three levels of the vector basemaps`() {
+        val osm = fr.lc4918.trailog.watch.vector.WatchOsmSource.provider("Trailmap")
+        assertTrue(WatchTileSource.supports(osm))
+        assertEquals(WatchTiles.Detail.entries.toList(), WatchTileSource.availableDetails(osm))
+    }
+
     @Test fun `the vector basemap offers all three levels and the raster ones never the ultra fine level`() {
         val vector = fr.lc4918.trailog.watch.vector.WatchVectorSource.provider("Scan 25 vectoriel")
         assertTrue(WatchTileSource.supports(vector))

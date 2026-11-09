@@ -235,6 +235,12 @@ class WatchSendDialogTest {
         compose.onNodeWithTag("watch_detail_ULTRA_FINE").assertDoesNotExist()
     }
 
+    @Test fun `the osm basemap has its own size estimate per level`() {
+        val osmProvider = fr.lc4918.trailog.watch.vector.WatchOsmSource.provider("Trailmap")
+        assertTrue(estimatedBytesPerTile(osmProvider, WatchTiles.Detail.ULTRA_FINE) < estimatedBytesPerTile(osmProvider, WatchTiles.Detail.FINE))
+        assertTrue(estimatedBytesPerTile(osmProvider, WatchTiles.Detail.FINE) <= 11_000L)
+    }
+
     @Test fun `the estimated size per tile depends on the basemap and the level`() {
         assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(osm, WatchTiles.Detail.FINE))
         assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(null, WatchTiles.Detail.FINE))

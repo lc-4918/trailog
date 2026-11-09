@@ -116,6 +116,35 @@ class WatchExportSessionTest {
         assertEquals(200, get("/watch/manifest").responseCode)
     }
 
+    /** Un envoi du fond Trailmap : la fiche TileJSON puis la tuile OpenMapTiles du zoom 14 (ici des reponses enregistrees), agrandie au niveau 17,0. */
+    @Test fun `the osm basemap is drawn from openmaptiles tiles and sent to the watch`() {
+        val realTile = javaClass.getResourceAsStream("/watch/openmaptiles/14_8257_5982.pbf")!!.readBytes()
+        val tileJson = """{"tiles":["https://tiles.example.org/planet/v1/{z}/{x}/{y}.pbf"]}"""
+        val asked = mutableListOf<String>()
+        val osmSession = WatchExportSession(scope, onStarted = {}, port = port, vectorFetch = { url ->
+            asked.add(url)
+            when {
+                url == fr.lc4918.trailog.watch.vector.WatchOsmSource.TILEJSON_URL -> tileJson.toByteArray()
+                url.endsWith("/14/8257/5982.pbf") -> realTile
+                else -> null
+            }
+        })
+        try {
+            val osmProvider = fr.lc4918.trailog.watch.vector.WatchOsmSource.provider("Trailmap")
+            val tile = WatchTile(132119, 95726)
+            assertTrue(osmSession.start("Ville", listOf(tile), osmProvider, null, detail = WatchTiles.Detail.ULTRA_FINE))
+            val connection = get("/watch/tile/17/${tile.x}/${tile.y}")
+            assertEquals(200, connection.responseCode)
+            val body = connection.inputStream.use { it.readBytes() }.toString(Charsets.UTF_8)
+            val indices = WatchTilePixels.unpack(Base64.decode(Regex(""""pixels":"([^"]+)"""").find(body)!!.groupValues[1]))
+            assertEquals(WatchTilePixels.TILE_PIXELS, indices.size)
+            assertTrue("une carte de ville a plusieurs couleurs : ${indices.toSet().size}", indices.toSet().size >= 3)
+            assertTrue("le fond n'est demande qu'au zoom 14 : $asked", asked.filter { it != fr.lc4918.trailog.watch.vector.WatchOsmSource.TILEJSON_URL }.all { it.contains("/14/") })
+        } finally {
+            osmSession.stop()
+        }
+    }
+
     /** Un envoi du fond vectoriel : la tuile PLAN.IGN est demandee a l'adresse de l'IGN (ici une reponse enregistree) et rendue en pixels de la montre. */
     @Test fun `the vector basemap is drawn from plan ign tiles and sent to the watch`() {
         val realTile = javaClass.getResourceAsStream("/watch/planign/17_66062_47861.pbf")!!.readBytes()
