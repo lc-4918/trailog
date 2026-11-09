@@ -239,6 +239,6 @@ class WatchSendDialogTest {
         assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(osm, WatchTiles.Detail.FINE))
         assertEquals(WATCH_BYTES_PER_TILE, estimatedBytesPerTile(null, WatchTiles.Detail.FINE))
         assertTrue(estimatedBytesPerTile(vector, WatchTiles.Detail.ULTRA_FINE) < estimatedBytesPerTile(vector, WatchTiles.Detail.FINE))
-        assertTrue(estimatedBytesPerTile(vector, WatchTiles.Detail.FINE) > WATCH_BYTES_PER_TILE)
+        assertTrue(estimatedBytesPerTile(vector, WatchTiles.Detail.FINE) <= WATCH_BYTES_PER_TILE)
     }
 }

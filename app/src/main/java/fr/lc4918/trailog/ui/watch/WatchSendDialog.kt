@@ -73,13 +73,12 @@ internal val WatchCorridorRadiiMeters = listOf(250.0, 500.0, 1000.0, 2000.0)
 private const val DEFAULT_RADIUS_INDEX = 1
 
 /**
- * Place d'une tuile sur la montre : une tuile codee par plages (une plage de un a trois pixels tient sur un octet) fait de 3,6 a
- * 4,3 Ko en moyenne selon le niveau de detail (mesure sur les 856 tuiles du Scan 25 d'un parcours de 28 km), plus un surcout de
- * stockage d'environ 130 octets. 4300 octets est la moyenne la plus haute, celle du niveau le plus grossier, arrondie a 4500 :
- * l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la limite pas : la place reelle depend de
- * l'appareil et du fond.
+ * Place d'une tuile raster sur la montre : une tuile codee par plages (une plage de un a trois pixels tient sur un octet) fait
+ * en moyenne 3,6 Ko sur un parcours rural (856 tuiles du Scan 25, 28 km) et 7,3 Ko en ville dense (Toulouse), plus un surcout de
+ * stockage d'environ 130 octets. 7300 octets, la moyenne la plus haute, est arrondi a 7500 : l'estimation affichee ne depasse
+ * jamais de beaucoup la place reelle, elle ne la limite pas : la place reelle depend de l'appareil et du fond.
  */
-internal const val WATCH_BYTES_PER_TILE = 4_500L
+internal const val WATCH_BYTES_PER_TILE = 7_500L
 
 /**
  * Place d'une tuile du fond vectoriel, par niveau de detail : le plus haut des moyennes mesurees sur 64 tuiles d'une ville dense (Toulouse), d'une
