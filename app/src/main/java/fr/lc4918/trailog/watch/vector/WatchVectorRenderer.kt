@@ -61,13 +61,13 @@ object WatchVectorRenderer {
     }
 
     /** Une tuile source et la place qu'elle prend dans la tuile montre ; [toPixels] passe de ses coordonnees a celles de la tuile montre. */
-    private class Piece(val position: WatchTileImages.SourcePiece, val tile: VectorTile) {
+    internal class Piece(val position: WatchTileImages.SourcePiece, val tile: VectorTile) {
         fun scale(layer: VectorTile.Layer) = (position.right - position.left) / layer.extent
         fun x(point: VectorTile.Point, layer: VectorTile.Layer) = position.left + point.x * scale(layer)
         fun y(point: VectorTile.Point, layer: VectorTile.Layer) = position.top + point.y * scale(layer)
     }
 
-    private fun path(piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature, closed: Boolean): Path {
+    internal fun path(piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature, closed: Boolean): Path {
         val path = Path()
         path.fillType = Path.FillType.EVEN_ODD
         for (part in feature.parts) {
@@ -81,7 +81,7 @@ object WatchVectorRenderer {
         return path
     }
 
-    private fun strokePaint(stroke: WatchVectorStyle.Stroke) = Paint().apply {
+    internal fun strokePaint(stroke: WatchVectorStyle.Stroke) = Paint().apply {
         isAntiAlias = true
         style = Paint.Style.STROKE
         strokeWidth = stroke.width
@@ -91,7 +91,7 @@ object WatchVectorRenderer {
         if (stroke.dashes.isNotEmpty()) pathEffect = DashPathEffect(stroke.dashes, 0f)
     }
 
-    private fun fillPaint(color: Int) = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL; this.color = color }
+    internal fun fillPaint(color: Int) = Paint().apply { isAntiAlias = true; style = Paint.Style.FILL; this.color = color }
 
     // --- surfaces : couvert vegetal, eboulis, eau, batiments ---
 
@@ -129,7 +129,7 @@ object WatchVectorRenderer {
      * Le contour d'un batiment, sans les aretes posees sur le bord de la tuile ou sur sa marge : ce sont des coupes de la tuile,
      * pas des murs, et elles feraient une ligne a la jonction de deux tuiles.
      */
-    private fun buildingOutline(piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature): Path {
+    internal fun buildingOutline(piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature): Path {
         val outline = Path()
         for (ring in feature.parts) {
             for (index in 0 until ring.size - 1) {
@@ -145,7 +145,7 @@ object WatchVectorRenderer {
         return outline
     }
 
-    private fun fill(canvas: Canvas, piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature, fill: WatchVectorStyle.Fill) {
+    internal fun fill(canvas: Canvas, piece: Piece, layer: VectorTile.Layer, feature: VectorTile.Feature, fill: WatchVectorStyle.Fill) {
         val outline = path(piece, layer, feature, true)
         when (fill.kind) {
             WatchVectorStyle.FillKind.SOLID -> canvas.drawPath(outline, fillPaint(fill.color))
@@ -187,9 +187,48 @@ object WatchVectorRenderer {
 
     private class RoadClass(val width: Float, val fill: Int)
 
+    /**
+     * Les routes d'une tuile montre, rangees par classe de largeur et de remplissage : une classe est tracee d'un seul trace (cf. l'en-tete),
+     * les liseres de toutes les classes d'abord, puis leurs remplissages.
+     */
+    internal class RoadBatch(private val zoom: Double) {
+        private val byClass = LinkedHashMap<RoadClass, Path>()
+        private val classes = HashMap<Pair<Float, Int>, RoadClass>()
+
+        /** Ajoute le trace [path] d'une route de symbole [symbo] (cf. [WatchVectorStyle.roadWidth] et [WatchVectorStyle.roadFill]). */
+        fun add(symbo: String?, path: Path) {
+            val width = (WatchVectorStyle.roadWidth(symbo, zoom) * 10).roundToInt() / 10f
+            val key = width to WatchVectorStyle.roadFill(symbo)
+            val roadClass = classes.getOrPut(key) { RoadClass(key.first, key.second) }
+            byClass.getOrPut(roadClass) { Path() }.addPath(path)
+        }
+
+        /** Dessine les routes ; [junctions] (surfaces de carrefour) se pose entre les liseres et les remplissages. */
+        fun draw(canvas: Canvas, junctions: Path?) {
+            val widths = byClass.keys.map { it.width }.distinct().sorted()
+            for (casing in listOf(true, false)) {
+                // Un carrefour efface les liseres des routes qui s'y croisent : sa surface, de la couleur d'une rue, se pose entre les liseres et les remplissages.
+                if (!casing && junctions != null) canvas.drawPath(junctions, fillPaint(WatchVectorStyle.ROAD_STREET_FILL))
+                for (width in widths) {
+                    for ((roadClass, roads) in byClass) {
+                        if (roadClass.width != width) continue
+                        val paint = Paint().apply {
+                            isAntiAlias = true
+                            style = Paint.Style.STROKE
+                            strokeCap = Paint.Cap.ROUND
+                            strokeJoin = Paint.Join.ROUND
+                            this.strokeWidth = if (casing) width + WatchVectorStyle.ROAD_CASING_EXTRA else width
+                            color = if (casing) WatchVectorStyle.ROAD_CASING else roadClass.fill
+                        }
+                        canvas.drawPath(roads, paint)
+                    }
+                }
+            }
+        }
+    }
+
     private fun drawRoads(canvas: Canvas, pieces: List<Piece>, zoom: Double) {
-        val byClass = LinkedHashMap<RoadClass, Path>()
-        val classes = HashMap<Pair<Float, Int>, RoadClass>()
+        val batch = RoadBatch(zoom)
         val junctions = Path().apply { fillType = Path.FillType.EVEN_ODD }
         for (piece in pieces) {
             piece.tile.layers["routier_surf"]?.let { layer ->
@@ -201,33 +240,11 @@ object WatchVectorRenderer {
                 val layer = piece.tile.layers[layerName] ?: continue
                 for (feature in layer.features) {
                     if ((feature.text("niveau") ?: NATURAL_ROAD_LEVEL) != NATURAL_ROAD_LEVEL) continue
-                    val symbo = feature.text("symbo")?.removeSuffix(OVERPASS_SUFFIX)
-                    val width = (WatchVectorStyle.roadWidth(symbo, zoom) * 10).roundToInt() / 10f
-                    val key = width to WatchVectorStyle.roadFill(symbo)
-                    val roadClass = classes.getOrPut(key) { RoadClass(key.first, key.second) }
-                    byClass.getOrPut(roadClass) { Path() }.addPath(path(piece, layer, feature, false))
+                    batch.add(feature.text("symbo")?.removeSuffix(OVERPASS_SUFFIX), path(piece, layer, feature, false))
                 }
             }
         }
-        val widths = byClass.keys.map { it.width }.distinct().sorted()
-        for (casing in listOf(true, false)) {
-            // Un carrefour efface les liseres des routes qui s'y croisent : sa surface, de la couleur d'une rue, se pose entre les liseres et les remplissages.
-            if (!casing) canvas.drawPath(junctions, fillPaint(WatchVectorStyle.ROAD_STREET_FILL))
-            for (width in widths) {
-                for ((roadClass, roads) in byClass) {
-                    if (roadClass.width != width) continue
-                    val paint = Paint().apply {
-                        isAntiAlias = true
-                        style = Paint.Style.STROKE
-                        strokeCap = Paint.Cap.ROUND
-                        strokeJoin = Paint.Join.ROUND
-                        this.strokeWidth = if (casing) width + WatchVectorStyle.ROAD_CASING_EXTRA else width
-                        color = if (casing) WatchVectorStyle.ROAD_CASING else roadClass.fill
-                    }
-                    canvas.drawPath(roads, paint)
-                }
-            }
-        }
+        batch.draw(canvas, junctions)
     }
 
     // --- traits : chemins, ruisseaux, voies ferrees, roches, talus, limites ---
@@ -278,7 +295,7 @@ object WatchVectorRenderer {
         Paint().apply { isAntiAlias = true; typeface = Typeface.create(Typeface.SANS_SERIF, style); isFakeBoldText = bold }
     }
 
-    private fun measure(text: String, size: Float, bold: Boolean, italic: Boolean): Float =
+    internal fun measure(text: String, size: Float, bold: Boolean, italic: Boolean): Float =
         textPaint(bold, italic).let { it.textSize = size; it.measureText(text) }
 
     private fun labelsOf(
@@ -302,6 +319,11 @@ object WatchVectorRenderer {
                 WatchVectorStyle.TEXT_LIGHT) { it.text("texte") } +
             labelsOf(pieces, "toponyme_bati_ponc", WatchVectorLabels.Kind.BUILDING, WatchVectorStyle.TEXT_BUILDING_SIZE, false, false,
                 WatchVectorStyle.TEXT_LIGHT) { it.text("texte") }
+        drawLabelList(canvas, labels)
+    }
+
+    /** Place les textes de [labels] (cf. [WatchVectorLabels.place]) et les dessine, avec leur halo. */
+    internal fun drawLabelList(canvas: Canvas, labels: List<WatchVectorLabels.Label>) {
         val placed = WatchVectorLabels.place(labels, WatchTiles.WATCH_TILE_PIXELS.toFloat(), ::measure)
         for (label in placed) {
             val halo = Paint(textPaint(label.bold, label.italic)).apply {
@@ -331,7 +353,7 @@ object WatchVectorRenderer {
      * Chaque pixel a la couleur de grille la plus proche : les bords anticrenelés entre deux couleurs de la grille retombent
      * sur l'une des deux ou sur leur milieu (blanc et gris fonce donnent le gris moyen, qui est dans la grille).
      */
-    private fun snapToPalette(pixels: IntArray): IntArray {
+    internal fun snapToPalette(pixels: IntArray): IntArray {
         val cache = HashMap<Int, Int>()
         return IntArray(pixels.size) { index ->
             val rgb = pixels[index] and 0xFFFFFF
