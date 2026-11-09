@@ -80,6 +80,9 @@ internal object WatchVectorStyle {
     )
     val DEFAULT_PATH = Stroke(1.6f, floatArrayOf(), grid(0x555555))
 
+    /** Passerelle (couche routier_liaison, PONT_PASSERELLE) : un peu plus epaisse qu'un chemin, pleine. */
+    val FOOTBRIDGE = Stroke(2.0f, floatArrayOf(), grid(0x555555))
+
     /** Traits du relief et des sols, par couche puis `symbo` ; [DEFAULT_LINE_BY_LAYER] pour les autres symboles de la couche. */
     val LINES_BY_LAYER: Map<String, Map<String, Stroke>> = mapOf(
         "ocs_lin" to mapOf("COULEE_EBOULIS" to Stroke(1.0f, floatArrayOf(3f, 2f), grid(0xAAAAAA))),

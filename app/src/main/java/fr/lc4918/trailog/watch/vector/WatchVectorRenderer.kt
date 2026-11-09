@@ -31,6 +31,7 @@ object WatchVectorRenderer {
 
     /** Fin du `symbo` des couches de ce qui passe au-dessus (routier_route_sup, routier_chemin_sup) : le meme symbole que celui du sol, sans elle. */
     private const val OVERPASS_SUFFIX = "_SUP"
+
     private const val TEXT_BASELINE = 3f
 
     /**
@@ -106,6 +107,7 @@ object WatchVectorRenderer {
         }
         piece.tile.layers["routier_surf"]?.let { layer ->
             for (feature in layer.features) {
+                // Le tablier d'un pont est de la couleur d'une rue, sous les routes qui le traversent.
                 if (feature.text("symbo") == "PONT_SURF") canvas.drawPath(path(piece, layer, feature, true), fillPaint(WatchVectorStyle.ROAD_STREET_FILL))
             }
         }
@@ -188,7 +190,11 @@ object WatchVectorRenderer {
     private fun drawRoads(canvas: Canvas, pieces: List<Piece>, zoom: Double) {
         val byClass = LinkedHashMap<RoadClass, Path>()
         val classes = HashMap<Pair<Float, Int>, RoadClass>()
+        val junctions = Path().apply { fillType = Path.FillType.EVEN_ODD }
         for (piece in pieces) {
+            piece.tile.layers["routier_surf"]?.let { layer ->
+                for (feature in layer.features) if (feature.text("symbo") == "CARREFOUR") junctions.addPath(path(piece, layer, feature, true))
+            }
             // Les routes au sol, puis celles qui passent au-dessus (ponts, viaducs) : elles se dessinent comme les autres, par-dessus l'eau.
             // Les routes en tunnel (routier_route_sou) ne se voient pas.
             for (layerName in listOf("routier_route", "routier_route_sup")) {
@@ -205,6 +211,8 @@ object WatchVectorRenderer {
         }
         val widths = byClass.keys.map { it.width }.distinct().sorted()
         for (casing in listOf(true, false)) {
+            // Un carrefour efface les liseres des routes qui s'y croisent : sa surface, de la couleur d'une rue, se pose entre les liseres et les remplissages.
+            if (!casing) canvas.drawPath(junctions, fillPaint(WatchVectorStyle.ROAD_STREET_FILL))
             for (width in widths) {
                 for ((roadClass, roads) in byClass) {
                     if (roadClass.width != width) continue
@@ -230,6 +238,12 @@ object WatchVectorRenderer {
             for (feature in layer.features) {
                 val stroke = WatchVectorStyle.PATHS[feature.text("symbo")?.removeSuffix(OVERPASS_SUFFIX)] ?: WatchVectorStyle.DEFAULT_PATH
                 canvas.drawPath(path(piece, layer, feature, false), strokePaint(stroke))
+            }
+        }
+        // Une passerelle (pont reserve aux pietons) : l'axe, plein ; le pont routier (PONT_LIN) double la route qui le porte, il n'est pas redessine.
+        piece.tile.layers["routier_liaison"]?.let { layer ->
+            for (feature in layer.features) {
+                if (feature.text("symbo") == "PONT_PASSERELLE") canvas.drawPath(path(piece, layer, feature, false), strokePaint(WatchVectorStyle.FOOTBRIDGE))
             }
         }
         piece.tile.layers["hydro_reseau"]?.let { layer ->

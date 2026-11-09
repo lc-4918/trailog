@@ -126,6 +126,37 @@ class WatchVectorRendererTest {
         assertTrue("la riviere est dessinee : $waterCount pixels d'eau", waterCount > 2000)
     }
 
+    @Test fun `a footbridge is drawn along its axis`() {
+        // La passerelle Robert Poujade sur la Garonne (couche routier_liaison, PONT_PASSERELLE).
+        val footbridge = tile("17_66057_47867")
+        val axis = features(footbridge, "routier_liaison", "PONT_PASSERELLE").single()
+        var samplesCount = 0
+        var greyCount = 0
+        for (column in 0..1) for (row in 0..1) {
+            val pixels = render(footbridge, 66057, 47867, column, row)
+            val samples = walk(axis.parts.first(), column, row)
+            samplesCount += samples.size
+            greyCount += samples.count { pixels.at(it.first, it.second) == index(0x555555) }
+        }
+        assertTrue("assez de passerelle pour juger : $samplesCount", samplesCount > 50)
+        assertTrue("$greyCount sur $samplesCount gris sur l'axe de la passerelle", greyCount >= samplesCount * 0.6)
+    }
+
+    @Test fun `a junction hides the casings of the roads that cross in it`() {
+        val crossing = tile("17_66058_47865")
+        val withoutJunctions = VectorTile(crossing.layers.mapValues { (name, layer) ->
+            if (name == "routier_surf") VectorTile.Layer(name, layer.extent, layer.features.filter { it.text("symbo") != "CARREFOUR" }) else layer
+        })
+        assertTrue(crossing.layers.getValue("routier_surf").features.any { it.text("symbo") == "CARREFOUR" })
+        var differing = 0
+        for (column in 0..1) for (row in 0..1) {
+            val with = render(crossing, 66058, 47865, column, row)
+            val without = render(withoutJunctions, 66058, 47865, column, row)
+            differing += with.indices.count { with[it] != without[it] }
+        }
+        assertTrue("pixels changes par les carrefours : $differing", differing > 0)
+    }
+
     @Test fun `a footpath is dashed and a contour line is brown`() {
         // La calanque de Morgiou : on cherche, dans les quatre quarts de la tuile, un sentier assez long et une courbe de niveau.
         var dashed = false
