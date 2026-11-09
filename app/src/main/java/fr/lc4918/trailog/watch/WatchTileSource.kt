@@ -42,7 +42,7 @@ class WatchTileSource(private val provider: ProviderEntity, private val mbtilesF
         fun supports(provider: ProviderEntity): Boolean =
             WatchVectorSource.isVector(provider) || (
                 provider.type in SUPPORTED_TYPES && !provider.transparent &&
-                    WatchTiles.Detail.STANDARD.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
+                    WatchTiles.Detail.FINE.sourceZoom in provider.minZoom..usableMaxZoom(provider) &&
                     !BulkDownloadPolicy.forbids(provider) && !forbiddenForWatch(provider)
                 )
 

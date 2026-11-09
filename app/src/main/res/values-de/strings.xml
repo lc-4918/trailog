@@ -777,7 +777,6 @@
     <string name="watch_send_basemap">Hintergrundkarte</string>
     <string name="watch_send_no_basemap">Keine Karte kann gesendet werden: Es braucht eine deckende Rasterkarte, die bei Zoom 15 verfügbar ist. Vektorkarten und OpenStreetMap, das Massen-Downloads verbietet, werden nicht unterstützt.</string>
     <string name="watch_send_detail_label">Detailgrad</string>
-    <string name="watch_send_detail_standard">Standard</string>
     <string name="watch_send_detail_fine">Fein</string>
     <string name="watch_send_detail_very_fine">Sehr fein</string>
     <string name="watch_send_detail_ultra_fine">Ultrafein</string>

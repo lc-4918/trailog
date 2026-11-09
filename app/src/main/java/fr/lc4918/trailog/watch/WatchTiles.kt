@@ -30,7 +30,6 @@ object WatchTiles {
      * meme trace (un quart de plus par demi-niveau, a peu pres le double).
      */
     enum class Detail(val zoom: Double) {
-        STANDARD(15.5),
         FINE(16.0),
         VERY_FINE(16.5),
 

@@ -777,7 +777,6 @@
     <string name="watch_send_basemap">Mapa de fundo</string>
     <string name="watch_send_no_basemap">Nenhum mapa pode ser enviado: tem de ser um mapa raster opaco disponível no zoom 15. Os mapas vetoriais e o OpenStreetMap, que proíbe a transferência em massa, não são suportados.</string>
     <string name="watch_send_detail_label">Detalhe</string>
-    <string name="watch_send_detail_standard">Padrão</string>
     <string name="watch_send_detail_fine">Fino</string>
     <string name="watch_send_detail_very_fine">Muito fino</string>
     <string name="watch_send_detail_ultra_fine">Ultrafino</string>

@@ -777,7 +777,6 @@
     <string name="watch_send_basemap">Mapa de fons</string>
     <string name="watch_send_no_basemap">No es pot enviar cap mapa: ha de ser un mapa ràster opac disponible al zoom 15. Els mapes vectorials i OpenStreetMap, que prohibeix la baixada massiva, no són compatibles.</string>
     <string name="watch_send_detail_label">Detall</string>
-    <string name="watch_send_detail_standard">Estàndard</string>
     <string name="watch_send_detail_fine">Fi</string>
     <string name="watch_send_detail_very_fine">Molt fi</string>
     <string name="watch_send_detail_ultra_fine">Ultrafi</string>

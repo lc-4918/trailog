@@ -11,8 +11,8 @@ class WatchTilesTest {
 
     /** Valeurs croisees avec l'application montre (TileMathTest.mc) : meme lieu, memes numeros de tuile. */
     @Test fun `watch tile numbering matches the watch app at Chamrousse`() {
-        val tiles = WatchTiles.tilesAlong(listOf(5.877 to 45.121), radiusMeters = 0.0, detail = Detail.STANDARD)
-        assertEquals(listOf(WatchTile(47853, 33295)), tiles)
+        val tiles = WatchTiles.tilesAlong(listOf(5.877 to 45.121), radiusMeters = 0.0, detail = Detail.FINE)
+        assertEquals(listOf(WatchTile(67675, 47087)), tiles)
     }
 
     @Test fun `a finer level numbers the same place on a finer grid`() {
@@ -56,14 +56,14 @@ class WatchTilesTest {
 
     @Test fun `a finer level needs more tiles for the same track`() {
         val track = listOf(5.85 to 45.10, 5.90 to 45.13, 5.95 to 45.12)
-        val standard = WatchTiles.tilesAlong(track, 500.0, Detail.STANDARD).size
         val fine = WatchTiles.tilesAlong(track, 500.0, Detail.FINE).size
         val veryFine = WatchTiles.tilesAlong(track, 500.0, Detail.VERY_FINE).size
-        assertTrue(standard < fine && fine < veryFine)
+        val ultraFine = WatchTiles.tilesAlong(track, 500.0, Detail.ULTRA_FINE).size
+        assertTrue(fine < veryFine && veryFine < ultraFine)
         // Un zoom entier de plus donne de l'ordre de trois a quatre fois plus de tuiles ; un demi-niveau, environ
         // deux fois : moins que le carre du facteur d'echelle pour une trace courte, qui a moins de pertes de bord.
-        assertTrue(veryFine.toDouble() / standard in 2.8..4.4)
-        assertTrue(fine.toDouble() / standard in 1.5..2.5)
+        assertTrue(ultraFine.toDouble() / fine in 2.8..4.4)
+        assertTrue(veryFine.toDouble() / fine in 1.5..2.5)
     }
 
     @Test fun `a wider corridor needs more tiles`() {
@@ -82,23 +82,20 @@ class WatchTilesTest {
     }
 
     @Test fun `ground resolution improves with the level`() {
-        val standard = WatchTiles.metersPerPixel(45.121, Detail.STANDARD.zoom)
         val fine = WatchTiles.metersPerPixel(45.121, Detail.FINE.zoom)
         val veryFine = WatchTiles.metersPerPixel(45.121, Detail.VERY_FINE.zoom)
-        assertEquals(2.38, standard, 0.02)
         assertEquals(1.68, fine, 0.02)
         assertEquals(1.19, veryFine, 0.02)
     }
 
     @Test fun `a level is found again from its zoom`() {
-        assertEquals(Detail.STANDARD, Detail.ofZoom(15.5))
+        assertEquals(null, Detail.ofZoom(15.5))
         assertEquals(Detail.FINE, Detail.ofZoom(16.0))
         assertEquals(null, Detail.ofZoom(15.0))
         assertEquals(null, Detail.ofZoom(14.0))
     }
 
     @Test fun `each level asks for the source zoom that has at least its detail`() {
-        assertEquals(16, Detail.STANDARD.sourceZoom)
         assertEquals(16, Detail.FINE.sourceZoom)
         assertEquals(17, Detail.VERY_FINE.sourceZoom)
     }

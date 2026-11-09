@@ -103,18 +103,18 @@ class WatchTileSourceTest {
 
     @Test fun `the Scan 25 offers the levels up to zoom 16 only, its zoom 17 being another product`() {
         val scan25 = provider("WMTS", "https://example/{z}/{x}/{y}").copy(id = "ign_fr", maxZoom = 17)
-        assertEquals(listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE), WatchTileSource.availableDetails(scan25))
+        assertEquals(listOf(WatchTiles.Detail.FINE), WatchTileSource.availableDetails(scan25))
         val other = provider("XYZ", "https://example/{z}/{x}/{y}.png")
-        assertEquals(listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE), WatchTileSource.availableDetails(other))
+        assertEquals(listOf(WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE), WatchTileSource.availableDetails(other))
     }
 
-    @Test fun `the vector basemap offers all four levels and the raster ones never the ultra fine level`() {
+    @Test fun `the vector basemap offers all three levels and the raster ones never the ultra fine level`() {
         val vector = fr.lc4918.trailog.watch.vector.WatchVectorSource.provider("Scan 25 vectoriel")
         assertTrue(WatchTileSource.supports(vector))
         assertEquals(WatchTiles.Detail.entries.toList(), WatchTileSource.availableDetails(vector))
         assertTrue(WatchTiles.Detail.ULTRA_FINE in WatchTileSource.availableDetails(vector))
         val raster = provider("XYZ", "https://example/{z}/{x}/{y}.png")
         assertFalse(WatchTiles.Detail.ULTRA_FINE in WatchTileSource.availableDetails(raster))
-        assertEquals(listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE), WatchTileSource.availableDetails(raster))
+        assertEquals(listOf(WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE), WatchTileSource.availableDetails(raster))
     }
 }

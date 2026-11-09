@@ -777,7 +777,6 @@
     <string name="watch_send_basemap">Oinarri-mapa</string>
     <string name="watch_send_no_basemap">Ezin da maparik bidali: 15. zoomean erabilgarri dagoen raster mapa opaku bat behar da. Mapa bektorialak eta OpenStreetMap, deskarga masiboa debekatzen duena, ez dira onartzen.</string>
     <string name="watch_send_detail_label">Xehetasuna</string>
-    <string name="watch_send_detail_standard">Estandarra</string>
     <string name="watch_send_detail_fine">Fina</string>
     <string name="watch_send_detail_very_fine">Oso fina</string>
     <string name="watch_send_detail_ultra_fine">Ultrafina</string>

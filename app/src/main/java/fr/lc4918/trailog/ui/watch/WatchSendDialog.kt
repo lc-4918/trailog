@@ -76,7 +76,7 @@ private const val DEFAULT_RADIUS_INDEX = 1
  * Place d'une tuile sur la montre : une tuile codee par plages fait de 5 a 7 Ko en moyenne selon le niveau de detail
  * (mesure sur 1019 tuiles du Scan 25 d'un parcours de 28 km), plus un surcout de stockage d'environ 130 octets.
  * Le simulateur fenix 6X en range 1700 de 6000 octets dans ses 10 Mo. 7300 octets est la moyenne la plus haute, celle du
- * niveau STANDARD, arrondie : l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la
+ * niveau le plus grossier, arrondie : l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la
  * limite pas : la place reelle depend de l'appareil et du fond.
  */
 internal const val WATCH_BYTES_PER_TILE = 7_300L
@@ -87,8 +87,7 @@ internal const val WATCH_BYTES_PER_TILE = 7_300L
  * (hachures de foret, courbes de niveau, noms) et moins la ou elle est vide. Quelques tuiles frolent le plafond de 11000 octets.
  */
 private val WATCH_VECTOR_BYTES_PER_TILE = mapOf(
-    WatchTiles.Detail.STANDARD to 9_500L, WatchTiles.Detail.FINE to 9_500L,
-    WatchTiles.Detail.VERY_FINE to 8_500L, WatchTiles.Detail.ULTRA_FINE to 6_500L,
+    WatchTiles.Detail.FINE to 9_500L, WatchTiles.Detail.VERY_FINE to 8_500L, WatchTiles.Detail.ULTRA_FINE to 6_500L,
 )
 
 /** Octets que prend une tuile sur la montre pour ce fond a ce niveau de detail (estimation affichee, pas une limite). */
@@ -263,7 +262,6 @@ private fun DetailSelect(
                 modifier = Modifier.testTag("watch_detail_${level.name}"),
             ) {
                 Text(stringResource(when (level) {
-                    WatchTiles.Detail.STANDARD -> R.string.watch_send_detail_standard
                     WatchTiles.Detail.FINE -> R.string.watch_send_detail_fine
                     WatchTiles.Detail.VERY_FINE -> R.string.watch_send_detail_very_fine
                     WatchTiles.Detail.ULTRA_FINE -> R.string.watch_send_detail_ultra_fine

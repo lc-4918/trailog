@@ -89,17 +89,17 @@ class WatchSendDialogTest {
     /** Le Scan 25 n'a pas de detail propre au-dela du zoom 16 : le niveau le plus fin n'est pas offert. */
     @Test fun `a basemap without finer zoom does not offer the finest level`() {
         show(listOf(scan25Native))
-        compose.onNodeWithTag("watch_detail_STANDARD").assertExists()
-        compose.onNodeWithTag("watch_detail_FINE").assertExists()
+        // Un seul niveau possible : le selecteur n'est pas affiche.
+        compose.onNodeWithTag("watch_detail_select").assertDoesNotExist()
         compose.onNodeWithTag("watch_detail_VERY_FINE").assertDoesNotExist()
     }
 
     @Test fun `the requested detail falls back when the basemap lacks it`() {
-        val raster = listOf(WatchTiles.Detail.STANDARD, WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE)
+        val raster = listOf(WatchTiles.Detail.FINE, WatchTiles.Detail.VERY_FINE)
         assertEquals(WatchTiles.Detail.VERY_FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, raster))
         assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, raster.dropLast(1)))
         assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.ULTRA_FINE, raster))
-        assertEquals(WatchTiles.Detail.STANDARD, chooseDetail(WatchTiles.Detail.VERY_FINE, listOf(WatchTiles.Detail.STANDARD)))
+        assertEquals(WatchTiles.Detail.FINE, chooseDetail(WatchTiles.Detail.VERY_FINE, listOf(WatchTiles.Detail.FINE)))
     }
 
     @Test fun `another basemap can be chosen`() {
@@ -217,10 +217,10 @@ class WatchSendDialogTest {
 
     private val vector = fr.lc4918.trailog.watch.vector.WatchVectorSource.provider("Scan 25 vectoriel")
 
-    /** Le fond vectoriel offre les quatre niveaux, dont "Ultra fin" (17,0) ; ce niveau part avec l'envoi. */
+    /** Le fond vectoriel offre trois niveaux, dont "Ultra fin" (17,0) ; ce niveau part avec l'envoi. */
     @Test fun `the vector basemap offers the ultra fine level and it is sent`() {
         show(listOf(vector))
-        compose.onNodeWithTag("watch_detail_STANDARD").assertExists()
+        compose.onNodeWithTag("watch_detail_FINE").assertExists()
         compose.onNodeWithTag("watch_detail_VERY_FINE").assertExists()
         compose.onNodeWithTag("watch_detail_ULTRA_FINE").performSemanticsAction(SemanticsActions.OnClick)
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("watch_send_estimate").fetchSemanticsNodes().isNotEmpty() }
