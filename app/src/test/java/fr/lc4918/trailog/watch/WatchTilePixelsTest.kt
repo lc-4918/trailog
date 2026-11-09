@@ -95,18 +95,46 @@ class WatchTilePixelsTest {
         assertEquals(0xFF0000, colorOf(indices[5 * side + 5]))
     }
 
-    @Test fun `pack codes the tile by runs of the same index`() {
-        // Deux pixels rouges puis deux noirs : deux plages, (longueur, indice).
-        val packed = WatchTilePixels.pack(intArrayOf(0xFF0000, 0xFF0000, 0x000000, 0x000000), 2)
-        assertEquals(
-            listOf(2, WatchTilePixels.PALETTE.indexOf(0xFF0000), 2, WatchTilePixels.PALETTE.indexOf(0x000000)),
-            packed.map { it.toInt() and 0xFF },
-        )
+    @Test fun `a run of one to three pixels takes a single byte`() {
+        // Deux pixels rouges puis un noir : une plage de 2 (longueur moins un = 1 dans les deux bits de poids fort) et une de 1.
+        val red = WatchTilePixels.PALETTE.indexOf(0xFF0000)
+        val black = WatchTilePixels.PALETTE.indexOf(0x000000)
+        val packed = WatchTilePixels.encode(intArrayOf(red, red, black), 3)
+        assertEquals(listOf((1 shl 6) or red, (0 shl 6) or black), packed.map { it.toInt() and 0xFF })
+        assertEquals(listOf(red, red, black), WatchTilePixels.unpack(packed).toList())
+    }
+
+    @Test fun `a run of three pixels is still one byte and four takes two`() {
+        val black = WatchTilePixels.PALETTE.indexOf(0x000000)
+        val three = WatchTilePixels.encode(IntArray(3) { black }, 3)
+        assertEquals(listOf((2 shl 6) or black), three.map { it.toInt() and 0xFF })
+        val four = WatchTilePixels.encode(IntArray(4) { black }, 2)
+        assertEquals(listOf((3 shl 6) or black, 4), four.map { it.toInt() and 0xFF })
+    }
+
+    @Test fun `a longer run takes a marker byte holding the index and then its length`() {
+        val packed = WatchTilePixels.encode(IntArray(100) { 17 }, 10)
+        assertEquals(listOf((3 shl 6) or 17, 100), packed.map { it.toInt() and 0xFF })
     }
 
     @Test fun `a run longer than 255 pixels is cut`() {
         val packed = WatchTilePixels.pack(IntArray(20 * 20) { 0xFFFFFF }, 20)
-        assertEquals(listOf(255, 0, 145, 0), packed.map { it.toInt() and 0xFF })
+        assertEquals(listOf((3 shl 6) or 0, 255, (3 shl 6) or 0, 145), packed.map { it.toInt() and 0xFF })
+    }
+
+    @Test fun `every palette index survives the round trip in short and long runs`() {
+        for (index in WatchTilePixels.PALETTE.indices) {
+            for (length in listOf(1, 2, 3, 4, 255)) {
+                val indices = IntArray(length) { index } + IntArray(1) { (index + 1) % WatchTilePixels.PALETTE.size }
+                assertEquals("indice $index, plage $length", indices.toList(), WatchTilePixels.unpack(WatchTilePixels.encode(indices, indices.size)).toList())
+            }
+        }
+    }
+
+    @Test fun `a detailed tile of short runs is far smaller than two bytes per run`() {
+        // Des plages de un a trois pixels : un octet chacune au lieu de deux.
+        val indices = IntArray(128 * 128) { (it / 2) % 2 * 5 + it % 7 / 5 }
+        assertTrue(WatchTilePixels.encode(indices, 128).size < 128 * 128)
     }
 
     @Test fun `unpack reverses pack`() {

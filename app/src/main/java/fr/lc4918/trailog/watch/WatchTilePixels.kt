@@ -13,7 +13,8 @@ package fr.lc4918.trailog.watch
  * routes, courbes) au lieu de marches de deux couleurs. Quinze couleurs au plus tiendraient sur quatre bits par pixel mais
  * ne laissent aucune nuance. Un octet par pixel ferait 16 Ko par tuile, trop pour une reponse que la montre accepte (code
  * -402, reponse trop grande) : la tuile est donc codee par plages (cf. [encode]), qu'une carte d'aplats et de traits fins
- * ramene a quelques Ko, et que la montre dessine telles quelles.
+ * ramene a quelques Ko, et que la montre dessine telles quelles. Une carte vectorielle chargee (hachures, courbes de niveau,
+ * noms de rues) est faite de beaucoup de plages de un a trois pixels : elles tiennent sur un octet.
  *
  * Chaque pixel prend la couleur de palette la plus proche en espace Lab (distance perceptuelle). Pas de tramage : un fond
  * de carte est fait d'aplats et de traits fins, et un tramage y ferait des points parasites.
@@ -38,6 +39,11 @@ object WatchTilePixels {
 
     private const val MAX_RUN = 255
 
+    /** Les plages de cette longueur au plus tiennent sur un octet (cf. [encode]). */
+    private const val MAX_SHORT_RUN = 3
+    private const val LONG_RUN_MARKER = 3
+    private const val INDEX_MASK = 0x3F
+
     private val linearByLevel = DoubleArray(256) {
         val level = it / 255.0
         if (level > 0.04045) Math.pow((level + 0.055) / 1.055, 2.4) else level / 12.92
@@ -53,7 +59,9 @@ object WatchTilePixels {
 
     /**
      * Les indices de palette codes par plages, dans l'ordre de lecture (ligne par ligne, sans tenir compte des bords de
-     * ligne) : des paires d'octets (longueur de la plage de 1 a 255, indice de palette). Une tuile qui depasserait
+     * ligne). Une plage de 1 a 3 pixels tient sur un octet : la longueur moins un dans les deux bits de poids fort, l'indice de
+     * palette (de 0 a 63) dans les six autres. Une plage plus longue prend deux octets : 3 dans les deux bits de poids fort et
+     * l'indice, puis la longueur de 4 a 255. Une tuile qui depasserait
      * [MAX_ENCODED_BYTES] (un fond photographique, tres bruite) est simplifiee jusqu'a y tenir : d'abord les pixels
      * isoles repris par leurs voisins, puis des blocs de 2, 4 ou 8 pixels de cote.
      */
@@ -78,9 +86,16 @@ object WatchTilePixels {
     /** L'inverse de [encode] : un indice de palette par pixel. */
     fun unpack(encoded: ByteArray): IntArray {
         val indices = ArrayList<Int>(TILE_PIXELS)
-        for (position in 0 until encoded.size - 1 step 2) {
-            val length = encoded[position].toInt() and 0xFF
-            val index = encoded[position + 1].toInt() and 0xFF
+        var position = 0
+        while (position < encoded.size) {
+            val first = encoded[position].toInt() and 0xFF
+            val index = first and INDEX_MASK
+            val code = first shr 6
+            val length = if (code == LONG_RUN_MARKER) {
+                if (position + 1 >= encoded.size) break
+                (encoded[position + 1].toInt() and 0xFF).also { position++ }
+            } else code + 1
+            position++
             repeat(length) { indices.add(index) }
         }
         return indices.toIntArray()
@@ -92,8 +107,13 @@ object WatchTilePixels {
         while (start < indices.size) {
             var end = start + 1
             while (end < indices.size && indices[end] == indices[start] && end - start < MAX_RUN) end++
-            out.write(end - start)
-            out.write(indices[start])
+            val length = end - start
+            if (length <= MAX_SHORT_RUN) {
+                out.write(((length - 1) shl 6) or indices[start])
+            } else {
+                out.write((LONG_RUN_MARKER shl 6) or indices[start])
+                out.write(length)
+            }
             start = end
         }
         return out.toByteArray()

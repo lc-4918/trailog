@@ -73,21 +73,21 @@ internal val WatchCorridorRadiiMeters = listOf(250.0, 500.0, 1000.0, 2000.0)
 private const val DEFAULT_RADIUS_INDEX = 1
 
 /**
- * Place d'une tuile sur la montre : une tuile codee par plages fait de 5 a 7 Ko en moyenne selon le niveau de detail
- * (mesure sur 1019 tuiles du Scan 25 d'un parcours de 28 km), plus un surcout de stockage d'environ 130 octets.
- * Le simulateur fenix 6X en range 1700 de 6000 octets dans ses 10 Mo. 7300 octets est la moyenne la plus haute, celle du
- * niveau le plus grossier, arrondie : l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la
- * limite pas : la place reelle depend de l'appareil et du fond.
+ * Place d'une tuile sur la montre : une tuile codee par plages (une plage de un a trois pixels tient sur un octet) fait de 3,6 a
+ * 4,3 Ko en moyenne selon le niveau de detail (mesure sur les 856 tuiles du Scan 25 d'un parcours de 28 km), plus un surcout de
+ * stockage d'environ 130 octets. 4300 octets est la moyenne la plus haute, celle du niveau le plus grossier, arrondie a 4500 :
+ * l'estimation affichee ne depasse jamais de beaucoup la place reelle, elle ne la limite pas : la place reelle depend de
+ * l'appareil et du fond.
  */
-internal const val WATCH_BYTES_PER_TILE = 7_300L
+internal const val WATCH_BYTES_PER_TILE = 4_500L
 
 /**
- * Place d'une tuile du fond vectoriel, par niveau de detail : le plus haut des moyennes mesurees sur une ville dense (Toulouse), une
- * campagne (La Force) et un massif (Morgiou), arrondi a 500 octets. Une carte vectorielle pese plus qu'un raster la ou elle est chargee
- * (hachures de foret, courbes de niveau, noms) et moins la ou elle est vide. Quelques tuiles frolent le plafond de 11000 octets.
+ * Place d'une tuile du fond vectoriel, par niveau de detail : le plus haut des moyennes mesurees sur 64 tuiles d'une ville dense (Toulouse), d'une
+ * campagne (La Force) et d'un massif (Morgiou), arrondi a 500 octets. Une carte vectorielle pese plus qu'un raster la ou elle est chargee
+ * (hachures de foret, courbes de niveau, noms) et moins la ou elle est vide. Aucune tuile ne depasse 9500 octets, le plafond est de 11000.
  */
 private val WATCH_VECTOR_BYTES_PER_TILE = mapOf(
-    WatchTiles.Detail.FINE to 9_500L, WatchTiles.Detail.VERY_FINE to 8_500L, WatchTiles.Detail.ULTRA_FINE to 6_500L,
+    WatchTiles.Detail.FINE to 6_500L, WatchTiles.Detail.VERY_FINE to 5_500L, WatchTiles.Detail.ULTRA_FINE to 4_500L,
 )
 
 /** Octets que prend une tuile sur la montre pour ce fond a ce niveau de detail (estimation affichee, pas une limite). */

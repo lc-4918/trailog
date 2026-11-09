@@ -26,7 +26,7 @@ class WatchRoutesTest {
         assertEquals("application/json", reply.contentType)
         val palette = WatchTilePixels.PALETTE.joinToString(",")
         assertEquals(
-            """{"version":2,"name":"Tour \"du\" lac","zoom":15.0,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3,"turnCount":2}""",
+            """{"version":3,"name":"Tour \"du\" lac","zoom":15.0,"tilePixels":128,"palette":[$palette],"tileCount":250,"pointCount":3,"turnCount":2}""",
             reply.text(),
         )
     }

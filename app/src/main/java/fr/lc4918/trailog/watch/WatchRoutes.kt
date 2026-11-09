@@ -43,7 +43,7 @@ class WatchRoutes(
     private val onTileServed: (servedCount: Int, tileCount: Int) -> Unit = { _, _ -> },
 ) {
     companion object {
-        const val PROTOCOL_VERSION = 2
+        const val PROTOCOL_VERSION = 3
         const val MAX_TILES_PER_PAGE = 100
         const val MAX_TRACK_POINTS_PER_PAGE = 250
         const val MAX_TURNS_PER_PAGE = 100
