@@ -28,6 +28,9 @@ object WatchVectorRenderer {
     private const val HATCH_STEP = 4f
     private const val DOT_STEP = 4
     private const val NATURAL_ROAD_LEVEL = "n0"
+
+    /** Fin du `symbo` des couches de ce qui passe au-dessus (routier_route_sup, routier_chemin_sup) : le meme symbole que celui du sol, sans elle. */
+    private const val OVERPASS_SUFFIX = "_SUP"
     private const val TEXT_BASELINE = 3f
 
     /**
@@ -100,6 +103,11 @@ object WatchVectorRenderer {
         }
         piece.tile.layers["hydro_surf"]?.let { layer ->
             for (feature in layer.features) canvas.drawPath(path(piece, layer, feature, true), fillPaint(WatchVectorStyle.WATER))
+        }
+        piece.tile.layers["routier_surf"]?.let { layer ->
+            for (feature in layer.features) {
+                if (feature.text("symbo") == "PONT_SURF") canvas.drawPath(path(piece, layer, feature, true), fillPaint(WatchVectorStyle.ROAD_STREET_FILL))
+            }
         }
         piece.tile.layers["bati_surf"]?.let { layer ->
             for (feature in layer.features) {
@@ -181,14 +189,18 @@ object WatchVectorRenderer {
         val byClass = LinkedHashMap<RoadClass, Path>()
         val classes = HashMap<Pair<Float, Int>, RoadClass>()
         for (piece in pieces) {
-            val layer = piece.tile.layers["routier_route"] ?: continue
-            for (feature in layer.features) {
-                if ((feature.text("niveau") ?: NATURAL_ROAD_LEVEL) != NATURAL_ROAD_LEVEL) continue
-                val symbo = feature.text("symbo")
-                val width = (WatchVectorStyle.roadWidth(symbo, zoom) * 10).roundToInt() / 10f
-                val key = width to WatchVectorStyle.roadFill(symbo)
-                val roadClass = classes.getOrPut(key) { RoadClass(key.first, key.second) }
-                byClass.getOrPut(roadClass) { Path() }.addPath(path(piece, layer, feature, false))
+            // Les routes au sol, puis celles qui passent au-dessus (ponts, viaducs) : elles se dessinent comme les autres, par-dessus l'eau.
+            // Les routes en tunnel (routier_route_sou) ne se voient pas.
+            for (layerName in listOf("routier_route", "routier_route_sup")) {
+                val layer = piece.tile.layers[layerName] ?: continue
+                for (feature in layer.features) {
+                    if ((feature.text("niveau") ?: NATURAL_ROAD_LEVEL) != NATURAL_ROAD_LEVEL) continue
+                    val symbo = feature.text("symbo")?.removeSuffix(OVERPASS_SUFFIX)
+                    val width = (WatchVectorStyle.roadWidth(symbo, zoom) * 10).roundToInt() / 10f
+                    val key = width to WatchVectorStyle.roadFill(symbo)
+                    val roadClass = classes.getOrPut(key) { RoadClass(key.first, key.second) }
+                    byClass.getOrPut(roadClass) { Path() }.addPath(path(piece, layer, feature, false))
+                }
             }
         }
         val widths = byClass.keys.map { it.width }.distinct().sorted()
@@ -213,9 +225,10 @@ object WatchVectorRenderer {
     // --- traits : chemins, ruisseaux, voies ferrees, roches, talus, limites ---
 
     private fun drawLines(canvas: Canvas, piece: Piece) {
-        piece.tile.layers["routier_chemin"]?.let { layer ->
+        for (layerName in listOf("routier_chemin", "routier_chemin_sup")) {
+            val layer = piece.tile.layers[layerName] ?: continue
             for (feature in layer.features) {
-                val stroke = WatchVectorStyle.PATHS[feature.text("symbo")] ?: WatchVectorStyle.DEFAULT_PATH
+                val stroke = WatchVectorStyle.PATHS[feature.text("symbo")?.removeSuffix(OVERPASS_SUFFIX)] ?: WatchVectorStyle.DEFAULT_PATH
                 canvas.drawPath(path(piece, layer, feature, false), strokePaint(stroke))
             }
         }

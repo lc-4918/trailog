@@ -107,6 +107,25 @@ class WatchVectorRendererTest {
         assertTrue("$yellow sur ${samples.size} jaunes sur l'axe", yellow >= samples.size * 0.8)
     }
 
+    @Test fun `a bridge over the river is drawn as a road above the water`() {
+        // Le Pont Neuf de Toulouse : sa route (couche routier_route_sup) traverse la Garonne (hydro_surf).
+        val bridge = tile("17_66059_47862")
+        val road = bridge.layers.getValue("routier_route_sup").features.first { it.text("symbo") == "REGIONALE_3_SUP" }
+        var samplesCount = 0
+        var yellowCount = 0
+        var waterCount = 0
+        for (column in 0..1) for (row in 0..1) {
+            val pixels = render(bridge, 66059, 47862, column, row)
+            val samples = walk(road.parts.first(), column, row)
+            samplesCount += samples.size
+            yellowCount += samples.count { pixels.at(it.first, it.second) == index(0xFFFF00) }
+            waterCount += pixels.count { it == index(0x55AAFF) }
+        }
+        assertTrue("assez de pont pour juger : $samplesCount", samplesCount > 50)
+        assertTrue("$yellowCount sur $samplesCount jaunes sur l'axe du pont", yellowCount >= samplesCount * 0.8)
+        assertTrue("la riviere est dessinee : $waterCount pixels d'eau", waterCount > 2000)
+    }
+
     @Test fun `a footpath is dashed and a contour line is brown`() {
         // La calanque de Morgiou : on cherche, dans les quatre quarts de la tuile, un sentier assez long et une courbe de niveau.
         var dashed = false
