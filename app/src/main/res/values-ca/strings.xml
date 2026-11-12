@@ -434,6 +434,8 @@
     <string name="update_install_stalled">Android no ha acabat la instal·lació. Torna-ho a provar més tard o desactiva l\'anàlisi d\'aplicacions de Play Protect a Play Store.</string>
     <string name="update_install_closes">L\'aplicació es tancarà per instal·lar-se. Torna-la a obrir després.</string>
     <string name="update_done_title">Trailog: actualització acabada</string>
+    <string name="update_installing_title">S\'està instal·lant l\'actualització</string>
+    <string name="update_installing_text">Trailog es tanca per instal·lar-se. Espera la notificació d\'actualització completada abans de tornar-lo a obrir.</string>
     <string name="update_done_open">Obre</string>
     <string name="update_done_channel">Actualitzacions</string>
     <string name="update_downloaded_title">Trailog: actualització baixada</string>

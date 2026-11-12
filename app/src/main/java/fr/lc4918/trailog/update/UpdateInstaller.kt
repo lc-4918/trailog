@@ -211,8 +211,11 @@ object UpdateInstaller {
                 }
             }
         }
-        if (result.isSuccess) set(InstallState.Installing)
-        else {
+        if (result.isSuccess) {
+            set(InstallState.Installing)
+            // L'application va etre fermee par l'installation : la notification dit d'attendre la fin.
+            UpdateDone.showInstalling(app)
+        } else {
             abandon(app)
             set(InstallState.Failed(result.exceptionOrNull()?.message))
         }
@@ -223,6 +226,7 @@ object UpdateInstaller {
         val id = sessionId
         sessionId = -1
         if (id >= 0) runCatching { context.applicationContext.packageManager.packageInstaller.abandonSession(id) }
+        UpdateDone.cancelInstalling(context)
     }
 
     /** Le rapport du systeme sur la session : voir [UpdateInstallReceiver]. */
@@ -236,6 +240,10 @@ object UpdateInstaller {
             }
         }
         InstallState.fromStatus(status, message)?.let { set(it) }
+        // Annulee ou echouee : plus rien a attendre.
+        if (status != PackageInstaller.STATUS_PENDING_USER_ACTION && status != PackageInstaller.STATUS_SUCCESS) {
+            UpdateDone.cancelInstalling(context)
+        }
     }
 
     private fun statusIntentSender(context: Context, id: Int) = PendingIntent.getBroadcast(

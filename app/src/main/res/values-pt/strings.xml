@@ -434,6 +434,8 @@
     <string name="update_install_stalled">O Android não concluiu a instalação. Tente mais tarde ou desative a análise de aplicações do Play Protect na Play Store.</string>
     <string name="update_install_closes">A aplicação vai fechar para se instalar. Volte a abri-la depois.</string>
     <string name="update_done_title">Trailog: atualização concluída</string>
+    <string name="update_installing_title">A instalar a atualização</string>
+    <string name="update_installing_text">O Trailog fecha-se para ser instalado. Aguarde a notificação de atualização concluída antes de o voltar a abrir.</string>
     <string name="update_done_open">Abrir</string>
     <string name="update_done_channel">Atualizações</string>
     <string name="update_downloaded_title">Trailog: atualização transferida</string>

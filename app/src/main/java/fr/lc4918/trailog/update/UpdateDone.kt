@@ -57,6 +57,46 @@ object UpdateDone {
 
     fun cancelDownloaded(context: Context) = NotificationManagerCompat.from(context.applicationContext).cancel(DOWNLOADED_ID)
 
+    /** Identifiant propre : 4918 a 4931 sont deja pris par d'autres notifications de l'application. */
+    private const val INSTALLING_ID = 4940
+
+    /** Au-dela, une installation qui n'a rien donne ne laisse pas une attente affichee pour toujours. */
+    internal const val INSTALLING_TIMEOUT_MS = 5 * 60_000L
+
+    /**
+     * "Installation de la mise a jour" et son spinner, entre la confirmation et la fin : le systeme ferme
+     * l'application pour l'installer, et sans elle rien ne dit qu'il faut attendre la notification de fin
+     * avant de la rouvrir. Retiree par la nouvelle version a son demarrage (cf. [UpdateDoneReceiver]), par un
+     * echec ou un abandon, et au pire au bout de [INSTALLING_TIMEOUT_MS].
+     */
+    fun showInstalling(context: Context) {
+        val app = context.applicationContext
+        val manager = NotificationManagerCompat.from(app)
+        if (!shouldNotify(BuildConfig.DEBUG, manager.areNotificationsEnabled())) return
+        (app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, app.getString(R.string.update_done_channel), NotificationManager.IMPORTANCE_DEFAULT),
+        )
+        runCatching { manager.notify(INSTALLING_ID, installingNotification(app)) }
+    }
+
+    /** La notification d'attente elle-meme, a part pour etre verifiee sans passer par [shouldNotify]. */
+    internal fun installingNotification(context: Context): android.app.Notification {
+        val text = context.getString(R.string.update_installing_text)
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_update)
+            .setContentTitle(context.getString(R.string.update_installing_title))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            // Le spinner : une progression sans fin connue.
+            .setProgress(0, 0, true)
+            .setOngoing(true)
+            .setSilent(true)
+            .setTimeoutAfter(INSTALLING_TIMEOUT_MS)
+            .build()
+    }
+
+    fun cancelInstalling(context: Context) = NotificationManagerCompat.from(context.applicationContext).cancel(INSTALLING_ID)
+
     fun show(context: Context) {
         val app = context.applicationContext
         val manager = NotificationManagerCompat.from(app)
@@ -91,6 +131,10 @@ class UpdateDownloadReceiver : BroadcastReceiver() {
 /** Recoit la fin du remplacement de l'appli par une nouvelle version (declare au manifeste, non exporte). */
 class UpdateDoneReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) UpdateDone.show(context)
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // La nouvelle version est la : l'attente n'a plus d'objet, la fin la remplace.
+            UpdateDone.cancelInstalling(context)
+            UpdateDone.show(context)
+        }
     }
 }

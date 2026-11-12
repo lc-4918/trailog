@@ -434,6 +434,8 @@
     <string name="update_install_stalled">Androidek ez du instalazioa amaitu. Saiatu berriro geroago, edo desaktibatu Play Protect-en aplikazioen azterketa Play Store-n.</string>
     <string name="update_install_closes">Aplikazioa itxi egingo da instalatzeko. Ireki berriro ondoren.</string>
     <string name="update_done_title">Trailog: eguneratzea amaituta</string>
+    <string name="update_installing_title">Eguneratzea instalatzen</string>
+    <string name="update_installing_text">Trailog itxi egiten da instalatzeko. Itxaron eguneratzea amaitu dela dioen jakinarazpenari berriro ireki aurretik.</string>
     <string name="update_done_open">Ireki</string>
     <string name="update_done_channel">Eguneratzeak</string>
     <string name="update_downloaded_title">Trailog: eguneratzea deskargatuta</string>
