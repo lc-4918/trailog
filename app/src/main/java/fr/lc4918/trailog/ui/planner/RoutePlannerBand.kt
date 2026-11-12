@@ -76,7 +76,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -94,9 +93,11 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import fr.lc4918.trailog.ui.settings.routingProfileIcon
 import fr.lc4918.trailog.ui.settings.routingProfileShortLabel
@@ -155,8 +156,14 @@ private val FieldGap = Spacing.xs
  */
 private val RailWidth = 24.dp
 
-/** Largeur de la colonne des libelles d'etape (A, 1, 2, B), quand elle est affichee. */
-private val BadgeWidth = 20.dp
+/** Rayon de la pastille numerotee du rail : elle tient dans [RailWidth], comme celle de la carte. */
+private val RailBadgeRadius = 10.dp
+
+/** Epaisseur de l'anneau blanc de la pastille, en part de son rayon (cf. MapLibreView.badgeBitmap). */
+private const val RailBadgeRing = 0.08f
+
+/** Corps du libelle d'une pastille du rail, en sp : un caractere (A, B, 1 a 9) plus grand que deux. */
+internal fun railLabelTextSp(length: Int): Float = if (length <= 1) 11f else 9f
 
 /**
  * Bande du planificateur d'itineraire, posee au bas de l'ecran.
@@ -457,7 +464,7 @@ private fun StepList(
             key(step.id) {
                 StepRow(
                     state = state, step = step, index = i,
-                    badgeShown = stepLabels != null, badge = stepLabels?.get(step.id),
+                    railLabel = stepLabels?.get(step.id),
                     placeholder = stringResource(
                         when {
                             i == 0 -> R.string.planner_start
@@ -566,14 +573,36 @@ private fun AddStepButton(onClick: () -> Unit) {
  * ligne dessine sa part - la moitie haute vers la precedente, la moitie basse vers la suivante, jusqu'au
  * bas de ses propositions si elles sont ouvertes - et les parts se rejoignent d'une ligne a l'autre.
  */
-private fun Modifier.stepRail(index: Int, count: Int, line: Color, mark: Color, hole: Color, via: Color) =
-    drawBehind {
+private fun Modifier.stepRail(
+    index: Int, count: Int, line: Color, mark: Color, hole: Color, via: Color,
+    /** Libelle de la pastille, comme sur la carte : nul, le repere d'origine (anneau, cible, point). */
+    label: String? = null,
+) = drawWithCache {
+    // Le pinceau du libelle, cree une fois pour toutes tant que le libelle et la taille ne changent pas.
+    val labelPaint = label?.let {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = railLabelTextSp(it.length).sp.toPx()
+        }
+    }
+    onDrawBehind {
         val x = RailWidth.toPx() / 2
         val y = (FieldGap + FieldHeight / 2).toPx()
         val w = 2.dp.toPx()
         if (index > 0) drawLine(line, Offset(x, 0f), Offset(x, y), w)
         if (index < count - 1) drawLine(line, Offset(x, y), Offset(x, size.height), w)
         val c = Offset(x, y)
+        if (label != null && labelPaint != null) {
+            // La pastille de la carte : disque noir cercle de blanc, libelle blanc au centre.
+            val radius = RailBadgeRadius.toPx()
+            drawCircle(Color.White, radius, c)
+            drawCircle(Color.Black, radius * (1 - RailBadgeRing), c)
+            val baseline = y - (labelPaint.ascent() + labelPaint.descent()) / 2f
+            drawContext.canvas.nativeCanvas.drawText(label, x, baseline, labelPaint)
+            return@onDrawBehind
+        }
         when (index) {
             0 -> {
                 drawCircle(hole, 7.dp.toPx(), c)
@@ -590,6 +619,7 @@ private fun Modifier.stepRail(index: Int, count: Int, line: Color, mark: Color, 
             }
         }
     }
+}
 
 /** Une etape : son champ, sa poignee de glissement, sa suppression, puis ses propositions. */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
@@ -598,9 +628,8 @@ private fun StepRow(
     state: RoutePlannerState,
     step: PlannerStep,
     index: Int,
-    /** Colonne du libelle de l'etape, comme sur la carte : affichee seulement si le reglage le demande. */
-    badgeShown: Boolean = false,
-    badge: String? = null,
+    /** Libelle de la pastille du rail (A, 1, 2, B), comme sur la carte ; nul, le repere d'origine. */
+    railLabel: String? = null,
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     onPickOnMap: (PlannerStep) -> Unit,
@@ -675,19 +704,11 @@ private fun StepRow(
         modifier.bringIntoViewRequester(bringIntoView).stepRail(
             index, state.steps.size,
             line = scheme.outlineVariant, mark = scheme.primary, hole = scheme.surface, via = scheme.onSurfaceVariant,
+            label = railLabel,
         )
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.width(RailWidth + Spacing.s))
-            if (badgeShown) {
-                Text(
-                    badge.orEmpty(),
-                    modifier = Modifier.width(BadgeWidth),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = scheme.primary,
-                    textAlign = TextAlign.Center,
-                )
-            }
             Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
                 if (step.target != null && !focused && !wantsFocus) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie

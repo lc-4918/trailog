@@ -1,6 +1,7 @@
 package fr.lc4918.trailog.ui.planner
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Les libelles de la liste des etapes reprennent ceux de la carte : A, les rangs, B. */
@@ -26,5 +27,11 @@ class StepBadgeLabelsTest {
 
     @Test fun `aucune etape posee, aucun libelle`() {
         assertEquals(emptyMap<Long, String>(), stepBadgeLabels(emptyList()))
+    }
+
+    /** La pastille du rail garde un corps lisible : un caractere plus grand, deux encore dans le disque. */
+    @Test fun `le libelle d'un caractere est plus grand que celui de deux`() {
+        assertTrue(railLabelTextSp(1) > railLabelTextSp(2))
+        assertTrue("deux chiffres tiennent dans le disque de 20 dp", railLabelTextSp(2) <= 10f)
     }
 }
