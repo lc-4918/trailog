@@ -452,9 +452,6 @@
     <string name="profile_no_elevation">Route without elevation data</string>
 
     <string name="settings_section_map_controls">Buttons and gestures</string>
-    <string name="settings_section_position">Position</string>
-    <string name="settings_section_search_route">Search and route</string>
-    <string name="settings_section_track_tools">Track tools</string>
     <string name="settings_sw_track_follow">Dashboard</string>
     <string name="settings_group_storage">Storage</string>
     <string name="settings_group_interaction">Interaction</string>

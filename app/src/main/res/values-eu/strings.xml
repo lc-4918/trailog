@@ -452,9 +452,6 @@
     <string name="profile_no_elevation">Ibilbidea altimetriarik gabe</string>
 
     <string name="settings_section_map_controls">Botoiak eta keinuak</string>
-    <string name="settings_section_position">Kokapena</string>
-    <string name="settings_section_search_route">Bilaketa eta ibilbidea</string>
-    <string name="settings_section_track_tools">Arrasto-tresnak</string>
     <string name="settings_sw_track_follow">Aginte-panela</string>
     <string name="settings_group_storage">Biltegiratzea</string>
     <string name="settings_group_interaction">Interakzioa</string>

@@ -18,6 +18,7 @@ import fr.lc4918.trailog.R
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.ui.routes.TestTrailogApp
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -98,6 +99,23 @@ class ExpertModeUiTest {
         defileVers(app.getString(R.string.settings_sw_gps_recenter))
         compose.waitUntil(5_000) { !present(expert) }
         assertTrue(present(R.string.settings_expert_off))
+    }
+
+    /** L'affichage de la carte (echelle, rotation, fonds) n'apparait qu'en mode expert. */
+    @Test fun `l'affichage de la carte ne s'ouvre qu'en mode expert`() {
+        runBlocking {
+            app.repository.ensureSeed()
+            val s = app.repository.settings.get() ?: SettingsEntity()
+            app.repository.settings.upsert(s.copy(expertMode = false))
+        }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+        defileVers(app.getString(R.string.settings_sw_track_follow))
+        assertFalse("cachee hors mode expert", present(R.string.settings_sw_scale))
+
+        septAppuis()
+        defileVers(app.getString(R.string.settings_sw_scale))
+        assertTrue("affichee en mode expert", present(R.string.settings_sw_scale))
     }
 
     /**

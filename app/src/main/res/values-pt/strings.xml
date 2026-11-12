@@ -452,9 +452,6 @@
     <string name="profile_no_elevation">Percurso sem altimetria</string>
 
     <string name="settings_section_map_controls">Botões e gestos</string>
-    <string name="settings_section_position">Posição</string>
-    <string name="settings_section_search_route">Pesquisa e itinerário</string>
-    <string name="settings_section_track_tools">Ferramentas de trilho</string>
     <string name="settings_sw_track_follow">Painel</string>
     <string name="settings_group_storage">Armazenamento</string>
     <string name="settings_group_interaction">Interação</string>

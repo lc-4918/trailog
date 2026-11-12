@@ -452,9 +452,6 @@
     <string name="profile_no_elevation">Strecke ohne Höhendaten</string>
 
     <string name="settings_section_map_controls">Schaltflächen und Gesten</string>
-    <string name="settings_section_position">Position</string>
-    <string name="settings_section_search_route">Suche und Route</string>
-    <string name="settings_section_track_tools">Werkzeuge für Tracks</string>
     <string name="settings_sw_track_follow">Dashboard</string>
     <string name="settings_group_storage">Speicher</string>
     <string name="settings_group_interaction">Interaktion</string>

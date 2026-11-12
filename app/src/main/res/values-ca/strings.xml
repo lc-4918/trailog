@@ -452,9 +452,6 @@
     <string name="profile_no_elevation">Recorregut sense altimetria</string>
 
     <string name="settings_section_map_controls">Botons i gestos</string>
-    <string name="settings_section_position">Posició</string>
-    <string name="settings_section_search_route">Cerca i itinerari</string>
-    <string name="settings_section_track_tools">Eines de traça</string>
     <string name="settings_sw_track_follow">Tauler</string>
     <string name="settings_group_storage">Emmagatzematge</string>
     <string name="settings_group_interaction">Interacció</string>

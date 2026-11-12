@@ -75,11 +75,11 @@ import kotlinx.coroutines.launch
 /**
  * Onglet "Carte" : ce qui s'affiche sur la carte et par-dessus elle.
  *
- * Les groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, la position, le dessin des
- * traces, le tableau de bord, les points d'interet, puis ce qui decrit le relief parcouru. Tous portent un titre de groupe, y compris le premier
- * desormais - "Boutons et gestes" reunissait naguere neuf interrupteurs sous une seule rubrique plate ; ils
- * se repartissent maintenant en quatre sous-rubriques qui disent chacune a quoi elles servent (Position,
- * Recherche et itineraire, Outils de trace, Affichage).
+ * Les groupes, dans l'ordre ou l'on decouvre la carte : ce qui s'y commande, le repere de position,
+ * le dessin des traces, le tableau de bord, les points d'interet, puis ce qui decrit le relief parcouru.
+ * Tous portent un titre de groupe, y compris le premier. "Boutons et gestes" reunit les interrupteurs
+ * de la carte sous une seule rubrique sans titre ; l'affichage des boutons de carte (fonds, echelle,
+ * rotation) n'apparait qu'en mode expert.
  *
  * Les libelles des interrupteurs ont perdu leur "Afficher" : le repeter a chaque ligne ne disait rien de
  * plus que le titre de groupe.
@@ -100,29 +100,21 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
     onglet.run {
     bloc(R.string.settings_section_map_controls) {
         /*
-         * Boutons et gestes, en GROUPE et non plus en rubrique unique : onze interrupteurs a la suite ne se
-         * parcouraient qu'en lisant chaque libelle un par un, faute d'un regroupement pour guider l'oeil.
+         * Boutons et gestes : les interrupteurs de la carte, sans sous-rubrique. Ils se lisent d'un bloc, et
+         * l'affichage des boutons de carte (fonds, echelle, rotation) ne s'ouvre qu'en mode expert.
          *
          * Le suivi de la carte ("Suivre ma position") a quitte la liste sans retour : il se commande desormais
-         * DEPUIS LA CARTE, au bouton a trois etats du coin bas-droit (cf. MapBottomRightControls), qui allume,
-         * ramene et eteint d'un seul geste la ou ce reglage demandait de rouvrir les reglages. Le reglage
-         * `mapFollowPosition` qu'il portait reste - c'est ce bouton qui l'ecrit desormais - seule la ligne ici
-         * a disparu.
+         * DEPUIS LA CARTE, au bouton a trois etats du coin bas-droit (cf. MapBottomRightControls). Le reglage
+         * `mapFollowPosition` qu'il portait reste - c'est ce bouton qui l'ecrit desormais.
          */
         GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
-        SectionTitle(stringResource(R.string.settings_section_position), tight = true)
         SettingsCard {
-            // Le tableau de bord suit la position du telephone : il n'a plus de bouton de localisation a allumer
+            // Le tableau de bord suit la position du telephone : il n'a pas de bouton de localisation a allumer
             // ni a couper, le capteur du telephone en est la seule condition.
             SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
                 vm.save(cur.copy(offTrackAlertEnabled = it))
             }
-        }
-    }
-
-    bloc {
-        SectionTitle(stringResource(R.string.settings_section_search_route))
-        SettingsCard {
+            RowDivider()
             SwitchLine(stringResource(R.string.settings_sw_geocoding), cur.geocodingEnabled) { vm.save(cur.copy(geocodingEnabled = it)) }
             RowDivider()
             SwitchLine(stringResource(R.string.settings_sw_planner), cur.routePlannerEnabled) { vm.save(cur.copy(routePlannerEnabled = it)) }
@@ -131,12 +123,7 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
                 stringResource(R.string.settings_sw_poi), cur.poiEnabled,
                 info = stringResource(R.string.settings_sw_poi_sub),
             ) { vm.save(cur.copy(poiEnabled = it)) }
-        }
-    }
-
-    bloc {
-        SectionTitle(stringResource(R.string.settings_section_track_tools))
-        SettingsCard {
+            RowDivider()
             SwitchLine(stringResource(R.string.settings_sw_measure), cur.trackMeasureEnabled) { vm.save(cur.copy(trackMeasureEnabled = it)) }
             RowDivider()
             SwitchLine(
@@ -146,7 +133,8 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         }
     }
 
-    bloc {
+    // Affichage : les boutons de carte qui ne servent qu'aux reglages fins, mode expert seulement.
+    if (cur.expertMode) bloc {
         SectionTitle(stringResource(R.string.settings_section_display))
         SettingsCard {
             // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
