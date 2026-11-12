@@ -249,7 +249,7 @@ class LocationControls internal constructor(
     /**
      * Allume le capteur.
      *
-     * [forFollow] dit que c'est le choix d'une trace qui le demande, et non le bouton de localisation :
+     * [forFollow] dit que c'est le choix d'une trace qui le demande, et non le demarrage automatique :
      * l'arret de la trace le rendra alors (cf. [startedForFollow]).
      */
     @SuppressLint("MissingPermission")
@@ -257,8 +257,8 @@ class LocationControls internal constructor(
         if (!hasLocationPermission()) return
         val provider = enabledProvider() ?: return
         askNotificationPermission()
-        // Un allumage demande par le bouton ADOPTE le capteur : ce qui suit ne se rendra plus a l'arret
-        // d'une trace, l'utilisateur l'ayant voulu pour lui-meme.
+        // Un allumage automatique ADOPTE le capteur : ce qui suit ne se rendra plus a l'arret d'une trace,
+        // le suivi tournant pour lui-meme.
         startedForFollow = forFollow && !gpsActive
         LocationHub.wantTracking()
         LocationService.start(ctx)
@@ -443,9 +443,28 @@ class LocationControls internal constructor(
         }
     }
 
+    /** La permission a deja ete demandee pour le demarrage automatique, depuis l'ouverture de l'ecran. */
+    private var automaticPermissionAsked = false
+
     /**
-     * Relance le suivi arrete par le systeme, depuis la notification d'arret. Il n'y a plus de bouton : les
-     * fonctions qui ont besoin de la position demandent elles-memes le suivi (cf. [startGps]).
+     * Le suivi s'allume de lui-meme, sans bouton : a l'ouverture de la carte et des que la localisation du
+     * telephone s'allume (cf. [automaticStart]). Allume, il survit a l'arriere-plan comme quand le bouton
+     * l'allumait ; il s'arrete depuis sa notification, ou quand la localisation du telephone s'eteint.
+     */
+    fun startAutomatically() {
+        when (automaticStart(sensorEnabled, gpsActive, hasLocationPermission(), automaticPermissionAsked)) {
+            AutomaticStart.NONE -> Unit
+            AutomaticStart.START -> startGps()
+            AutomaticStart.ASK_PERMISSION -> {
+                automaticPermissionAsked = true
+                withLocationPermission { startGps() }
+            }
+        }
+    }
+
+    /**
+     * Relance le suivi arrete par le systeme, depuis la notification d'arret. Il n'y a plus de bouton : le
+     * suivi s'allume de lui-meme (cf. [startAutomatically]), ou se relance d'ici.
      */
     fun resumeGps() {
         withLocationPermission {
@@ -602,6 +621,10 @@ fun rememberLocationControls(controller: MapController): LocationControls {
         }
     }
 
+    // Sans bouton de localisation, le suivi s'allume de lui-meme : a l'ouverture de la carte, et a chaque
+    // fois que la localisation du telephone revient (cf. LocationControls.startAutomatically).
+    LaunchedEffect(controls.sensorEnabled) { controls.startAutomatically() }
+
     /*
      * La localisation du telephone n'est PLUS surveillee ici.
      *
@@ -618,7 +641,7 @@ fun rememberLocationControls(controller: MapController): LocationControls {
     /*
      * Rien n'est desabonne a la disparition de l'ecran, et c'est tout l'objet du service : le suivi doit
      * survivre a la carte qu'on quitte, a l'ecran qui s'endort, et a l'application passee en arriere-plan.
-     * Il ne s'arrete que sur un geste - le bouton, la notification - ou quand la localisation s'eteint.
+     * Il ne s'arrete que sur un geste - la notification - ou quand la localisation s'eteint.
      */
     return controls
 }
@@ -650,4 +673,24 @@ fun KeepScreenOnEffect(enabled: Boolean) {
         else fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose { fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
+}
+
+/** Ce que fait le demarrage automatique du suivi (cf. [automaticStart]). */
+internal enum class AutomaticStart { NONE, START, ASK_PERMISSION }
+
+/**
+ * Le demarrage automatique du suivi, sans bouton : rien si la localisation du telephone est eteinte ou si
+ * le suivi tourne deja ; le suivi si la permission est accordee ; sinon, la demande de permission, une
+ * seule fois depuis l'ouverture de l'ecran - refusee, elle n'est pas redemandee a chaque retour du capteur.
+ */
+internal fun automaticStart(
+    sensorEnabled: Boolean,
+    trackingActive: Boolean,
+    permissionGranted: Boolean,
+    permissionAlreadyAsked: Boolean,
+): AutomaticStart = when {
+    !sensorEnabled || trackingActive -> AutomaticStart.NONE
+    permissionGranted -> AutomaticStart.START
+    permissionAlreadyAsked -> AutomaticStart.NONE
+    else -> AutomaticStart.ASK_PERMISSION
 }
