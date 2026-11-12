@@ -32,6 +32,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 
 /**
  * La bande du planificateur, jouee pour de vrai.
@@ -97,18 +101,43 @@ class RoutePlannerBandUiTest {
     /**
      * LE test de non-regression : revenir sur une etape deja remplie.
      *
-     * Le cadre cede la place au champ de saisie, qui s'ouvre VIDE - le lieu retenu n'y est pas recopie,
-     * sans quoi la frappe suivante s'ecrirait a cote de lui et c'est le tout qui partirait au geocodeur.
+     * Le cadre cede la place au champ de saisie, qui s'ouvre SUR le libelle du lieu : on corrige une adresse
+     * sans la retaper. Le lieu reste pose tant qu'on n'a rien tape - l'itineraire ne s'efface pas d'un tap.
      */
-    @Test fun `toucher une etape remplie ouvre son champ, sans emporter l'application`() {
+    @Test fun `toucher une etape remplie ouvre son champ sur le libelle, sans l'effacer`() {
         val state = planificateurOuvert().apply { setStart(grenoble) }
         affiche(state)
         compose.onNodeWithText(grenoble.label).performClick()
         compose.waitForIdle()
-        // Le champ a pris la place du cadre : son intitule est la, le libelle du lieu n'y est plus.
-        compose.onNodeWithText(ctx.getString(R.string.planner_start)).assertIsDisplayed()
-        // Et le lieu reste pose tant qu'on n'a rien tape : l'itineraire ne doit pas s'effacer d'un tap.
+        compose.onNode(hasSetTextAction() and hasText(grenoble.label)).assertExists()
         assertEquals(StepTarget.Place(grenoble), state.steps.first().target)
+    }
+
+    /** La frappe corrige le libelle en place : le texte modifie remplace le lieu, et part au geocodeur. */
+    @Test fun `taper dans une etape remplie corrige son libelle`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNodeWithText(grenoble.label).performClick()
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction() and hasText(grenoble.label)).performTextInput("x")
+        compose.waitForIdle()
+        val step = state.steps.first()
+        assertEquals(null, step.target)
+        assertEquals(grenoble.label.length + 1, step.query.length)
+        assertTrue("le libelle n'est pas efface", step.query.replace("x", "") == grenoble.label.replace("x", ""))
+    }
+
+    /** Un tap ailleurs sur la bande - ici sur son titre - quitte la saisie : clavier et propositions se retirent. */
+    @Test fun `toucher la bande hors du champ quitte la saisie`() {
+        val state = planificateurOuvert().apply { setStart(grenoble) }
+        affiche(state)
+        compose.onNodeWithText(grenoble.label).performClick()
+        compose.waitForIdle()
+        assertEquals("le champ a le focus", state.steps.first().id, state.editingId)
+        compose.onNodeWithText(ctx.getString(R.string.planner_title)).performClick()
+        compose.waitForIdle()
+        assertEquals("le champ a rendu le focus", null, state.editingId)
+        assertEquals("le lieu est toujours la", StepTarget.Place(grenoble), state.steps.first().target)
     }
 
     /** La croix d'une etape la vide, lieu compris. */
@@ -210,6 +239,18 @@ class RoutePlannerBandUiTest {
         compose.onNodeWithText(ctx.getString(R.string.planner_start)).performClick()
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.planner_pick_on_map)).assertIsDisplayed()
+    }
+
+    /** Les propositions flottent par-dessus la suite de la bande : l'etape suivante ne bouge pas. */
+    @Test fun `les propositions passent par-dessus, sans repousser l'etape suivante`() {
+        val state = planificateurOuvert()
+        affiche(state)
+        val arrivee = compose.onNodeWithText(ctx.getString(R.string.planner_end))
+        val topBefore = arrivee.getUnclippedBoundsInRoot().top
+        compose.onNodeWithText(ctx.getString(R.string.planner_start)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.planner_pick_on_map)).assertIsDisplayed()
+        assertEquals(topBefore, arrivee.getUnclippedBoundsInRoot().top)
     }
 
     /** Le choisir range la bande et passe la main a la carte (cf. RoutePlannerState.startPickingOnMap). */

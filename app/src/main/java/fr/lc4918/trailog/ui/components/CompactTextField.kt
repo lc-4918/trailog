@@ -2,6 +2,7 @@ package fr.lc4918.trailog.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
@@ -82,6 +84,44 @@ fun CompactOutlinedTextField(
             }
             field()
         }
+    }
+}
+
+/**
+ * La meme chose, avec la position du curseur : pour un champ qui s'ouvre sur un texte deja la, curseur a
+ * l'endroit touche (cf. la liste des etapes du planificateur). Memes marges, memes couleurs.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CompactOutlinedTextField(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: (@Composable () -> Unit)? = null,
+    singleLine: Boolean = false,
+    textStyle: TextStyle = LocalTextStyle.current,
+    shape: Shape = MaterialTheme.shapes.small,
+    colors: TextFieldColors = OutlinedTextFieldDefaults.colors(),
+    /** Marges du texte : reglables pour laisser la place a ce qui est pose sur le champ (une croix). */
+    contentPadding: PaddingValues = OutlinedTextFieldDefaults.contentPadding(top = 8.dp, bottom = 8.dp),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val mergedTextStyle = textStyle.copy(color = MaterialTheme.colorScheme.onSurface)
+    BasicTextField(
+        value = value, onValueChange = onValueChange, modifier = modifier, singleLine = singleLine,
+        textStyle = mergedTextStyle, interactionSource = interactionSource,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+    ) { innerTextField ->
+        OutlinedTextFieldDefaults.DecorationBox(
+            value = value.text, innerTextField = innerTextField, enabled = true, singleLine = singleLine,
+            visualTransformation = VisualTransformation.None,
+            interactionSource = interactionSource, placeholder = placeholder, colors = colors,
+            contentPadding = contentPadding,
+            container = {
+                OutlinedTextFieldDefaults.Container(enabled = true, isError = false,
+                    interactionSource = interactionSource, colors = colors, shape = shape)
+            },
+        )
     }
 }
 

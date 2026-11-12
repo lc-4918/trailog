@@ -127,6 +127,29 @@ import fr.lc4918.trailog.ui.profile.routeInfos
 import kotlinx.coroutines.delay
 import fr.lc4918.trailog.ui.theme.TrailogIcons
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 
 /** Hauteur minimale de la bande : le double de celle des barres de consigne existantes, qui n'affichent
  *  qu'une ligne de texte. Le planificateur porte au moins la discipline et deux champs. */
@@ -146,6 +169,9 @@ private const val BandAlpha = 0.96f
  */
 private val FieldHeight = 44.dp
 private val FieldTextPadding = 14.dp
+
+/** Marge droite du texte d'une etape : la place de la croix (et du spinner), posee sur le champ. */
+private val FieldClearPadding = 36.dp
 
 /** Ce qui separe deux champs : pose au-dessus et au-dessous de chacun, donc compte double entre voisins. */
 private val FieldGap = Spacing.xs
@@ -206,6 +232,12 @@ fun RoutePlannerBand(
 ) {
     if (state.collapsed) return
     var confirmerReset by remember { mutableStateOf(false) }
+    // Un tap sur la bande, hors de ce qui se touche (champ, bouton, proposition), quitte la saisie : le
+    // clavier et les propositions se retirent, comme quand on choisit un lieu.
+    val bandFocusManager = LocalFocusManager.current
+    val bandKeyboard = LocalSoftwareKeyboardController.current
+    val stepFieldAreas = remember { StepFieldAreas() }
+    var bandCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     // Coins hauts arrondis, bas droits : la bande est une feuille posee au bord de l'ecran.
     //
     // La forme DESSINE le fond et l'ombre, mais ne decoupe pas le contenu : un Surface a forme decoupe, et
@@ -230,6 +262,32 @@ fun RoutePlannerBand(
             // nouveau deborder la bande hors de l'ecran.
             Modifier.heightIn(min = minOf(BandMinHeight, maxHeight), max = maxHeight)
                 .swipeDownToCollapse { state.collapseOrClose() }
+                // Un tap hors du champ qui a le focus (et de sa croix) quitte la saisie ; un glissement non.
+                // Observe sans rien prendre : le bouton ou la proposition touches font aussi leur office.
+                .onGloballyPositioned { bandCoordinates = it; stepFieldAreas.bandBottom = it.boundsInWindow().bottom }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        var isTap = true
+                        while (true) {
+                            val change = awaitPointerEvent(PointerEventPass.Final).changes
+                                .firstOrNull { it.id == down.id } ?: break
+                            // Au-dela du seuil de glissement, ce n'est plus un tap : un swipe range la bande.
+                            if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                isTap = false
+                            }
+                            if (!change.pressed) {
+                                val inWindow = bandCoordinates?.localToWindow(change.position)
+                                val onStepField = inWindow != null && stepFieldAreas.contains(inWindow)
+                                if (isTap && !onStepField) {
+                                    bandKeyboard?.hide()
+                                    bandFocusManager.clearFocus()
+                                }
+                                break
+                            }
+                        }
+                    }
+                }
                 .padding(start = Spacing.l, end = Spacing.l, bottom = Spacing.l),
         ) {
             BandHeader(
@@ -262,14 +320,14 @@ fun RoutePlannerBand(
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history,
                         onPlaceChosen, onPlaceForgotten, slopeLegend = slopeLegend, scrollable = false,
-                        stepLabels = if (settings.plannerStepNumbers) stepLabels else null,
+                        stepLabels = if (settings.plannerStepNumbers) stepLabels else null, stepFieldAreas = stepFieldAreas,
                         modifier = Modifier.padding(top = Spacing.m))
                     ResultsZone(state, imperial, settings, lastLabelInsetPx)
                 }
             } else {
                 StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
                     onPlaceForgotten, slopeLegend = slopeLegend,
-                    stepLabels = if (settings.plannerStepNumbers) stepLabels else null,
+                    stepLabels = if (settings.plannerStepNumbers) stepLabels else null, stepFieldAreas = stepFieldAreas,
                     modifier = Modifier.weight(1f, fill = false).padding(top = Spacing.m))
                 ResultsZone(state, imperial, settings, lastLabelInsetPx)
             }
@@ -452,6 +510,7 @@ private fun StepList(
     scrollable: Boolean = true,
     /** Libelle des pastilles par etape ; nul quand le reglage les masque, et la colonne n'existe pas. */
     stepLabels: Map<Long, String>? = null,
+    stepFieldAreas: StepFieldAreas? = null,
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
@@ -465,7 +524,7 @@ private fun StepList(
             key(step.id) {
                 StepRow(
                     state = state, step = step, index = i,
-                    railLabel = stepLabels?.get(step.id),
+                    railLabel = stepLabels?.get(step.id), stepFieldAreas = stepFieldAreas,
                     placeholder = stringResource(
                         when {
                             i == 0 -> R.string.planner_start
@@ -625,6 +684,18 @@ private fun Modifier.stepRail(
     }
 }
 
+/**
+ * Les zones a l'ecran des champs d'etape, croix comprises : un tap sur la bande hors de toutes quitte la
+ * saisie (cf. RoutePlannerBand). Tenues en permanence, et non au seul focus : un champ prend le focus au
+ * relachement meme du tap, avant toute nouvelle mise en page.
+ */
+private class StepFieldAreas {
+    val bounds = mutableMapOf<Long, Rect>()
+    /** Bas de la bande, en coordonnees de fenetre : les propositions flottantes ne descendent pas plus bas. */
+    var bandBottom: Float? = null
+    fun contains(point: Offset): Boolean = bounds.values.any { it.contains(point) }
+}
+
 /** Une etape : son champ, sa poignee de glissement, sa suppression, puis ses propositions. */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -634,6 +705,7 @@ private fun StepRow(
     index: Int,
     /** Libelle de la pastille du rail (A, 1, 2, B), comme sur la carte ; nul, le repere d'origine. */
     railLabel: String? = null,
+    stepFieldAreas: StepFieldAreas? = null,
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     onPickOnMap: (PlannerStep) -> Unit,
@@ -652,6 +724,21 @@ private fun StepRow(
     // une exception, et l'application se fermait des qu'on revenait sur une etape deja remplie. Le clic
     // reclame donc le champ, et le focus lui est donne a la composition suivante, une fois qu'il existe.
     var wantsFocus by remember(step.id) { mutableStateOf(false) }
+    // Le texte du champ ET la position du curseur. Une etape remplie s'ouvre sur son libelle, curseur la ou
+    // l'on a touche (cf. le cadre replie, plus bas) ; sans lieu retenu, le champ suit la frappe.
+    var fieldValue by remember(step.id) { mutableStateOf(TextFieldValue(step.query)) }
+    // La frappe changee d'ailleurs - la croix, un choix dans les propositions - se recopie dans le champ.
+    LaunchedEffect(step.query, step.target) {
+        if (step.target == null && fieldValue.text != step.query) {
+            fieldValue = TextFieldValue(step.query, TextRange(step.query.length))
+        }
+    }
+    // Mise en page du libelle replie : elle dit quel caractere se trouve sous le doigt.
+    var labelLayout by remember(step.id) { mutableStateOf<TextLayoutResult?>(null) }
+    // La ligne de l'etape a l'ecran : les propositions flottent sous elle, a sa largeur.
+    var rowCoordinates by remember(step.id) { mutableStateOf<LayoutCoordinates?>(null) }
+    // Une etape retiree ne laisse pas sa zone derriere elle (cf. StepFieldAreas).
+    DisposableEffect(step.id) { onDispose { stepFieldAreas?.bounds?.remove(step.id) } }
     // La liste des etapes defile sur elle-meme : un champ situe en bas peut voir ses propositions naitre
     // hors de la zone visible. On les y ramene des qu'elles apparaissent, faute de quoi la premiere ligne
     // - la position actuelle, ou le spinner - resterait invisible sous le bord.
@@ -705,7 +792,7 @@ private fun StepRow(
     val fieldShape = MaterialTheme.shapes.small
     val fieldStyle = MaterialTheme.typography.bodyMedium
     Column(
-        modifier.bringIntoViewRequester(bringIntoView).stepRail(
+        modifier.bringIntoViewRequester(bringIntoView).onGloballyPositioned { rowCoordinates = it }.stepRail(
             index, state.steps.size,
             line = scheme.outlineVariant, mark = scheme.primary, hole = scheme.surface, via = scheme.onSurfaceVariant,
             label = railLabel, onMark = scheme.onPrimary,
@@ -713,31 +800,56 @@ private fun StepRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.width(RailWidth + Spacing.s))
-            Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
+            Box(
+                Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)
+                    // La zone du champ, croix comprise (cf. StepFieldAreas).
+                    .onGloballyPositioned { coordinates -> stepFieldAreas?.bounds?.put(step.id, coordinates.boundsInWindow()) },
+            ) {
                 if (step.target != null && !focused && !wantsFocus) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie
                     // ne sait pas abreger - il fait defiler son texte et le coupe net au bord, sans dire
                     // qu'il en reste. Le champ reel reprend sa place des qu'on le touche.
+                    // Le tap ouvre le champ SUR le libelle, curseur au caractere touche : on corrige une adresse
+                    // sans la retaper. Effacer, c'est la croix.
+                    val textStartPx = with(LocalDensity.current) { FieldTextPadding.toPx() }
+                    fun openAt(offset: Int) {
+                        fieldValue = TextFieldValue(shown, TextRange(offset.coerceIn(0, shown.length)))
+                        wantsFocus = true
+                    }
                     Box(
                         Modifier.fillMaxSize().clip(fieldShape)
                             .background(scheme.surfaceContainerLow)
                             .border(1.dp, scheme.outlineVariant, fieldShape)
-                            .clickable { wantsFocus = true }
+                            .pointerInput(shown) {
+                                detectTapGestures { tap ->
+                                    val layout = labelLayout
+                                    val offset = layout?.getOffsetForPosition(
+                                        Offset(tap.x - textStartPx, layout.size.height / 2f),
+                                    ) ?: shown.length
+                                    openAt(offset)
+                                }
+                            }
+                            // Lecteurs d'ecran : le meme geste, curseur en fin de libelle.
+                            .semantics { onClick { openAt(shown.length); true } }
                             // A droite, la place de la croix : le libelle s'abrege avant elle.
-                            .padding(start = FieldTextPadding, end = 36.dp),
+                            .padding(start = FieldTextPadding, end = FieldClearPadding),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, style = fieldStyle)
+                        Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, style = fieldStyle,
+                            onTextLayout = { labelLayout = it })
                     }
                 } else {
-                    // La saisie, et elle seule : y poser le libelle du lieu retenu ferait ecrire la
-                    // nouvelle frappe A COTE de lui plutot qu'a sa place, et c'est le tout - "VoiGrenoble,
-                    // Isere, France" - qui partait au geocodeur. Le champ s'ouvre donc vide sur une etape
-                    // deja remplie, son intitule ("Depart", "Arrivee") rappelant de quelle etape il s'agit ;
-                    // le lieu reste pose tant qu'on n'a rien tape, et revient si l'on ressort du champ.
+                    // Le champ s'ouvre sur le libelle de l'etape, curseur la ou l'on a touche : la frappe le
+                    // corrige EN PLACE, et le texte corrige part au geocodeur. Le lieu reste pose tant qu'on
+                    // n'a rien tape, et revient si l'on ressort du champ ; effacer, c'est la croix.
                     CompactOutlinedTextField(
-                        value = step.query,
-                        onValueChange = { state.type(step, it) },
+                        value = fieldValue,
+                        onValueChange = { next ->
+                            val textChanged = next.text != fieldValue.text
+                            fieldValue = next
+                            // Deplacer le curseur ne change rien a l'etape ; changer le texte remplace le lieu.
+                            if (textChanged) state.type(step, next.text)
+                        },
                         singleLine = true,
                         shape = fieldShape,
                         colors = tintedFieldColors(),
@@ -752,6 +864,11 @@ private fun StepRow(
                             Text(placeholder, maxLines = 1, overflow = TextOverflow.Ellipsis,
                                 style = fieldStyle, color = scheme.onSurfaceVariant)
                         },
+                        // Les marges du libelle au repos : le texte reste a la meme place en ouvrant le champ,
+                        // et s'arrete avant la croix au lieu de passer dessous.
+                        contentPadding = OutlinedTextFieldDefaults.contentPadding(
+                            start = FieldTextPadding, end = FieldClearPadding, top = 8.dp, bottom = 8.dp,
+                        ),
                     )
                 }
                 // Attente et effacement POSES SUR le champ, et non dans son emplacement d'icone de fin :
@@ -810,15 +927,33 @@ private fun StepRow(
         }
         // Les propositions tiennent dans UNE carte, sous le champ et a l'aplomb de ses bords : elles se
         // lisent comme ce que le champ offre, et non comme des lignes de la bande entre deux etapes.
+        //
+        // Elles FLOTTENT par-dessus ce qui suit - les autres etapes, les totaux, le profil, les details -
+        // au lieu de les repousser : une fenetre sans focus, qui laisse le clavier et le curseur au champ.
+        // Elles ne descendent pas sous le bas de la bande (donc jamais sous le clavier) et defilent au-dela.
         if (vierge || rappels.isNotEmpty() || step.failed || step.results.isNotEmpty()) {
+            val density = LocalDensity.current
+            val startPx = with(density) { (RailWidth + Spacing.s).roundToPx() }
+            val endPx = with(density) { 64.dp.roundToPx() }
+            val rowBounds = rowCoordinates?.boundsInWindow()
+            val widthDp = with(density) { ((rowBounds?.width ?: 0f) - startPx - endPx).coerceAtLeast(0f).toDp() }
+            val bandBottom = stepFieldAreas?.bandBottom
+            val maxHeightDp = with(density) {
+                if (rowBounds == null || bandBottom == null) SuggestionsMinHeight
+                else maxOf((bandBottom - rowBounds.bottom).toDp() - Spacing.xs, SuggestionsMinHeight)
+            }
+            Popup(
+                popupPositionProvider = remember(startPx) { BelowFieldPositionProvider(startPx) },
+                properties = PopupProperties(focusable = false),
+            ) {
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = scheme.surfaceContainerLowest,
                 border = BorderStroke(1.dp, scheme.outlineVariant),
                 shadowElevation = 2.dp,
-                modifier = Modifier.padding(start = RailWidth + Spacing.s, end = 64.dp, bottom = Spacing.xs),
+                modifier = Modifier.width(widthDp).heightIn(max = maxHeightDp),
             ) {
-            Column(Modifier.padding(vertical = Spacing.xs)) {
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = Spacing.xs)) {
             // Position actuelle : proposee au focus tant que rien n'a ete tape, et non offerte par un bouton
             // permanent. Elle n'est utile qu'a l'instant ou l'on remplit un champ vide.
             // Seulement si la localisation est allumee dans le telephone : sans position connue, le calcul
@@ -899,8 +1034,19 @@ private fun StepRow(
             }
             }
             }
+            }
         }
     }
+}
+
+/** Hauteur minimale des propositions flottantes, meme si la bande laisse moins de place sous le champ. */
+private val SuggestionsMinHeight = 120.dp
+
+/** Place les propositions juste sous la ligne de l'etape, decalees du rail comme le champ. */
+private class BelowFieldPositionProvider(private val startPx: Int) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize,
+    ): IntOffset = IntOffset(anchorBounds.left + startPx, anchorBounds.bottom)
 }
 
 /** Une proposition sous un champ : la position actuelle, ou un lieu rendu par le geocodeur. */
