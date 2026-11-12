@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.data.FolderExpansionPrefs
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -180,7 +181,9 @@ internal fun FolderNode(
     importingIds: ImportSpinners, layerActions: LayerActions,
     onStats: (FolderEntity) -> Unit, onDeleteFolder: (FolderEntity) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(true) }
+    val appContext = LocalContext.current.applicationContext
+    var expanded by remember(folder.id) { mutableStateOf(FolderExpansionPrefs.isExpanded(appContext, folder.id)) }
+    val toggleExpanded = { expanded = !expanded; FolderExpansionPrefs.setExpanded(appContext, folder.id, expanded) }
     var showColor by remember { mutableStateOf(false) }
     // Les couches sur lesquelles portent les actions du dossier : sous-dossiers compris, comme la
     // suppression et l'oeil. Calculees une fois, l'oeil et le choix de couleur en repondent tous deux.
@@ -201,7 +204,7 @@ internal fun FolderNode(
         DrawerIcon(
             if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight,
             if (expanded) stringResource(R.string.action_collapse) else stringResource(R.string.action_expand),
-            size = DrawerChevronSize, onClick = { expanded = !expanded },
+            size = DrawerChevronSize, onClick = toggleExpanded,
         )
         // En selection, la case prend la place de l'oeil : meme colonne, meme cible.
         if (selection.active) {
@@ -223,7 +226,7 @@ internal fun FolderNode(
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = { expanded = !expanded },
+                    onClick = toggleExpanded,
                     onLongClick = { vibre(); selection.start("folder" to folder.id) },
                 )
                 .testTag("folder_toggle_${folder.id}"),
@@ -240,7 +243,7 @@ internal fun FolderNode(
             // allongeaient les noms au point de les couper plus tot que ceux des couches.
             RowLabel(folder.name, MaterialTheme.typography.bodyMedium, MaterialTheme.colorScheme.onSurface,
                 FontWeight.SemiBold, onLongPress = { vibre(); selection.start("folder" to folder.id) },
-                modifier = Modifier.weight(1f), onClick = { expanded = !expanded })
+                modifier = Modifier.weight(1f), onClick = toggleExpanded)
             // Nombre de couches sous le dossier, sous-dossiers compris : c'est ce que ses actions touchent
             // (l'oeil, la couleur commune), et ce qu'un dossier replie cache.
             if (contents.isNotEmpty()) {
