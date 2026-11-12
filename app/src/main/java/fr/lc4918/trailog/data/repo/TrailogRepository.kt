@@ -940,8 +940,9 @@ class TrailogRepository(private val ctx: Context) {
         return f
     }
 
+    /** Couleurs donnees aux traces importees, sans le bleu primaire du theme (cf. MapPalette). */
     object Palette {
-        private val colors = listOf("#1F6FB2","#E8590C","#2F9E44","#9C36B5","#1098AD","#F08C00","#C2255C","#5C7CFA")
+        internal val colors = listOf("#E8590C","#2F9E44","#9C36B5","#1098AD","#F08C00","#C2255C","#5C7CFA")
         fun pick(used: List<String>): String = colors.firstOrNull { it !in used } ?: colors[used.size % colors.size]
     }
 }

@@ -29,7 +29,7 @@ data class LayerEntity(
     val source: String = "import",         // import | bundled
     val importedAt: Long = System.currentTimeMillis(),
     val geometryFile: String,              // nom de fichier GeoJSON dans le stockage de l'app
-    val color: String = "#1F6FB2",
+    val color: String = "#E8590C",          // pas le bleu primaire : il est reserve au trace du planificateur
     val schemaJson: String = "[]",         // schéma des propriétés des points (vide si pas de points)
     val distance: Double = 0.0,
     val ascent: Double = 0.0,

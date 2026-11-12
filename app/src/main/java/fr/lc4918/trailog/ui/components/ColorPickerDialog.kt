@@ -29,9 +29,12 @@ import fr.lc4918.trailog.R
  *
  * Une seule palette, commune : deux listes divergentes finiraient par offrir un rouge ici et un autre la,
  * pour des objets qui se regardent sur le meme fond.
+ *
+ * Sans le bleu de la couleur primaire du theme (#1F6FB2) : c'est celle du trace du planificateur, et une
+ * trace de la bibliotheque ne doit pas s'y confondre.
  */
 val MapPalette = listOf(
-    "#1F6FB2", "#1098AD", "#2F9E44", "#7CB342", "#F4B400", "#F08C00", "#E8590C", "#E03131",
+    "#1098AD", "#2F9E44", "#7CB342", "#F4B400", "#F08C00", "#E8590C", "#E03131",
     "#C2185B", "#9C36B5", "#6741D9", "#3949AB", "#00897B", "#6D4C41", "#546E7A", "#212121",
 )
 
