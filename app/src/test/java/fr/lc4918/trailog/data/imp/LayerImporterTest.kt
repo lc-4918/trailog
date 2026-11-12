@@ -72,6 +72,31 @@ class LayerImporterTest {
         assertTrue("geometrie non vide", l.lines.any { it.size > 1 })
     }
 
+    /** KML minimal a la maniere d'un export FME : une MultiGeometry dont chaque point porte l'altitude [ele]. */
+    private fun kmlWithElevations(vararg ele: String): ByteArray {
+        val coordinates = ele.mapIndexed { i, z -> "2.00${i}1,43.12${i}8,$z" }.joinToString(" ")
+        return """<?xml version="1.0" encoding="UTF-8"?>
+            <kml xmlns="http://www.opengis.net/kml/2.2"><Document><Folder><Placemark><name>circuit</name>
+            <MultiGeometry><LineString><coordinates>$coordinates</coordinates></LineString></MultiGeometry>
+            </Placemark></Folder></Document></kml>""".trimIndent().toByteArray()
+    }
+
+    /**
+     * Toutes les altitudes a 0 : un export qui ecrit 0 faute de mieux (constate sur un circuit velo300
+     * exporte par FME). La trace est lue SANS altitude, ce qui la laisse completer a l'import.
+     */
+    @Test fun `kml aux altitudes toutes nulles, lu sans altitude`() {
+        val l = LayerImporter.parse(kmlWithElevations("0", "0", "0"), "circuit.kml")
+        assertEquals(3, l.lines[0].size)
+        assertTrue("altitudes absentes", l.lines[0].all { it.ele == null })
+    }
+
+    /** Une seule altitude non nulle suffit : la ligne garde ses altitudes, zeros compris. */
+    @Test fun `kml avec une altitude non nulle, altitudes gardees`() {
+        val l = LayerImporter.parse(kmlWithElevations("0", "152.5", "0"), "circuit.kml")
+        assertEquals(listOf(0.0, 152.5, 0.0), l.lines[0].map { it.ele })
+    }
+
     /** Le KMZ est un zip : l'importeur doit en extraire le doc.kml et le parser comme un KML. */
     @Test fun `kmz produit la meme couche que son kml`() {
         val kml = parse("test.kml")

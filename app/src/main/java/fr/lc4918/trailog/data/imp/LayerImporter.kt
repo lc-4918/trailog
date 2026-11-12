@@ -36,6 +36,11 @@ data class ParsedLayer(
 object LayerImporter {
 
     fun parse(bytes: ByteArray, fileName: String): ParsedLayer {
+        val parsed = parseFormat(bytes, fileName)
+        return parsed.copy(lines = dropZeroOnlyElevation(parsed.lines))
+    }
+
+    private fun parseFormat(bytes: ByteArray, fileName: String): ParsedLayer {
         val ext = fileName.substringAfterLast('.', "").lowercase()
         if (ext == "kmz") {
             val kml = extractKmlFromKmz(bytes) ?: error("Aucun fichier .kml trouvé dans le KMZ")
@@ -47,6 +52,17 @@ object LayerImporter {
             ext == "kml" || (ext == "xml" && text.contains("<kml", true)) -> parseKml(bytes.inputStream(), fileName)
             else -> parseGeoJson(text, fileName)
         }
+    }
+
+    /**
+     * Une ligne dont TOUTES les altitudes valent exactement 0 n'a pas d'altitude : c'est la marque d'un export
+     * qui ecrit 0 faute de mieux (FME, KML "clampToGround"), et non d'un parcours au niveau de la mer - un
+     * GPS n'y rend jamais 0 pile a chaque point. Ses altitudes deviennent absentes : l'import peut alors les
+     * completer (cf. ElevationFiller), et a defaut la trace n'affiche pas un faux profil plat a 0 m.
+     * Une seule altitude non nulle suffit a garder la ligne telle quelle.
+     */
+    internal fun dropZeroOnlyElevation(lines: List<List<TrackPoint>>): List<List<TrackPoint>> = lines.map { line ->
+        if (line.size >= 2 && line.all { it.ele == 0.0 }) line.map { it.copy(ele = null) } else line
     }
 
     /** KMZ = zip contenant un .kml (souvent doc.kml, mais pas garanti par la spec : on prend le premier trouvé). */
