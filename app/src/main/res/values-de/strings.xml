@@ -148,8 +148,6 @@
     <string name="label_new_folder">Neuer Ordner</string>
     <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
     <string name="label_folder_short">Ordner</string>
-    <string name="gps_label">GPS</string>
-    <string name="content_desc_gps_position">GPS-Position</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Ort suchen</string>
     <string name="geocode_search_placeholder">Ort suchen</string>
@@ -488,7 +486,6 @@
     <string name="settings_label_bubble_position">Position</string>
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Titel des Seitenmenüs</string>
-    <string name="settings_sw_gps_button">GPS-Standort</string>
     <string name="settings_sw_planner_step_numbers">Schrittnummern in der Liste</string>
     <string name="settings_sw_gps_recenter">Auf Position zentrieren</string>
     <string name="settings_sw_gps_recenter_sub">Beim Einschalten der GPS-Ortung auf die Position zentrieren.</string>

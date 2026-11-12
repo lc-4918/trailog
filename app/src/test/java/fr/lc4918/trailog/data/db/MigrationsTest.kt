@@ -1000,10 +1000,9 @@ class MigrationsTest {
      * le sort des bases déjà en place : elles ne disent RIEN de ce que découvre un nouvel utilisateur, et
      * une valeur par défaut retournée dans l'entité ne casserait aucun de leurs tests.
      */
-    @Test fun `une installation neuve n'affiche que les quatre commandes par defaut`() {
+    @Test fun `une installation neuve n'affiche que les trois commandes par defaut`() {
         val neuf = SettingsEntity()
         assertTrue("burger", neuf.sideMenuMode != "swipe")
-        assertTrue("GPS", neuf.showGpsButton)
         assertTrue("gestionnaire de fonds", neuf.showBasemapControlButton)
         assertTrue("planificateur", neuf.routePlannerEnabled)
         // Les trois fonctions qui s'ajoutent volontairement : deux interrogent un service tiers, la
@@ -1015,19 +1014,31 @@ class MigrationsTest {
     }
 
     /**
-     * L'alerte d'eloignement ne peut pas s'afficher seule : sa cloche demande le bouton de localisation.
-     *
-     * Les reglages tiennent le lien dans les deux sens (cf. SettingsScreen.MapTab), mais la carte ne s'y
-     * fie pas : elle recoupe les deux avant d'afficher la cloche. C'est ce recoupement qu'on verrouille
-     * ici - une base restauree, ou ecrite par une version anterieure, peut porter la combinaison interdite.
+     * La cloche de l'alerte suit son seul reglage : il n'y a plus de bouton de localisation pour la porter.
      */
-    @Test fun `la cloche de l'alerte ne s'affiche jamais sans le bouton GPS`() {
-        assertTrue("les deux allumes",
-            SettingsEntity(offTrackAlertEnabled = true, showGpsButton = true).offTrackAlertVisible)
-        assertFalse("l'alerte seule, combinaison interdite",
-            SettingsEntity(offTrackAlertEnabled = true, showGpsButton = false).offTrackAlertVisible)
-        assertFalse("le GPS seul, cas ordinaire",
-            SettingsEntity(offTrackAlertEnabled = false, showGpsButton = true).offTrackAlertVisible)
+    @Test fun `la cloche de l'alerte suit son seul reglage`() {
+        assertTrue("alerte allumee", SettingsEntity(offTrackAlertEnabled = true).offTrackAlertVisible)
+        assertFalse("alerte eteinte", SettingsEntity(offTrackAlertEnabled = false).offTrackAlertVisible)
+    }
+
+    /**
+     * Le bouton de localisation disparait : sa colonne aussi. La recopie garde tous les autres reglages.
+     */
+    @Test fun `76 vers 77 retire le bouton GPS et garde les autres reglages`() {
+        val db = freshDb("m7677")
+        // Schema de la version 76, avec des valeurs par defaut pour pouvoir n'inserer qu'une ligne partielle.
+        val columnsV76 = MigrationSql.SETTINGS_COLUMN_DEFS_V77.replace("NOT NULL", "NOT NULL DEFAULT 0")
+        db.execSQL("CREATE TABLE settings ($columnsV76, `showGpsButton` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`))")
+        db.execSQL("INSERT INTO settings (id, showGpsButton, offTrackAlertEnabled, lastZoom) VALUES (1, 0, 1, 7.5)")
+        MigrationSql.DROP_GPS_BUTTON_SETTING.forEach { db.execSQL(it) }
+        val columns = db.rawQuery("PRAGMA table_info(settings)", null).use { cursor ->
+            generateSequence { if (cursor.moveToNext()) cursor.getString(1) else null }.toList()
+        }
+        assertFalse("colonne retiree", columns.contains("showGpsButton"))
+        assertEquals(1, scalar(db, "SELECT offTrackAlertEnabled FROM settings") { it.getInt(0) })
+        assertEquals(7.5, scalar(db, "SELECT lastZoom FROM settings") { it.getDouble(0) }, 0.0)
+        assertEquals(1, scalar(db, "SELECT COUNT(*) FROM settings") { it.getInt(0) })
+        db.close()
     }
 
     // ---------- 56 -> 57 : garder l'ecran allume ----------

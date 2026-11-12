@@ -603,6 +603,26 @@ internal object MigrationSql {
     const val ADD_PLANNER_STEP_NUMBERS =
         "ALTER TABLE settings ADD COLUMN plannerStepNumbers INTEGER NOT NULL DEFAULT 1"
 
+    /**
+     * Colonnes de settings en version 76, sans `showGpsButton` : le bouton de localisation a disparu, et son
+     * reglage avec lui. Figees ici comme les autres schemas de migration.
+     */
+    internal const val SETTINGS_COLUMN_DEFS_V77 =
+        "`id` INTEGER NOT NULL, `units` TEXT NOT NULL, `sideMenuMode` TEXT NOT NULL, `tapToleranceDp` INTEGER NOT NULL, `lineTapToleranceDp` INTEGER NOT NULL, `terrain3d` INTEGER NOT NULL, `hillshadeOn` INTEGER NOT NULL, `ambientCacheMb` INTEGER NOT NULL, `defaultBasemapId` TEXT NOT NULL, `mbtilesDir` TEXT NOT NULL, `theme` TEXT NOT NULL, `profileGrid` INTEGER NOT NULL, `profileSlope` INTEGER NOT NULL, `profileSlopeLegend` INTEGER NOT NULL, `profileRemaining` INTEGER NOT NULL, `bubbleFont` INTEGER NOT NULL, `profAxisFont` INTEGER NOT NULL, `profTitleFont` INTEGER NOT NULL, `profBarFont` INTEGER NOT NULL, `profLegendFont` INTEGER NOT NULL, `profCursorFont` INTEGER NOT NULL, `titleInfos` TEXT NOT NULL, `cursorInfos` TEXT NOT NULL, `statusBarTransparent` INTEGER NOT NULL, `markerSize` INTEGER NOT NULL, `importDir` TEXT NOT NULL, `lastLat` REAL NOT NULL, `lastLon` REAL NOT NULL, `lastZoom` REAL NOT NULL, `hasCamera` INTEGER NOT NULL, `showScale` INTEGER NOT NULL, `rotateGesturesEnabled` INTEGER NOT NULL, `bubbleBold` INTEGER NOT NULL, `profAxisBold` INTEGER NOT NULL, `profTitleBold` INTEGER NOT NULL, `profBarBold` INTEGER NOT NULL, `profLegendBold` INTEGER NOT NULL, `profCursorBold` INTEGER NOT NULL, `customTitle` TEXT NOT NULL, `avatarSource` TEXT NOT NULL, `showBasemapControlButton` INTEGER NOT NULL, `basemapControlWidthPct` INTEGER NOT NULL, `basemapControlOpacityPct` INTEGER NOT NULL, `bubbleTitleFont` INTEGER NOT NULL, `bubbleTitleBold` INTEGER NOT NULL, `simplifyRender` INTEGER NOT NULL, `profileSmoothingM` INTEGER NOT NULL, `verticalExaggeration` INTEGER NOT NULL, `bubblePosition` TEXT NOT NULL, `bubbleOpacityPct` INTEGER NOT NULL, `updateCheckMode` TEXT NOT NULL, `demoSeeded` INTEGER NOT NULL, `geocodingEnabled` INTEGER NOT NULL, `geocodingUrl` TEXT NOT NULL, `routeEngine` TEXT NOT NULL, `routingUrl` TEXT NOT NULL, `routingUrlBrouter` TEXT NOT NULL, `routingProfile` TEXT NOT NULL, `routePrefsRoad` TEXT NOT NULL, `routePrefsGravel` TEXT NOT NULL, `routePrefsHybrid` TEXT NOT NULL, `routePrefsMtb` TEXT NOT NULL, `routePrefsFoot` TEXT NOT NULL, `plannerHistory` TEXT NOT NULL, `poiEnabled` INTEGER NOT NULL, `poiHiddenCategories` TEXT NOT NULL, `poiBikeGroups` TEXT NOT NULL, `poiOsmComplement` INTEGER NOT NULL, `poiTrackCorridorM` INTEGER NOT NULL, `poiOsmUrl` TEXT NOT NULL, `poiMasked` INTEGER NOT NULL, `gpsRecenterOnStart` INTEGER NOT NULL, `gpsShowLastFix` INTEGER NOT NULL, `mapFollowPosition` INTEGER NOT NULL, `fillMissingElevation` INTEGER NOT NULL, `elevationIgnUrl` TEXT NOT NULL, `elevationWorldUrl` TEXT NOT NULL, `elevationWorldKey` TEXT NOT NULL, `routePlannerEnabled` INTEGER NOT NULL, `plannerStepNumbers` INTEGER NOT NULL, `controlButtonsBackground` INTEGER NOT NULL, `trackMeasureEnabled` INTEGER NOT NULL, `trackEditEnabled` INTEGER NOT NULL, `mapButtonSizeDp` INTEGER NOT NULL, `gpsMarkerStyle` TEXT NOT NULL, `gpsMarkerColor` TEXT NOT NULL, `gpsMarkerSizeDp` INTEGER NOT NULL, `offTrackAlertEnabled` INTEGER NOT NULL, `offTrackAlertDistanceM` INTEGER NOT NULL, `keepScreenOn` INTEGER NOT NULL, `offTrackAlertSound` INTEGER NOT NULL, `offTrackAlertSoundUri` TEXT NOT NULL, `offTrackAlertVibrate` INTEGER NOT NULL, `dashboardHidden` TEXT NOT NULL, `dashboardFontSizes` TEXT NOT NULL, `routeSlopeLine` INTEGER NOT NULL, `routeSlopeProfile` INTEGER NOT NULL, `slopeClassTenths` INTEGER NOT NULL, `trackLineWidth` INTEGER NOT NULL, `trackDirectionArrows` INTEGER NOT NULL, `dashboardFontSize` INTEGER NOT NULL, `expertMode` INTEGER NOT NULL, `profileVerticalScale` TEXT NOT NULL"
+    private const val SETTINGS_COLUMN_NAMES_V77 =
+        "`id`, `units`, `sideMenuMode`, `tapToleranceDp`, `lineTapToleranceDp`, `terrain3d`, `hillshadeOn`, `ambientCacheMb`, `defaultBasemapId`, `mbtilesDir`, `theme`, `profileGrid`, `profileSlope`, `profileSlopeLegend`, `profileRemaining`, `bubbleFont`, `profAxisFont`, `profTitleFont`, `profBarFont`, `profLegendFont`, `profCursorFont`, `titleInfos`, `cursorInfos`, `statusBarTransparent`, `markerSize`, `importDir`, `lastLat`, `lastLon`, `lastZoom`, `hasCamera`, `showScale`, `rotateGesturesEnabled`, `bubbleBold`, `profAxisBold`, `profTitleBold`, `profBarBold`, `profLegendBold`, `profCursorBold`, `customTitle`, `avatarSource`, `showBasemapControlButton`, `basemapControlWidthPct`, `basemapControlOpacityPct`, `bubbleTitleFont`, `bubbleTitleBold`, `simplifyRender`, `profileSmoothingM`, `verticalExaggeration`, `bubblePosition`, `bubbleOpacityPct`, `updateCheckMode`, `demoSeeded`, `geocodingEnabled`, `geocodingUrl`, `routeEngine`, `routingUrl`, `routingUrlBrouter`, `routingProfile`, `routePrefsRoad`, `routePrefsGravel`, `routePrefsHybrid`, `routePrefsMtb`, `routePrefsFoot`, `plannerHistory`, `poiEnabled`, `poiHiddenCategories`, `poiBikeGroups`, `poiOsmComplement`, `poiTrackCorridorM`, `poiOsmUrl`, `poiMasked`, `gpsRecenterOnStart`, `gpsShowLastFix`, `mapFollowPosition`, `fillMissingElevation`, `elevationIgnUrl`, `elevationWorldUrl`, `elevationWorldKey`, `routePlannerEnabled`, `plannerStepNumbers`, `controlButtonsBackground`, `trackMeasureEnabled`, `trackEditEnabled`, `mapButtonSizeDp`, `gpsMarkerStyle`, `gpsMarkerColor`, `gpsMarkerSizeDp`, `offTrackAlertEnabled`, `offTrackAlertDistanceM`, `keepScreenOn`, `offTrackAlertSound`, `offTrackAlertSoundUri`, `offTrackAlertVibrate`, `dashboardHidden`, `dashboardFontSizes`, `routeSlopeLine`, `routeSlopeProfile`, `slopeClassTenths`, `trackLineWidth`, `trackDirectionArrows`, `dashboardFontSize`, `expertMode`, `profileVerticalScale`"
+
+    /**
+     * Retrait de settings.showGpsButton, par recopie dans une table neuve (cf. DROP_PLANNER_BAND_THEME : SQLite
+     * ne retire une colonne que depuis Android 14, et l'application descend jusqu'a Android 7).
+     */
+    val DROP_GPS_BUTTON_SETTING: List<String> = listOf(
+        "CREATE TABLE `settings_new` ($SETTINGS_COLUMN_DEFS_V77, PRIMARY KEY(`id`))",
+        "INSERT INTO `settings_new` ($SETTINGS_COLUMN_NAMES_V77) SELECT $SETTINGS_COLUMN_NAMES_V77 FROM `settings`",
+        "DROP TABLE `settings`",
+        "ALTER TABLE `settings_new` RENAME TO `settings`",
+    )
+
     /** Une couche coloriee par pente : aucune au depart. */
     const val ADD_LAYER_SLOPE_COLORED = "ALTER TABLE layers ADD COLUMN slopeColored INTEGER NOT NULL DEFAULT 0"
 
@@ -630,7 +650,7 @@ internal object MigrationSql {
  * **A incrementer avec toute evolution de schema**, et jamais seule : une migration doit l'accompagner
  * (cf. `ALL_MIGRATIONS`).
  */
-internal const val DB_VERSION = 76
+internal const val DB_VERSION = 77
 
 @Database(
     entities = [FolderEntity::class, LayerEntity::class, ProviderEntity::class,
@@ -1098,6 +1118,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_76_77 = object : Migration(76, 77) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                MigrationSql.DROP_GPS_BUTTON_SETTING.forEach { db.execSQL(it) }
+            }
+        }
+
         /**
          * Toutes les migrations, dans l'ordre, et **nommees** plutot qu'ecrites a la volee dans le
          * constructeur.
@@ -1108,7 +1134,7 @@ abstract class AppDatabase : RoomDatabase() {
          * de l'enregistrer ici. Rien ne le signale a la compilation, et Room se rabat alors sur ce qu'il
          * sait faire d'autre (cf. [OLDEST_SUPPORTED]).
          */
-        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65, MIGRATION_65_66, MIGRATION_66_67, MIGRATION_67_68, MIGRATION_68_69, MIGRATION_69_70, MIGRATION_70_71, MIGRATION_71_72, MIGRATION_72_73, MIGRATION_73_74, MIGRATION_74_75, MIGRATION_75_76)
+        internal val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26, MIGRATION_26_27, MIGRATION_27_28, MIGRATION_28_29, MIGRATION_29_30, MIGRATION_30_31, MIGRATION_31_32, MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37, MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41, MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45, MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48, MIGRATION_48_49, MIGRATION_49_50, MIGRATION_50_51, MIGRATION_51_52, MIGRATION_52_53, MIGRATION_53_54, MIGRATION_54_55, MIGRATION_55_56, MIGRATION_56_57, MIGRATION_57_58, MIGRATION_58_59, MIGRATION_59_60, MIGRATION_60_61, MIGRATION_61_62, MIGRATION_62_63, MIGRATION_63_64, MIGRATION_64_65, MIGRATION_65_66, MIGRATION_66_67, MIGRATION_67_68, MIGRATION_68_69, MIGRATION_69_70, MIGRATION_70_71, MIGRATION_71_72, MIGRATION_72_73, MIGRATION_73_74, MIGRATION_74_75, MIGRATION_75_76, MIGRATION_76_77)
 
         /**
          * La plus ancienne version depuis laquelle on sait migrer.

@@ -277,23 +277,6 @@ internal val PoiButtonIconSize = 24.dp
  */
 internal val PoiBubbleAnchorWidth = 48.dp
 
-
-/*
- * Dessin du bouton GPS : son epingle, et le mot "GPS" dessous.
- *
- * Il porte DEUX elements la ou ses voisins n'en ont qu'un, et se dessinait donc plus petit qu'eux - une
- * epingle de 16 dp contre les 24 dp d'une icone ordinaire. Les deux ont grandi ensemble, en gardant leur
- * rapport : le mot doit rester lisible sans concurrencer l'epingle, qui porte le sens.
- *
- * La borne haute n'est pas le confort mais le CARRE DE FOND, dont le cote se regle a partir de 36 dp
- * (cf. MinMapButtonSizeDp) : a 20 dp d'epingle et 8 sp de mot, l'ensemble tient dans le plus petit carre
- * avec de l'air de chaque cote. Au-dela, le dessin toucherait le bord de son fond au premier cran du
- * curseur.
- */
-internal val GpsIconSize = 20.dp
-
-internal const val GpsLabelSp = 8f
-
 /** Ecart entre deux boutons poses sur la carte. Le triple de ce qu'il etait : les fonds arrondis se
  *  touchaient presque, et la colonne se lisait comme un seul bloc. */
 internal val MapControlSpacing = 24.dp

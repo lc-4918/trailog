@@ -165,12 +165,12 @@ class MainScreenUiTest {
     @Test fun `chaque bouton suit son propre reglage`() {
         reglages {
             it.copy(
-                sideMenuMode = "both", showGpsButton = true, geocodingEnabled = false,
+                sideMenuMode = "both", geocodingEnabled = false,
                 trackMeasureEnabled = true, trackEditEnabled = false, showBasemapControlButton = true,
             )
         }
         ecran()
-        attend { affiche(R.string.content_desc_gps_position) }
+        attend { affiche(R.string.action_menu) }
         assertTrue("le burger", affiche(R.string.action_menu))
         assertTrue("la regle", affiche(R.string.measure_title))
         assertTrue("le gestionnaire de fonds", affiche(R.string.content_desc_basemap_control))
@@ -182,7 +182,7 @@ class MainScreenUiTest {
     @Test fun `le complement des reglages donne le complement des boutons`() {
         reglages {
             it.copy(
-                sideMenuMode = "both", showGpsButton = false, geocodingEnabled = true,
+                sideMenuMode = "both", geocodingEnabled = true,
                 trackMeasureEnabled = false, trackEditEnabled = true, showBasemapControlButton = false,
             )
         }
@@ -190,16 +190,15 @@ class MainScreenUiTest {
         attend { affiche(R.string.content_desc_geocode_search) }
         assertTrue("le burger reste : il ne depend d'aucun de ces reglages", affiche(R.string.action_menu))
         assertTrue("le crayon de retouche", affiche(R.string.edit_toolbar))
-        assertFalse("le bouton GPS", affiche(R.string.content_desc_gps_position))
         assertFalse("la regle", affiche(R.string.measure_title))
         assertFalse("le gestionnaire de fonds", affiche(R.string.content_desc_basemap_control))
     }
 
     /** Le menu au seul glissement retire son bouton : sinon le burger doublerait un geste qui suffit. */
     @Test fun `le mode glissement retire le burger`() {
-        reglages { it.copy(sideMenuMode = "swipe", showGpsButton = true) }
+        reglages { it.copy(sideMenuMode = "swipe") }
         ecran()
-        attend { affiche(R.string.content_desc_gps_position) }
+        attend { affiche(R.string.content_desc_basemap_control) }
         assertFalse(affiche(R.string.action_menu))
     }
 
@@ -268,9 +267,8 @@ class MainScreenUiTest {
      * `LocationHubTest`), mais que l'ecran la porte SOUS LES YEUX ne se verifie qu'ici.
      */
     @Test fun `un arret subi du suivi s'affiche sur la carte`() {
-        reglages { it.copy(showGpsButton = true) }
         ecran()
-        attend { affiche(R.string.content_desc_gps_position) }
+        attend { affiche(R.string.action_menu) }
         assertFalse("rien tant que rien ne s'est arrete", texte(R.string.location_stopped_system))
 
         // Ce que fait le service quand il meurt sans que personne ne l'ait demande.
@@ -539,7 +537,7 @@ class MainScreenUiTest {
      * bouton ne ferait que doublon.
      */
     @Test fun `le bouton du tableau de bord s'efface tant que son panneau est la`() {
-        reglages { it.copy(offTrackAlertEnabled = true, showGpsButton = true) }
+        reglages { it.copy(offTrackAlertEnabled = true) }
         ecran()
         attend { affiche(R.string.content_desc_dashboard) }
 

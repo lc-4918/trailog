@@ -148,8 +148,6 @@
     <string name="label_new_folder">Nueva carpeta</string>
     <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
     <string name="label_folder_short">Carpeta</string>
-    <string name="gps_label">GPS</string>
-    <string name="content_desc_gps_position">Posición GPS</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Buscar un lugar</string>
     <string name="geocode_search_placeholder">Buscar un lugar</string>
@@ -488,7 +486,6 @@
     <string name="settings_label_bubble_position">Posición</string>
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Título del menú lateral</string>
-    <string name="settings_sw_gps_button">Ubicación GPS</string>
     <string name="settings_sw_planner_step_numbers">Números de las etapas en la lista</string>
     <string name="settings_sw_gps_recenter">Recentrar en la posición</string>
     <string name="settings_sw_gps_recenter_sub">Recentrar en la posición al activar la localización GPS.</string>

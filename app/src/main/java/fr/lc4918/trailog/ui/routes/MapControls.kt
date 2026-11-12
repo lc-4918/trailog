@@ -151,25 +151,6 @@ internal fun BoxScope.MapTopLeftControls(
              * l'activite recreee - et la carte ne portait plus QUE le burger. Le type ne peut
              * plus dire "je ne sais pas", et la faute ne peut plus s'ecrire.
              */
-            if (settings.showGpsButton) {
-                IconButton(
-                    onClick = { location.onGpsButtonTap() },
-                    // Le fond ne change pas avec l'etat : allume, c'est le DESSIN qui passe au
-                    // bleu, comme le bouton de retouche. Le bouton portait auparavant un aplat
-                    // bleu plein, seul de son espece dans la colonne - il se lisait comme un
-                    // objet d'une autre famille, la ou tous les autres gardent le fond commun
-                    // des ornements de carte.
-                    modifier = chrome.buttonBackground,
-                ) {
-                    val gpsTint = if (location.gpsActive) MapChromeActive else chrome.fg
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Outlined.Place, stringResource(R.string.content_desc_gps_position),
-                            modifier = Modifier.size(GpsIconSize), tint = gpsTint)
-                        Text(stringResource(R.string.gps_label), fontSize = GpsLabelSp.sp,
-                            lineHeight = GpsLabelSp.sp, color = gpsTint)
-                    }
-                }
-            }
             // Popup de progression réduite : un bouton de la carte, à anneau de progression, à droite de
             // l'emplacement du bouton GPS, dans la même barre (donc même espacement latéral de 4.dp).
             offlineDownload?.takeIf { it.minimized }?.let { dl ->

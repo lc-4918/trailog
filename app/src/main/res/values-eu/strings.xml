@@ -148,8 +148,6 @@
     <string name="label_new_folder">Karpeta berria</string>
     <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
     <string name="label_folder_short">Karpeta</string>
-    <string name="gps_label">GPS</string>
-    <string name="content_desc_gps_position">GPS kokapena</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Bilatu leku bat</string>
     <string name="geocode_search_placeholder">Bilatu leku bat</string>
@@ -488,7 +486,6 @@
     <string name="settings_label_bubble_position">Kokapena</string>
     <string name="settings_label_avatar">Avatarra</string>
     <string name="settings_label_side_title">Alboko menuaren izenburua</string>
-    <string name="settings_sw_gps_button">GPS kokapena</string>
     <string name="settings_sw_planner_step_numbers">Urratsen zenbakiak zerrendan</string>
     <string name="settings_sw_gps_recenter">Kokapenean zentratu</string>
     <string name="settings_sw_gps_recenter_sub">GPS kokapena pizten denean kokapenean zentratu.</string>

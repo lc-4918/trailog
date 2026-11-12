@@ -235,7 +235,7 @@ fun MainScreen(
      *
      * L'ecran n'en garde que ce qu'il AFFICHE - le symbole du repere, ci-dessous - et ce qu'il en lit.
      */
-    val location = rememberLocationControls(controller, settings.showGpsButton)
+    val location = rememberLocationControls(controller)
     // Ecran maintenu allume tant que le suivi tourne, si le reglage le demande (cf. KeepScreenOnEffect).
     // L'annonce d'un arret subi du suivi : voir la banniere posee avec celle de l'alerte d'eloignement.
     val stopNotice by LocationHub.stopNotice.collectAsState()

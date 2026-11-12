@@ -84,7 +84,6 @@ class MainScreenSansReglagesTest {
     @Test fun `la carte garde les commandes affichees par defaut`() {
         ecran()
         assertTrue("le burger", affiche(R.string.action_menu))
-        assertTrue("le bouton GPS", affiche(R.string.content_desc_gps_position))
         assertTrue("l'itineraire", affiche(R.string.planner_title))
         assertTrue("le gestionnaire de fonds", affiche(R.string.content_desc_basemap_control))
     }

@@ -443,9 +443,11 @@ class LocationControls internal constructor(
         }
     }
 
-    /** Le bouton de position : il allume le suivi, ou l'eteint s'il tourne. */
-    fun onGpsButtonTap() {
-        if (gpsActive) { stopGps(); return }
+    /**
+     * Relance le suivi arrete par le systeme, depuis la notification d'arret. Il n'y a plus de bouton : les
+     * fonctions qui ont besoin de la position demandent elles-memes le suivi (cf. [startGps]).
+     */
+    fun resumeGps() {
         withLocationPermission {
             if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
             else showDisabledDialog = true
@@ -547,14 +549,9 @@ class LocationControls internal constructor(
 
 }
 
-/**
- * Le porteur de la position, avec les autorisations et les effets qui le tiennent en vie.
- *
- * [showGpsButton] est le reglage "afficher le bouton GPS" : l'eteindre pendant que la position tourne
- * coupe le suivi, faute de quoi il resterait allume sans plus rien a l'ecran pour l'arreter.
- */
+/** Le porteur de la position, avec les autorisations et les effets qui le tiennent en vie. */
 @Composable
-fun rememberLocationControls(controller: MapController, showGpsButton: Boolean?): LocationControls {
+fun rememberLocationControls(controller: MapController): LocationControls {
     val ctx = LocalContext.current
     val locationManager = remember(ctx) { ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
     val trackingState = LocationHub.tracking.collectAsState()
@@ -604,11 +601,6 @@ fun rememberLocationControls(controller: MapController, showGpsButton: Boolean?)
             runCatching { ctx.unregisterReceiver(receiver) }
         }
     }
-
-    // Le reglage "afficher le bouton GPS" desactive pendant que la position est active coupe la position
-    // (mais ne desactive pas le capteur lui-meme, seulement les mises a jour cote appli). Un geste, donc :
-    // arret DEMANDE, qui ne s'annonce pas et ne se rallume pas.
-    LaunchedEffect(showGpsButton) { if (showGpsButton == false && controls.gpsActive) controls.stopGps() }
 
     /*
      * La localisation du telephone n'est PLUS surveillee ici.

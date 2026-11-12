@@ -148,8 +148,6 @@
     <string name="label_new_folder">Nova carpeta</string>
     <!-- Libelle court du bouton "Nouveau dossier" de l'en-tete du menu, a cote de "Importer". -->
     <string name="label_folder_short">Carpeta</string>
-    <string name="gps_label">GPS</string>
-    <string name="content_desc_gps_position">Posició GPS</string>
     <!-- Recherche de lieu / adresse (geocodage) -->
     <string name="content_desc_geocode_search">Cerca un lloc</string>
     <string name="geocode_search_placeholder">Cerca un lloc</string>
@@ -488,7 +486,6 @@
     <string name="settings_label_bubble_position">Posició</string>
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Títol del menú lateral</string>
-    <string name="settings_sw_gps_button">Ubicació GPS</string>
     <string name="settings_sw_planner_step_numbers">Números de les etapes a la llista</string>
     <string name="settings_sw_gps_recenter">Recentra a la posició</string>
     <string name="settings_sw_gps_recenter_sub">Recentra a la posició en activar la localització GPS.</string>

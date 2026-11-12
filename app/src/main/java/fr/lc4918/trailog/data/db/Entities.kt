@@ -172,7 +172,6 @@ data class SettingsEntity(
     val hasCamera: Boolean = false,                 // true dès qu'une caméra a été enregistrée
     val showScale: Boolean = true,                  // échelle graphique sur la carte
     val rotateGesturesEnabled: Boolean = false,     // rotation de la carte (geste à 2 doigts)
-    val showGpsButton: Boolean = true,              // bouton de localisation GPS sur la carte
     val bubbleBold: Boolean = false,
     val profAxisBold: Boolean = false,
     val profTitleBold: Boolean = true,
@@ -433,15 +432,11 @@ const val MaxGpsMarkerSizeDp = 48
 const val DefaultGpsMarkerSizeDp = 30
 
 /**
- * La cloche de l'alerte d'eloignement s'affiche-t-elle sur la carte ?
- *
- * Les deux reglages, et non le seul interrupteur de l'alerte : elle n'existe pas sans le bouton de
- * localisation (cf. [SettingsEntity.offTrackAlertEnabled]). L'ecran des reglages tient deja le lien dans
- * les deux sens, mais la carte ne s'y fie pas - une base restauree, ou ecrite par une version anterieure,
- * peut porter la combinaison interdite, et c'est la carte qui aurait tort de l'afficher.
+ * La cloche de l'alerte d'eloignement s'affiche-t-elle sur la carte ? Elle suit son seul reglage : la
+ * localisation du telephone en est la condition, et la carte n'a plus de bouton pour la porter.
  */
 val SettingsEntity.offTrackAlertVisible: Boolean
-    get() = offTrackAlertEnabled && showGpsButton
+    get() = offTrackAlertEnabled
 
 /**
  * Bornes de l'ecart declenchant l'alerte d'eloignement (m), et son pas de reglage.

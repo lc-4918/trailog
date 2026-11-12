@@ -112,22 +112,10 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         GroupTitle(stringResource(R.string.settings_section_map_controls), first = true)
         SectionTitle(stringResource(R.string.settings_section_position), tight = true)
         SettingsCard {
-            // Éteindre la localisation éteint le tableau de bord avec elle : celui-ci n'a que la position pour
-            // matière, et son bouton resterait sur la carte sans rien pour allumer ni couper le capteur.
-            // Le lien inverse est tenu par la ligne du tableau de bord, juste dessous.
-            SwitchLine(stringResource(R.string.settings_sw_gps_button), cur.showGpsButton) {
-                vm.save(cur.copy(showGpsButton = it, offTrackAlertEnabled = it && cur.offTrackAlertEnabled))
-            }
-            RowDivider()
-            /*
-             * Le bouton du tableau de bord, juste sous la localisation dont il se nourrit : c'est un bouton de
-             * position comme celui du dessus. Ses champs et son alerte ont leur groupe, plus bas.
-             *
-             * Il allume AUSSI le bouton de localisation, sans le demander : sans lui, ce serait un capteur
-             * qu'on ne peut ni voir ni couper. Le lien inverse est tenu par la ligne du dessus.
-             */
+            // Le tableau de bord suit la position du telephone : il n'a plus de bouton de localisation a allumer
+            // ni a couper, le capteur du telephone en est la seule condition.
             SwitchLine(stringResource(R.string.settings_sw_track_follow), cur.offTrackAlertEnabled) {
-                vm.save(cur.copy(offTrackAlertEnabled = it, showGpsButton = it || cur.showGpsButton))
+                vm.save(cur.copy(offTrackAlertEnabled = it))
             }
         }
     }

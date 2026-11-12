@@ -119,7 +119,7 @@ internal fun BoxScope.MapNoticeLayer(
             onAction = when {
                 economie -> ({ location.dismissStopNotice(); PowerSave.openSettings(ctx) })
                 arret == LocationHub.StopReason.SENSOR_SILENT -> null
-                else -> ({ location.dismissStopNotice(); location.onGpsButtonTap() })
+                else -> ({ location.dismissStopNotice(); location.resumeGps() })
             },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
