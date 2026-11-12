@@ -108,6 +108,8 @@ class MapController {
     var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
+    /** Tap sur le trace du planificateur (pas sur un trace de mesure) : rouvre la bande de calcul si elle est rangee. */
+    var onPlannerRouteTap: (() -> Boolean)? = null
     /** Tap sur un marqueur de point d'interet : recoit (identifiant, lon, lat). */
     var onPickPoi: ((String, Double, Double) -> Unit)? = null
     /** Appui long sur un endroit quelconque de la carte - hors trace et hors marqueur : reçoit (lon, lat).
@@ -357,6 +359,19 @@ class MapController {
         if (overlapping.size == 1) return overlapping.first()
         val order = s.layers.map { it.id }
         return pickAmongOverlapping(overlapping.sortedByDescending { order.indexOf(lineLayerId(it)) }, activeLineKey)
+    }
+
+    /**
+     * Vrai si le doigt tombe sur le trace du planificateur. Les tracés des mesures partagent ce calque, mais
+     * portent un autre proprietaire : un tap sur eux ne rouvre pas la bande de calcul.
+     */
+    private fun plannerRouteAt(screen: PointF): Boolean {
+        val m = map ?: return false
+        if (style?.getLayer(ROUTE_LINE) == null) return false
+        val tol = lineTapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, ROUTE_LINE)
+            .any { it.getStringProperty(SlopeLines.OwnerProperty) == SlopeLines.PlannerOwner }
     }
 
     /** Distance en pixels de [screen] a la ligne [geometry] (en lon/lat) ; infinie si ce n'en est pas une. */
@@ -1297,9 +1312,11 @@ class MapController {
      * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
      * doit pas passer devant le marqueur qui le termine.
      */
-    fun setRouteLines(tracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int) {
+    fun setRouteLines(plannerTrack: ComputedTrack?, measureTracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int) {
         val s = style ?: return
-        val drawable = tracks.filter { it.samples.size >= 2 }
+        val plannerDrawable = listOfNotNull(plannerTrack).filter { it.samples.size >= 2 }
+        val measureDrawable = measureTracks.filter { it.samples.size >= 2 }
+        val drawable = plannerDrawable + measureDrawable
         if (drawable.isEmpty()) {
             s.getLayer(arrowLayerId(ROUTE_KEY))?.let { s.removeLayer(it) }
             s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
@@ -1307,9 +1324,13 @@ class MapController {
             s.getSource(ROUTE_ARROW_SRC)?.let { s.removeSource(it) }
             return
         }
-        val features = drawable.joinToString(",") {
+        val plannerFeatures = plannerDrawable.map {
+            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000", SlopeLines.PlannerOwner)
+        }
+        val measureFeatures = measureDrawable.map {
             SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000")
         }
+        val features = (plannerFeatures + measureFeatures).filter { it.isNotEmpty() }.joinToString(",")
         val geojson = """{"type":"FeatureCollection","features":[$features]}"""
         val existing = s.getSourceAs<GeoJsonSource>(ROUTE_SRC)
         if (existing == null) {
@@ -1732,6 +1753,9 @@ class MapController {
         if (fastPicked) return
         onRawTap?.let { it(latLng.longitude, latLng.latitude); return }
         markerPickAt(screen)?.let { it(); return }
+        // Le trace du planificateur ne designe ni profil ni infobulle : s'il ne rouvre rien, le tap suit son
+        // chemin habituel, comme dans le vide.
+        if (plannerRouteAt(screen) && onPlannerRouteTap?.invoke() == true) return
         lineKeyAt(screen)?.let { onPickLine?.invoke(it, latLng.longitude, latLng.latitude); return }
         onTapEmpty?.invoke()
     }

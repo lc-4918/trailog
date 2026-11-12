@@ -251,7 +251,7 @@ fun PlannerEffects(
     // planificateur, et les itinéraires mesurés depuis un point de la carte. Un seul calque pour les trois :
     // ils ont même style, et rien n'impose d'ordre entre eux.
     LaunchedEffect(state.revision, state.route, routeRevision, styleTick, slopeTint) {
-        controller.setRouteLines(listOfNotNull(state.done?.track) + routeTracks, slopeTint, SlopeRamp.DefaultClassTenths)
+        controller.setRouteLines(state.done?.track, routeTracks, slopeTint, SlopeRamp.DefaultClassTenths)
     }
     // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
     // planificateur fermant le profil ouvert quand il s'ouvre.

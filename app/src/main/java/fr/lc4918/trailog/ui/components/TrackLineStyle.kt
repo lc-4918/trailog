@@ -20,16 +20,24 @@ import kotlin.math.roundToInt
  */
 object SlopeLines {
 
+    /** Propriete d'un troncon qui dit a qui appartient le trace (cf. [features]). */
+    const val OwnerProperty = "owner"
+
+    /** Proprietaire du trace du planificateur : le seul dont un tap rouvre la bande de calcul. */
+    const val PlannerOwner = "planner"
+
     /**
      * Les troncons d'une ligne, separes par des virgules. [classTenths] nul : un seul troncon, de la
      * couleur [plainColor].
      */
-    fun features(pts: List<Sample>, classTenths: Int?, plainColor: String): String {
+    fun features(pts: List<Sample>, classTenths: Int?, plainColor: String, owner: String? = null): String {
         if (pts.size < 2) return ""
+        // [owner] marque le proprietaire du trace (cf. OwnerProperty) : il se relit au tap sur la carte.
+        val ownerProperty = if (owner == null) "" else ""","$OwnerProperty":"$owner""""
         fun feature(from: Int, to: Int, color: String): String {
             val coords = (from..to).joinToString(",") { "[${pts[it].lon},${pts[it].lat}]" }
             return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},""" +
-                """"properties":{"color":"$color"}}"""
+                """"properties":{"color":"$color"$ownerProperty}}"""
         }
         if (classTenths == null) return feature(0, pts.lastIndex, plainColor)
         val out = StringBuilder()

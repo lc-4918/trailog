@@ -94,12 +94,20 @@ internal fun MapTapRouting(
                 controller.onPickPoint = null
                 controller.onPickLine = { key, lon, lat -> onEditTap(key, lon, lat, edit, layers, vm, sameSegmentMessage) }
                 controller.onTapEmpty = null
+                controller.onPlannerRouteTap = null
             }
             else -> {
                 controller.onRawTap = null
                 controller.onPickPoint = { key, fid, lon, lat -> vm.onPickPoint(key, fid, lon, lat) }
                 controller.onPickLine = { key, lon, lat -> controller.bringLayerToFront(key); vm.onPickLine(key, lon, lat) }
                 controller.onTapEmpty = { vm.closeOnEmpty() }
+                // Trace du planificateur range : un appui dessus rouvre la bande de calcul. Ouverte, la bande
+                // n'a rien a rouvrir, et le tap reprend son comportement habituel.
+                controller.onPlannerRouteTap = {
+                    val reopens = planner.open && planner.collapsed
+                    if (reopens) planner.openPlanner()
+                    reopens
+                }
             }
         }
     }

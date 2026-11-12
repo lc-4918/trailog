@@ -6,6 +6,7 @@ import fr.lc4918.trailog.domain.model.Sample
 import fr.lc4918.trailog.domain.model.TrackPoint
 import fr.lc4918.trailog.ui.profile.SlopeRamp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,6 +16,16 @@ class TrackLineStyleTest {
     private fun s(i: Int, slope: Double) = Sample(i * 100.0, 0.0, slope, null, 6.0 + i * 0.001, 45.0)
 
     private fun colors(json: String) = Regex("\"color\":\"(#[0-9A-F]{6})\"").findAll(json).map { it.groupValues[1] }.toList()
+
+    /** Le trace du planificateur porte son proprietaire ; un trace de mesure n'en porte aucun, et un tap
+     *  sur le second ne doit donc pas rouvrir la bande de calcul. */
+    @Test fun `seul le trace du planificateur porte son proprietaire`() {
+        val pts = listOf(s(0, 0.0), s(1, 0.0))
+        val plannerJson = SlopeLines.features(pts, null, "#000000", SlopeLines.PlannerOwner)
+        val measureJson = SlopeLines.features(pts, null, "#000000")
+        assertTrue(plannerJson.contains("\"${SlopeLines.OwnerProperty}\":\"${SlopeLines.PlannerOwner}\""))
+        assertFalse(measureJson.contains(SlopeLines.OwnerProperty))
+    }
 
     @Test fun `sans pente, un seul troncon de la couleur demandee`() {
         val json = SlopeLines.features(listOf(s(0, 0.0), s(1, 8.0), s(2, -8.0)), null, "#000000")
