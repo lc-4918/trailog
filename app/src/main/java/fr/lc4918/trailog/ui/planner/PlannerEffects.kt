@@ -24,6 +24,7 @@ import fr.lc4918.trailog.ui.profile.SlopeRamp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import androidx.compose.material3.MaterialTheme
 
 /**
  * Ce que le planificateur calcule, et ce qu'il demande a la carte en retour.
@@ -255,8 +256,10 @@ fun PlannerEffects(
     // Tracés posés sur la carte, teintés par classe de pente comme l'aire du profil : le parcours du
     // planificateur, et les itinéraires mesurés depuis un point de la carte. Un seul calque pour les trois :
     // ils ont même style, et rien n'impose d'ordre entre eux.
-    LaunchedEffect(state.revision, state.route, routeRevision, styleTick, slopeTint) {
-        controller.setRouteLines(state.done?.track, routeTracks, slopeTint, SlopeRamp.DefaultClassTenths)
+    // Le trace du planificateur prend la couleur primaire du theme ; la coloration par pente l'emporte.
+    val plannerColor = SlopeRamp.hex(MaterialTheme.colorScheme.primary)
+    LaunchedEffect(state.revision, state.route, routeRevision, styleTick, slopeTint, plannerColor) {
+        controller.setRouteLines(state.done?.track, routeTracks, slopeTint, SlopeRamp.DefaultClassTenths, plannerColor)
     }
     // Curseur du profil du planificateur : il n'entre pas en concurrence avec celui d'une trace, le
     // planificateur fermant le profil ouvert quand il s'ouvre.

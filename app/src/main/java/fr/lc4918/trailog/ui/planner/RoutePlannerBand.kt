@@ -126,6 +126,7 @@ import fr.lc4918.trailog.ui.profile.TrackInfoColumns
 import fr.lc4918.trailog.ui.profile.routeInfos
 import kotlinx.coroutines.delay
 import fr.lc4918.trailog.ui.theme.TrailogIcons
+import androidx.compose.ui.graphics.toArgb
 
 /** Hauteur minimale de la bande : le double de celle des barres de consigne existantes, qui n'affichent
  *  qu'une ligne de texte. Le planificateur porte au moins la discipline et deux champs. */
@@ -159,7 +160,7 @@ private val RailWidth = 24.dp
 /** Rayon de la pastille numerotee du rail : elle tient dans [RailWidth], comme celle de la carte. */
 private val RailBadgeRadius = 10.dp
 
-/** Epaisseur de l'anneau blanc de la pastille, en part de son rayon (cf. MapLibreView.badgeBitmap). */
+/** Epaisseur de l'anneau qui detache la pastille du rail, en part de son rayon (cf. MapLibreView.badgeBitmap). */
 private const val RailBadgeRing = 0.08f
 
 /** Corps du libelle d'une pastille du rail, en sp : un caractere (A, B, 1 a 9) plus grand que deux. */
@@ -577,11 +578,13 @@ private fun Modifier.stepRail(
     index: Int, count: Int, line: Color, mark: Color, hole: Color, via: Color,
     /** Libelle de la pastille, comme sur la carte : nul, le repere d'origine (anneau, cible, point). */
     label: String? = null,
+    /** Couleur du libelle, posee sur [mark] : celle du texte sur la couleur primaire du theme. */
+    onMark: Color = Color.White,
 ) = drawWithCache {
     // Le pinceau du libelle, cree une fois pour toutes tant que le libelle et la taille ne changent pas.
     val labelPaint = label?.let {
         android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = onMark.toArgb()
             textAlign = android.graphics.Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             textSize = railLabelTextSp(it.length).sp.toPx()
@@ -595,10 +598,11 @@ private fun Modifier.stepRail(
         if (index < count - 1) drawLine(line, Offset(x, y), Offset(x, size.height), w)
         val c = Offset(x, y)
         if (label != null && labelPaint != null) {
-            // La pastille de la carte : disque noir cercle de blanc, libelle blanc au centre.
+            // Aux couleurs du theme, comme la pastille de la carte : disque primaire detache du rail par un
+            // anneau du fond, libelle au centre.
             val radius = RailBadgeRadius.toPx()
-            drawCircle(Color.White, radius, c)
-            drawCircle(Color.Black, radius * (1 - RailBadgeRing), c)
+            drawCircle(hole, radius, c)
+            drawCircle(mark, radius * (1 - RailBadgeRing), c)
             val baseline = y - (labelPaint.ascent() + labelPaint.descent()) / 2f
             drawContext.canvas.nativeCanvas.drawText(label, x, baseline, labelPaint)
             return@onDrawBehind
@@ -704,7 +708,7 @@ private fun StepRow(
         modifier.bringIntoViewRequester(bringIntoView).stepRail(
             index, state.steps.size,
             line = scheme.outlineVariant, mark = scheme.primary, hole = scheme.surface, via = scheme.onSurfaceVariant,
-            label = railLabel,
+            label = railLabel, onMark = scheme.onPrimary,
         )
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

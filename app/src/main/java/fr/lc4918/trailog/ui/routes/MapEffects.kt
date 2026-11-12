@@ -23,6 +23,8 @@ import fr.lc4918.trailog.ui.mappoint.MapPointState
 import fr.lc4918.trailog.ui.measure.TrackMeasureState
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import kotlinx.coroutines.delay
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.toArgb
 
 /**
  * Ce que l'ecran demande a la carte, et rien d'autre : des effets qui ne rendent aucun pixel, et dont le
@@ -87,8 +89,11 @@ internal fun MapOverlayEffects(
     // marqueur. Calque à part, encore : le planificateur reste ouvert pendant qu'on désigne un point ou
     // qu'on cherche un lieu.
     val stepMarks = planner.stepMarks(currentPosition)
-    LaunchedEffect(stepMarks, styleTick, markerPx) {
-        controller.setStepMarks(stepMarks, markerPx)
+    // Aux couleurs du theme, comme le rail de la liste des etapes : le fond primaire, le libelle dessus.
+    val stepFill = MaterialTheme.colorScheme.primary.toArgb()
+    val stepText = MaterialTheme.colorScheme.onPrimary.toArgb()
+    LaunchedEffect(stepMarks, styleTick, markerPx, stepFill, stepText) {
+        controller.setStepMarks(stepMarks, markerPx, stepFill, stepText)
     }
     // Symbole du repère de position, tel que les réglages le décrivent. Rejoué sur styleTick : le repère est
     // reposé avec la dernière position connue, sans attendre que le capteur en donne une nouvelle.

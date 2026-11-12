@@ -1107,6 +1107,8 @@ class MapController {
      *  deplacement en cours d'une pastille (cf. [onMapTouch]). */
     private var stepMarks: List<StepMark> = emptyList()
     private var stepPinPx = 64f
+    private var stepFillColor = android.graphics.Color.BLACK
+    private var stepTextColor = android.graphics.Color.WHITE
     private var draggedStepId: Long? = null
     private var dragLonLat: Pair<Double, Double>? = null
 
@@ -1139,10 +1141,17 @@ class MapController {
      * pastille par son centre. Leur propre calque, comme les precedents : le planificateur reste ouvert
      * pendant qu'on consulte un point d'interet ou qu'on cherche un lieu.
      */
-    fun setStepMarks(marks: List<StepMark>, heightPx: Float) {
+    fun setStepMarks(
+        marks: List<StepMark>, heightPx: Float,
+        /** Couleurs du theme : le fond des epingles A/B et des pastilles, et leur libelle. */
+        fillColor: Int = android.graphics.Color.BLACK,
+        textColor: Int = android.graphics.Color.WHITE,
+    ) {
         if (dropped.confirm(marks)) touchHandler.removeCallbacks(releaseDropped)
         stepMarks = marks
         stepPinPx = heightPx
+        stepFillColor = fillColor
+        stepTextColor = textColor
         drawStepMarks()
     }
 
@@ -1210,31 +1219,32 @@ class MapController {
 
     private fun ensureLetterPin(s: Style, letter: String): String {
         val h = stepPinPx.toInt().coerceIn(24, 256)
-        val name = "steppin_${letter}_$h"
-        if (pinImages.add(name)) s.addImage(name, letterPinBitmap(appContext, h, letter))
+        // Les couleurs entrent dans le nom : changer de theme redessine l'image au lieu de reprendre l'ancienne.
+        val name = "steppin_${letter}_${h}_${stepFillColor}_$stepTextColor"
+        if (pinImages.add(name)) s.addImage(name, letterPinBitmap(appContext, h, letter, stepFillColor, stepTextColor))
         return name
     }
 
     private fun ensureBadge(s: Style, number: Int, diameterPx: Float): String {
         val d = diameterPx.toInt().coerceIn(24, 128)
-        val name = "stepbadge_${number}_$d"
-        if (pinImages.add(name)) s.addImage(name, badgeBitmap(d, number.toString()))
+        val name = "stepbadge_${number}_${d}_${stepFillColor}_$stepTextColor"
+        if (pinImages.add(name)) s.addImage(name, badgeBitmap(d, number.toString(), stepFillColor, stepTextColor))
         return name
     }
 
-    /** L'epingle noire PLEINE - le trou du dessin est rebouche en noir, sans contour - et sa lettre blanche,
+    /** L'epingle PLEINE aux couleurs du theme - le trou du dessin est rebouche, sans contour - et sa lettre,
      *  du meme corps que le numero d'une pastille ([badgeTextPx]). */
-    private fun letterPinBitmap(context: Context?, h: Int, letter: String): Bitmap {
-        val bmp = pinBitmap(context, android.graphics.Color.BLACK, h)
+    private fun letterPinBitmap(context: Context?, h: Int, letter: String, fillColor: Int, textColor: Int): Bitmap {
+        val bmp = pinBitmap(context, fillColor, h)
         val c = AndroidCanvas(bmp)
         // Centre et rayon du trou de ic_pin_fill, dans son repere 128 x 128 ; le rebouchage deborde un peu
         // pour ne laisser aucun liseré.
         val cx = 63.5f / 128f * h
         val cy = 41.9f / 128f * h
         val hole = 16.5f / 128f * h
-        c.drawCircle(cx, cy, hole, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK })
+        c.drawCircle(cx, cy, hole, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = textColor
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             textSize = badgeTextPx(1)
@@ -1247,16 +1257,16 @@ class MapController {
     private fun badgeTextPx(digits: Int): Float =
         badgeDp * density * (if (digits > 1) 0.42f else 0.52f)
 
-    /** La pastille ronde d'une etape intermediaire : noire, cerclee de blanc, son numero au centre. */
-    private fun badgeBitmap(d: Int, label: String): Bitmap {
+    /** La pastille ronde d'une etape intermediaire : aux couleurs du theme, cerclee de blanc, son numero au centre. */
+    private fun badgeBitmap(d: Int, label: String, fillColor: Int, textColor: Int): Bitmap {
         val bmp = createBitmap(d, d)
         val c = AndroidCanvas(bmp)
         val half = d / 2f
         val ring = d * 0.08f
         c.drawCircle(half, half, half, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE })
-        c.drawCircle(half, half, half - ring, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK })
+        c.drawCircle(half, half, half - ring, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = textColor
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             textSize = badgeTextPx(label.length)
@@ -1324,7 +1334,11 @@ class MapController {
      * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
      * doit pas passer devant le marqueur qui le termine.
      */
-    fun setRouteLines(plannerTrack: ComputedTrack?, measureTracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int) {
+    fun setRouteLines(
+        plannerTrack: ComputedTrack?, measureTracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int,
+        /** Couleur unie du trace du planificateur, celle du theme ; la coloration par pente l'emporte. */
+        plannerColor: String = "#000000",
+    ) {
         val s = style ?: return
         val plannerDrawable = listOfNotNull(plannerTrack).filter { it.samples.size >= 2 }
         val measureDrawable = measureTracks.filter { it.samples.size >= 2 }
@@ -1337,7 +1351,7 @@ class MapController {
             return
         }
         val plannerFeatures = plannerDrawable.map {
-            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000", SlopeLines.PlannerOwner)
+            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, plannerColor, SlopeLines.PlannerOwner)
         }
         val measureFeatures = measureDrawable.map {
             SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000")
