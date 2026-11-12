@@ -16,6 +16,13 @@ import fr.lc4918.trailog.geocode.GeocodePlace
 /** Nombre maximal d'etapes. Au-dela, le moteur d'itineraire refuse la requete et la liste devient illisible. */
 const val MaxPlannerSteps = 25
 
+/**
+ * Deplacement, en metres, au-dela duquel un tap sur le parcours refait le trajet depuis la position
+ * actuelle (cf. RoutePlannerState.showWholeRoute). En deca, le parcours affiche vaut encore : le recalcul
+ * ne ferait qu'afficher un spinner pour un trajet identique.
+ */
+const val CurrentPositionRefreshM = 50.0
+
 /** Ce qu'une etape designe : un lieu trouve par le geocodeur, ou la position du porteur. */
 sealed interface StepTarget {
     data class Place(val place: GeocodePlace) : StepTarget
@@ -572,6 +579,43 @@ class RoutePlannerState {
         // Rangee, la bande emporte le VIEWER : la redeployer rend la bande complete, pas un panneau oublie.
         if (v) closeViewer()
         if (!v) pickingStep = null
+    }
+
+    /**
+     * Demandes de cadrage de la carte sur TOUT le parcours, au-dessus de la bande (cf. [showWholeRoute]).
+     * Un compteur et non un drapeau : deux taps de suite redemandent chacun le cadrage.
+     */
+    var frameRequest by mutableStateOf(0)
+        private set
+
+    /**
+     * Un tap sur le trace du parcours, sur le depart ou sur l'arrivee : la bande se redeploie si elle etait
+     * rangee, et la carte se cadre sur tout le parcours, dans ce qui reste visible au-dessus d'elle.
+     */
+    fun showWholeRoute(currentLatLon: Pair<Double, Double>? = null) {
+        if (!open) return
+        // Redeployee SANS refaire le parcours : on vient le regarder, pas le recalculer. Passer par
+        // openPlanner relancait le calcul des qu'une etape est sur la position actuelle (cf.
+        // refreshCurrentPosition) - un spinner pour rien, le temps d'une reponse du reseau.
+        if (collapsed) {
+            collapsed = false
+            pickingStep = null
+        }
+        // Sauf si l'on s'est vraiment deplace depuis le calcul : le trajet partirait alors d'ailleurs.
+        if (movedSinceLastRoute(currentLatLon)) refreshCurrentPosition()
+        frameRequest++
+    }
+
+    /**
+     * Le porteur s'est-il eloigne de plus de [CurrentPositionRefreshM] de la position employee par le
+     * dernier calcul ? Faux si aucune etape n'est sur la position actuelle, ou si l'une des deux positions
+     * manque. [currentLatLon] en (lat, lon), comme le capteur la rend.
+     */
+    fun movedSinceLastRoute(currentLatLon: Pair<Double, Double>?): Boolean {
+        if (!usesCurrentPosition) return false
+        val (usedLon, usedLat) = currentPositionUsed ?: return false
+        val (lat, lon) = currentLatLon ?: return false
+        return TrackMath.haversine(usedLon, usedLat, lon, lat) > CurrentPositionRefreshM
     }
 
     /** L'etape attend un point : la bande se range pour rendre la carte, la consigne prend le relais. */

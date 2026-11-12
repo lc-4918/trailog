@@ -182,6 +182,11 @@ fun PlannerEffects(
      * L'effet depend de la hauteur de la bande : il se relance a chaque etape de sa croissance, et le court
      * delai annule les passes intermediaires. Le cadrage n'a lieu qu'une fois la bande stabilisee.
      */
+    // Un tap sur le parcours, le depart ou l'arrivee demande le cadrage sur tout le trajet (cf.
+    // RoutePlannerState.showWholeRoute) : meme chemin differe, la bande pouvant etre en train de se redeployer.
+    LaunchedEffect(state.frameRequest) {
+        if (state.frameRequest > 0 && state.done != null) framePending = true
+    }
     LaunchedEffect(framePending, bandHeightPx, state.route) {
         if (!framePending) return@LaunchedEffect
         val s = state.done?.track?.samples ?: return@LaunchedEffect

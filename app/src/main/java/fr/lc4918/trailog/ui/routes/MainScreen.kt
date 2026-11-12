@@ -606,6 +606,7 @@ fun MainScreen(
         edit = edit,
         layers = layers,
         vm = vm,
+        currentLatLon = { location.lastUserLocation },
     )
     // cadrage sur les couches récemment importées à la fermeture du menu
     LaunchedEffect(drawerState.currentValue) {

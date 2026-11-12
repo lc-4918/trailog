@@ -108,7 +108,8 @@ class MapController {
     var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
     var onPickLine: ((String, Double, Double) -> Unit)? = null
     var onTapEmpty: (() -> Unit)? = null
-    /** Tap sur le trace du planificateur (pas sur un trace de mesure) : rouvre la bande de calcul si elle est rangee. */
+    /** Tap sur le trace du planificateur (pas sur un trace de mesure), sur son depart ou son arrivee : rouvre la
+     *  bande de calcul et cadre la carte sur tout le parcours. Rend vrai si le tap a ete pris. */
     var onPlannerRouteTap: (() -> Boolean)? = null
     /** Tap sur un marqueur de point d'interet : recoit (identifiant, lon, lat). */
     var onPickPoi: ((String, Double, Double) -> Unit)? = null
@@ -312,6 +313,8 @@ class MapController {
         val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
         // La pastille d'une etape d'itineraire, posee par-dessus tout le reste.
         plannerBadgeAt(screen)?.let { id -> return { onPickPlannerStep?.invoke(id) } }
+        // Le depart (A) et l'arrivee (B) : comme un tap sur le trace du parcours (cf. onPlannerRouteTap).
+        if (plannerEndpointAt(screen)) return { onPlannerRouteTap?.invoke() }
         // Les points d'interet d'abord, parce qu'ils sont dessines par-dessus : sous le doigt, c'est celui
         // qu'on voit qui doit repondre. Ils ne sont la que si la couche est allumee, donc rien ne change
         // pour qui ne s'en sert pas.
@@ -1180,6 +1183,15 @@ class MapController {
         } else {
             existing.setGeoJson(geojson)
         }
+    }
+
+    /** Vrai si le depart (A) ou l'arrivee (B) du parcours est sous [screen]. */
+    private fun plannerEndpointAt(screen: PointF): Boolean {
+        val m = map ?: return false
+        if (style?.getLayer(PLANNER_PTS) == null) return false
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, PLANNER_PTS).isNotEmpty()
     }
 
     /** L'identifiant de l'etape dont la pastille est sous [screen], ou null. */
