@@ -49,6 +49,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.core.app.ServiceCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 
 /**
  * Le suivi de position, hors de l'ecran.
@@ -215,6 +219,26 @@ class LocationService : Service() {
     @Volatile private var stopReason = LocationHub.StopReason.SYSTEM
 
     /**
+     * Le service est au premier plan, avec sa notification, et survit donc a l'ecran eteint. Faux en mode
+     * "ecran seul" (cf. [LocationHub.backgroundAllowed]) : la position ne sert alors qu'au curseur, tant
+     * que l'application est a l'ecran, et le service s'arrete quand elle passe en arriere-plan.
+     */
+    private var inForeground = false
+
+    /** L'application passe en arriere-plan : en mode "ecran seul", le suivi s'arrete sans rien annoncer. */
+    private val appLifecycleObserver = LifecycleEventObserver { _, event ->
+        if (event == Lifecycle.Event.ON_STOP && !inForeground) {
+            FixLog.write(this) { "application en arriere-plan - suivi ecran seul arrete" }
+            LocationHub.stopRequestedByUser()
+            stopReason = LocationHub.StopReason.USER
+            stopSelf()
+        }
+    }
+
+    private fun appVisible(): Boolean =
+        ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+
+    /**
      * Les fournisseurs auxquels on est abonne, dans l'ordre de [PROVIDERS]. Vide quand le service
      * attend que le capteur revienne.
      */
@@ -280,14 +304,24 @@ class LocationService : Service() {
         watchNotice()
         watchSilence()
         powerCuts = PowerSave.cutsLocation(this)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
-            // Le bouton de la notification : un geste, donc rien a annoncer et rien a rallumer.
-            LocationHub.stopRequestedByUser()
-            stopReason = LocationHub.StopReason.USER
-            stopSelf()
+            // Le bouton de la notification : il retire le suivi ECRAN ETEINT, pas le curseur. Un geste, donc
+            // rien a annoncer.
+            LocationHub.stopBackgroundTracking()
+            when (LocationHub.stopAction(appVisible())) {
+                // L'application est a l'ecran : le suivi continue sans notification ("ecran seul").
+                LocationHub.StopAction.DEMOTE -> demoteToScreenOnly()
+                // En arriere-plan : le suivi s'arrete, et reprendra au retour a l'ecran (sans notification).
+                LocationHub.StopAction.STOP -> {
+                    LocationHub.stopRequestedByUser()
+                    stopReason = LocationHub.StopReason.USER
+                    stopSelf()
+                }
+            }
             return START_NOT_STICKY
         }
         if (intent?.action == ACTION_SILENCE_ALERT) {
@@ -312,10 +346,19 @@ class LocationService : Service() {
         // Puis la notification, AVANT le capteur : Android tue un service qui se declare en premier plan
         // trop tard, et une position recue entre-temps n'aurait personne pour la lire. Sous garde malgre
         // tout - un demarrage refuse (arriere-plan, Android 12+) ne doit pas emporter l'application.
-        val declare = runCatching { startForeground(NOTIF_ID, notification(notice.value)) }.isSuccess
-        if (!declare) {
-            stopSelf()
-            return START_NOT_STICKY
+        //
+        // En mode "ecran seul" (cf. [LocationHub.backgroundAllowed]), ni premier plan ni notification : la
+        // position ne sert qu'au curseur, l'application etant a l'ecran. Un demarrage avec le suivi ecran
+        // eteint permis PROMEUT un service deja lance en mode "ecran seul".
+        val foreground = LocationHub.backgroundAllowed.value
+        if (foreground) {
+            val declare = runCatching { startForeground(NOTIF_ID, notification(notice.value)) }.isSuccess
+            if (!declare) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            inForeground = true
+            if (subscribedTo.isNotEmpty()) acquireWakeLock()
         }
         // Un demarrage est toujours une intention : celle du bouton, ou celle que le systeme rejoue en
         // nous relancant apres avoir repris sa memoire.
@@ -329,8 +372,17 @@ class LocationService : Service() {
             awaitProvider()
         }
         // Le systeme peut nous relancer apres avoir eu besoin de memoire : le suivi reprend alors seul,
-        // ce qu'on attend d'une fonction qu'on a demandee pour la duree d'une sortie.
-        return START_STICKY
+        // ce qu'on attend d'une fonction qu'on a demandee pour la duree d'une sortie. Pas en mode "ecran
+        // seul" : il ne vit que tant que l'application est a l'ecran.
+        return if (inForeground) START_STICKY else START_NOT_STICKY
+    }
+
+    /** "Arreter", l'application a l'ecran : plus de notification ni de suivi ecran eteint, le curseur reste. */
+    private fun demoteToScreenOnly() {
+        FixLog.write(this) { "arreter : suivi ecran seul" }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        inForeground = false
+        releaseWakeLock()
     }
 
     /**
@@ -448,6 +500,7 @@ class LocationService : Service() {
     }
 
     override fun onDestroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycleObserver)
         // La sonnerie et la vibration ne survivent pas au service : elles bouclent, et une boucle sans
         // personne pour la couper tournerait jusqu'a la batterie vide.
         AlertSound.stop()
@@ -551,6 +604,8 @@ class LocationService : Service() {
      * porter des points reguliers.
      */
     private fun acquireWakeLock() {
+        // Le verrou sert a l'ecran eteint : en mode "ecran seul", l'application est a l'ecran.
+        if (!inForeground) return
         if (wakeLock != null) return
         val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
         wakeLock = runCatching {
@@ -788,6 +843,8 @@ class LocationService : Service() {
     /** La notification suit ce qu'elle a a dire, sans etre reposee a chaque position quand rien ne change. */
     private fun watchNotice() = scope.launch {
         notice.collect { texte ->
+            // En mode "ecran seul", il n'y a pas de notification a mettre a jour.
+            if (!inForeground) return@collect
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@collect
             runCatching { nm.notify(NOTIF_ID, notification(texte)) }
         }
@@ -941,10 +998,13 @@ class LocationService : Service() {
             this, 1, Intent(this, LocationService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val body = texte ?: getString(R.string.location_notice_idle)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_location)
             .setContentTitle(getString(R.string.location_notice_title))
-            .setContentText(texte ?: getString(R.string.location_notice_idle))
+            .setContentText(body)
+            // Depliee, la notification montre le texte entier : ce qui est suivi, et ce que garde "Arreter".
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(ouvrir)
             .addAction(0, getString(R.string.location_notice_stop), arreter)
             .setOngoing(true)
@@ -1035,8 +1095,13 @@ class LocationService : Service() {
         fun start(ctx: Context) {
             val intent = Intent(ctx, LocationService::class.java)
             runCatching {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(intent)
-                else ctx.startService(intent)
+                // Sans suivi ecran eteint (cf. LocationHub.backgroundAllowed), un demarrage simple : le service
+                // ne se declare pas au premier plan, ce que l'application a l'ecran a le droit de faire.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && LocationHub.backgroundAllowed.value) {
+                    ctx.startForegroundService(intent)
+                } else {
+                    ctx.startService(intent)
+                }
             }
         }
 

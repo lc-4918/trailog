@@ -546,10 +546,10 @@
     <string name="location_channel_name">Kokapenaren jarraipena</string>
     <string name="location_alert_channel_name">Kokapenaren jarraipena etenda</string>
     <string name="location_off_track_channel_name">Jarraitutako arrastotik aldentzea</string>
-    <string name="location_notice_title">Kokapenaren jarraipena</string>
-    <string name="location_notice_idle">Jarraipenak aurrera darrai pantaila itzalita ere.</string>
+    <string name="location_notice_title">Pantaila itzalita jarraipena aktibo</string>
+    <string name="location_notice_idle">Zure kokapena jarraitzen da pantaila itzalita ere. Geldituz gero, kokapena aplikazioan geratzen da.</string>
     <string name="location_notice_following">%1$s - ibilbidetik %2$s</string>
-    <string name="location_notice_stop">Gelditu</string>
+    <string name="location_notice_stop">Gelditu pantaila itzalitako jarraipena</string>
     <string name="location_notice_waiting">Kokapena itzalita - jarraipena berrekingo da itzultzen denean.</string>
     <string name="location_stopped_sensor">Kokapena telefonoan itzalita: ez dago markarik. Jarraipena berrekingo da itzultzen denean.</string>
     <string name="location_stopped_system">Kokapenaren jarraipena bere kabuz gelditu da. Ez duzu markarik mapan.</string>

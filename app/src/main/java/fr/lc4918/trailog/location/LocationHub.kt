@@ -155,6 +155,36 @@ object LocationHub {
         _stopNotice.value = null
     }
 
+    private val _backgroundAllowed = MutableStateFlow(true)
+
+    /**
+     * Le suivi peut continuer ECRAN ETEINT, en arriere-plan, avec sa notification.
+     *
+     * Faux apres "Arreter" dans la notification : le curseur reste tant que l'application est a l'ecran,
+     * mais le suivi ne survit plus a l'arriere-plan (cf. LocationService, mode "ecran seul"). Vrai au
+     * lancement, et de nouveau des qu'on ouvre le tableau de bord - le seul usage qui demande vraiment
+     * l'ecran eteint. De la duree du processus, comme [wanted].
+     */
+    val backgroundAllowed: StateFlow<Boolean> = _backgroundAllowed.asStateFlow()
+
+    /** "Arreter" dans la notification : plus de suivi en arriere-plan, le curseur reste a l'ecran. */
+    fun stopBackgroundTracking() { _backgroundAllowed.value = false }
+
+    /** Le tableau de bord s'ouvre : le suivi peut de nouveau continuer ecran eteint. */
+    fun allowBackgroundTracking() { _backgroundAllowed.value = true }
+
+    /** Ce que fait "Arreter" (cf. [stopAction]). */
+    enum class StopAction {
+        /** L'application est a l'ecran : le suivi continue sans notification, le curseur reste. */
+        DEMOTE,
+
+        /** L'application est en arriere-plan : le suivi s'arrete, il reprendra a son retour a l'ecran. */
+        STOP,
+    }
+
+    /** "Arreter" selon que l'application est a l'ecran ou non. */
+    fun stopAction(appVisible: Boolean): StopAction = if (appVisible) StopAction.DEMOTE else StopAction.STOP
+
     /** L'ecran a dit l'arret : l'annonce est consommee. */
     fun clearStopNotice() { _stopNotice.value = null }
 

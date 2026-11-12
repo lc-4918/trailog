@@ -463,6 +463,15 @@ class LocationControls internal constructor(
     }
 
     /**
+     * Le suivi peut de nouveau continuer ecran eteint (cf. LocationHub.backgroundAllowed) : s'il tourne en
+     * mode "ecran seul", il repasse au premier plan, avec sa notification.
+     */
+    fun allowBackgroundTracking() {
+        LocationHub.allowBackgroundTracking()
+        if (gpsActive) LocationService.start(ctx)
+    }
+
+    /**
      * Relance le suivi arrete par le systeme, depuis la notification d'arret. Il n'y a plus de bouton : le
      * suivi s'allume de lui-meme (cf. [startAutomatically]), ou se relance d'ici.
      */
@@ -603,7 +612,12 @@ fun rememberLocationControls(controller: MapController): LocationControls {
     DisposableEffect(lifecycleOwner, controls) {
         controls.refreshSensorEnabled()
         val observer = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_RESUME) controls.refreshSensorEnabled()
+            if (e == Lifecycle.Event.ON_RESUME) {
+                controls.refreshSensorEnabled()
+                // Apres "Arreter", le suivi "ecran seul" s'arrete en arriere-plan : le curseur revient des
+                // que l'application revient a l'ecran, sans attendre un rallumage de la localisation.
+                controls.startAutomatically()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         val receiver = object : BroadcastReceiver() {

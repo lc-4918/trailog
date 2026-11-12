@@ -546,10 +546,10 @@
     <string name="location_channel_name">Seguimento de posição</string>
     <string name="location_alert_channel_name">Seguimento de posição interrompido</string>
     <string name="location_off_track_channel_name">Desvio do trilho seguido</string>
-    <string name="location_notice_title">Seguimento de posição</string>
-    <string name="location_notice_idle">O seguimento continua com o ecrã desligado.</string>
+    <string name="location_notice_title">Seguimento com o ecrã desligado ativo</string>
+    <string name="location_notice_idle">A sua posição é seguida mesmo com o ecrã desligado. Pará-lo mantém a posição na aplicação.</string>
     <string name="location_notice_following">%1$s - a %2$s do trajeto</string>
-    <string name="location_notice_stop">Parar</string>
+    <string name="location_notice_stop">Parar o seguimento com o ecrã desligado</string>
     <string name="location_notice_waiting">Localização desativada - o seguimento retomará assim que voltar.</string>
     <string name="location_stopped_sensor">Localização desativada no telemóvel: já não há marcador. O seguimento retomará assim que voltar.</string>
     <string name="location_stopped_system">O seguimento de posição parou sozinho. Já não tem marcador no mapa.</string>

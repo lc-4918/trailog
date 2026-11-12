@@ -546,10 +546,10 @@
     <string name="location_channel_name">Tracciamento della posizione</string>
     <string name="location_alert_channel_name">Tracciamento della posizione interrotto</string>
     <string name="location_off_track_channel_name">Scostamento dalla traccia seguita</string>
-    <string name="location_notice_title">Tracciamento della posizione</string>
-    <string name="location_notice_idle">Il tracciamento continua a schermo spento.</string>
+    <string name="location_notice_title">Tracciamento a schermo spento attivo</string>
+    <string name="location_notice_idle">La tua posizione è tracciata anche a schermo spento. Fermarlo mantiene la posizione nell\'app.</string>
     <string name="location_notice_following">%1$s - a %2$s dalla traccia</string>
-    <string name="location_notice_stop">Ferma</string>
+    <string name="location_notice_stop">Ferma il tracciamento a schermo spento</string>
     <string name="location_notice_waiting">Posizione disattivata: il tracciamento riprenderà appena tornerà disponibile.</string>
     <string name="location_stopped_sensor">Posizione disattivata nel telefono: nessun indicatore. Il tracciamento riprenderà appena tornerà disponibile.</string>
     <string name="location_stopped_system">Il tracciamento della posizione si è fermato da solo. Non hai più un indicatore sulla mappa.</string>

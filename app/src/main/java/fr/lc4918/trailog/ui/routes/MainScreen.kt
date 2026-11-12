@@ -1141,6 +1141,9 @@ fun MainScreen(
                         else if (dashboardOpen) TrackWatch.setDashboard(false)
                         else {
                             TrackWatch.setDashboard(true)
+                            // Le tableau de bord sert ecran eteint : son ouverture retablit ce suivi, meme
+                            // apres "Arreter" dans la notification.
+                            location.allowBackgroundTracking()
                             alert.onOpen(location.sensorEnabled)
                             if (location.sensorEnabled && !location.gpsActive) location.startGps(forFollow = true)
                         }

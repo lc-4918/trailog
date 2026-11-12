@@ -28,10 +28,43 @@ class LocationHubTest {
 
     /** Le concentrateur est un objet de processus : les tests d'une meme classe le partagent. Ce geste
      *  est celui de l'utilisateur qui eteint, et il remet tout a plat - c'est ce qui en fait un depart. */
-    @Before fun repartDeZero() { LocationHub.stopRequestedByUser() }
+    @Before fun repartDeZero() {
+        LocationHub.stopRequestedByUser()
+        LocationHub.allowBackgroundTracking()
+    }
 
     private fun position(lat: Double = 45.18, lon: Double = 5.72) = Location("test").apply {
         latitude = lat; longitude = lon; time = 1_700_000_000_000L
+    }
+
+    // ---------- "Arreter" retire le suivi ecran eteint, pas le curseur ----------
+
+    @Test fun `le suivi ecran eteint est permis par defaut`() {
+        assertTrue(LocationHub.backgroundAllowed.value)
+    }
+
+    /** "Arreter" l'application a l'ecran : plus de suivi ecran eteint, mais le suivi tourne et rien ne s'annonce. */
+    @Test fun `arreter le suivi ecran eteint garde le suivi et n'annonce rien`() {
+        LocationHub.wantTracking()
+        LocationHub.setTracking(true)
+        LocationHub.publish(position())
+        LocationHub.stopBackgroundTracking()
+        assertFalse("plus de suivi ecran eteint", LocationHub.backgroundAllowed.value)
+        assertTrue("le suivi tourne toujours", LocationHub.tracking.value)
+        assertTrue("toujours voulu", LocationHub.wanted.value)
+        assertNotNull("le curseur garde sa position", LocationHub.fix.value)
+        assertNull("rien a annoncer", LocationHub.stopNotice.value)
+    }
+
+    @Test fun `le tableau de bord retablit le suivi ecran eteint`() {
+        LocationHub.stopBackgroundTracking()
+        LocationHub.allowBackgroundTracking()
+        assertTrue(LocationHub.backgroundAllowed.value)
+    }
+
+    @Test fun `arreter retrograde a l'ecran, arrete en arriere-plan`() {
+        assertEquals(LocationHub.StopAction.DEMOTE, LocationHub.stopAction(appVisible = true))
+        assertEquals(LocationHub.StopAction.STOP, LocationHub.stopAction(appVisible = false))
     }
 
     // ---------- L'arret demande ne s'annonce pas ----------

@@ -546,10 +546,10 @@
     <string name="location_channel_name">Location tracking</string>
     <string name="location_alert_channel_name">Location tracking interrupted</string>
     <string name="location_off_track_channel_name">Off the followed track</string>
-    <string name="location_notice_title">Location tracking</string>
-    <string name="location_notice_idle">Tracking continues with the screen off.</string>
+    <string name="location_notice_title">Screen-off tracking active</string>
+    <string name="location_notice_idle">Your position is tracked even with the screen off. Stopping it keeps your position in the app.</string>
     <string name="location_notice_following">%1$s - %2$s off the track</string>
-    <string name="location_notice_stop">Stop</string>
+    <string name="location_notice_stop">Stop screen-off tracking</string>
     <string name="location_notice_waiting">Location turned off - tracking will resume as soon as it returns.</string>
     <string name="location_stopped_sensor">Location turned off on the phone: no more marker. Tracking will resume as soon as it returns.</string>
     <string name="location_stopped_system">Location tracking stopped on its own. You no longer have a marker on the map.</string>

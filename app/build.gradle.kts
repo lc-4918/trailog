@@ -155,6 +155,8 @@ dependencies {
     implementation(libs.core.splashscreen)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.runtime.compose)
+    // L'application au premier plan ou non (ProcessLifecycleOwner) : le suivi "ecran seul" s'arrete en arriere-plan.
+    implementation(libs.lifecycle.process)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
 

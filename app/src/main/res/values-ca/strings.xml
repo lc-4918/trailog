@@ -546,10 +546,10 @@
     <string name="location_channel_name">Seguiment de posició</string>
     <string name="location_alert_channel_name">Seguiment de posició interromput</string>
     <string name="location_off_track_channel_name">Desviament de la traça seguida</string>
-    <string name="location_notice_title">Seguiment de posició</string>
-    <string name="location_notice_idle">El seguiment continua amb la pantalla apagada.</string>
+    <string name="location_notice_title">Seguiment amb la pantalla apagada actiu</string>
+    <string name="location_notice_idle">La teva posició se segueix fins i tot amb la pantalla apagada. Aturar-lo manté la posició a l\'aplicació.</string>
     <string name="location_notice_following">%1$s - a %2$s del traçat</string>
-    <string name="location_notice_stop">Atura</string>
+    <string name="location_notice_stop">Atura el seguiment amb la pantalla apagada</string>
     <string name="location_notice_waiting">Ubicació desactivada: el seguiment es reprendrà tan aviat com torni.</string>
     <string name="location_stopped_sensor">Ubicació desactivada al telèfon: ja no hi ha marcador. El seguiment es reprendrà tan aviat com torni.</string>
     <string name="location_stopped_system">El seguiment de posició s\'ha aturat tot sol. Ja no teniu marcador al mapa.</string>
