@@ -273,6 +273,9 @@ import fr.lc4918.trailog.ui.theme.TrailogIcons
         }
     }
 
+    // Dossiers et sauvegarde : mode expert seulement. Les emplacements par defaut conviennent a qui ne les a
+    // jamais regardes, et sauvegarder ou restaurer reste un geste d'entretien, pas de tous les jours.
+    if (cur.expertMode) {
     SectionTitle(stringResource(R.string.settings_section_folders))
     SettingsCard {
         SetRow(
@@ -318,6 +321,7 @@ import fr.lc4918.trailog.ui.theme.TrailogIcons
             InlineButton(stringResource(R.string.action_restore), Icons.Filled.FileUpload, onRestore)
         }
     }
+    }
 
     GroupTitle(stringResource(R.string.settings_group_application))
     if (cur.expertMode) SettingsCard {
@@ -344,15 +348,18 @@ import fr.lc4918.trailog.ui.theme.TrailogIcons
                 }),
             ) { titleText = it }
         }
-        RowDivider()
-        SetRow(stringResource(R.string.settings_label_avatar)) {
-            if (cur.avatarSource.isNotBlank()) {
-                RowIcon(TrailogIcons.Trash, stringResource(R.string.action_reset_avatar)) {
-                    vm.save(cur.copy(avatarSource = ""))
+        // L'avatar : mode expert seulement.
+        if (cur.expertMode) {
+            RowDivider()
+            SetRow(stringResource(R.string.settings_label_avatar)) {
+                if (cur.avatarSource.isNotBlank()) {
+                    RowIcon(TrailogIcons.Trash, stringResource(R.string.action_reset_avatar)) {
+                        vm.save(cur.copy(avatarSource = ""))
+                    }
                 }
-            }
-            RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_change_avatar)) {
-                avatarDialogOpen = true
+                RowIcon(Icons.AutoMirrored.Filled.OpenInNew, stringResource(R.string.action_change_avatar)) {
+                    avatarDialogOpen = true
+                }
             }
         }
     }

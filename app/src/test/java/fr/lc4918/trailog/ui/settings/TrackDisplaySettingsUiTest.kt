@@ -57,11 +57,18 @@ class TrackDisplaySettingsUiTest {
         compose.waitForIdle()
     }
 
-    @Test fun `le groupe Trace regle la largeur du trait, sans chevrons hors mode expert`() {
+    /** Le groupe Trace entier est un reglage expert : hors mode expert, ni lui ni sa largeur de trait. */
+    @Test fun `le groupe Trace n'apparait qu'en mode expert`() {
         ouvrir(expert = false)
+        defileVers(app.getString(R.string.settings_section_gps_marker).uppercase())
+        assertFalse("groupe Trace", present(app.getString(R.string.settings_group_track)))
+        assertFalse("largeur du trait", present(app.getString(R.string.settings_track_line_width)))
+    }
+
+    @Test fun `en mode expert, le groupe Trace regle la largeur du trait`() {
+        ouvrir(expert = true)
         defileVers(app.getString(R.string.settings_track_line_width))
         assertTrue(present(app.getString(R.string.settings_group_track)))
-        assertFalse("reglage expert", present(app.getString(R.string.settings_track_direction)))
     }
 
     @Test fun `le sens de parcours se montre en mode expert`() {
@@ -75,7 +82,8 @@ class TrackDisplaySettingsUiTest {
      * classes des pentes ; la ligne du restant a disparu aussi.
      */
     @Test fun `le profil ne regle plus la pente`() {
-        ouvrir(expert = false)
+        // Le groupe du profil altimetrique est un reglage expert.
+        ouvrir(expert = true)
         defileVers(app.getString(R.string.settings_profile_grid))
         assertFalse(present("Colorer l'aire par pente"))
         assertFalse(present("Classes des pentes"))

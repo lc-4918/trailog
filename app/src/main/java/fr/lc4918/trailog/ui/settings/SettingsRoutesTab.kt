@@ -103,6 +103,10 @@ import kotlinx.coroutines.launch
         }
     }
 
+    // L'itineraire hors ligne en deuxieme, juste apres la discipline : c'est la qu'on vient voir si
+    // l'application saura calculer sans reseau, avant de partir.
+    OfflineRoutingZones(vm)
+
     /*
      * Ce que le calcul doit privilégier - et qu'il ignorait jusqu'ici, d'où cette rubrique : sans elle, un
      * VTC part sur la départementale quand la voie verte longe la même vallée.
@@ -250,10 +254,6 @@ import kotlinx.coroutines.launch
         }
     }
 
-    // Juste apres le moteur : ce sont les donnees de l'un des deux, et c'est la qu'on vient voir s'il
-    // saura calculer sans reseau.
-    OfflineRoutingZones(vm)
-
     if (cur.expertMode) {
         SectionTitle(
             stringResource(R.string.settings_section_services),
@@ -298,6 +298,8 @@ import kotlinx.coroutines.launch
     // Dans cet onglet et non dans "Carte" : c'est de la matiere du profil qu'il s'agit, comme le lissage
     // au-dessus, et non de ce qui s'affiche. Les deux services ne s'ouvrent qu'une fois le completement
     // demande - trois champs d'URL sous un interrupteur eteint n'auraient rien a regler.
+    // Mode expert seulement : le completement suit son reglage par defaut pour qui ne l'a jamais regarde.
+    if (cur.expertMode) {
     SectionTitle(stringResource(R.string.settings_section_elevation_fill))
     SettingsCard {
         SwitchLine(
@@ -306,7 +308,7 @@ import kotlinx.coroutines.launch
         ) { vm.save(cur.copy(fillMissingElevation = it)) }
         // Les adresses des services : mode expert seulement. Le completement se demande d'un interrupteur,
         // et ses serveurs par defaut conviennent a qui ne les a jamais regardes.
-        if (cur.fillMissingElevation && cur.expertMode) {
+        if (cur.fillMissingElevation) {
             RowDivider()
             FieldRow(stringResource(R.string.settings_label_elevation_france)) {
                 SettingsTextField(cur.elevationIgnUrl, IgnElevation.DEFAULT_URL) {
@@ -327,6 +329,7 @@ import kotlinx.coroutines.launch
             }
             Hint(stringResource(R.string.settings_services_hint))
         }
+    }
     }
 
     /*
@@ -356,15 +359,18 @@ import kotlinx.coroutines.launch
          * Seulement quand la couche est allumee : un reglage qui ne peut rien faire n'a rien a montrer.
          */
         if (cur.poiEnabled) {
-            SwitchLine(
-                stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
-                info = stringResource(R.string.settings_sw_poi_osm_sub),
-            ) {
-                // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
-                // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
-                vm.save(cur.copy(poiOsmComplement = it))
+            // Le choix des sources : mode expert seulement, le complement garde sinon son reglage.
+            if (cur.expertMode) {
+                SwitchLine(
+                    stringResource(R.string.settings_sw_poi_osm), cur.poiOsmComplement,
+                    info = stringResource(R.string.settings_sw_poi_osm_sub),
+                ) {
+                    // Le cache n'a pas a etre vide : chaque cellule retient la source qui l'a servie
+                    // (cf. PoiCellEntity), et basculer le complement ne fait que demander les autres.
+                    vm.save(cur.copy(poiOsmComplement = it))
+                }
+                RowDivider()
             }
-            RowDivider()
             /*
              * Le couloir des traces : au-dela de cette distance d'une trace AFFICHEE, un lieu n'est plus
              * montre (cf. ui/poi/PoiCorridor).

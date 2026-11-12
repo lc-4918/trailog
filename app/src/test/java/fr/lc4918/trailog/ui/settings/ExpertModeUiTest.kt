@@ -86,8 +86,11 @@ class ExpertModeUiTest {
         compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
         compose.waitForIdle()
         val expert = R.string.settings_sw_gps_last_fix
-        defileVers(app.getString(R.string.settings_sw_gps_recenter))
+        // Hors mode expert, la rubrique "Suivi de la position" entiere est cachee : on se place sur le
+        // repere de position, la rubrique voisine, toujours visible.
+        defileVers(app.getString(R.string.settings_section_gps_marker).uppercase())
         assertTrue("cachee hors mode expert", !present(expert))
+        assertTrue("suivi de la position cache", !present(R.string.settings_sw_gps_recenter))
 
         septAppuis()
         defileVers(app.getString(R.string.settings_sw_gps_recenter))
@@ -96,9 +99,85 @@ class ExpertModeUiTest {
         assertTrue("enregistre en base", runBlocking { app.repository.settings.get()!!.expertMode })
 
         septAppuis()
-        defileVers(app.getString(R.string.settings_sw_gps_recenter))
+        defileVers(app.getString(R.string.settings_section_gps_marker).uppercase())
         compose.waitUntil(5_000) { !present(expert) }
         assertTrue(present(R.string.settings_expert_off))
+    }
+
+    /** Ecran des reglages avec le tableau de bord allume (ses champs ne s'affichent que dans ce cas). */
+    private fun carteAvecTableauDeBord(expert: Boolean) {
+        runBlocking {
+            app.repository.ensureSeed()
+            val s = app.repository.settings.get() ?: SettingsEntity()
+            app.repository.settings.upsert(s.copy(expertMode = expert, offTrackAlertEnabled = true))
+        }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+    }
+
+    /** Onglet Carte : champs du tableau de bord, points d'interet et profil altimetrique caches hors mode expert. */
+    @Test fun `la carte cache ses groupes experts hors mode expert`() {
+        carteAvecTableauDeBord(expert = false)
+        // Le groupe du tableau de bord est le dernier hors mode expert : en y defilant, on est en bout de liste.
+        defileVers(app.getString(R.string.settings_group_dashboard))
+        fun presentText(texte: String) =
+            compose.onAllNodesWithText(texte, substring = true).fetchSemanticsNodes().isNotEmpty()
+        assertFalse("champs affiches", presentText(app.getString(R.string.settings_section_dashboard_fields).uppercase()))
+        // Le titre du groupe est aussi le libelle de l'interrupteur de Boutons et gestes : on vise son contenu.
+        assertFalse("points d'interet", present(R.string.settings_label_bubble_position))
+        assertFalse("profil altimetrique", present(R.string.settings_group_elevation_profile))
+    }
+
+    @Test fun `la carte montre ses groupes experts en mode expert`() {
+        carteAvecTableauDeBord(expert = true)
+        defileVers(app.getString(R.string.settings_section_dashboard_fields).uppercase())
+        defileVers(app.getString(R.string.settings_group_pois))
+        defileVers(app.getString(R.string.settings_group_elevation_profile))
+        assertTrue("profil altimetrique", present(R.string.settings_group_elevation_profile))
+    }
+
+    /** Ouvre l'onglet portant ce libelle, une fois l'ecran compose. */
+    private fun onglet(res: Int) {
+        compose.waitUntil(5_000) { avatars().isNotEmpty() }
+        compose.onAllNodesWithText(app.getString(res))[0].performClick()
+        compose.waitForIdle()
+    }
+
+    /** Ecran des reglages, mode expert allume ou eteint en base. */
+    private fun reglagesEnMode(expert: Boolean) {
+        runBlocking {
+            app.repository.ensureSeed()
+            val s = app.repository.settings.get() ?: SettingsEntity()
+            app.repository.settings.upsert(s.copy(expertMode = expert, poiEnabled = true))
+        }
+        compose.setContent { MaterialTheme { SettingsScreen(onBack = {}) } }
+        compose.waitForIdle()
+    }
+
+    /**
+     * Trajets : l'altimetrie manquante et le complement OpenStreetMap. Systeme : dossiers, sauvegarde et
+     * avatar. Tous caches hors mode expert.
+     */
+    @Test fun `trajets et systeme cachent leurs reglages experts`() {
+        reglagesEnMode(expert = false)
+        onglet(R.string.settings_tab_routes)
+        assertFalse("altimetrie manquante", present(R.string.settings_label_fill_elevation))
+        assertFalse("complement OpenStreetMap", present(R.string.settings_sw_poi_osm))
+        onglet(R.string.settings_tab_general)
+        assertFalse("dossiers", present(R.string.settings_section_import_folder))
+        assertFalse("sauvegarde", present(R.string.settings_backup_create))
+        assertFalse("avatar", present(R.string.settings_label_avatar))
+    }
+
+    @Test fun `trajets et systeme montrent leurs reglages experts en mode expert`() {
+        reglagesEnMode(expert = true)
+        onglet(R.string.settings_tab_routes)
+        assertTrue("altimetrie manquante", present(R.string.settings_label_fill_elevation))
+        assertTrue("complement OpenStreetMap", present(R.string.settings_sw_poi_osm))
+        onglet(R.string.settings_tab_general)
+        assertTrue("dossiers", present(R.string.settings_section_import_folder))
+        assertTrue("sauvegarde", present(R.string.settings_backup_create))
+        assertTrue("avatar", present(R.string.settings_label_avatar))
     }
 
     /** L'affichage de la carte (echelle, rotation, fonds) n'apparait qu'en mode expert. */

@@ -162,7 +162,8 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         GroupTitle(stringResource(R.string.settings_group_gps))
     }
 
-    bloc {
+    // Suivi de la position : mode expert seulement, ses reglages par defaut conviennent a qui ne les cherche pas.
+    if (cur.expertMode) bloc {
         GpsTrackingSettings(cur, vm)
     }
 
@@ -170,7 +171,8 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         GpsMarkerSettings(cur, vm)
     }
 
-    bloc(R.string.settings_group_track) {
+    // Trace, points d'interet et profil altimetrique : des reglages d'apparence fins, mode expert seulement.
+    if (cur.expertMode) bloc(R.string.settings_group_track) {
         /*
          * Trace : comment les traces et l'itineraire se dessinent sur la carte. Le trait de chaque trace
          * garde sa couleur, reglee dans le menu lateral ; ce qui est reglable ici vaut pour toutes.
@@ -215,7 +217,7 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         DashboardSettings(cur, vm)
     }
 
-    bloc(R.string.settings_group_pois) {
+    if (cur.expertMode) bloc(R.string.settings_group_pois) {
         GroupTitle(stringResource(R.string.settings_group_pois))
         // La taille des marqueurs : reglage fin, mode expert seulement. Celle par defaut convient a qui ne se
         // pose pas la question, et la rubrique des infobulles suit juste apres.
@@ -255,7 +257,7 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         }
     }
 
-    bloc(R.string.settings_group_elevation_profile) {
+    if (cur.expertMode) bloc(R.string.settings_group_elevation_profile) {
         GroupTitle(stringResource(R.string.settings_group_elevation_profile))
         ProfileSettings(cur, vm)
     }
@@ -275,6 +277,8 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
         SettingsCard { Hint(stringResource(R.string.settings_dashboard_off)) }
         return
     }
+    // Les champs affiches : mode expert seulement, le tableau de bord montre sinon ses champs par defaut.
+    if (!cur.expertMode) return
     SectionTitle(stringResource(R.string.settings_section_dashboard_fields), tight = true)
     SettingsCard {
         val masques = DashboardField.hidden(cur.dashboardHidden)
