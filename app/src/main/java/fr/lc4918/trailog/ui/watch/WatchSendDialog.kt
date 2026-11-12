@@ -403,6 +403,8 @@ private fun WatchSendProgressDialog(
                 )
                 LinearProgressIndicator(
                     progress = { if (session.tileCount == 0) 0f else session.servedCount.toFloat() / session.tileCount },
+                    // Sans le point que Material 3 pose au bout de la piste : il se lisait comme la progression.
+                    drawStopIndicator = {},
                     modifier = Modifier.fillMaxWidth().height(4.dp),
                 )
             }

@@ -87,6 +87,8 @@ fun UpdateProgressDialog(
                     if (state is InstallState.Downloading && downloadProgress != null) {
                         androidx.compose.material3.LinearProgressIndicator(
                             progress = { downloadProgress },
+                            // Sans le point que Material 3 pose au bout de la piste : il se lisait comme la progression.
+                            drawStopIndicator = {},
                             modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(top = 16.dp))
                         Text("${(downloadProgress * 100).toInt()} %",
                             style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
