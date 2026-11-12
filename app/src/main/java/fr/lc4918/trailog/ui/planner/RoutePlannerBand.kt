@@ -76,6 +76,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -154,6 +155,9 @@ private val FieldGap = Spacing.xs
  */
 private val RailWidth = 24.dp
 
+/** Largeur de la colonne des libelles d'etape (A, 1, 2, B), quand elle est affichee. */
+private val BadgeWidth = 20.dp
+
 /**
  * Bande du planificateur d'itineraire, posee au bas de l'ecran.
  *
@@ -188,6 +192,8 @@ fun RoutePlannerBand(
     onPlaceForgotten: (GeocodePlace) -> Unit,
     onImport: () -> Unit,
     onDownload: () -> Unit,
+    /** Libelle de la pastille de chaque etape, comme sur la carte (cf. [stepBadgeLabels]). */
+    stepLabels: Map<Long, String> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     if (state.collapsed) return
@@ -248,12 +254,14 @@ fun RoutePlannerBand(
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history,
                         onPlaceChosen, onPlaceForgotten, slopeLegend = slopeLegend, scrollable = false,
+                        stepLabels = if (settings.plannerStepNumbers) stepLabels else null,
                         modifier = Modifier.padding(top = Spacing.m))
                     ResultsZone(state, imperial, settings, lastLabelInsetPx)
                 }
             } else {
                 StepList(state, onPickCurrentPosition, onPickOnMap, sensorEnabled, geocoding, history, onPlaceChosen,
                     onPlaceForgotten, slopeLegend = slopeLegend,
+                    stepLabels = if (settings.plannerStepNumbers) stepLabels else null,
                     modifier = Modifier.weight(1f, fill = false).padding(top = Spacing.m))
                 ResultsZone(state, imperial, settings, lastLabelInsetPx)
             }
@@ -434,6 +442,8 @@ private fun StepList(
     slopeLegend: SettingsEntity? = null,
     /** Faux quand un conteneur exterieur defile deja (cf. les details ouverts, dans la bande). */
     scrollable: Boolean = true,
+    /** Libelle des pastilles par etape ; nul quand le reglage les masque, et la colonne n'existe pas. */
+    stepLabels: Map<Long, String>? = null,
     modifier: Modifier = Modifier,
 ) {
     val drag = remember { StepDrag() }
@@ -447,6 +457,7 @@ private fun StepList(
             key(step.id) {
                 StepRow(
                     state = state, step = step, index = i,
+                    badgeShown = stepLabels != null, badge = stepLabels?.get(step.id),
                     placeholder = stringResource(
                         when {
                             i == 0 -> R.string.planner_start
@@ -587,6 +598,9 @@ private fun StepRow(
     state: RoutePlannerState,
     step: PlannerStep,
     index: Int,
+    /** Colonne du libelle de l'etape, comme sur la carte : affichee seulement si le reglage le demande. */
+    badgeShown: Boolean = false,
+    badge: String? = null,
     placeholder: String,
     onPickCurrentPosition: (PlannerStep) -> Unit,
     onPickOnMap: (PlannerStep) -> Unit,
@@ -665,6 +679,15 @@ private fun StepRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.width(RailWidth + Spacing.s))
+            if (badgeShown) {
+                Text(
+                    badge.orEmpty(),
+                    modifier = Modifier.width(BadgeWidth),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.primary,
+                    textAlign = TextAlign.Center,
+                )
+            }
             Box(Modifier.weight(1f).padding(vertical = FieldGap).height(FieldHeight)) {
                 if (step.target != null && !focused && !wantsFocus) {
                     // Etape choisie et champ au repos : on montre le libelle TRONQUE. Un champ de saisie

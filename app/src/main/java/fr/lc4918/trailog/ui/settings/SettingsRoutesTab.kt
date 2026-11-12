@@ -94,6 +94,15 @@ import kotlinx.coroutines.launch
         RoutingProfilePicker(RoutingProfile.of(cur.routingProfile)) { vm.save(cur.copy(routingProfile = it.key)) }
     }
 
+    // Libelles A, 1, 2, B devant les etapes du planificateur : mode expert seulement (cf. SettingsEntity.plannerStepNumbers).
+    if (cur.expertMode) {
+        SettingsCard {
+            SwitchLine(stringResource(R.string.settings_sw_planner_step_numbers), cur.plannerStepNumbers) {
+                vm.save(cur.copy(plannerStepNumbers = it))
+            }
+        }
+    }
+
     /*
      * Ce que le calcul doit privilégier - et qu'il ignorait jusqu'ici, d'où cette rubrique : sans elle, un
      * VTC part sur la départementale quand la voie verte longe la même vallée.

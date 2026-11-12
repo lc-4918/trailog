@@ -122,6 +122,7 @@ import fr.lc4918.trailog.ui.planner.RoutePlannerBand
 import fr.lc4918.trailog.ui.planner.RoutePlannerState
 import fr.lc4918.trailog.ui.planner.StepTarget
 import fr.lc4918.trailog.ui.planner.defaultRouteName
+import fr.lc4918.trailog.ui.planner.stepBadgeLabels
 import fr.lc4918.trailog.ui.poi.PoiEffects
 import fr.lc4918.trailog.ui.poi.PoiState
 import fr.lc4918.trailog.ui.poi.PoiStatusBanner
@@ -1215,6 +1216,8 @@ fun MainScreen(
                             ctx.resources.configuration.locales[0].language, GeocodeResultLimit,
                             geocodeCenter),
                         history = PlannerHistory.of(settings.plannerHistory),
+                        // Libelles A, 1, 2, B de la liste : ceux de la carte, pour que les deux se lisent ensemble.
+                        stepLabels = stepBadgeLabels(planner.stepMarks(markerPosition)),
                         // Un lieu retenu remonte en tete de l'historique - la bande ne connait pas la base.
                         onPlaceChosen = { lieu -> vm.rememberPlannerPlace(lieu) },
                         onPlaceForgotten = { lieu -> vm.forgetPlannerPlace(lieu.label) },

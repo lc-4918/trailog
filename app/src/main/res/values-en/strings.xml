@@ -489,6 +489,7 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Side menu title</string>
     <string name="settings_sw_gps_button">GPS location</string>
+    <string name="settings_sw_planner_step_numbers">Step numbers in the list</string>
     <string name="settings_sw_gps_recenter">Recentre on position</string>
     <string name="settings_sw_gps_recenter_sub">Recentre on the position when GPS location is turned on.</string>
     <string name="settings_sw_gps_last_fix">Show the last measured position</string>

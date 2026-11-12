@@ -105,6 +105,18 @@ enum class StepMarkKind { Start, End, Via }
 /** Un marqueur d'etape a poser sur la carte ; [number] ne vaut que pour une etape intermediaire. */
 data class StepMark(val stepId: Long, val lon: Double, val lat: Double, val kind: StepMarkKind, val number: Int)
 
+/**
+ * Le libelle de chaque etape, tel que la carte le montre sur sa pastille : A au depart, B a l'arrivee, son
+ * rang entre les deux. La liste des etapes reprend ces libelles, pour que l'une et l'autre se lisent ensemble.
+ */
+fun stepBadgeLabels(marks: List<StepMark>): Map<Long, String> = marks.associate { mark ->
+    mark.stepId to when (mark.kind) {
+        StepMarkKind.Start -> "A"
+        StepMarkKind.End -> "B"
+        StepMarkKind.Via -> mark.number.toString()
+    }
+}
+
 class PlannerStep(val id: Long) {
     var query by mutableStateOf("")
     var results by mutableStateOf<List<GeocodePlace>>(emptyList())

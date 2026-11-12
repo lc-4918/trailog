@@ -979,6 +979,16 @@ class MigrationsTest {
         db.close()
     }
 
+    @Test fun `75 vers 76 affiche les libelles des etapes par defaut`() {
+        val db = freshDb("m7576")
+        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY NOT NULL)")
+        db.execSQL("INSERT INTO settings (id) VALUES (1)")
+        db.execSQL(MigrationSql.ADD_PLANNER_STEP_NUMBERS)
+        assertEquals(1, scalar(db, "SELECT plannerStepNumbers FROM settings") { it.getInt(0) })
+        assertTrue(SettingsEntity().plannerStepNumbers)
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**

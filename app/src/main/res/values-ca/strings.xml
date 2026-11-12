@@ -489,6 +489,7 @@
     <string name="settings_label_avatar">Avatar</string>
     <string name="settings_label_side_title">Títol del menú lateral</string>
     <string name="settings_sw_gps_button">Ubicació GPS</string>
+    <string name="settings_sw_planner_step_numbers">Números de les etapes a la llista</string>
     <string name="settings_sw_gps_recenter">Recentra a la posició</string>
     <string name="settings_sw_gps_recenter_sub">Recentra a la posició en activar la localització GPS.</string>
     <string name="settings_sw_gps_last_fix">Mostra l\'última posició mesurada</string>

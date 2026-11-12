@@ -312,6 +312,9 @@ data class SettingsEntity(
     // l'une des raisons d'ouvrir l'application, et le bouton ne lance rien tout seul - ce sont les
     // etapes saisies qui font partir une requete, geste explicite s'il en est.
     val routePlannerEnabled: Boolean = true,
+    // Libelles A, 1, 2, B devant les etapes de la liste du planificateur, comme sur la carte. Actif par
+    // defaut ; le reglage n'est offert qu'en mode expert (onglet Trajet).
+    val plannerStepNumbers: Boolean = true,
     // Opacite du fond derriere les boutons poses sur la carte, de 0 (aucun fond, les boutons flottent nus)
     // a 100 (plein). 90 par defaut : sans fond les boutons deviennent illisibles sur une orthophoto ou un
     // relief clair, et l'on ne choisit pas son fond de carte pour ses boutons.

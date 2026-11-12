@@ -489,6 +489,7 @@
     <string name="settings_label_avatar">Avatarra</string>
     <string name="settings_label_side_title">Alboko menuaren izenburua</string>
     <string name="settings_sw_gps_button">GPS kokapena</string>
+    <string name="settings_sw_planner_step_numbers">Urratsen zenbakiak zerrendan</string>
     <string name="settings_sw_gps_recenter">Kokapenean zentratu</string>
     <string name="settings_sw_gps_recenter_sub">GPS kokapena pizten denean kokapenean zentratu.</string>
     <string name="settings_sw_gps_last_fix">Erakutsi neurtutako azken kokapena</string>
