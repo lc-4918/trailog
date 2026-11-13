@@ -349,7 +349,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API key</string>
     <string name="settings_field_relief_opacity">Opacité du relief : %1$d%%</string>
-    <string name="basemap_relief_active">Activé</string>
+    <string name="content_desc_relief_toggle">Ombrage du relief</string>
     <string name="settings_field_zoom_levels">Niveaux de zoom : %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Emplacement : %1$s</string>
     <string name="offline_thumb_location_title">Localisation globale</string>

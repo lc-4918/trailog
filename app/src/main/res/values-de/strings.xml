@@ -347,7 +347,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">API-Schlüssel</string>
     <string name="settings_field_relief_opacity">Deckkraft des Reliefs: %1$d%%</string>
-    <string name="basemap_relief_active">Aktiv</string>
+    <string name="content_desc_relief_toggle">Reliefschattierung</string>
     <string name="settings_field_zoom_levels">Zoomstufen: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Speicherort: %1$s</string>
     <string name="offline_thumb_location_title">Globale Lage</string>

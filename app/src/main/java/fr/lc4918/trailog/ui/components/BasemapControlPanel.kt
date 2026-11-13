@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Terrain
@@ -72,19 +73,26 @@ private class BDragCtx(
     val onEnd: (String, String) -> Unit,
 )
 
-private fun combinedBasemapChildren(
+internal fun combinedBasemapChildren(
     parentId: Long?, folders: List<BasemapFolderEntity>, providers: List<ProviderEntity>, composites: List<CompositeEntity>,
 ): List<Any> {
     val f = folders.filter { it.parentId == parentId }
-    // Le relief suit la même règle que les autres fonds : présent ici s'il est coché dans les réglages.
-    // Ce n'est plus son "enabled" qui allume son ombrage - le tap le fait, sur un réglage à part
-    // (cf. SettingsEntity.hillshadeOn) - il n'y a donc plus de risque qu'un tap le fasse disparaître.
-    val p = providers.filter { it.enabled && it.folderId == parentId }
+    // Le relief n'est plus une ligne de la liste : il a son bouton dans l'en-tete (cf. reliefAvailable).
+    // Ce n'est pas un fond qu'on choisit mais un ombrage qui se pose sur le fond courant.
+    val p = providers.filter { it.enabled && it.folderId == parentId && !it.isRelief }
     val c = composites.filter { it.enabled && it.folderId == parentId }
     fun order(e: Any) = when (e) { is BasemapFolderEntity -> e.sortOrder; is ProviderEntity -> e.sortOrder; is CompositeEntity -> e.sortOrder; else -> 0 }
     fun typeRank(e: Any) = when (e) { is BasemapFolderEntity -> 0; is ProviderEntity -> 1; else -> 2 }
     return (f + p + c).sortedWith(compareBy({ order(it) }, { typeRank(it) }))
 }
+
+private val ProviderEntity.isRelief: Boolean get() = type == "DEM"
+
+/**
+ * Le bouton du relief s'affiche dans l'en-tete du panneau si un fond de relief est coche dans les reglages :
+ * la meme regle qui le faisait paraitre dans la liste avant qu'il n'en sorte.
+ */
+internal fun reliefAvailable(providers: List<ProviderEntity>): Boolean = providers.any { it.enabled && it.isRelief }
 
 /** Clé stable (kind, id) d'un noeud, pour préserver l'identité de composition (état "expanded", drag)
  *  quand la liste se réordonne (drag & drop, activation/désactivation d'un provider ailleurs, etc.). */
@@ -224,7 +232,7 @@ private suspend fun PointerInputScope.detectTapOrLongPressDrag(
 
 /** Panneau latéral droit du Basemap Control : fonds activés, organisation en dossiers, drag & drop
  *  (appui long sur le nom, pas de poignée). Tap sur un fond -> le sélectionne et ferme le panneau ;
- *  tap sur le relief -> bascule son activation sans fermer le panneau ni changer le fond courant. */
+ *  le relief n'est pas dans la liste : son bouton, dans l'en-tete, bascule l'ombrage (cf. ReliefToggle). */
 @Composable
 fun BasemapControlPanel(
     folders: List<BasemapFolderEntity>,
@@ -279,10 +287,13 @@ fun BasemapControlPanel(
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState(), enabled = dragInfo == null)) {
             Box(Modifier.fillMaxWidth().padding(4.dp)) {
-                IconButton(onClick = { newFolderDialog = true }, modifier = Modifier.align(Alignment.CenterStart).size(32.dp)) {
-                    // Meme icone que le "nouveau dossier" du menu lateral : c'est la meme action, sur
-                    // l'autre arbre de l'application.
-                    Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
+                Row(Modifier.align(Alignment.CenterStart), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = { newFolderDialog = true }, modifier = Modifier.size(32.dp)) {
+                        // Meme icone que le "nouveau dossier" du menu lateral : c'est la meme action, sur
+                        // l'autre arbre de l'application.
+                        Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
+                    }
+                    if (reliefAvailable(providers)) ReliefToggle(reliefOn, onToggleRelief)
                 }
                 // Décalé au maximum vers l'angle haut-droit du gestionnaire (SPEC section 7.1).
                 IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
@@ -292,7 +303,7 @@ fun BasemapControlPanel(
             HorizontalDivider()
             combinedBasemapChildren(null, folders, providers, composites).forEach { item ->
                 key(basemapNodeKey(item)) {
-                    BasemapNode(item, folders, providers, composites, 0, dctx, currentBasemapId, reliefOn, onSelect, onToggleRelief)
+                    BasemapNode(item, folders, providers, composites, 0, dctx, currentBasemapId, onSelect)
                 }
             }
         }
@@ -325,8 +336,8 @@ fun BasemapControlPanel(
 @Composable
 private fun BasemapNode(
     item: Any, allFolders: List<BasemapFolderEntity>, allProviders: List<ProviderEntity>, allComposites: List<CompositeEntity>,
-    depth: Int, dctx: BDragCtx, currentBasemapId: String, reliefOn: Boolean,
-    onSelect: (String) -> Unit, onToggleRelief: () -> Unit,
+    depth: Int, dctx: BDragCtx, currentBasemapId: String,
+    onSelect: (String) -> Unit,
 ) {
     when (item) {
         is BasemapFolderEntity -> {
@@ -379,20 +390,13 @@ private fun BasemapNode(
             if (expanded) {
                 combinedBasemapChildren(item.id, allFolders, allProviders, allComposites).forEach { child ->
                     key(basemapNodeKey(child)) {
-                        BasemapNode(child, allFolders, allProviders, allComposites, depth + 1, dctx, currentBasemapId, reliefOn,
-                            onSelect, onToggleRelief)
+                        BasemapNode(child, allFolders, allProviders, allComposites, depth + 1, dctx, currentBasemapId,
+                            onSelect)
                     }
                 }
             }
         }
-        // Le relief n'est jamais "sélectionné" comme fond visuel (tuiles DEM brutes) : le tap allume ou
-        // éteint son ombrage. Son état se dit par un badge et non par la surbrillance des fonds - il se
-        // superpose au fond courant au lieu de le remplacer, et se lit donc à côté de lui, pas à sa place.
-        is ProviderEntity -> if (item.type == "DEM") BasemapLeaf(
-            kind = "provider", id = item.id, name = item.name, depth = depth,
-            selected = false, dctx = dctx, onSelect = { onToggleRelief() },
-            trailing = { if (reliefOn) ActiveBadge() },
-        ) { BasemapIcon(item) } else BasemapLeaf(
+        is ProviderEntity -> BasemapLeaf(
             kind = "provider", id = item.id, name = item.name, depth = depth,
             selected = item.id == currentBasemapId, dctx = dctx, onSelect = { onSelect(item.id) },
         ) { BasemapIcon(item) }
@@ -462,21 +466,26 @@ private fun BasemapIcon(p: ProviderEntity) {
 }
 
 /**
- * Pastille "ACTIVE" du relief : contour et texte a la couleur d'accent, en capitales.
+ * Le relief, en icone seule dans l'en-tete : allume, la montagne prend la couleur d'accent sur une pastille
+ * teintee ; eteint, elle reste au trait, en gris, sans fond. Deux etats qui se distinguent d'un coup d'oeil,
+ * sans libelle - et le lecteur d'ecran les annonce, l'icone etant un interrupteur (IconToggleButton).
  *
- * Un badge plutot qu'une surbrillance de ligne : la surbrillance dit "c'est le fond courant", et le relief
- * n'en est pas un - il s'ajoute par-dessus. Deux etats differents ne peuvent pas porter la meme marque.
+ * Le tap allume ou eteint l'ombrage sans fermer le panneau ni changer le fond courant : il se pose sur
+ * celui-ci, il ne le remplace pas.
  */
 @Composable
-private fun ActiveBadge() {
-    Text(
-        stringResource(R.string.basemap_relief_active).uppercase(),
-        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, letterSpacing = 0.08.em,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .border(1.dp, MaterialTheme.colorScheme.primary, CircleShape)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-    )
+private fun ReliefToggle(on: Boolean, onToggle: () -> Unit) {
+    IconToggleButton(
+        checked = on, onCheckedChange = { onToggle() }, modifier = Modifier.size(32.dp),
+        colors = IconButtonDefaults.iconToggleButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            checkedContentColor = MaterialTheme.colorScheme.primary,
+            checkedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+        ),
+    ) {
+        Icon(if (on) Icons.Filled.Terrain else Icons.Outlined.Terrain,
+            stringResource(R.string.content_desc_relief_toggle), Modifier.size(18.dp))
+    }
 }
 
 @Composable

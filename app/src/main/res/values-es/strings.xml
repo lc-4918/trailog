@@ -347,7 +347,7 @@
     <string name="settings_field_url">URL</string>
     <string name="settings_field_api_key">Clave API</string>
     <string name="settings_field_relief_opacity">Opacidad del relieve: %1$d%%</string>
-    <string name="basemap_relief_active">Activo</string>
+    <string name="content_desc_relief_toggle">Sombreado del relieve</string>
     <string name="settings_field_zoom_levels">Niveles de zoom: %1$d-%2$d</string>
     <string name="settings_field_mbtiles_location">Ubicación: %1$s</string>
     <string name="offline_thumb_location_title">Ubicación global</string>
