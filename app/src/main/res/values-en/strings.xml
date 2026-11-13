@@ -249,6 +249,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Swipe</string>
     <string name="side_menu_both">Both</string>
+    <string name="basemap_control_mode_button">Button</string>
+    <string name="settings_section_basemap_control_open">Opening the basemap manager</string>
     <string name="settings_section_tap_tolerance_points">Tap tolerance, waypoints: %1$d dp</string>
     <string name="settings_section_tap_tolerance_lines">Tap tolerance, tracks: %1$d dp</string>
     <string name="settings_section_status_bar">Status bar</string>

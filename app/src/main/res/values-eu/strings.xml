@@ -249,6 +249,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Irristatu</string>
     <string name="side_menu_both">Biak</string>
+    <string name="basemap_control_mode_button">Botoia</string>
+    <string name="settings_section_basemap_control_open">Oinarrizko mapen kudeatzailea irekitzea</string>
     <string name="settings_section_tap_tolerance_points">Ukitze-tolerantzia, waypointak: %1$d dp</string>
     <string name="settings_section_tap_tolerance_lines">Ukitze-tolerantzia, arrastoak: %1$d dp</string>
     <string name="settings_section_status_bar">Egoera-barra</string>

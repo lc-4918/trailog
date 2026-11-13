@@ -249,6 +249,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Scorrimento</string>
     <string name="side_menu_both">Entrambi</string>
+    <string name="basemap_control_mode_button">Pulsante</string>
+    <string name="settings_section_basemap_control_open">Apertura della gestione mappe di base</string>
     <string name="settings_section_tap_tolerance_points">Tolleranza tocco, waypoint: %1$d dp</string>
     <string name="settings_section_tap_tolerance_lines">Tolleranza tocco, tracce: %1$d dp</string>
     <string name="settings_section_status_bar">Barra di stato</string>

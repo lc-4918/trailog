@@ -180,7 +180,13 @@ data class SettingsEntity(
     val profCursorBold: Boolean = false,
     val customTitle: String = "",                   // titre du menu latéral ; vide = titre par défaut traduit
     val avatarSource: String = "",                  // chemin fichier local ou URL ; vide = icône par défaut
-    val showBasemapControlButton: Boolean = true,   // bouton du gestionnaire de fonds de plan sur la carte
+    // L'ancien interrupteur du bouton du gestionnaire de fonds : remplace par [basemapControlMode], qui
+    // l'a repris a la migration 77 -> 78. Il n'est plus lu ; la colonne reste, une table ne perd pas de
+    // colonne sans etre recopiee.
+    val showBasemapControlButton: Boolean = true,
+    // Comment s'ouvre le gestionnaire de fonds, comme le menu lateral (cf. [sideMenuMode]) : "button" (le
+    // bouton de la carte), "swipe" (glisser depuis le bord droit, sans bouton) ou "both".
+    val basemapControlMode: String = BasemapControlMode.BOTH,
     val basemapControlWidthPct: Int = 70,           // largeur du panneau (% de la largeur d'écran)
     // Opacité du panneau (%), appliquée telle quelle en alpha. A porté la transparence jusqu'à la
     // migration 20->21, qui a inversé les valeurs en base pour coller enfin au nom de la colonne.
@@ -401,6 +407,19 @@ data class SettingsEntity(
     // reconstruire la table.
     val profileVerticalScale: String = "m:200",
 )
+
+/** Les valeurs de [SettingsEntity.basemapControlMode]. */
+object BasemapControlMode {
+    const val BUTTON = "button"
+    const val SWIPE = "swipe"
+    const val BOTH = "both"
+
+    /** Le bouton de la carte est affiche : tout mode sauf le seul glissement. */
+    fun buttonVisible(mode: String): Boolean = mode != SWIPE
+
+    /** Le glissement ouvre et ferme le panneau : tout mode sauf le seul bouton. */
+    fun swipeEnabled(mode: String): Boolean = mode != BUTTON
+}
 
 /** Bornes du carre des boutons de carte (dp) : icone seule, ou bouton Material plein. */
 const val MinMapButtonSizeDp = 36

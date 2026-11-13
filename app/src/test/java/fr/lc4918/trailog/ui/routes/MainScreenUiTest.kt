@@ -20,8 +20,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
+import fr.lc4918.trailog.data.db.BasemapControlMode
 import fr.lc4918.trailog.data.db.LayerEntity
 import fr.lc4918.trailog.data.db.SettingsEntity
 import fr.lc4918.trailog.location.LocationHub
@@ -166,7 +170,7 @@ class MainScreenUiTest {
         reglages {
             it.copy(
                 sideMenuMode = "both", geocodingEnabled = false,
-                trackMeasureEnabled = true, trackEditEnabled = false, showBasemapControlButton = true,
+                trackMeasureEnabled = true, trackEditEnabled = false, basemapControlMode = BasemapControlMode.BUTTON,
             )
         }
         ecran()
@@ -183,7 +187,7 @@ class MainScreenUiTest {
         reglages {
             it.copy(
                 sideMenuMode = "both", geocodingEnabled = true,
-                trackMeasureEnabled = false, trackEditEnabled = true, showBasemapControlButton = false,
+                trackMeasureEnabled = false, trackEditEnabled = true, basemapControlMode = BasemapControlMode.SWIPE,
             )
         }
         ecran()
@@ -200,6 +204,46 @@ class MainScreenUiTest {
         ecran()
         attend { affiche(R.string.content_desc_basemap_control) }
         assertFalse(affiche(R.string.action_menu))
+    }
+
+    private fun present(tag: String) = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+
+    /**
+     * Le gestionnaire de fonds au seul glissement : pas de bouton, le bord droit l'ouvre, et le pousser
+     * vers la droite le referme - le geste du menu lateral, en miroir.
+     */
+    @Test fun `en mode glissement, le bord droit ouvre le gestionnaire de fonds et le glissement le ferme`() {
+        reglages { it.copy(basemapControlMode = BasemapControlMode.SWIPE) }
+        ecran()
+        attend { present(BasemapEdgeSwipeTag) }
+        assertFalse("pas de bouton", affiche(R.string.content_desc_basemap_control))
+        assertFalse(present(BasemapPanelTag))
+
+        compose.onNodeWithTag(BasemapEdgeSwipeTag).performTouchInput { swipeLeft(startX = right - 1f, endX = left - 300f) }
+        attend { present(BasemapPanelTag) }
+        assertFalse("la bande s'efface, panneau ouvert", present(BasemapEdgeSwipeTag))
+
+        compose.onNodeWithTag(BasemapPanelTag).performTouchInput { swipeRight(startX = left + 10f, endX = right) }
+        attend { !present(BasemapPanelTag) }
+        attend { present(BasemapEdgeSwipeTag) }
+    }
+
+    /** Au seul bouton, le bord droit reste a la carte : aucune bande n'y guette le glissement. */
+    @Test fun `en mode bouton, le bord droit n'ouvre rien`() {
+        reglages { it.copy(basemapControlMode = BasemapControlMode.BUTTON) }
+        ecran()
+        attend { affiche(R.string.content_desc_basemap_control) }
+        assertFalse(present(BasemapEdgeSwipeTag))
+    }
+
+    /** Aux deux gestes : le bouton et la bande, et le bouton ouvre le panneau. */
+    @Test fun `aux deux gestes, le bouton et le bord droit sont la`() {
+        reglages { it.copy(basemapControlMode = BasemapControlMode.BOTH) }
+        ecran()
+        attend { affiche(R.string.content_desc_basemap_control) }
+        assertTrue(present(BasemapEdgeSwipeTag))
+        compose.onNodeWithContentDescription(libelle(R.string.content_desc_basemap_control)).performClick()
+        attend { present(BasemapPanelTag) }
     }
 
     // ---------- La carte parle a l'ecran ----------

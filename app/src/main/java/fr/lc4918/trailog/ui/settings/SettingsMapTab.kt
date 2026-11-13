@@ -137,13 +137,8 @@ internal fun LazyListScope.mapTab(cur: SettingsEntity, vm: SettingsViewModel, gr
     if (cur.expertMode) bloc {
         SectionTitle(stringResource(R.string.settings_section_display))
         SettingsCard {
-            // Le gestionnaire de fonds de plan, sous le nom de ce qu'il ouvre : il s'appelait "Afficher le
-            // bouton" en tete de sa propre rubrique, ou le titre portait seul le sens de la ligne. Ce qui
-            // regle le PANNEAU qu'il ouvre - largeur, opacite - a rejoint les fonds de plan, onglet Tuiles.
-            SwitchLine(
-                stringResource(R.string.settings_section_basemap_control), cur.showBasemapControlButton,
-            ) { vm.save(cur.copy(showBasemapControlButton = it)) }
-            RowDivider()
+            // Le bouton du gestionnaire de fonds n'est plus un interrupteur d'ici : il suit le mode d'ouverture
+            // du panneau, choisi a cote de celui du menu lateral (onglet Systeme, Interaction).
             SwitchLine(stringResource(R.string.settings_sw_scale), cur.showScale) { vm.save(cur.copy(showScale = it)) }
             RowDivider()
             SwitchLine(stringResource(R.string.settings_sw_rotation), cur.rotateGesturesEnabled) { vm.save(cur.copy(rotateGesturesEnabled = it)) }

@@ -249,6 +249,8 @@
     <string name="side_menu_burger">Burger</string>
     <string name="side_menu_swipe">Lliscar</string>
     <string name="side_menu_both">Tots dos</string>
+    <string name="basemap_control_mode_button">Botó</string>
+    <string name="settings_section_basemap_control_open">Obertura del gestor de mapes base</string>
     <string name="settings_section_tap_tolerance_points">Tolerància de toc, waypoints: %1$d dp</string>
     <string name="settings_section_tap_tolerance_lines">Tolerància de toc, traces: %1$d dp</string>
     <string name="settings_section_status_bar">Barra d\'estat</string>

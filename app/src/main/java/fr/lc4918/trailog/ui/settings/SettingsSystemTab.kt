@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.settings
 
+import fr.lc4918.trailog.data.db.BasemapControlMode
 import fr.lc4918.trailog.map.offline.TileMath
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.filled.Save
@@ -177,6 +178,17 @@ import fr.lc4918.trailog.ui.theme.TrailogIcons
                 "both" to stringResource(R.string.side_menu_both)),
             cur.sideMenuMode,
         ) { vm.save(cur.copy(sideMenuMode = it)) }
+    }
+    // Le gestionnaire de fonds s'ouvre comme le menu lateral, en miroir : bouton, glissement depuis le bord
+    // droit, ou les deux (cf. BasemapControlMode).
+    SectionTitle(stringResource(R.string.settings_section_basemap_control_open))
+    SettingsCard {
+        SegChips(
+            listOf(BasemapControlMode.BUTTON to stringResource(R.string.basemap_control_mode_button),
+                BasemapControlMode.SWIPE to stringResource(R.string.side_menu_swipe),
+                BasemapControlMode.BOTH to stringResource(R.string.side_menu_both)),
+            cur.basemapControlMode,
+        ) { vm.save(cur.copy(basemapControlMode = it)) }
     }
     // Deux tolerances : les marqueurs sont interroges avant les traces et l'emportent, une valeur large
     // sur eux rend une trace qui passe a cote difficile a atteindre.

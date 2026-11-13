@@ -249,6 +249,8 @@
     <string name="side_menu_burger">Hamburguesa</string>
     <string name="side_menu_swipe">Deslizar</string>
     <string name="side_menu_both">Ambos</string>
+    <string name="basemap_control_mode_button">Botón</string>
+    <string name="settings_section_basemap_control_open">Apertura del gestor de mapas base</string>
     <string name="settings_section_tap_tolerance_points">Tolerancia de toque, waypoints: %1$d dp</string>
     <string name="settings_section_tap_tolerance_lines">Tolerancia de toque, tracks: %1$d dp</string>
     <string name="settings_section_status_bar">Barra de estado</string>

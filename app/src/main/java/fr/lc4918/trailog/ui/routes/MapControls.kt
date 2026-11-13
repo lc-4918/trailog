@@ -1,5 +1,6 @@
 package fr.lc4918.trailog.ui.routes
 
+import fr.lc4918.trailog.data.db.BasemapControlMode
 import fr.lc4918.trailog.ui.offline.RoutingDownloadIndicator
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.filled.LocationSearching
@@ -262,7 +263,7 @@ internal fun BoxScope.MapTopRightControls(
                 Icon(Icons.Outlined.Info, stringResource(R.string.content_desc_basemap_legend), tint = chrome.fg)
             }
         }
-        if (settings.showBasemapControlButton) {
+        if (BasemapControlMode.buttonVisible(settings.basemapControlMode)) {
             IconButton(onClick = { chromeState.basemapControlOpen = true }, modifier = chrome.buttonBackground) {
                 // Outlined plutôt que Filled : la version pleine a sa couche du haut remplie
                 // en noir, ce qui contraste avec les autres boutons de la carte (tous en contour).

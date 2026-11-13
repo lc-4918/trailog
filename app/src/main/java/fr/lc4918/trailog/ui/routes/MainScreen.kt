@@ -31,6 +31,15 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
+import fr.lc4918.trailog.data.db.BasemapControlMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1021,6 +1030,27 @@ fun MainScreen(
                 Box(Modifier.align(Alignment.TopStart).fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
                     .background(if (transparent) Color.Transparent else MaterialTheme.colorScheme.background))
+                /*
+                 * Ouverture du gestionnaire de fonds par glissement du bord droit, le pendant de la bande du
+                 * bord gauche qui ouvre le menu (même largeur, même seuil, cf. BasemapPanelSwipe).
+                 *
+                 * **Posée sous les boutons de la carte**, juste après elle : les boutons du coin haut-droit et
+                 * de la colonne bas-droite sont collés au bord, et une bande par-dessus leur prendrait la
+                 * moitié de leurs taps. Dessous, elle ne reçoit que ce qui tombe à côté d'eux - et tout ce qui
+                 * s'affiche plus tard (bande du planificateur, profils, barres) passe aussi devant elle.
+                 */
+                if (BasemapControlMode.swipeEnabled(settings.basemapControlMode) && !chromeState.basemapControlOpen) {
+                    Box(Modifier.align(Alignment.TopEnd).fillMaxHeight().width(24.dp)
+                        .testTag(BasemapEdgeSwipeTag)
+                        .pointerInput(Unit) {
+                            var total = 0f
+                            detectHorizontalDragGestures(
+                                onDragStart = { total = 0f },
+                                onDragEnd = { if (BasemapPanelSwipe.edgeSwipeOpens(total)) chromeState.basemapControlOpen = true },
+                                onDragCancel = { total = 0f },
+                            ) { _, d -> total += d }
+                        })
+                }
                 MapTopLeftControls(
                     settings = settings,
                     chrome = chrome,
@@ -1459,12 +1489,56 @@ fun MainScreen(
                         ) { _, d -> total += d }
                     })
             }
-            // Basemap Control : panneau latéral droit (fonds activés, dossiers, drag & drop)
+            /*
+             * Basemap Control : panneau latéral droit (fonds activés, dossiers, drag & drop).
+             *
+             * Il se comporte comme le menu de la bibliothèque, en miroir (cf. BasemapPanelSwipe) : selon le
+             * réglage (SettingsEntity.basemapControlMode), il s'ouvre au bouton de la carte, d'un glissement
+             * depuis le bord droit, ou des deux ; en mode glissement, on le referme en le poussant vers la
+             * droite, et il suit le doigt. Un tap sur la carte et la croix le ferment dans tous les modes.
+             *
+             * Le décalage du glissement est lu AVANT graphicsLayer dans la chaîne : le geste se mesure dans
+             * un repère fixe, et non dans celui du panneau qui se déplace sous le doigt - la vitesse au lâcher
+             * en serait faussée.
+             */
             if (chromeState.basemapControlOpen) {
                 Box(Modifier.fillMaxSize().clickable(
                     indication = null, interactionSource = remember { MutableInteractionSource() },
                 ) { chromeState.basemapControlOpen = false })
-                Box(Modifier.align(Alignment.CenterEnd).fillMaxHeight()) {
+            }
+            val basemapSwipe = BasemapControlMode.swipeEnabled(settings.basemapControlMode)
+            AnimatedVisibility(
+                visible = chromeState.basemapControlOpen,
+                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                enter = slideInHorizontally { it },
+                exit = slideOutHorizontally { it },
+            ) {
+                val panelOffset = remember { Animatable(0f) }
+                var panelWidthPx by remember { mutableIntStateOf(0) }
+                Box(
+                    Modifier.fillMaxHeight()
+                        .testTag(BasemapPanelTag)
+                        .onSizeChanged { panelWidthPx = it.width }
+                        .then(if (!basemapSwipe) Modifier else Modifier.pointerInput(Unit) {
+                            val velocity = VelocityTracker()
+                            detectHorizontalDragGestures(
+                                onDragStart = { velocity.resetTracking() },
+                                onDragEnd = {
+                                    val speed = velocity.calculateVelocity().x
+                                    if (BasemapPanelSwipe.closesOnRelease(panelOffset.value, panelWidthPx.toFloat(), speed)) {
+                                        chromeState.basemapControlOpen = false
+                                    } else scope.launch { panelOffset.animateTo(0f) }
+                                },
+                                onDragCancel = { scope.launch { panelOffset.animateTo(0f) } },
+                            ) { change, delta ->
+                                velocity.addPosition(change.uptimeMillis, change.position)
+                                change.consume()
+                                val next = BasemapPanelSwipe.dragOffset(panelOffset.value, delta, panelWidthPx.toFloat())
+                                scope.launch { panelOffset.snapTo(next) }
+                            }
+                        })
+                        .graphicsLayer { translationX = panelOffset.value },
+                ) {
                     BasemapControlPanel(
                         folders = basemapFolders, providers = providers, composites = composites,
                         currentBasemapId = settings.defaultBasemapId,

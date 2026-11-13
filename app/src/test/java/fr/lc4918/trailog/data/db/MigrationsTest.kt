@@ -989,6 +989,29 @@ class MigrationsTest {
         db.close()
     }
 
+    /** Le bouton etait affiche : le gestionnaire s'ouvre desormais au bouton ET au glissement, le defaut. */
+    @Test fun `77 vers 78 ouvre le gestionnaire de fonds aux deux gestes`() {
+        val db = freshDb("m7778a")
+        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY NOT NULL, showBasemapControlButton INTEGER NOT NULL)")
+        db.execSQL("INSERT INTO settings (id, showBasemapControlButton) VALUES (1, 1)")
+        MigrationSql.ADD_BASEMAP_CONTROL_MODE.forEach { db.execSQL(it) }
+        assertEquals("both", scalar(db, "SELECT basemapControlMode FROM settings") { it.getString(0) })
+        assertEquals(BasemapControlMode.BOTH, SettingsEntity().basemapControlMode)
+        db.close()
+    }
+
+    /** Le bouton etait masque : il le reste, et le panneau, devenu inaccessible, s'ouvre au glissement. */
+    @Test fun `77 vers 78 garde le bouton masque et passe au seul glissement`() {
+        val db = freshDb("m7778b")
+        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY NOT NULL, showBasemapControlButton INTEGER NOT NULL)")
+        db.execSQL("INSERT INTO settings (id, showBasemapControlButton) VALUES (1, 0)")
+        MigrationSql.ADD_BASEMAP_CONTROL_MODE.forEach { db.execSQL(it) }
+        val mode = scalar(db, "SELECT basemapControlMode FROM settings") { it.getString(0) }
+        assertEquals(BasemapControlMode.SWIPE, mode)
+        assertFalse(BasemapControlMode.buttonVisible(mode))
+        db.close()
+    }
+
     // ---------- La base reelle s'ouvre et porte le schema courant ----------
 
     /**
@@ -1003,7 +1026,8 @@ class MigrationsTest {
     @Test fun `une installation neuve n'affiche que les trois commandes par defaut`() {
         val neuf = SettingsEntity()
         assertTrue("burger", neuf.sideMenuMode != "swipe")
-        assertTrue("gestionnaire de fonds", neuf.showBasemapControlButton)
+        assertTrue("gestionnaire de fonds", BasemapControlMode.buttonVisible(neuf.basemapControlMode))
+        assertTrue("gestionnaire de fonds au glissement", BasemapControlMode.swipeEnabled(neuf.basemapControlMode))
         assertTrue("planificateur", neuf.routePlannerEnabled)
         // Les trois fonctions qui s'ajoutent volontairement : deux interrogent un service tiers, la
         // troisieme modifie des traces importees.
