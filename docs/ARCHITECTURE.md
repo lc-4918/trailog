@@ -1034,8 +1034,20 @@ un **index des lieux** de ce carré : `E5_N45.gc.sqlite`, à côté de `E5_N45.r
 
 - **Fabrication** : `tools/geocode-index/build_index.py` lit un extrait OSM (`.osm.pbf`) et écrit un fichier
   compressé par carré, plus un `index.txt`. Contenu : localités (villes, villages, hameaux, lieux-dits), relief,
-  eau, refuges, gares, cols **et rues nommées**. Pas de numéros de rue ni de commerces. Pour la France entière
-  (extrait du 6 octobre 2026) : 2,9 millions de lieux, dont 1,7 million de rues.
+  eau, refuges, gares, cols **et rues nommées**. Pas de numéros de rue ni de commerces. Contexte d'un lieu :
+  `commune, département`, tiré des limites administratives de niveaux 8 et 6 ; hors de France ces niveaux
+  n'ont pas partout le même sens (Kreis allemand, province italienne ou espagnole ; pas de niveau 6 utile aux
+  Pays-Bas ou en Suisse, où seule la commune s'affiche).
+- **Toute l'Europe** (extrait Geofabrik du 12 novembre 2026, 35 Go) : 102 carrés, 478 Mo compressés, 1,1 Go
+  décompressés ; le plus gros, E5_N45 (Alpes, Rhône, Suisse), 1,2 million de lieux et 93 Mo. Seuls sont faits
+  les carrés où BRouter publie des données. L'extrait ne passe pas d'un bloc dans le script (cache de
+  positions de ~50 Go, lieux trop nombreux pour 15 Go de mémoire) : `tools/geocode-index/build_europe.sh` le
+  découpe en bandes de 10 degrés puis en carrés avec `osmium extract` (stratégie *smart* : les limites
+  administratives restent fermées), chaque carré débordant de 0,2 degré sur ses voisins, et
+  `build_index.py --tile` n'écrit que le carré visé en fusionnant `index.txt`. Reprise par marqueurs ;
+  ~6 h de calcul. osmium réserve ~3 Go par carré découpé (ensembles de bits à la mesure du plus grand
+  identifiant OSM) : lots de deux carrés, et rien de lourd en parallèle. Lancer la génération hors de la
+  session de travail (`systemd-run --user`), qui tue ses processus en se fermant.
 - **Format** : SQLite. `places` (nom, genre, point en 1e-5 degré, commune, case de 0,01 degré), `localities`
   (communes désignées), `name_fts` et `street_fts` (FTS5 sans contenu, prefixe), index sur la case pour le
   géocodage inverse. Les identifiants vont par ordre d'importance : une table FTS rend ses lignes dans cet

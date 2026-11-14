@@ -16,7 +16,10 @@ Chaque base porte :
 
 Contient les lieux (localites, relief, eau, refuges, gares, cols) ET les rues nommees.
 
-Usage : build_index.py extrait.osm.pbf dossier-de-sortie
+Usage : build_index.py extrait.osm.pbf dossier-de-sortie [--tile E5_N45 ...]
+
+Avec --tile, seuls ces carres sont ecrits et index.txt garde les lignes des autres : c'est ainsi que
+build_europe.sh traite l'Europe, un carre (decoupe avec une marge) a la fois.
 """
 import argparse
 import math
@@ -343,16 +346,41 @@ def gzip_file(path):
     return os.path.getsize(path + ".gz")
 
 
+def merge_index_lines(existing_lines, new_lines):
+    """
+    Les lignes d'index.txt apres une generation partielle : celles des carres regeneres remplacent les
+    anciennes, les autres restent. Triees par nom de carre, pour un fichier stable d'une execution a l'autre.
+    """
+    by_tile = {}
+    for line in list(existing_lines) + list(new_lines):
+        line = line.strip()
+        if line:
+            by_tile[line.split(" ", 1)[0]] = line
+    return [by_tile[name] for name in sorted(by_tile)]
+
+
+def select_tiles(tile_keys, wanted_names):
+    """Les carres a ecrire : tous, ou seulement ceux nommes (un extrait decoupe avec une marge deborde sur
+    ses voisins, dont les lieux seraient incomplets)."""
+    if not wanted_names:
+        return sorted(tile_keys)
+    return sorted(key for key in tile_keys if tile_name(*key) in wanted_names)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("pbf")
     parser.add_argument("outdir", help="un fichier E5_N45.gc.sqlite.gz par carre, plus index.txt")
+    parser.add_argument("--tile", action="append", default=[],
+                        help="n'ecrire que ce carre (repetable) ; index.txt garde alors les autres lignes")
     args = parser.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
 
     t0 = time.time()
     records = collect(args.pbf)
     print(f"{len(records)} enregistrements en {time.time() - t0:.0f} s", file=sys.stderr)
+    if not records:
+        return       # un carre de mer : rien a ecrire, index.txt inchange
     nearest = assign_localities(records)
     print(f"localites assignees en {time.time() - t0:.0f} s", file=sys.stderr)
     communes, departments = load_boundaries(args.pbf)
@@ -367,7 +395,8 @@ def main():
 
     index_lines = []
     now_ms = int(time.time() * 1000)
-    for (lon0, lat0), indices in sorted(by_tile.items()):
+    for lon0, lat0 in select_tiles(by_tile.keys(), set(args.tile)):
+        indices = by_tile[(lon0, lat0)]
         name = tile_name(lon0, lat0)
         raw_path = os.path.join(args.outdir, name + ".gc.sqlite")
         write_tile_db(raw_path, records, indices, contexts)
@@ -375,8 +404,13 @@ def main():
         packed = gzip_file(raw_path)
         index_lines.append(f"{name} {packed} {raw} {now_ms}")
         print(f"  {name}: {len(indices)} lieux, {raw / 1e6:.1f} Mo, {packed / 1e6:.1f} Mo compresses", file=sys.stderr)
-    with open(os.path.join(args.outdir, "index.txt"), "w") as out:
-        out.write("\n".join(index_lines) + "\n")
+    index_path = os.path.join(args.outdir, "index.txt")
+    existing_lines = []
+    if args.tile and os.path.exists(index_path):
+        with open(index_path) as source:
+            existing_lines = source.readlines()
+    with open(index_path, "w") as out:
+        out.write("\n".join(merge_index_lines(existing_lines, index_lines)) + "\n")
 
 
 if __name__ == "__main__":
