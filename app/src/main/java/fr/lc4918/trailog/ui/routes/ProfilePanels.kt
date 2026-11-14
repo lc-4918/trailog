@@ -66,6 +66,9 @@ import fr.lc4918.trailog.ui.profile.titleInfos
  * decide ce qui l'entoure a l'ecran, et ou tout cela se pose.
  */
 
+/** Les statistiques generales du panneau, sous son titre : propres au profil, absentes des surfaces et des voies. */
+internal const val PROFILE_TITLE_INFOS_TAG = "profile_title_infos"
+
 /** Petit bouton carré (24 dp) des contrôles de zoom du profil (début/fin/expand). Contrairement à
  *  IconButton, sa couche d'état (ripple + fond bleu de sélection) est bornée à sa propre taille via clip :
  *  IconButton force une couche d'état de 40 dp qui déborderait de ce bouton réduit. */
@@ -382,12 +385,14 @@ internal fun BoxScope.ProfilePanelLayer(
                     SlopeLegendInfo(settings, Modifier.offset(y = (-6).dp))
                 }
             }
-            if (windowStats != null) {
+            // Les statistiques de la trace ne valent que pour le profil : les surfaces et les voies ont
+            // deja leurs distances par type, les chiffres generaux n'y feraient que prendre de la place.
+            if (windowStats != null && viewer == PlannerViewer.PROFILE) {
                 TrackInfoColumns(
                     titleInfos(windowStats, windowSamples),
                     fontSp = settings.profBarFont,
                     bold = settings.profBarBold,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag(PROFILE_TITLE_INFOS_TAG),
                 )
             }
             Spacer(Modifier.height(ProfileGraphGap))

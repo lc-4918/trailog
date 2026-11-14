@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
@@ -70,5 +71,17 @@ class PlannerViewerPanelUiTest {
         val duration = compose.onAllNodesWithText("~", substring = true).fetchSemanticsNodes()
         assertTrue("l'horaire du point", duration.isNotEmpty())
         assertTrue("au-dessus du titre du panneau", duration.all { it.boundsInRoot.bottom <= titleTop })
+    }
+
+    @Test fun `seul le profil porte les statistiques generales du parcours`() {
+        val state = computed()
+        show(state)
+        compose.onNodeWithTag(fr.lc4918.trailog.ui.routes.PROFILE_TITLE_INFOS_TAG).fetchSemanticsNode()
+        for (viewer in listOf(PlannerViewer.SURFACES, PlannerViewer.WAYS)) {
+            state.openViewer(viewer, null)
+            compose.waitForIdle()
+            assertTrue("pas de statistiques sur $viewer",
+                compose.onAllNodesWithTag(fr.lc4918.trailog.ui.routes.PROFILE_TITLE_INFOS_TAG).fetchSemanticsNodes().isEmpty())
+        }
     }
 }
