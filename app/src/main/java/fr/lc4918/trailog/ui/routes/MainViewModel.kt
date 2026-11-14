@@ -716,6 +716,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _cameraToSave = MutableStateFlow<Triple<Double, Double, Double>?>(null)
 
     init {
+        // Une couche supprimee ferme le profil et l'infobulle qui la montraient (cf. VanishedLayer).
+        viewModelScope.launch {
+            var previousIds = emptySet<Long>()
+            layers.collect { list ->
+                val currentIds = list.mapTo(HashSet()) { it.id }
+                if (VanishedLayer.vanished(_activeLayerId.value, previousIds, currentIds)) closeProfile()
+                if (VanishedLayer.vanished(_markerLayerId.value, previousIds, currentIds)) closeMarker()
+                previousIds = currentIds
+            }
+        }
+    }
+
+    init {
         viewModelScope.launch {
             _cameraToSave.filterNotNull().debounce(600).collect { (lat, lon, zoom) ->
                 val s = repo.settings.get() ?: return@collect
