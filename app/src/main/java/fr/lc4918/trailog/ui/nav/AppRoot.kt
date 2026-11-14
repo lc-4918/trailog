@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,6 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import fr.lc4918.trailog.ui.components.BusySpinner
 import fr.lc4918.trailog.ui.routes.MainScreen
+import fr.lc4918.trailog.routing.offline.ZoneUpdateNotice
+import fr.lc4918.trailog.ui.settings.SETTINGS_TAB_ROUTES
 import fr.lc4918.trailog.ui.settings.SettingsScreen
 import fr.lc4918.trailog.update.ReleaseInfo
 import fr.lc4918.trailog.update.UpdateCheck
@@ -32,6 +35,16 @@ fun AppRoot(autoCheckUpdates: Boolean) {
     // Les reglages se referment, la carte reprend la main, et le cadrage s'ouvre : trois etapes, et entre
     // le tap et la derniere il se passe un temps que rien n'annoncait.
     var cadrageEnAttente by remember { mutableStateOf(false) }
+    // La notification "zone a mettre a jour" touchee : les reglages s'ouvrent sur l'onglet des itineraires,
+    // ou sont les zones (cf. ZoneUpdateCheck).
+    var requestedSettingsTab by rememberSaveable { mutableStateOf<Int?>(null) }
+    val openZonesPending by ZoneUpdateNotice.openZonesPending.collectAsState()
+    LaunchedEffect(openZonesPending) {
+        if (openZonesPending && ZoneUpdateNotice.consumeOpenZones()) {
+            requestedSettingsTab = SETTINGS_TAB_ROUTES
+            showSettings = true
+        }
+    }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         MainScreen(onSettings = { showSettings = true }, settingsOpen = showSettings,
             downloadAreaRequest = downloadArea,
@@ -41,6 +54,8 @@ fun AppRoot(autoCheckUpdates: Boolean) {
             SettingsScreen(
                 onBack = { showSettings = false },
                 onDownloadArea = { showSettings = false; downloadArea++; cadrageEnAttente = true },
+                requestedTab = requestedSettingsTab,
+                onRequestedTabShown = { requestedSettingsTab = null },
             )
         }
         // Par-dessus les deux ecrans : c'est leur passage de l'un a l'autre qu'il annonce.

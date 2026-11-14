@@ -113,12 +113,18 @@ internal fun groupeEnTete(etat: LazyListState, starts: List<Pair<Int, String>>, 
     return nom
 }
 
+/** L'onglet des itineraires, ou sont les zones hors ligne (cf. l'ordre des onglets plus bas). */
+const val SETTINGS_TAB_ROUTES = 2
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
     /** Ferme les reglages et ouvre le cadrage d'une zone a telecharger sur la carte. */
     onDownloadArea: () -> Unit = {},
+    /** L'onglet a montrer, demande d'ailleurs (la notification des zones) ; null si aucun. */
+    requestedTab: Int? = null,
+    onRequestedTabShown: () -> Unit = {},
     vm: SettingsViewModel = viewModel(),
 ) {
     val s by vm.settings.collectAsState()
@@ -238,6 +244,9 @@ fun SettingsScreen(
     }
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(requestedTab) {
+        requestedTab?.let { tab = it; onRequestedTabShown() }
+    }
     val tabs = listOf(
         stringResource(R.string.settings_tab_map) to Icons.Filled.Map,
         stringResource(R.string.settings_tab_tiles) to Icons.Filled.Layers,
@@ -427,7 +436,7 @@ fun SettingsScreen(
                                 TilesTab(cur, providers, composites, vm, onPickMbtiles = { mbPicker.launch("*/*") },
                                     onDownloadArea = onDownloadArea)
                             }
-                            2 -> item { RoutesTab(cur, vm) }
+                            SETTINGS_TAB_ROUTES -> item { RoutesTab(cur, vm) }
                             else -> item {
                                 SystemTab(cur, vm,
                                     onPickImportDir = { importDirPicker.launch(null) },

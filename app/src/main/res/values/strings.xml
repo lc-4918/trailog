@@ -644,6 +644,10 @@
     <string name="routing_zone_date">Données du</string>
     <string name="routing_zone_outdated">Une mise à jour est disponible</string>
     <string name="routing_zone_update">Mettre à jour</string>
+    <string name="routing_zone_updates_channel">Mises à jour de l\'itinéraire hors ligne</string>
+    <string name="routing_zone_updates_title">Itinéraire hors ligne : mise à jour disponible</string>
+    <string name="routing_zone_updates_text">%1$s. Touchez pour mettre à jour.</string>
+    <string name="routing_zone_outdated_badge">À mettre à jour</string>
     <string name="routing_zone_download">Télécharger</string>
     <string name="routing_zone_downloading">Téléchargement : %1$s / %2$s</string>
     <string name="routing_zone_failed">Le téléchargement n\'a pas abouti. Il reprendra là où il s\'est arrêté.</string>

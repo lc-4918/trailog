@@ -642,6 +642,10 @@
     <string name="routing_zone_date">Dades del</string>
     <string name="routing_zone_outdated">Hi ha una actualització disponible</string>
     <string name="routing_zone_update">Actualitza</string>
+    <string name="routing_zone_updates_channel">Actualitzacions de la ruta sense connexió</string>
+    <string name="routing_zone_updates_title">Ruta sense connexió: actualització disponible</string>
+    <string name="routing_zone_updates_text">%1$s. Toca per actualitzar.</string>
+    <string name="routing_zone_outdated_badge">Actualització disponible</string>
     <string name="routing_zone_download">Baixa</string>
     <string name="routing_zone_downloading">Baixant: %1$s / %2$s</string>
     <string name="routing_zone_failed">La baixada no ha acabat. Es reprendrà on es va aturar.</string>

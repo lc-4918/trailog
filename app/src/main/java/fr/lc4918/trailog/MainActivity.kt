@@ -18,6 +18,8 @@ import fr.lc4918.trailog.data.ThemePrefs
 import fr.lc4918.trailog.data.imp.ImportInbox
 import fr.lc4918.trailog.location.AlertAnswer
 import fr.lc4918.trailog.location.TrackWatch
+import fr.lc4918.trailog.routing.offline.ZoneUpdateCheck
+import fr.lc4918.trailog.routing.offline.ZoneUpdateNotice
 import fr.lc4918.trailog.ui.nav.AppRoot
 import fr.lc4918.trailog.ui.theme.TrailogTheme
 
@@ -38,6 +40,9 @@ class MainActivity : ComponentActivity() {
         ImportInbox.offer(ImportInbox.urisOf(intent))
         answerOffTrackAlert(intent)
         resumeUpdateIfAsked(intent)
+        // Pas apres une rotation : l'intention est la meme, et les reglages se rouvriraient d'eux-memes.
+        if (savedInstanceState == null) openZonesIfAsked(intent)
+        (application as TrailogApp).checkZoneUpdates()
         val repo = (application as TrailogApp).repository
         // Lu de façon synchrone, avant la première composition : le Flow des réglages (Room) ne livre sa
         // première valeur qu'un instant plus tard, et sans ce repli la première image affichait le thème
@@ -75,12 +80,18 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == UpdateDone.ACTION_INSTALL_UPDATE) UpdateInstaller.resumeInstall(this)
     }
 
+    /** La notification "zone a mettre a jour" : l'ecran principal ouvre les zones d'itineraire. */
+    private fun openZonesIfAsked(intent: Intent?) {
+        if (intent?.action == ZoneUpdateCheck.ACTION_OPEN_ZONES) ZoneUpdateNotice.requestOpenZones()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         ImportInbox.offer(ImportInbox.urisOf(intent))
         answerOffTrackAlert(intent)
         resumeUpdateIfAsked(intent)
+        openZonesIfAsked(intent)
     }
 
     /**

@@ -211,6 +211,18 @@ class BrouterDownloads(
         }
     }
 
+    /**
+     * Relit le dossier et l'index du serveur, et attend la reponse : pour la verification du lancement (cf.
+     * [ZoneUpdateNotice]), qui doit savoir ce qui est perime avant d'annoncer quoi que ce soit. Null si le
+     * serveur n'a pas repondu.
+     */
+    suspend fun refreshRemoteNow(): State? {
+        refreshInstalled()
+        val remote = segments.remoteIndex()
+        _state.update { it.copy(remote = remote ?: it.remote, remoteFailed = remote == null) }
+        return if (remote == null) null else _state.value
+    }
+
     /** Met ces carres en file, sauf ceux qui y sont deja. Un carre deja present est re-telecharge : c'est
      *  ainsi qu'on le met a jour. */
     fun enqueue(tiles: Collection<BrouterTile>) {

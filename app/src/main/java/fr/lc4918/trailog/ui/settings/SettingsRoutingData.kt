@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.settings
 
+import androidx.compose.ui.platform.testTag
+import fr.lc4918.trailog.routing.offline.ZoneUpdateNotice
+import fr.lc4918.trailog.routing.offline.ZoneUpdateCheck
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +94,10 @@ internal fun OfflineRoutingZones(vm: SettingsViewModel) {
     // A l'ouverture : relire le dossier, et l'index du serveur - pour le poids des zones et leurs mises a
     // jour. L'index ne se relit qu'une fois par lancement : il change une fois par semaine.
     LaunchedEffect(Unit) { data.refreshInstalled(); data.loadRemote() }
+    // Plus rien a mettre a jour, l'index du serveur lu : la notification qui l'annoncait n'a plus d'objet.
+    val ctx = LocalContext.current
+    val nothingOutdated = s.remote != null && ZoneUpdateNotice.outdatedZones(s).isEmpty()
+    LaunchedEffect(nothingOutdated) { if (nothingOutdated) ZoneUpdateCheck.cancel(ctx) }
     var style by remember { mutableStateOf<StyleBuilder.Result?>(null) }
     LaunchedEffect(Unit) { style = vm.zoneMapStyle() }
     var catalogueOuvert by remember { mutableStateOf(false) }
@@ -190,6 +197,8 @@ private fun ZoneItem(
         ) {
             ZoneIcon(zone)
             Text(nom, style = MaterialTheme.typography.bodyMedium, color = p.label, modifier = Modifier.weight(1f))
+            // La pastille : une zone a mettre a jour se voit sans la deplier.
+            if (downloaded && progression == null && s.zoneOutdated(zone)) OutdatedBadge()
             Text(
                 if (downloaded) poids?.let { TileMath.formatSize(it) } ?: stringResource(R.string.routing_zone_unknown_size)
                 else tailleAFaire(reste),
@@ -346,8 +355,31 @@ private fun ZoneMap(zone: BrouterZone, style: StyleBuilder.Result?) {
     }
 }
 
+/** La pastille d'une zone a mettre a jour, sur sa ligne repliee. */
 @Composable
-internal fun zoneName(zone: BrouterZone): String = stringResource(
+private fun OutdatedBadge() {
+    val label = stringResource(R.string.routing_zone_outdated_badge)
+    Text(
+        label,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .testTag(ZoneOutdatedBadgeTag)
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** La pastille "a mettre a jour" d'une zone (repere des tests d'ecran). */
+internal const val ZoneOutdatedBadgeTag = "zone-outdated-badge"
+
+@Composable
+internal fun zoneName(zone: BrouterZone): String = stringResource(zoneNameRes(zone))
+
+/** Le nom d'une zone, hors composition aussi : la notification de mise a jour le cite (cf. ZoneUpdateCheck). */
+internal fun zoneNameRes(zone: BrouterZone): Int =
     when (zone.id) {
         "fr" -> R.string.routing_zone_fr
         "es" -> R.string.routing_zone_es
@@ -361,7 +393,6 @@ internal fun zoneName(zone: BrouterZone): String = stringResource(
         "alps" -> R.string.routing_zone_alps
         else -> R.string.routing_zone_pyrenees
     }
-)
 
 private fun date(ms: Long, locale: Locale): String =
     Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())

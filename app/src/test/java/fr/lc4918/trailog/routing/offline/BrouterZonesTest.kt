@@ -88,6 +88,18 @@ class BrouterZonesTest {
         assertEquals(212L, st.remaining(zone("pyrenees")))
     }
 
+    /** Un index de lieux regenere sur le serveur : la zone, a jour pour l'itineraire, est a mettre a jour. */
+    @Test fun `une zone dont l'index de lieux a ete regenere est a mettre a jour`() {
+        val tile = BrouterTile(-5, 40)
+        val published = BrouterSegments.Remote(tile, 92L, 1_000_000L, BrouterSegments.GeocodeRemote(10, 50, 9_000_000L))
+        val old = BrouterSegments.Installed(tile, 90, 1_000_000L, geocodeModifiedMs = 1_000_000L)
+        val st = BrouterDownloads.State(installed = listOf(old), remote = mapOf(tile to published))
+        assertTrue(st.zoneOutdated(zone("pyrenees")))
+        assertTrue(tile in st.missing(zone("pyrenees")))
+        val current = BrouterDownloads.State(installed = listOf(old.copy(geocodeModifiedMs = 9_000_000L)), remote = mapOf(tile to published))
+        assertFalse(current.zoneOutdated(zone("pyrenees")))
+    }
+
     /** Deux zones en cours qui se partagent un carre : il ne compte qu'une fois dans le total. */
     @Test fun `la progression globale compte une fois un carre partage`() {
         val st = BrouterDownloads.State(

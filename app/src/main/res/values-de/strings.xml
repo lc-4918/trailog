@@ -642,6 +642,10 @@
     <string name="routing_zone_date">Daten vom</string>
     <string name="routing_zone_outdated">Eine Aktualisierung ist verfügbar</string>
     <string name="routing_zone_update">Aktualisieren</string>
+    <string name="routing_zone_updates_channel">Aktualisierungen für Offline-Routing</string>
+    <string name="routing_zone_updates_title">Offline-Routing: Aktualisierung verfügbar</string>
+    <string name="routing_zone_updates_text">%1$s. Zum Aktualisieren tippen.</string>
+    <string name="routing_zone_outdated_badge">Aktualisierung verfügbar</string>
     <string name="routing_zone_download">Herunterladen</string>
     <string name="routing_zone_downloading">Download: %1$s / %2$s</string>
     <string name="routing_zone_failed">Der Download wurde nicht abgeschlossen. Er wird dort fortgesetzt, wo er aufgehört hat.</string>

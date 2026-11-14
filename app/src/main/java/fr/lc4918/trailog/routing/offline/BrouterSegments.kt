@@ -46,8 +46,15 @@ class BrouterSegments(
      * [bytes] est ce que le carre pese sur le telephone : ses donnees d'itineraire ET l'index de ses lieux
      * quand il est la ([hasGeocode]) - les deux voyagent ensemble, et c'est ce total que la progression
      * d'une zone compte (cf. [Remote.bytes]).
+     *
+     * [geocodeModifiedMs] est la date de cet index, celle du serveur aussi (cf. [downloadGeocode]) ; null
+     * s'il n'est pas la.
      */
-    data class Installed(val tile: BrouterTile, val bytes: Long, val modifiedMs: Long, val hasGeocode: Boolean = false)
+    data class Installed(
+        val tile: BrouterTile, val bytes: Long, val modifiedMs: Long, val geocodeModifiedMs: Long? = null,
+    ) {
+        val hasGeocode: Boolean get() = geocodeModifiedMs != null
+    }
 
     /** L'index de lieux d'un carre tel que le serveur le propose : sa taille a transferer, sa taille une
      *  fois decompresse, et sa date. */
@@ -63,7 +70,7 @@ class BrouterSegments(
         dir.listFiles().orEmpty().mapNotNull { f ->
             val t = BrouterTile.parse(f.name).takeIf { f.isFile && f.name.endsWith(".rd5") } ?: return@mapNotNull null
             val geocode = File(dir, t.geocodeFileName).takeIf { it.isFile }
-            Installed(t, f.length() + (geocode?.length() ?: 0L), f.lastModified(), geocode != null)
+            Installed(t, f.length() + (geocode?.length() ?: 0L), f.lastModified(), geocode?.lastModified())
         }.sortedBy { it.tile.name }
 
     fun has(tile: BrouterTile): Boolean = File(dir, tile.fileName).isFile
@@ -287,7 +294,17 @@ class BrouterSegments(
          * du serveur, porte les secondes. Sans cette marge, chaque carre paraitrait perime d'une minute.
          */
         fun outdated(local: Installed, remote: Remote?): Boolean =
-            rd5Outdated(local, remote) || (remote?.geocode != null && !local.hasGeocode)
+            rd5Outdated(local, remote) || geocodeOutdated(local, remote)
+
+        /**
+         * L'index des lieux seul : absent du telephone alors que le serveur en publie un, ou regenere depuis
+         * (meme marge d'une minute que les donnees d'itineraire). La mise a jour ne reprend alors que lui.
+         */
+        fun geocodeOutdated(local: Installed, remote: Remote?): Boolean {
+            val published = remote?.geocode ?: return false
+            val installedMs = local.geocodeModifiedMs ?: return true
+            return published.modifiedMs > installedMs + MINUTE_MS
+        }
 
         /** Les donnees d'itineraire seules : l'index des lieux, lui, se rattrape sans les retelecharger. */
         fun rd5Outdated(local: Installed, remote: Remote?): Boolean =

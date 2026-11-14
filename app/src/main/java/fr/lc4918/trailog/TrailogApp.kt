@@ -3,6 +3,7 @@ package fr.lc4918.trailog
 import fr.lc4918.trailog.routing.BrouterLocal
 import fr.lc4918.trailog.routing.offline.BrouterDownloadService
 import fr.lc4918.trailog.routing.offline.BrouterDownloads
+import fr.lc4918.trailog.routing.offline.ZoneUpdateCheck
 import fr.lc4918.trailog.routing.offline.BrouterSegments
 import android.app.Application
 import android.content.Context
@@ -85,6 +86,14 @@ open class TrailogApp : Application(), SingletonImageLoader.Factory {
         // lancement suivant (cf. BrouterDownloadService). Sous garde dans le service : un demarrage refuse
         // en arriere-plan ne fait que remettre la reprise a plus tard.
         scope.launch { if (brouterData.hasPendingOnDisk()) BrouterDownloadService.start(this@TrailogApp) }
+    }
+
+    /**
+     * Les zones d'itineraire telechargees ont-elles une mise a jour : au lancement de l'ecran, au plus une
+     * fois par jour (cf. ZoneUpdateCheck). Ouverte : un test JVM n'interroge pas le serveur.
+     */
+    open fun checkZoneUpdates() {
+        scope.launch { runCatching { ZoneUpdateCheck.runIfDue(this@TrailogApp, brouterData) } }
     }
 
     /** Init du SDK carte. Separe et ouverte : voir la note de classe. */

@@ -113,20 +113,34 @@ class BrouterSegmentsTest {
     @Test fun `un index de lieux manquant rend le carre perime sans toucher aux donnees d'itineraire`() {
         val tile = BrouterTile(5, 45)
         val remote = BrouterSegments.Remote(tile, 300, 1_000_000L, BrouterSegments.GeocodeRemote(10, 50, 1_000_000L))
-        val without = BrouterSegments.Installed(tile, 250, 1_000_000L, hasGeocode = false)
+        val without = BrouterSegments.Installed(tile, 250, 1_000_000L, geocodeModifiedMs = null)
         assertTrue(BrouterSegments.outdated(without, remote))
         assertFalse("les donnees d'itineraire, elles, sont a jour", BrouterSegments.rd5Outdated(without, remote))
-        assertFalse(BrouterSegments.outdated(without.copy(hasGeocode = true), remote))
+        assertFalse(BrouterSegments.outdated(without.copy(geocodeModifiedMs = 1_000_000L), remote))
         assertFalse("rien de publie : rien a rattraper", BrouterSegments.outdated(without, remote.copy(geocode = null)))
+    }
+
+    /** Un index de lieux regenere sur le serveur (l'Europe apres la France) : a reprendre, lui seul. */
+    @Test fun `un index de lieux regenere rend le carre perime sans toucher aux donnees d'itineraire`() {
+        val tile = BrouterTile(5, 45)
+        val day = 24L * 3600 * 1000
+        val remote = BrouterSegments.Remote(tile, 300, 1_000_000L, BrouterSegments.GeocodeRemote(10, 50, 1_000_000L + 30 * day))
+        val installed = BrouterSegments.Installed(tile, 250, 1_000_000L, geocodeModifiedMs = 1_000_000L)
+        assertTrue(BrouterSegments.outdated(installed, remote))
+        assertTrue(BrouterSegments.geocodeOutdated(installed, remote))
+        assertFalse(BrouterSegments.rd5Outdated(installed, remote))
+        val current = installed.copy(geocodeModifiedMs = 1_000_000L + 30 * day + 1_000L)
+        assertFalse("a la minute pres, comme les donnees d'itineraire", BrouterSegments.outdated(current, remote))
     }
 
     @Test fun `un carre installe pese ses donnees et son index de lieux`() {
         File(dir, "E5_N45.rd5").writeBytes(ByteArray(100))
-        File(dir, "E5_N45.gc.sqlite").writeBytes(ByteArray(40))
+        File(dir, "E5_N45.gc.sqlite").apply { writeBytes(ByteArray(40)); setLastModified(1_791_359_138_000L) }
         File(dir, "W5_N45.rd5").writeBytes(ByteArray(7))
         val installed = segments().installed().associateBy { it.tile }
         assertEquals(140L, installed.getValue(BrouterTile(5, 45)).bytes)
         assertTrue(installed.getValue(BrouterTile(5, 45)).hasGeocode)
+        assertEquals("la date de l'index, a comparer au serveur", 1_791_359_138_000L, installed.getValue(BrouterTile(5, 45)).geocodeModifiedMs)
         assertEquals(7L, installed.getValue(BrouterTile(-5, 45)).bytes)
         assertFalse(installed.getValue(BrouterTile(-5, 45)).hasGeocode)
     }

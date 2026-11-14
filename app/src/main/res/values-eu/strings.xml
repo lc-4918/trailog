@@ -642,6 +642,10 @@
     <string name="routing_zone_date">Datuen data</string>
     <string name="routing_zone_outdated">Eguneraketa bat dago eskuragarri</string>
     <string name="routing_zone_update">Eguneratu</string>
+    <string name="routing_zone_updates_channel">Konexiorik gabeko ibilbidearen eguneraketak</string>
+    <string name="routing_zone_updates_title">Konexiorik gabeko ibilbidea: eguneraketa eskuragarri</string>
+    <string name="routing_zone_updates_text">%1$s. Ukitu eguneratzeko.</string>
+    <string name="routing_zone_outdated_badge">Eguneraketa eskuragarri</string>
     <string name="routing_zone_download">Deskargatu</string>
     <string name="routing_zone_downloading">Deskargatzen: %1$s / %2$s</string>
     <string name="routing_zone_failed">Deskarga ez da amaitu. Gelditu zen lekutik jarraituko du.</string>

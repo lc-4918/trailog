@@ -642,6 +642,10 @@
     <string name="routing_zone_date">Dados de</string>
     <string name="routing_zone_outdated">Há uma atualização disponível</string>
     <string name="routing_zone_update">Atualizar</string>
+    <string name="routing_zone_updates_channel">Atualizações da rota offline</string>
+    <string name="routing_zone_updates_title">Rota offline: atualização disponível</string>
+    <string name="routing_zone_updates_text">%1$s. Toque para atualizar.</string>
+    <string name="routing_zone_outdated_badge">Atualização disponível</string>
     <string name="routing_zone_download">Transferir</string>
     <string name="routing_zone_downloading">A transferir: %1$s / %2$s</string>
     <string name="routing_zone_failed">A transferência não terminou. Vai retomar onde parou.</string>
