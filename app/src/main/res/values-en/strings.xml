@@ -676,7 +676,6 @@
     <string name="brouter_folder_busy">A routing data download is in progress: try again once it has finished.</string>
     <string name="brouter_folder_not_writable">Cannot write to this folder. Nothing was moved.</string>
     <string name="brouter_folder_moved">Routing data moved to the new folder</string>
-    <string name="planner_computed_offline">computed offline</string>
     <string name="offline_bbox_adjust">Adjust the map and resize the area</string>
     <string name="action_next">Next</string>
     <string name="planner_reset_confirm_title">Reset the route?</string>

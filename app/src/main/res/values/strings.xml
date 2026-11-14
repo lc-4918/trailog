@@ -678,7 +678,6 @@
     <string name="brouter_folder_busy">Un téléchargement de données d\'itinéraire est en cours : réessayez une fois terminé.</string>
     <string name="brouter_folder_not_writable">Impossible d\'écrire dans ce dossier. Rien n\'a été déplacé.</string>
     <string name="brouter_folder_moved">Données d\'itinéraire déplacées dans le nouveau dossier</string>
-    <string name="planner_computed_offline">calculé hors ligne</string>
     <string name="offline_bbox_adjust">Ajuster la carte et redimensionner la zone</string>
     <string name="action_next">Suivant</string>
     <string name="planner_reset_confirm_title">Réinitialiser l\'itinéraire ?</string>

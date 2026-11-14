@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -386,6 +387,19 @@ class RoutePlannerBandUiTest {
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.planner_details_unavailable)).assertExists()
         assertTrue(!existe("planner_details_surfaces"))
+    }
+
+    /** Un calcul fait sur le telephone ne porte plus de pastille sur la ligne du profil. */
+    @Test fun `un calcul hors ligne ne le dit pas sur la ligne du profil`() {
+        val state = planificateurOuvert().apply {
+            val pts = List(50) { TrackPoint(5.72 + it * 0.001, 45.18, 200.0 + it * 5, null) }
+            publish(RouteState.Done(4000.0, 1200.0, TrackMath.compute(pts), offline = true))
+        }
+        affiche(state)
+        fun shown(res: Int) = compose.onAllNodesWithText(ctx.getString(res)).fetchSemanticsNodes().isNotEmpty()
+        assertTrue("la ligne du profil", shown(R.string.planner_show_profile) || shown(R.string.planner_hide_profile))
+        assertTrue(compose.onAllNodesWithText("hors ligne", substring = true, ignoreCase = true)
+            .fetchSemanticsNodes().isEmpty())
     }
 
     /** Le panneau VIEWER : sa fleche rend la bande, et son menu passe d'un VIEWER a l'autre. */

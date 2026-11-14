@@ -1184,14 +1184,6 @@ private fun ResultsZone(
                 // La legende des pentes, derriere un "i", quand le profil est colorie par pente : comme celui
                 // d'une trace, elle ne se deplie plus dans la bande (cf. SlopeLegendInfo).
                 if (settings.routeSlopeLine && state.profileVisible) SlopeLegendInfo(settings)
-                // Calcule sur le telephone : dit en passant, sans en faire un evenement. C'est ce qui
-                // explique un calcul plus lent qu'a l'habitude, ou un trajet trouve sans reseau.
-                if (r.offline) {
-                    Text(stringResource(R.string.planner_computed_offline), style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                            .padding(horizontal = Spacing.s, vertical = 3.dp))
-                }
                 // Retour a la vue complete : sur cette ligne parce qu'il concerne le profil, et non le
                 // parcours. Bouton a part DANS une ligne cliquable : son propre clic l'emporte sur celui
                 // de la ligne, qui continue d'ouvrir et de fermer le profil partout ailleurs.

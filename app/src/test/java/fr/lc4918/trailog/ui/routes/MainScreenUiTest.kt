@@ -246,6 +246,26 @@ class MainScreenUiTest {
         attend { present(BasemapPanelTag) }
     }
 
+    /**
+     * Le gestionnaire de fonds ouvert, les boutons du cote droit s'en vont : son fond est transparent, et ils
+     * se voyaient au travers. Ils reviennent a sa fermeture.
+     */
+    @Test fun `le gestionnaire de fonds ouvert retire les boutons du cote droit`() {
+        reglages { it.copy(basemapControlMode = BasemapControlMode.BOTH, routePlannerEnabled = true) }
+        ecran()
+        attend { affiche(R.string.content_desc_basemap_control) }
+        assertTrue("le calcul d'itineraire, en bas a droite", affiche(R.string.planner_title))
+        compose.onNodeWithContentDescription(libelle(R.string.content_desc_basemap_control)).performClick()
+        attend { present(BasemapPanelTag) }
+        assertFalse("le bouton des fonds, en haut a droite", affiche(R.string.content_desc_basemap_control))
+        assertFalse("le calcul d'itineraire, en bas a droite", affiche(R.string.planner_title))
+
+        compose.onNodeWithTag(BasemapPanelTag).performTouchInput { swipeRight(startX = left + 10f, endX = right) }
+        attend { !present(BasemapPanelTag) }
+        attend { affiche(R.string.content_desc_basemap_control) }
+        assertTrue(affiche(R.string.planner_title))
+    }
+
     // ---------- La carte parle a l'ecran ----------
 
     /**

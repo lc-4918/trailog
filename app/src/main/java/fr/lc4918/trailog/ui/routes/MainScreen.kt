@@ -1068,7 +1068,10 @@ fun MainScreen(
                     onMenu = { scope.launch { drawerState.open() } },
                     onGeocodeTap = { onGeocodeButtonTap() },
                 )
-                MapTopRightControls(
+                // Le gestionnaire de fonds ouvert, les boutons du cote droit s'en vont : son fond est
+                // transparent, et ils se voyaient au travers, comme poses sur sa liste.
+                val rightControlsShown = !chromeState.basemapControlOpen
+                if (rightControlsShown) MapTopRightControls(
                     settings = settings,
                     chrome = chrome,
                     chromeState = chromeState,
@@ -1139,7 +1142,7 @@ fun MainScreen(
                     onDistanceFromPoint = { m -> onDistanceFromPointTap(m) },
                     onFailure = { message -> dialogs.failed(message) },
                 )
-                MapBottomRightControls(
+                if (rightControlsShown) MapBottomRightControls(
                     settings = settings,
                     chrome = chrome,
                     controller = controller,
