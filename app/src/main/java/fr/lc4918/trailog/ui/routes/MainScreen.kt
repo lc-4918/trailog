@@ -616,6 +616,7 @@ fun MainScreen(
         layers = layers,
         vm = vm,
         currentLatLon = { location.lastUserLocation },
+        onReopenPlanner = { closeUnderPlanner({ vm.closeOnEmpty() }, mapPoint, screen.poi, geo) },
     )
     // cadrage sur les couches récemment importées à la fermeture du menu
     LaunchedEffect(drawerState.currentValue) {
@@ -1159,6 +1160,7 @@ fun MainScreen(
                     idleTick = idleTick,
                     maxWidthPx = constraints.maxWidth,
                     maxHeightPx = constraints.maxHeight,
+                    onReopenPlanner = { closeUnderPlanner({ vm.closeOnEmpty() }, mapPoint, screen.poi, geo) },
                     /*
                      * Le bouton du tableau de bord l'ouvre et le ferme - ou le ramene, s'il a ete range par sa
                      * poignee : on le cherchait, pas a l'eteindre. L'ouvrir allume le capteur s'il
@@ -1227,10 +1229,7 @@ fun MainScreen(
                         imperial = imperialUnits,
                         settings = settings,
                         lastLabelInsetPx = 0f,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                            .onGloballyPositioned { insets.plannerBandPx = it.size.height },
+                        onHeightChange = { insets.plannerBandPx = it },
                     )
                 } else if (planner.open) {
                     RoutePlannerBand(

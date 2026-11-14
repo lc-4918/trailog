@@ -1,5 +1,8 @@
 package fr.lc4918.trailog.ui.planner
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import fr.lc4918.trailog.ui.routes.ProfilePanelLayer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -430,15 +433,19 @@ private fun LegendRow(color: Color, label: String, meters: Double, fraction: Dou
 }
 
 /** Hauteur maximale du profil dans le panneau VIEWER : un peu plus que dans la bande, il y est seul. */
+/** Hauteur maximale du graphe d'un profil de VIEWER pose sur une couche (cf. ProfileViewerContent). */
 private val ViewerChartMaxHeight = 150.dp
 
 /**
- * Le panneau d'un affichage VIEWER, qui remplace la bande au bas de l'ecran : un en-tete - le retour, le
- * VIEWER en cours et son menu, la legende des pentes pour le profil -, puis le profil, ou la barre des
- * surfaces ou des types de voies.
+ * Le panneau d'un affichage VIEWER, qui remplace la bande au bas de l'ecran : le profil du parcours, ou ses
+ * surfaces, ou ses types de voies.
  *
- * Une carte posee au-dessus de la carte, detachee des bords : on regarde le parcours, et le panneau n'en
- * cache que ce qu'il faut.
+ * **Le meme panneau que celui du profil d'une trace** (cf. ProfilePanelLayer) : sur toute la largeur du
+ * bas, le titre - ici le parcours, de son depart a son arrivee - et le choix du VIEWER, les totaux, le point
+ * courant AU-DESSUS du panneau, le retour a la vue complete a gauche. Il etait une carte detachee des
+ * bords, a l'en-tete et aux chiffres a part : deux facons de lire un profil, pour une seule lecture. Il ne
+ * lui reste en propre que la fleche qui rend la bande, devant le titre, et ses chiffres : l'horaire du
+ * moteur, au prorata pour un point ou une portion zoomee.
  */
 @Composable
 fun PlannerViewerPanel(
@@ -447,117 +454,61 @@ fun PlannerViewerPanel(
     settings: SettingsEntity,
     lastLabelInsetPx: Float,
     modifier: Modifier = Modifier,
+    /** La hauteur du panneau, en pixels : la carte se cadre au-dessus de lui (cf. PlannerEffects). */
+    onHeightChange: (Int) -> Unit = {},
 ) {
     val done = state.done ?: return
     val viewer = state.viewer ?: return
-    val shape = MaterialTheme.shapes.extraLarge
-    Surface(
-        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(bottom = Spacing.m)
-            .shadow(8.dp, shape, clip = false).testTag("planner_viewer"),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-    ) {
-        Column(Modifier.padding(start = Spacing.m, end = Spacing.m, top = Spacing.s, bottom = Spacing.l)) {
-            ViewerHeader(state, viewer, done, settings)
-            when (viewer) {
-                PlannerViewer.PROFILE -> ProfileViewer(state, done, imperial, settings, lastLabelInsetPx)
-                PlannerViewer.SURFACES -> {
-                    val shares = remember(done) { RouteDetails.surfaces(done.segments) }
-                    ShareViewer(shares, state.highlight as? SurfaceKind, imperial) { state.select(it) }
-                }
-                PlannerViewer.WAYS -> {
-                    val shares = remember(done) { RouteDetails.ways(done.segments) }
-                    ShareViewer(shares, state.highlight as? WayKind, imperial) { state.select(it) }
-                }
-            }
-        }
-    }
-}
-
-/** En-tete du VIEWER : retour a la bande, titre et menu des trois VIEWER, et le "i" des pentes. */
-@Composable
-private fun ViewerHeader(state: RoutePlannerState, viewer: PlannerViewer, done: RouteState.Done, settings: SettingsEntity) {
-    var menu by remember { mutableStateOf(false) }
-    fun titre(v: PlannerViewer) = when (v) {
-        PlannerViewer.PROFILE -> R.string.planner_viewer_elevation
-        PlannerViewer.SURFACES -> R.string.planner_details_surfaces
-        PlannerViewer.WAYS -> R.string.planner_details_ways
-    }
+    val all = done.track.samples
+    val total = all.lastOrNull()?.x ?: 0.0
+    // L'horaire au prorata de la distance : le moteur ne le rend que pour le trajet entier, d'ou le "~".
+    fun secondsTo(meters: Double) = if (total > 0) done.seconds * meters / total else 0.0
     // Les VIEWER des details n'ont rien a montrer sans attributs de voies : le menu ne les propose pas.
-    val offerts = if (done.segments.isEmpty()) listOf(PlannerViewer.PROFILE) else PlannerViewer.entries
-    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-        Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { state.closeViewer() }, modifier = Modifier.size(40.dp).testTag("planner_viewer_back")) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(22.dp))
-            }
-            Box(Modifier.weight(1f)) {
-                Row(
-                    Modifier.clip(MaterialTheme.shapes.small).clickable(enabled = offerts.size > 1) { menu = true }
-                        .padding(horizontal = Spacing.s, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-                ) {
-                    Text(stringResource(titre(viewer)), style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (offerts.size > 1) Icon(Icons.Filled.ExpandMore, null, Modifier.size(20.dp))
+    val offered = if (done.segments.isEmpty()) listOf(PlannerViewer.PROFILE) else PlannerViewer.entries
+    val title = defaultRouteName(state.targets, stringResource(R.string.planner_current_position))
+        .ifBlank { stringResource(R.string.planner_title) }
+    Box(modifier.fillMaxSize()) {
+        ProfilePanelLayer(
+            visible = true,
+            computed = done.track, lastComputed = done.track, loading = false,
+            zoom = state.zoomRange, cursor = state.cursor,
+            title = title, lineColor = MaterialTheme.colorScheme.primary,
+            settings = settings, imperial = imperial,
+            viewer = viewer, offeredViewers = offered,
+            onViewer = { v -> state.openViewer(v, initialHighlight(v, done.segments)) },
+            slopeLegend = settings.routeSlopeLine, slopeArea = settings.routeSlopeLine,
+            titleInfos = { stats, samples ->
+                val zoomed = state.zoomRange != null && samples != null && samples.size >= 2
+                val seconds = if (zoomed) secondsTo(samples!!.last().x - samples.first().x) else done.seconds
+                routeInfos(stats, seconds, zoomed, imperial)
+            },
+            pointInfos = { point ->
+                cursorInfos(point, settings.cursorInfos, imperial) + TitleInfo("dur",
+                    stringResource(R.string.chip_duration), stringResource(R.string.info_name_duration),
+                    "~" + Format.duration(secondsTo(point.x)))
+            },
+            waysContent = {
+                Box(Modifier.fillMaxWidth().heightIn(min = 72.dp), contentAlignment = Alignment.CenterStart) {
+                    Column { WaysShareContent(viewer, done.segments, state.highlight, imperial) { state.select(it) } }
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false },
-                    shape = MaterialTheme.shapes.medium, containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                    offerts.forEach { v ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(stringResource(titre(v)), style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (v == viewer) FontWeight.SemiBold else FontWeight.Normal)
-                            },
-                            onClick = {
-                                menu = false
-                                state.openViewer(v, initialHighlight(v, done.segments))
-                            },
-                        )
+            },
+            onHeightChange = onHeightChange,
+            onExpandZoom = { state.resetZoom() },
+            onScrub = { state.tapProfile(it) },
+            onZoom = { scale, fraction -> state.zoomBy(scale, fraction, all.size) },
+            onDoubleTapZoom = { fraction -> state.zoomBy(2f, fraction, all.size) },
+            leading = {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    IconButton(onClick = { state.closeViewer() },
+                        modifier = Modifier.size(32.dp).offset(y = (-4).dp).testTag("planner_viewer_back")) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(20.dp))
                     }
                 }
-            }
-            if (viewer == PlannerViewer.PROFILE && state.zoomed) {
-                IconButton(onClick = { state.resetZoom() }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Fullscreen, stringResource(R.string.planner_zoom_out),
-                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            if (viewer == PlannerViewer.PROFILE && settings.routeSlopeLine) SlopeLegendInfo(settings)
-        }
+            },
+            panelTestTag = "planner_viewer",
+            chartTestTag = "planner_viewer_profile",
+        )
     }
-}
-
-/**
- * Le profil en grand du planificateur : au-dessus, ce que dit le point sous le doigt - distance, altitude,
- * pente, et l'horaire estime pour l'atteindre -, ou les totaux du parcours tant qu'aucun point n'est designe.
- */
-@Composable
-private fun ProfileViewer(
-    state: RoutePlannerState, r: RouteState.Done, imperial: Boolean, settings: SettingsEntity,
-    lastLabelInsetPx: Float,
-) {
-    val all = r.track.samples
-    ProfileViewerContent(
-        all = all, fullStats = r.track.stats, zoom = state.zoomRange, cursor = state.cursor,
-        settings = settings, slope = settings.routeSlopeLine, lineColor = MaterialTheme.colorScheme.primary,
-        lastLabelInsetPx = lastLabelInsetPx,
-        infos = { point, stats ->
-            if (point != null) {
-                // L'horaire au prorata de la distance, comme la duree d'une portion zoomee : le moteur ne la
-                // rend que pour le trajet entier, d'ou le "~".
-                val total = all.last().x
-                val secondes = if (total > 0) r.seconds * point.x / total else 0.0
-                cursorInfos(point, "dist,ele,slope", imperial) + TitleInfo("dur",
-                    stringResource(R.string.chip_duration), stringResource(R.string.info_name_duration),
-                    "~" + Format.duration(secondes))
-            } else routeInfos(stats, r.seconds, false, imperial)
-        },
-        onScrub = { state.tapProfile(it) },
-        onZoom = { scale, fraction -> state.zoomBy(scale, fraction, all.size) },
-        modifier = Modifier.testTag("planner_viewer_profile"),
-    )
 }
 
 /**

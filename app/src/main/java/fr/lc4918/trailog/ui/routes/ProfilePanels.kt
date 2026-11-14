@@ -163,11 +163,80 @@ internal fun BoxScope.TrackProfileLayer(
      *  de la racine ; null une fois le profil ferme (cf. MapInsetsState.bottomRightCoverTopPx). */
     onRightCoverTop: (Int?) -> Unit = {},
 ) {
+    ProfilePanelLayer(
+        visible = activeLayerId != null,
+        computed = computed, lastComputed = lastComputed, loading = loading,
+        zoom = zoom, cursor = cursor, title = title, lineColor = lineColor,
+        settings = settings, imperial = imperial,
+        viewer = panel.viewer, offeredViewers = PlannerViewer.entries, onViewer = onViewer,
+        slopeLegend = slopeColored, slopeArea = slopeColored,
+        titleInfos = { stats, samples ->
+            // Temps de marche estime, pour une trace qui n'a pas d'horodatage : calcule sur les
+            // echantillons affiches, il suit donc le zoom du profil comme les autres totaux. Retenu tant
+            // qu'ils ne changent pas - une recomposition ne doit pas relancer un balayage de deux mille
+            // points.
+            val tobler = remember(samples) { samples?.let { TrackMath.toblerSeconds(it) } }
+            titleInfos(stats, settings.titleInfos, imperial, tobler)
+        },
+        pointInfos = { point -> cursorInfos(point, settings.cursorInfos, imperial) },
+        waysContent = { PanelWays(panel, ways, trackIndex, imperial, onSelect, onRetryWays) },
+        onHeightChange = onHeightChange, onExpandZoom = onExpandZoom,
+        onScrub = onScrub, onZoom = onZoom, onDoubleTapZoom = onDoubleTapZoom,
+        onRightCoverTop = onRightCoverTop,
+    )
+}
+
+/**
+ * Le panneau d'un profil au bas de la carte, quel que soit le trace : celui d'une trace de la bibliotheque
+ * (cf. [TrackProfileLayer]) et celui du parcours calcule (cf. PlannerViewerPanel) sont le MEME panneau -
+ * meme largeur, meme en-tete, le point courant au-dessus, le retour a la vue complete a gauche. Ils ne
+ * different que par ce qu'ils disent : leurs chiffres ([titleInfos], [pointInfos]), les surfaces et les
+ * voies ([waysContent]), et pour le calcul la fleche qui rend la bande ([leading]).
+ *
+ * [visible] l'ouvre et le ferme ; [computed] est le trace courant et [lastComputed] le dernier connu, qui
+ * tient l'affichage pendant l'animation de fermeture.
+ */
+@Composable
+internal fun BoxScope.ProfilePanelLayer(
+    visible: Boolean,
+    computed: ComputedTrack?,
+    lastComputed: ComputedTrack?,
+    loading: Boolean,
+    zoom: IntRange?,
+    cursor: Double?,
+    title: String,
+    lineColor: Color,
+    settings: SettingsEntity,
+    imperial: Boolean,
+    viewer: PlannerViewer,
+    offeredViewers: List<PlannerViewer>,
+    onViewer: (PlannerViewer) -> Unit,
+    /** Le "i" de la legende des pentes au bout du titre (profil seulement). */
+    slopeLegend: Boolean,
+    /** L'aire du profil coloriee selon la pente. */
+    slopeArea: Boolean,
+    /** Les totaux de la portion affichee : la trace entiere, ou sa fenetre zoomee. */
+    titleInfos: @Composable (stats: fr.lc4918.trailog.domain.model.TrackStats, samples: List<fr.lc4918.trailog.domain.model.Sample>?) -> List<fr.lc4918.trailog.ui.profile.TitleInfo>,
+    /** Ce que dit le point courant, dans le bloc pose au-dessus du panneau. */
+    pointInfos: @Composable (fr.lc4918.trailog.domain.model.Sample) -> List<fr.lc4918.trailog.ui.profile.TitleInfo>,
+    /** Les surfaces ou les types de voies, a la place du graphique. */
+    waysContent: @Composable () -> Unit,
+    onHeightChange: (Int) -> Unit,
+    onExpandZoom: () -> Unit,
+    onScrub: (Double) -> Unit,
+    onZoom: (scale: Float, fraction: Float) -> Unit,
+    onDoubleTapZoom: (fraction: Float) -> Unit,
+    onRightCoverTop: (Int?) -> Unit = {},
+    /** Devant le titre : la fleche du calcul d'itineraire, qui rend la bande. */
+    leading: (@Composable () -> Unit)? = null,
+    panelTestTag: String? = null,
+    chartTestTag: String? = null,
+) {
     val density = LocalDensity.current
     var hautPanneau by remember { mutableStateOf<Float?>(null) }
     var hautInfos by remember { mutableStateOf<Float?>(null) }
-    LaunchedEffect(hautPanneau, hautInfos, activeLayerId) {
-        onRightCoverTop(if (activeLayerId == null) null else listOfNotNull(hautPanneau, hautInfos).minOrNull()?.toInt())
+    LaunchedEffect(hautPanneau, hautInfos, visible) {
+        onRightCoverTop(if (!visible) null else listOfNotNull(hautPanneau, hautInfos).minOrNull()?.toInt())
     }
     val view = LocalView.current
 
@@ -225,7 +294,7 @@ internal fun BoxScope.TrackProfileLayer(
     // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil (décalées
     // de la hauteur mesurée du panneau, superposé à la carte). Sur le profil seulement : ailleurs, le point
     // ne designe rien de ce qu'on regarde ; il reparait au retour sur le profil.
-    if (computed != null && cursorSample != null && panel.cursorShown) {
+    if (computed != null && cursorSample != null && viewer == PlannerViewer.PROFILE) {
         // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur un point
         // plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui est seul et va a
         // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
@@ -233,7 +302,7 @@ internal fun BoxScope.TrackProfileLayer(
         DisposableEffect(Unit) { onDispose { hautInfos = null } }
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
             TrackInfoColumns(
-                cursorInfos(cursorSample, settings.cursorInfos, imperial),
+                pointInfos(cursorSample),
                 fontSp = settings.profCursorFont,
                 bold = settings.profCursorBold,
                 arrangement = Arrangement.spacedBy(14.dp),
@@ -250,7 +319,7 @@ internal fun BoxScope.TrackProfileLayer(
     }
     // Bouton de zoom du profil : même hauteur que les infos du point ci-dessus, mais à gauche - elles
     // occupent désormais la droite.
-    if (activeLayerId != null && shown != null && panel.viewer == PlannerViewer.PROFILE) {
+    if (visible && shown != null && viewer == PlannerViewer.PROFILE) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -268,7 +337,7 @@ internal fun BoxScope.TrackProfileLayer(
     }
     // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
     AnimatedVisibility(
-        visible = activeLayerId != null, enter = expandVertically(), exit = shrinkVertically(),
+        visible = visible, enter = expandVertically(), exit = shrinkVertically(),
         modifier = Modifier.align(Alignment.BottomCenter),
     ) {
         // Une bande aux couleurs du theme, coins hauts arrondis, comme les autres bandes du bas - et non plus
@@ -277,6 +346,7 @@ internal fun BoxScope.TrackProfileLayer(
         val forme = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
         Column(
             Modifier.fillMaxWidth()
+                .then(if (panelTestTag != null) Modifier.testTag(panelTestTag) else Modifier)
                 .shadow(8.dp, forme, clip = false)
                 .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), forme)
                 .padding(start = Spacing.m, end = Spacing.m, top = 10.dp).navigationBarsPadding()
@@ -299,34 +369,30 @@ internal fun BoxScope.TrackProfileLayer(
              * A droite du titre, le choix de ce qu'on regarde : le profil, les surfaces, les types de voies
              * - le meme choix que dans les VIEWER. Le "i" des pentes ne vaut que pour le profil.
              */
-            val legende = slopeColored && panel.viewer == PlannerViewer.PROFILE
+            val legende = slopeLegend && viewer == PlannerViewer.PROFILE
             Row(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap), verticalAlignment = Alignment.Top) {
+                leading?.invoke()
                 Text(title, fontSize = (settings.profTitleFont).sp,
                     fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = Spacing.xs, end = Spacing.s))
-                ViewerSelect(panel.viewer, PlannerViewer.entries, onPick = onViewer)
+                ViewerSelect(viewer, offeredViewers, onPick = onViewer)
                 if (legende) {
                     // En haut, non centre : sur un titre de deux lignes, un "i" centre tomberait entre les deux.
                     SlopeLegendInfo(settings, Modifier.offset(y = (-6).dp))
                 }
             }
             if (windowStats != null) {
-                // Temps de marche estime, pour une trace qui n'a pas d'horodatage : calcule sur les
-                // echantillons affiches, il suit donc le zoom du profil comme les autres totaux. Retenu tant
-                // qu'ils ne changent pas - une recomposition ne doit pas relancer un balayage de deux mille
-                // points.
-                val tobler = remember(windowSamples) { windowSamples?.let { TrackMath.toblerSeconds(it) } }
                 TrackInfoColumns(
-                    titleInfos(windowStats, settings.titleInfos, imperial, tobler),
+                    titleInfos(windowStats, windowSamples),
                     fontSp = settings.profBarFont,
                     bold = settings.profBarBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             Spacer(Modifier.height(ProfileGraphGap))
-            if (panel.viewer != PlannerViewer.PROFILE) {
-                PanelWays(panel, ways, trackIndex, imperial, onSelect, onRetryWays)
+            if (viewer != PlannerViewer.PROFILE) {
+                waysContent()
                 Spacer(Modifier.height(Spacing.m))
             } else
             BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -347,7 +413,7 @@ internal fun BoxScope.TrackProfileLayer(
                         samples = windowSamples, stats = windowStats,
                         grid = settings.profileGrid,
                         // L'aire suit le trait : coloriee par pente des que la couche l'est.
-                        slope = slopeColored,
+                        slope = slopeArea,
                         lineColor = if (lineColor != Color.Unspecified) lineColor else MaterialTheme.colorScheme.primary,
                         axisFontSp = settings.profAxisFont,
                         axisBold = settings.profAxisBold,
@@ -356,7 +422,8 @@ internal fun BoxScope.TrackProfileLayer(
                         onDoubleTap = onDoubleTapZoom,
                         lastLabelInsetPx = lastLabelInsetPx,
                         verticalScale = settings.profileVerticalScale,
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight()
+                            .then(if (chartTestTag != null) Modifier.testTag(chartTestTag) else Modifier),
                     )
                 } else {
                     CircularProgressIndicator()

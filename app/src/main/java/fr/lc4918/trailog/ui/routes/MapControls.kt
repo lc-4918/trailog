@@ -328,6 +328,8 @@ internal fun BoxScope.MapBottomRightControls(
     /** Le haut du panneau du profil ou des infos du point, dans le coin (cf. MapInsetsState) : les boutons
      *  qui passent dessous s'effacent un a un. Null sans profil. */
     coverTopPx: Int? = null,
+    /** La bande rangee va se redeployer : fermer ce qu'elle recouvrirait (cf. closeUnderPlanner). */
+    onReopenPlanner: () -> Unit = { vm.closeProfile() },
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
@@ -576,7 +578,7 @@ internal fun BoxScope.MapBottomRightControls(
                     // Trajet en cours, simplement rangé : on le redéploie tel quel. Aucune
                     // requête à faire, donc rien à demander au réseau - le parcours est déjà
                     // calculé, et le sortir de sa réduction ne le recalcule pas.
-                    planner.open -> { vm.closeProfile(); planner.collapse(false) }
+                    planner.open -> { onReopenPlanner(); planner.collapse(false) }
                     ServiceUrl.routingBlocked(routingUrl, NetworkStatus.hasInternet(ctx), BrouterLocal.hasZones(ctx)) -> onNoRouteData()
                     else -> {
                         vm.closeProfile()          // les deux occupent le bas de l'écran

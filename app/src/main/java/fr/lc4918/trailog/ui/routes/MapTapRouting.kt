@@ -46,6 +46,8 @@ internal fun MapTapRouting(
     vm: MainViewModel,
     /** La position du porteur, en (lat, lon), ou null : un tap sur le parcours la compare a celle du calcul. */
     currentLatLon: () -> Pair<Double, Double>? = { null },
+    /** La bande va se redeployer : fermer ce qu'elle recouvrirait (cf. closeUnderPlanner). */
+    onReopenPlanner: () -> Unit = {},
 ) {
     val sameSegmentMessage = stringResource(R.string.edit_same_segment)
     // Libelle provisoire d'une etape montree du doigt : ses coordonnees, le temps que le geocodeur en
@@ -104,9 +106,13 @@ internal fun MapTapRouting(
                 controller.onPickLine = { key, lon, lat -> controller.bringLayerToFront(key); vm.onPickLine(key, lon, lat) }
                 controller.onTapEmpty = { vm.closeOnEmpty() }
                 // Trace du planificateur, son depart ou son arrivee : la bande se redeploie et la carte se cadre
-                // sur tout le parcours (cf. RoutePlannerState.showWholeRoute).
+                // sur tout le parcours (cf. RoutePlannerState.showWholeRoute). Le profil d'une trace et les
+                // infobulles restes ouverts se ferment : on revient au calcul.
                 controller.onPlannerRouteTap = {
-                    if (planner.open) planner.showWholeRoute(currentLatLon())
+                    if (planner.open) {
+                        onReopenPlanner()
+                        planner.showWholeRoute(currentLatLon())
+                    }
                     planner.open
                 }
             }
