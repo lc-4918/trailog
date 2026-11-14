@@ -1,7 +1,7 @@
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
     <!-- Sombre quel que soit le mode de l'appareil, et non plus accorde au premier ecran Compose : on
-         ouvre Trailog dehors, souvent de nuit, et un aplat quasi blanc en plein ecran eblouit pour
+         ouvre Tunturo dehors, souvent de nuit, et un aplat quasi blanc en plein ecran eblouit pour
          plusieurs secondes. Gris tres foncé plutot que noir, comme le fond des ornements de la carte
          (cf. MapChromeDarkBg) : un aplat franchement noir se lit comme un ecran eteint. -->
     <color name="splash_background">#2C2C2E</color>

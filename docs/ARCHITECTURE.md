@@ -1,4 +1,4 @@
-# Architecture technique - Trailog
+# Architecture technique - Tunturo
 
 Ce document décrit la **structure** de l'application : ses modules, la règle de dépendance qui les
 gouverne, les chemins d'exécution qui les traversent, et les décisions qui les ont fixés.
@@ -45,7 +45,7 @@ publics tiers et n'expose aucune interface réseau.
                         +---------------------------+
    fichiers GPX/KML     |                           |     tuiles raster/vecteur
    d'autres apps  ----> |                           | <-- IGN, OSM, MapTiler...
-                        |         TRAILOG           |
+                        |         TUNTURO           |
    capteur GPS ------>  |   (un seul processus,     | <-- Valhalla / BRouter   (itinéraires)
                         |    une seule Activity)    | <-- Photon               (géocodage)
    stockage local <---> |                           | <-- DATAtourisme / Overpass (POI)
@@ -90,7 +90,7 @@ pas des choix.
         v                      v                       v
 +------------------+  +-----------------+  +------------------------+
 | data/repo        |  | domain/         |  | services               |
-| TrailogRepository|  | 15 fichiers     |  | poi/ routing/ geocode/  |
+| TunturoRepository|  | 15 fichiers     |  | poi/ routing/ geocode/  |
 | (façade unique)  |  | Kotlin pur      |  | elevation/ map/        |
 +------------------+  | ZÉRO Android    |  | location/ net/ update/ |
         |             +-----------------+  +------------------------+
@@ -109,11 +109,11 @@ plus importante du dépôt, et la seule dont la violation se détecte mécanique
 
 ```bash
 # domain/ ne connaît ni Android ni Compose
-grep -rn "^import android" app/src/main/java/fr/lc4918/trailog/domain/
+grep -rn "^import android" app/src/main/java/com/tunturo/app/domain/
 
 # aucune couche sous ui/ ne remonte vers ui/
-grep -rn "^import fr.lc4918.trailog.ui\." \
-  app/src/main/java/fr/lc4918/trailog/{domain,data,map,poi,routing,geocode,elevation,location,net,update}/
+grep -rn "^import com.tunturo.app.ui\." \
+  app/src/main/java/com/tunturo/app/{domain,data,map,poi,routing,geocode,elevation,location,net,update}/
 
 # une seule classe ouvre la base
 grep -rn "AppDatabase.get(" --include=*.kt app/src/main/java | grep -v data/repo
@@ -180,7 +180,7 @@ tous testés, et c'est ce qui rend l'absence d'injection tenable (AD-3) :
 **Invariants.** Pas d'entrée-sortie, pas de dépendance à Android, pas d'état mutable global. Toute
 fonction y est déterministe et testable sans montage.
 
-### `data/repo/TrailogRepository`
+### `data/repo/TunturoRepository`
 
 Façade vers la persistance : la base et le système de fichiers.
 
@@ -226,9 +226,9 @@ Les porteurs qui ont besoin d'un contexte Android ou d'effets sont créés par u
 
 ```
 Android
-  |-- TrailogApp.attachBaseContext   -> LocalePrefs.wrap (langue avant tout)
-  |-- TrailogApp.onCreate            -> MapLibre.getInstance
-  |                                     TrailogRepository(this)
+  |-- TunturoApp.attachBaseContext   -> LocalePrefs.wrap (langue avant tout)
+  |-- TunturoApp.onCreate            -> MapLibre.getInstance
+  |                                     TunturoRepository(this)
   |                                     scope.launch { ensureSeed() }        (fonds par défaut)
   |                                     scope.launch { sweepDownloads() }    (ménage des APK)
   |
@@ -273,7 +273,7 @@ Deux entrées, une seule suite. `ImportFlow` (`ui/routes/ImportFlow.kt`) porte l
                                                  v
                                    vm.importLayer(bytes, nom, folderId)
                                                  v
-                        TrailogRepository.importLayer
+                        TunturoRepository.importLayer
                           LayerImporter.parse (GPX / KML / GeoJSON)
                           ElevationFiller (si altitudes manquantes et réglage actif)
                           écriture .map  (GeoJSON prêt pour la carte)
@@ -430,7 +430,7 @@ vérifiable.
 
 | Cache | Portée | Éviction |
 |---|---|---|
-| Profils décodés | mémoire, `TrailogRepository` | LRU, 6 traces |
+| Profils décodés | mémoire, `TunturoRepository` | LRU, 6 traces |
 | Textes de profils BRouter | mémoire, `Router` | aucune (5 au total, borné par construction) |
 | Identifiants de profils BRouter | mémoire, `Brouter` | aucune ; volontairement pas persisté |
 | Points d'intérêt | Room, `poi_cache` | 7 jours, sauf lignes `pinned` |
@@ -444,7 +444,7 @@ vérifiable.
 
 | Scope | Durée de vie | Usage |
 |---|---|---|
-| `CoroutineScope(SupervisorJob() + Dispatchers.IO)` dans `TrailogApp` | le processus | Amorçage, ménage. Ne doit **jamais** porter de travail lié à un écran. |
+| `CoroutineScope(SupervisorJob() + Dispatchers.IO)` dans `TunturoApp` | le processus | Amorçage, ménage. Ne doit **jamais** porter de travail lié à un écran. |
 | `viewModelScope` | le ViewModel | Tout le travail de fond de l'écran principal |
 | `rememberCoroutineScope()` | la composition | Gestes de l'interface (ouvrir le menu) |
 | `LaunchedEffect` | ses clés | Effets liés à un état ; **annulé et relancé** au changement de clé |
@@ -618,7 +618,7 @@ plateforme.
 détruit et la recrée à sa guise - une simple rotation d'écran suffit. Une application à plusieurs écrans
 utilise donc d'ordinaire un composant de navigation, qui empile et dépile ces écrans.
 
-Trailog a deux écrans : la carte et les réglages. Mais la carte porte une `MapView`, un objet lourd du SDK
+Tunturo a deux écrans : la carte et les réglages. Mais la carte porte une `MapView`, un objet lourd du SDK
 cartographique, coûteux à créer et qui perd sa position quand on le recrée.
 
 **Les options.** Un vrai composant de navigation (`navigation-compose`), qui détruit l'écran quitté. Ou
@@ -683,11 +683,11 @@ processus** : la classe `Application`. Le dépôt y vit, et les quatre classes q
 prennent par transtypage :
 
 ```kotlin
-// dans TrailogApp.onCreate
-repository = TrailogRepository(this)
+// dans TunturoApp.onCreate
+repository = TunturoRepository(this)
 
 // dans MainViewModel, SettingsViewModel, MainActivity, LocationService
-private val repo = (app as TrailogApp).repository
+private val repo = (app as TunturoApp).repository
 ```
 
 Quatre lignes dans tout le projet.
@@ -695,7 +695,7 @@ Quatre lignes dans tout le projet.
 **Ce qu'elle coûte, et la mesure qui a tranché.** L'argument pour un conteneur est la testabilité :
 pouvoir substituer un faux dépôt, comme un `@MockBean`. Mesuré, il ne tient pas ici :
 
-- le dépôt **est** testé, directement et bout en bout. `TrailogRepositoryTest` monte une vraie base et de
+- le dépôt **est** testé, directement et bout en bout. `TunturoRepositoryTest` monte une vraie base et de
   vrais fichiers sous Robolectric, sans la moindre abstraction ;
 - ce qui mérite un test dans un `ViewModel` n'est jamais l'orchestration mais le **calcul** qu'elle
   contient - et un calcul s'extrait au lieu de se simuler. `sameStyleSettings`, `droppedOrder`,
@@ -705,7 +705,7 @@ pouvoir substituer un faux dépôt, comme un `@MockBean`. Mesuré, il ne tient p
 Un test avec faux dépôt aurait vérifié qu'un appel a lieu. Les tests obtenus vérifient qu'un résultat est
 juste, ce qui n'est pas le même travail.
 
-**Ce qui la ferait tomber.** Un découpage en plusieurs modules Gradle - `TrailogApp` cesserait d'être
+**Ce qui la ferait tomber.** Un découpage en plusieurs modules Gradle - `TunturoApp` cesserait d'être
 visible depuis les modules bas, et le câblage à la main deviendrait impossible. Une seconde implémentation
 du dépôt. Ou un besoin avéré de simuler une orchestration, et non un calcul.
 
@@ -997,7 +997,7 @@ Les numéros ne sont pas réattribués. Une dette fermée laisse son numéro vac
 
 | # | Sujet | Nature | Impact |
 |---|---|---|---|
-| D2 | Aucune abstraction du dépôt | **Compromis, pas dette** | Le dépôt est testé bout en bout (`TrailogRepositoryTest`) et la logique des ViewModels est extraite plutôt que simulée : l'absence d'abstraction ne coûte aujourd'hui aucun test. Redevient une dette aux trois conditions listées en AD-3. |
+| D2 | Aucune abstraction du dépôt | **Compromis, pas dette** | Le dépôt est testé bout en bout (`TunturoRepositoryTest`) et la logique des ViewModels est extraite plutôt que simulée : l'absence d'abstraction ne coûte aujourd'hui aucun test. Redevient une dette aux trois conditions listées en AD-3. |
 | D5 | Clés d'API en dur, dépôt public | Risque accepté | Quota épuisable par un tiers ; inacceptable en store |
 | D7 | Dépendance à des instances publiques à quota | Risque externe | Atténué par AD-7 et le réglage d'URL, pas supprimé |
 

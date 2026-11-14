@@ -1,7 +1,7 @@
-# Guide de développement - Trailog
+# Guide de développement - Tunturo
 
 Ce guide s'adresse aux développeurs souhaitant compiler, comprendre ou contribuer au
-code de Trailog (application Android native, Kotlin + Jetpack Compose).
+code de Tunturo (application Android native, Kotlin + Jetpack Compose).
 
 ## 1. Prérequis
 
@@ -13,11 +13,11 @@ code de Trailog (application Android native, Kotlin + Jetpack Compose).
 ## 2. Installation locale
 
 ```bash
-git clone https://github.com/lc-4918/trailog.git
-cd trailog
+git clone https://github.com/lc-4918/tunturo.git
+cd tunturo
 ```
 
-1. Ouvrir le dossier `trailog` dans Android Studio (**Open**).
+1. Ouvrir le dossier `tunturo` dans Android Studio (**Open**).
 2. Laisser Gradle se synchroniser (télécharge Gradle 8.11.1 et les dépendances).
 3. Copier `local.properties.sample` vers `local.properties` et ajuster le chemin du SDK
    Android si besoin (`sdk.dir`).
@@ -29,9 +29,9 @@ cd trailog
 ## 3. Structure du projet
 
 ```
-app/src/main/java/fr/lc4918/trailog/
+app/src/main/java/com/tunturo/app/
 ├─ MainActivity.kt              setContent { AppRoot(autoCheckUpdates) }
-├─ TrailogApp.kt                Application : init MapLibre + dépôt + amorçage
+├─ TunturoApp.kt                Application : init MapLibre + dépôt + amorçage
 ├─ domain/
 │  ├─ model/                    Models.kt (TrackPoint, TrackStats), Points.kt, BubblePosition.kt
 │  └─ geo/                      TrackMath.kt (distance, D+/D-, pente), Format.kt
@@ -40,7 +40,7 @@ app/src/main/java/fr/lc4918/trailog/
 │  ├─ db/                       Room : Entities, DAO, AppDatabase (migrations explicites)
 │  ├─ seed/Providers.kt         Fonds de carte par défaut
 │  ├─ imp/                      LayerImporter (GPX/GeoJSON/KML), PropertyDetector
-│  └─ repo/                     TrailogRepository, LayerGeoJson, StoragePaths
+│  └─ repo/                     TunturoRepository, LayerGeoJson, StoragePaths
 ├─ elevation/                   altitudes manquantes : IGN en France, OpenTopography ailleurs
 ├─ geocode/                     Photon (recherche de lieu / adresse), etat de connexion
 ├─ location/                    suivi de position hors de l'ecran : service de premier plan, veille sur la trace, son de l'alerte
@@ -101,9 +101,9 @@ vues dynamiques, décisions), [`SPEC.md`](SPEC.md) pour la spécification foncti
 
 Le type `bench` existe pour une seule raison : **mesurer une lenteur en debug induit en erreur d'un
 facteur trois** (cf. [`CONTEXT.md`](CONTEXT.md#pièges-connus)). Il reprend les réglages du release, garde
-la clé de débogage, et s'installe sous `fr.lc4918.trailog.bench` - à côté de la version officielle et du
+la clé de débogage, et s'installe sous `com.tunturo.app.bench` - à côté de la version officielle et du
 build de dev, sans toucher ni à l'une ni à l'autre. À désinstaller après usage
-(`adb uninstall fr.lc4918.trailog.bench`).
+(`adb uninstall com.tunturo.app.bench`).
 
 Logs : `adb logcat` ou la fenêtre **Logcat** d'Android Studio.
 
@@ -117,8 +117,8 @@ l'allumage de l'écran, et les deux paliers du chien de garde. C'est ce qui perm
 qu'on n'a pas pu regarder. À lire au retour, téléphone rebranché :
 
 ```bash
-adb shell run-as fr.lc4918.trailog.debug cat files/diagnostic-suivi.log
-adb shell run-as fr.lc4918.trailog.debug cat files/diagnostic-suivi.log.1   # la sortie d'avant
+adb shell run-as com.tunturo.app.debug cat files/diagnostic-suivi.log
+adb shell run-as com.tunturo.app.debug cat files/diagnostic-suivi.log.1   # la sortie d'avant
 ```
 
 Le fichier tourne à 1 Mo et ne garde qu'une génération. Rien de tout cela n'existe en release : une
@@ -131,7 +131,7 @@ demandé serait exactement ce qu'on reproche à d'autres.
 ./gradlew :app:testDebugUnitTest  # tests unitaires JVM (JUnit 4)
 ```
 
-Les tests unitaires vivent dans `app/src/test/java/fr/lc4918/trailog/` :
+Les tests unitaires vivent dans `app/src/test/java/com/tunturo/app/` :
 
 | Test | Ce qu'il verrouille |
 |---|---|
@@ -171,7 +171,7 @@ vrai SQLite.
 2. Créer une **branche** dédiée (`git checkout -b feature/ma-fonctionnalite`).
 3. Commits atomiques, messages clairs décrivant le *pourquoi*.
 4. Vérifier que `./gradlew :app:assembleDebug` et les tests passent localement.
-5. Ouvrir une **Pull Request** vers `main` sur `lc-4918/trailog`.
+5. Ouvrir une **Pull Request** vers `main` sur `lc-4918/tunturo`.
 6. Revue de code, puis merge.
 
 La publication d'une version, elle, est décrite dans [`WORKFLOW.md`](WORKFLOW.md) : un tag `vX.Y.Z`
@@ -259,7 +259,7 @@ Deux points à connaître avant de toucher au versionnement ou aux mises à jour
 
 ## 10. Issues et Discussions
 
-- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/trailog/issues).
+- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/tunturo/issues).
 - Décrire le contexte, les étapes de reproduction (pour un bug) ou le cas d'usage
   (pour une fonctionnalité), et l'environnement (version Android, version de l'app).
 

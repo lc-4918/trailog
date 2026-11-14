@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Trailog"
+rootProject.name = "Tunturo"
 include(":app")

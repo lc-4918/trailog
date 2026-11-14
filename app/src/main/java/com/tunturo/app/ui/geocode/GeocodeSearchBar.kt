@@ -1,0 +1,146 @@
+package com.tunturo.app.ui.geocode
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.tunturo.app.R
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import com.tunturo.app.geocode.GeocodePlace
+import com.tunturo.app.ui.components.CompactOutlinedTextField
+
+/** Nombre de propositions visibles sans faire défiler ; au-delà, la liste défile. */
+private const val VisibleSuggestions = 4
+
+/** Hauteur d'une proposition : deux lignes de texte et leur marge, pour que la liste s'arrête exactement
+ *  après la quatrième, quelle que soit la longueur des adresses affichées. */
+private val SuggestionHeight = 56.dp
+
+/** Opacité du champ et des propositions : la carte reste lisible dessous pendant la frappe. */
+private const val PanelAlpha = 0.8f
+
+/** Le champ, arrondi de part en part : une barre de recherche posee sur la carte, comme ses boutons.
+ *  Porté aussi par le contour du champ (celui qui vire au bleu au focus), dont les angles suivent ainsi
+ *  ceux du fond. Les propositions, dessous, sont une carte arrondie a 16. */
+private val PanelShape = CircleShape
+
+/**
+ * Barre de recherche de lieu/adresse et ses propositions.
+ *
+ * Ne décide de rien : la frappe, l'appel au géocodeur et la sélection sont pilotés par l'appelant
+ * (cf. GeocodeSearchState), qui garde ces états au-delà de la vie du composable.
+ */
+@Composable
+fun GeocodeSearchBar(
+    query: String,
+    results: List<GeocodePlace>,
+    searching: Boolean,
+    onQueryChange: (String) -> Unit,
+    onPick: (GeocodePlace) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    Column(modifier.fillMaxWidth()) {
+        Surface(
+            shape = PanelShape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
+            // Couleur de contenu imposée : un fond translucide n'est plus l'une des couleurs du thème, et
+            // contentColorFor n'y reconnaît donc rien. Sans elle, le texte hérite du LocalContentColor
+            // ambiant - noir sur noir en thème sombre.
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 4.dp,
+        ) {
+            CompactOutlinedTextField(
+                value = query, onValueChange = onQueryChange, singleLine = true,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(focus), shape = PanelShape,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                // Pas de contour au repos : le fond et l'ombre font la barre. Le bleu vient au focus.
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.Transparent, disabledBorderColor = Color.Transparent,
+                ),
+                // Une seule ligne quoi qu'il arrive : le libellé est court, mais une police système agrandie
+                // ou une traduction plus longue le ferait sinon passer à la ligne et grandir le champ.
+                placeholder = {
+                    Text(stringResource(R.string.geocode_search_placeholder), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                leadingIcon = {
+                    Icon(Icons.Filled.Search, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                },
+                trailingIcon = {
+                    // Le spinner remplace la croix pendant l'interrogation : même emplacement, pas de
+                    // saut de largeur du champ entre les deux états.
+                    if (searching) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides androidx.compose.ui.unit.Dp.Unspecified) {
+                            IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                },
+            )
+        }
+        if (results.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.padding(top = 6.dp),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = PanelAlpha),
+                contentColor = MaterialTheme.colorScheme.onSurface,   // cf. le champ ci-dessus
+                shadowElevation = 4.dp,
+            ) {
+                Column(Modifier.heightIn(max = SuggestionHeight * VisibleSuggestions).verticalScroll(rememberScrollState())) {
+                    results.forEachIndexed { i, place ->
+                        Row(
+                            Modifier.fillMaxWidth().height(SuggestionHeight)
+                                .clickable { onPick(place) }
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Outlined.Place, null, Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(place.label, style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = 12.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

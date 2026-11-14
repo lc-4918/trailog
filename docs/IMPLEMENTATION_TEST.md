@@ -1,4 +1,4 @@
-# État des tests - Trailog
+# État des tests - Tunturo
 
 Document de travail personnel. Il recense ce qui est testé aujourd'hui et ce qui reste à implémenter,
 pour le jour où l'on reprendra les tests d'instrumentation et e2e. La documentation de test versionnée,

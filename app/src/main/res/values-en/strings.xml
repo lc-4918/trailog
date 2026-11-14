@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Trailog</string>
+    <string name="app_name">Tunturo</string>
 
     <!-- Common actions -->
     <string name="action_back">Back</string>
@@ -46,7 +46,7 @@
     <string name="backup_failed">The backup could not be written.</string>
     <string name="backup_restore_warning">Restoring replaces EVERYTHING the app holds: tracks, points, photos and settings. Anything not in the archive will be lost.</string>
     <string name="backup_restored">Backup restored. The app will restart.</string>
-    <string name="backup_not_a_backup">This file is not a Trailog backup. Nothing was changed.</string>
+    <string name="backup_not_a_backup">This file is not a Tunturo backup. Nothing was changed.</string>
     <string name="backup_too_recent">This backup comes from a newer version of the app. Nothing was changed.</string>
     <string name="backup_restore_failed">Restore failed. Nothing was changed.</string>
     <string name="edit_toolbar">Edit tracks</string>
@@ -424,8 +424,8 @@
     <string name="update_action_install">Install</string>
     <string name="update_action_later">Later</string>
     <string name="update_unknown_sources_title">Permission required</string>
-    <string name="update_unknown_sources_text">Android must ask you to allow Trailog to install apps. Open the setting, grant the permission, then start the update again.</string>
-    <string name="update_download_title">Trailog update</string>
+    <string name="update_unknown_sources_text">Android must ask you to allow Tunturo to install apps. Open the setting, grant the permission, then start the update again.</string>
+    <string name="update_download_title">Tunturo update</string>
     <string name="update_download_desc">Downloading version %1$s</string>
     <string name="update_state_downloading">Downloading the update…</string>
     <string name="update_state_installing">Installing…</string>
@@ -435,12 +435,12 @@
     <string name="update_state_retrying">Installation stuck, trying again…</string>
     <string name="update_install_stalled">Android did not finish the installation. Try again later, or turn off Play Protect app scanning in the Play Store.</string>
     <string name="update_install_closes">The app will close to install itself. Reopen it afterwards.</string>
-    <string name="update_done_title">Trailog: update complete</string>
+    <string name="update_done_title">Tunturo: update complete</string>
     <string name="update_installing_title">Installing the update</string>
-    <string name="update_installing_text">Trailog closes to install. Wait for the update complete notification before opening it again.</string>
+    <string name="update_installing_text">Tunturo closes to install. Wait for the update complete notification before opening it again.</string>
     <string name="update_done_open">Open</string>
     <string name="update_done_channel">Updates</string>
-    <string name="update_downloaded_title">Trailog: update downloaded</string>
+    <string name="update_downloaded_title">Tunturo: update downloaded</string>
     <string name="update_done_install">Install</string>
 
     <string name="dialog_import_result_title">Import</string>
@@ -545,7 +545,7 @@
     <string name="settings_off_track_sound_default">Default</string>
     <string name="settings_off_track_hint">The bell appears in the dashboard as soon as you are on a track. On, it warns you if you stray from it; off, leaving the track simply drops it.</string>
     <string name="settings_off_track_wake_title">Wake the screen</string>
-    <string name="settings_off_track_wake_text">For the alert to turn on the screen and appear over the lock screen, Android requires a permission: \"Full screen notifications\". Open the setting and enable it for Trailog. Without it, the alert rings but the screen stays off.</string>
+    <string name="settings_off_track_wake_text">For the alert to turn on the screen and appear over the lock screen, Android requires a permission: \"Full screen notifications\". Open the setting and enable it for Tunturo. Without it, the alert rings but the screen stays off.</string>
     <string name="settings_off_track_wake_open">Open setting</string>
     <string name="location_channel_name">Location tracking</string>
     <string name="location_alert_channel_name">Location tracking interrupted</string>
@@ -625,7 +625,7 @@
     <string name="settings_poi_cache_empty">No cached venue</string>
     <string name="settings_poi_cache_count">%1$d venues kept</string>
     <string name="settings_poi_cache_pinned">%1$d venues taken along with an offline area are kept</string>
-    <string name="settings_poi_cache_hint">Venues seen once stay available offline for a week. Clearing them forces Trailog to ask again, for instance when an entry is wrong.</string>
+    <string name="settings_poi_cache_hint">Venues seen once stay available offline for a week. Clearing them forces Tunturo to ask again, for instance when an entry is wrong.</string>
     <string name="poi_from_cache">Last known points (offline)</string>
     <string name="poi_partial">View too wide: only places near the centre are shown</string>
     <string name="poi_away_from_tracks">No track nearby (distance setting)</string>
@@ -711,7 +711,7 @@
     <string name="offline_config_section_label">Part of the track</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">These are only the regional data of the route engine (BRouter), used to calculate a route without a network. Neither basemaps nor tracks: the offline map is downloaded separately.</string>
-    <string name="settings_updates_info">Auto: at startup, Trailog checks whether a new version is published and offers to install it. Manual: the check only happens when you ask for it.</string>
+    <string name="settings_updates_info">Auto: at startup, Tunturo checks whether a new version is published and offers to install it. Manual: the check only happens when you ask for it.</string>
     <string name="settings_expert_on">Expert mode on</string>
     <string name="settings_expert_off">Expert mode off</string>
     <string name="settings_clear_map_cache">Clear map cache</string>

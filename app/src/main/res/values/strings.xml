@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Trailog</string>
+    <string name="app_name">Tunturo</string>
 
     <!-- Actions communes -->
     <string name="action_back">Retour</string>
@@ -46,7 +46,7 @@
     <string name="backup_failed">La sauvegarde n\'a pas pu être écrite.</string>
     <string name="backup_restore_warning">La restauration remplace TOUT ce que contient l\'application : traces, points, photos et réglages. Ce qui n\'est pas dans l\'archive sera perdu.</string>
     <string name="backup_restored">Sauvegarde restaurée. L\'application va redémarrer.</string>
-    <string name="backup_not_a_backup">Ce fichier n\'est pas une sauvegarde Trailog. Rien n\'a été modifié.</string>
+    <string name="backup_not_a_backup">Ce fichier n\'est pas une sauvegarde Tunturo. Rien n\'a été modifié.</string>
     <string name="backup_too_recent">Cette sauvegarde vient d\'une version plus récente de l\'application. Rien n\'a été modifié.</string>
     <string name="backup_restore_failed">La restauration a échoué. Rien n\'a été modifié.</string>
     <string name="edit_toolbar">Retoucher les traces</string>
@@ -426,8 +426,8 @@
     <string name="update_action_install">Installer</string>
     <string name="update_action_later">Plus tard</string>
     <string name="update_unknown_sources_title">Autorisation nécessaire</string>
-    <string name="update_unknown_sources_text">Android doit vous demander d\'autoriser Trailog à installer des applications. Ouvrez le réglage, activez l\'autorisation, puis relancez la mise à jour.</string>
-    <string name="update_download_title">Mise à jour de Trailog</string>
+    <string name="update_unknown_sources_text">Android doit vous demander d\'autoriser Tunturo à installer des applications. Ouvrez le réglage, activez l\'autorisation, puis relancez la mise à jour.</string>
+    <string name="update_download_title">Mise à jour de Tunturo</string>
     <string name="update_download_desc">Téléchargement de la version %1$s</string>
     <string name="update_state_downloading">Téléchargement de la mise à jour…</string>
     <string name="update_state_installing">Installation en cours…</string>
@@ -437,12 +437,12 @@
     <string name="update_state_retrying">Installation figée, nouvelle tentative…</string>
     <string name="update_install_stalled">Android n\'a pas terminé l\'installation. Réessayez plus tard, ou désactivez l\'analyse des applis de Play Protect dans le Play Store.</string>
     <string name="update_install_closes">L\'application va se fermer pour s\'installer. Rouvrez-la ensuite.</string>
-    <string name="update_done_title">Trailog : mise à jour terminée</string>
+    <string name="update_done_title">Tunturo : mise à jour terminée</string>
     <string name="update_installing_title">Installation de la mise à jour en cours</string>
-    <string name="update_installing_text">Trailog se ferme pour s\'installer. Attendez la notification de fin de mise à jour avant de le relancer.</string>
+    <string name="update_installing_text">Tunturo se ferme pour s\'installer. Attendez la notification de fin de mise à jour avant de le relancer.</string>
     <string name="update_done_open">Ouvrir</string>
     <string name="update_done_channel">Mises à jour</string>
-    <string name="update_downloaded_title">Trailog : mise à jour téléchargée</string>
+    <string name="update_downloaded_title">Tunturo : mise à jour téléchargée</string>
     <string name="update_done_install">Installer</string>
 
     <string name="dialog_import_result_title">Import</string>
@@ -547,7 +547,7 @@
     <string name="settings_off_track_sound_default">Par défaut</string>
     <string name="settings_off_track_hint">La cloche paraît dans le tableau de bord dès que vous suivez une trace. Allumée, elle prévient si vous vous en écartez ; éteinte, quitter la trace l\'abandonne sans rien dire.</string>
     <string name="settings_off_track_wake_title">Réveiller l\'écran</string>
-    <string name="settings_off_track_wake_text">Pour que l\'alerte allume l\'écran et s\'affiche par-dessus le verrouillage, Android demande une autorisation : \"Notifications plein écran\". Ouvrez le réglage et activez-la pour Trailog. Sans elle, l\'alerte sonne mais l\'écran reste éteint.</string>
+    <string name="settings_off_track_wake_text">Pour que l\'alerte allume l\'écran et s\'affiche par-dessus le verrouillage, Android demande une autorisation : \"Notifications plein écran\". Ouvrez le réglage et activez-la pour Tunturo. Sans elle, l\'alerte sonne mais l\'écran reste éteint.</string>
     <string name="settings_off_track_wake_open">Ouvrir le réglage</string>
     <string name="location_channel_name">Suivi de position</string>
     <string name="location_alert_channel_name">Suivi de position interrompu</string>
@@ -627,7 +627,7 @@
     <string name="settings_poi_cache_empty">Aucun lieu en cache</string>
     <string name="settings_poi_cache_count">%1$d lieux retenus</string>
     <string name="settings_poi_cache_pinned">%1$d lieux emportés avec une zone hors ligne sont conservés</string>
-    <string name="settings_poi_cache_hint">Les lieux vus une fois restent consultables sans réseau pendant une semaine. Les vider force Trailog à les redemander, par exemple si une fiche est erronée.</string>
+    <string name="settings_poi_cache_hint">Les lieux vus une fois restent consultables sans réseau pendant une semaine. Les vider force Tunturo à les redemander, par exemple si une fiche est erronée.</string>
     <string name="poi_from_cache">Derniers points connus (hors ligne)</string>
     <string name="poi_partial">Vue trop large : seuls les lieux proches du centre sont affichés</string>
     <string name="poi_away_from_tracks">Aucune trace à proximité (réglage de distance)</string>
@@ -713,7 +713,7 @@
     <string name="offline_config_section_label">Portion de la trace</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Ce sont seulement les données régionales du moteur d\'itinéraire (BRouter), pour calculer un itinéraire sans réseau. Ni fonds de plan ni traces : la carte hors ligne se télécharge à part.</string>
-    <string name="settings_updates_info">Auto : au démarrage, Trailog vérifie si une nouvelle version est publiée et propose de l\'installer. Manuel : la vérification ne se fait que quand vous la demandez.</string>
+    <string name="settings_updates_info">Auto : au démarrage, Tunturo vérifie si une nouvelle version est publiée et propose de l\'installer. Manuel : la vérification ne se fait que quand vous la demandez.</string>
     <string name="settings_expert_on">Mode expert activé</string>
     <string name="settings_expert_off">Mode expert désactivé</string>
     <string name="settings_clear_map_cache">Effacer le cache de carte</string>

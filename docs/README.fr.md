@@ -1,6 +1,6 @@
-<img src="images/social-preview.png" alt="Trailog - cartes et traces GPS, hors-ligne">
+<img src="images/social-preview.png" alt="Tunturo - cartes et traces GPS, hors-ligne">
 
-<h1>Trailog
+<h1>Tunturo
 <a href="../README.md"><img src="../app/src/main/assets/flags/gb.svg" alt="English" width="24" align="right"></a>
 <a href="README.fr.md"><img src="../app/src/main/assets/flags/fr.svg" alt="Français" width="24" align="right"></a>
 </h1>
@@ -8,12 +8,12 @@
 **Cartographie et itinéraires hors-ligne pour Android.**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](../LICENSE)
-[![Build](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/trailog/actions/workflows/build-release.yml)
-[![Latest Release](https://img.shields.io/github/v/release/lc-4918/trailog)](https://github.com/lc-4918/trailog/releases)
+[![Build](https://github.com/lc-4918/tunturo/actions/workflows/build-release.yml/badge.svg)](https://github.com/lc-4918/tunturo/actions/workflows/build-release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/lc-4918/tunturo)](https://github.com/lc-4918/tunturo/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://developer.android.com)
-[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-5A4FCF)](https://deepwiki.com/lc-4918/trailog)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-5A4FCF)](https://deepwiki.com/lc-4918/tunturo)
 
-Trailog est une application Android native pour consulter, importer et organiser des
+Tunturo est une application Android native pour consulter, importer et organiser des
 traces GPS (randonnée, vélo, VTT, exploration), sur des fonds de carte personnalisables,
 avec un fonctionnement pensé pour le hors-ligne.
 
@@ -49,9 +49,9 @@ avec un fonctionnement pensé pour le hors-ligne.
 
 ---
 
-## Qu'est-ce que Trailog ?
+## Qu'est-ce que Tunturo ?
 
-Trailog permet de garder ses traces organisées localement sur son téléphone, et de les
+Tunturo permet de garder ses traces organisées localement sur son téléphone, et de les
 visualiser sur une carte avec un profil altimétrique synchronisé, sans dépendre d'un service en ligne.
 
 **Cas d'usage typiques :**
@@ -69,7 +69,7 @@ visualiser sur une carte avec un profil altimétrique synchronisé, sans dépend
 3. **Visualiser** : un tap sur l'itinéraire dans le menu latéral l'affiche sur la carte avec son profil altimétrique ; un tap sur l'un place le curseur sur l'autre.
 4. **Vérifier les surfaces avant de partir** : les détails montrent la part de revêtu et de non revêtu, surface par surface (asphalte, gravier, terrain, sable...), et les types de voies empruntées.
 5. **Emporter la carte** : télécharger le fond de carte le long de l'itinéraire, pour l'avoir sans réseau sur le terrain.
-6. **Le suivre avec l'alerte d'éloignement** : Trailog vous prévient dès que vous vous écartez du parcours.
+6. **Le suivre avec l'alerte d'éloignement** : Tunturo vous prévient dès que vous vous écartez du parcours.
 
 ## Caractéristiques principales
 
@@ -101,29 +101,29 @@ visualiser sur une carte avec un profil altimétrique synchronisé, sans dépend
 
 ### Depuis GitHub Releases (recommandé)
 
-1. Ouvrir la page [Releases](https://github.com/lc-4918/trailog/releases) du dépôt.
+1. Ouvrir la page [Releases](https://github.com/lc-4918/tunturo/releases) du dépôt.
 2. Télécharger le `.apk` de la dernière version. Chaque release en propose plusieurs : prenez celui
    de l'architecture de votre téléphone - `arm64-v8a` pour tout appareil récent, `armeabi-v7a` pour
-   un plus ancien - deux fois plus léger que le fichier `trailog-vX.Y.Z.apk` sans suffixe, qui les
+   un plus ancien - deux fois plus léger que le fichier `tunturo-vX.Y.Z.apk` sans suffixe, qui les
    contient toutes et fonctionne partout en cas de doute.
 3. Ouvrir le fichier téléchargé sur votre téléphone (autoriser l'installation depuis une
    source inconnue si demandé par Android).
 4. Confirmer l'installation.
 
-> Trailog n'est pas distribué sur le Play Store : GitHub Releases sert de plateforme de
+> Tunturo n'est pas distribué sur le Play Store : GitHub Releases sert de plateforme de
 > distribution. Voir la section [Contribution & Développement](#contribution--développement)
 > pour le détail du fonctionnement de ce "store".
 
 ### Mises à jour
 
-Cette première installation faite, vous n'aurez plus à revenir ici : Trailog vérifie
+Cette première installation faite, vous n'aurez plus à revenir ici : Tunturo vérifie
 lui-même s'il existe une version plus récente et vous propose de l'installer.
 
 - Par défaut, la vérification a lieu **au démarrage** de l'application.
 - Vous pouvez la passer en **manuel** dans **Réglages -> Système -> Mises à jour**, où un bouton
   permet alors de vérifier quand vous le souhaitez.
-- Quand vous acceptez, Trailog télécharge la nouvelle version et lance l'installation. Android
-  vous demandera une fois l'autorisation d'installer des applications depuis Trailog : c'est
+- Quand vous acceptez, Tunturo télécharge la nouvelle version et lance l'installation. Android
+  vous demandera une fois l'autorisation d'installer des applications depuis Tunturo : c'est
   normal pour une application distribuée hors magasin, et vous pouvez la retirer à tout moment
   dans les réglages Android.
 - Vos traces, dossiers et réglages sont conservés.
@@ -169,7 +169,7 @@ lui-même s'il existe une version plus récente et vous propose de l'installer.
   été chargé.
 - Le **suivi de position** ne quitte jamais l'appareil : ni enregistré, ni envoyé, ni conservé une fois le
   suivi arrêté. Il tourne dans un service que sa notification annonce en permanence, et que vous arrêtez
-  d'un tap. Trailog ne demande pas l'autorisation de localisation en arrière-plan : le suivi ne démarre
+  d'un tap. Tunturo ne demande pas l'autorisation de localisation en arrière-plan : le suivi ne démarre
   jamais que d'un geste de votre part.
 - La **mesure sur une trace**, elle, ne sort pas du téléphone : elle se lit sur la trace que vous avez
   importée, et n'interroge aucun service.
@@ -181,16 +181,16 @@ Le développement se fait ouvertement sur GitHub :
 - Ce que fait l'application, en détail : voir [`SPEC.md`](SPEC.md) ; les fonds de carte et leurs règles :
   voir [`BASEMAPS.md`](BASEMAPS.md).
 - Fonctionnement du CI/CD et des releases : voir [`WORKFLOW.md`](WORKFLOW.md).
-- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/trailog/issues).
+- Signaler un bug ou proposer une fonctionnalité : [GitHub Issues](https://github.com/lc-4918/tunturo/issues).
 
 ## Licence
 
-Trailog est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](../LICENSE).
+Tunturo est distribué sous licence **GPL v3**. Voir le fichier [`LICENSE`](../LICENSE).
 
 Les profils de calcul d'itinéraire livrés dans `app/src/main/assets/brouter/` sont repris tels quels du
 projet [BRouter](https://github.com/abrensch/brouter) (licence MIT), qui en garde la paternité.
 
 ## Contact
 
-Pour toute question, ouvrez une [discussion ou une issue](https://github.com/lc-4918/trailog/issues)
+Pour toute question, ouvrez une [discussion ou une issue](https://github.com/lc-4918/tunturo/issues)
 sur le dépôt GitHub.

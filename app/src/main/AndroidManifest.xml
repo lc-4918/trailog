@@ -46,14 +46,14 @@
     </queries>
 
     <application
-        android:name=".TrailogApp"
+        android:name=".TunturoApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:theme="@style/Theme.TrailogApp">
+        android:theme="@style/Theme.TunturoApp">
 
         <!--
             adjustResize, et non le choix laisse au systeme : sans ce mode, Android peut retenir
@@ -128,7 +128,7 @@
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.TrailogApp.Splash">
+            android:theme="@style/Theme.TunturoApp.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -142,7 +142,7 @@
                 Deux filtres et non un, parce que les fournisseurs de fichiers ne s'accordent pas : les uns
                 annoncent un type MIME propre (premier filtre), les autres retombent sur octet-stream ou
                 text/xml et ne laissent que l'extension pour trancher (second filtre). Le second n'est PAS
-                un */* general : sans son pathPattern, Trailog se proposerait pour tout fichier du telephone.
+                un */* general : sans son pathPattern, Tunturo se proposerait pour tout fichier du telephone.
 
                 launchMode="singleTask" sur l'activite : sans lui, un fichier ouvert pendant que
                 l'application tourne en empilerait une seconde instance, carte et position recreees a cote
@@ -179,7 +179,7 @@
                 <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.KMZ" />
                 <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.geojson" />
             </intent-filter>
-            <!-- "Partager vers Trailog" : un seul fichier, ou plusieurs d'un coup. -->
+            <!-- "Partager vers Tunturo" : un seul fichier, ou plusieurs d'un coup. -->
             <intent-filter android:label="@string/action_import">
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />

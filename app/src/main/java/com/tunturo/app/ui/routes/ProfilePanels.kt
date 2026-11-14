@@ -1,0 +1,479 @@
+package com.tunturo.app.ui.routes
+
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import com.tunturo.app.ui.planner.WaysShareContent
+import com.tunturo.app.ui.planner.ViewerSelect
+import com.tunturo.app.ui.planner.PlannerViewer
+import com.tunturo.app.ui.profile.profileChartHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tunturo.app.R
+import androidx.compose.foundation.layout.offset
+import com.tunturo.app.ui.theme.Spacing
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CornerSize
+import com.tunturo.app.data.db.SettingsEntity
+import com.tunturo.app.domain.geo.TrackMath
+import com.tunturo.app.domain.model.ComputedTrack
+import com.tunturo.app.ui.geocode.GeocodeBubble
+import com.tunturo.app.ui.profile.ElevationProfile
+import com.tunturo.app.ui.profile.SlopeLegend
+import com.tunturo.app.ui.profile.TrackInfoColumns
+import com.tunturo.app.ui.profile.cursorInfos
+import com.tunturo.app.ui.profile.titleInfos
+
+/**
+ * Le profil altimetrique tel qu'il se pose dans l'ecran principal : le panneau de la trace active et
+ * celui d'un parcours calcule, leur bouton de zoom, la ligne du restant, le bandeau d'altitude manquante.
+ *
+ * Le DESSIN du profil vit ailleurs (`ui/profile`, un Canvas qui ne connait que des echantillons) ; ici se
+ * decide ce qui l'entoure a l'ecran, et ou tout cela se pose.
+ */
+
+/** Les statistiques generales du panneau, sous son titre : propres au profil, absentes des surfaces et des voies. */
+internal const val PROFILE_TITLE_INFOS_TAG = "profile_title_infos"
+
+/** Petit bouton carré (24 dp) des contrôles de zoom du profil (début/fin/expand). Contrairement à
+ *  IconButton, sa couche d'état (ripple + fond bleu de sélection) est bornée à sa propre taille via clip :
+ *  IconButton force une couche d'état de 40 dp qui déborderait de ce bouton réduit. */
+@Composable
+internal fun ProfileZoomButton(
+    @androidx.annotation.DrawableRes iconRes: Int, contentDesc: String, active: Boolean, onClick: () -> Unit,
+) {
+    Box(
+        Modifier.size(32.dp).clip(MaterialTheme.shapes.small)
+            .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(painterResource(iconRes), contentDesc, modifier = Modifier.size(20.dp),
+            tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/* ----------------------- Légende ----------------------- */
+
+/** Air autour du titre du bandeau de profil : au-dessus comme au-dessous, dans tous les cas. */
+internal val ProfileTitleGap = 4.dp
+
+/** Air entre les infos de la trace et le graphique quand la legende des pentes n'est pas affichee :
+ *  c'est elle qui tenait cette place, et elle en prenait plus que six points. */
+internal val ProfileGraphGap = 12.dp
+
+/** Ecart du bloc d'infos du point courant : le meme a droite de l'ecran qu'au-dessus du profil. */
+internal val CursorInfoGap = 4.dp
+
+/** Avertissement affiché à la place du tracé quand la trace n'a aucune altitude : 80 % de la largeur et
+ *  50 % de la hauteur de la zone de dessin, centré dedans. */
+@Composable
+internal fun NoElevationBanner(modifier: Modifier = Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.fillMaxWidth(0.8f).fillMaxHeight(0.5f)
+                // L'orange d'avertissement du theme : le panneau suit le theme, l'avertissement aussi.
+                .background(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.shapes.medium)
+                .border(1.dp, MaterialTheme.colorScheme.tertiary, MaterialTheme.shapes.medium),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(stringResource(R.string.profile_no_elevation), color = MaterialTheme.colorScheme.onTertiaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp))
+        }
+    }
+}
+
+/**
+ * Le profil de la trace active, et les deux blocs qui l'accompagnent au bas de la carte.
+ *
+ * Trois choses posees dans la meme boite, parce qu'elles se lisent ensemble et se calent les unes sur les
+ * autres : les infos du point courant en bas a droite, le bouton de retour a la vue complete en bas a
+ * gauche, et le panneau lui-meme en bas au centre. Les deux premieres se decalent de la hauteur du
+ * troisieme, qu'elles ne connaissent que parce qu'il la mesure et la rend (cf. [onHeightChange] : cette
+ * hauteur sert aussi ailleurs, aux infobulles de la retouche et de la mesure).
+ *
+ * Le panneau est SUPERPOSE a la carte, qui garde toujours sa taille pleine : ne jamais la redimensionner
+ * ici, une AndroidView de type SurfaceView flashe en noir le temps de son prochain frame quand elle est
+ * redimensionnee pendant une animation.
+ *
+ * [computed] est le calcul courant et [lastComputed] le dernier connu : le second tient l'affichage
+ * pendant l'animation de fermeture, quand le premier est deja retombe a null.
+ */
+@Composable
+internal fun BoxScope.TrackProfileLayer(
+    activeLayerId: Long?,
+    computed: ComputedTrack?,
+    lastComputed: ComputedTrack?,
+    loading: Boolean,
+    zoom: IntRange?,
+    cursor: Double?,
+    title: String,
+    lineColor: Color,
+    settings: SettingsEntity,
+    imperial: Boolean,
+    onHeightChange: (Int) -> Unit,
+    onExpandZoom: () -> Unit,
+    /** La couche est coloriee selon la pente : le titre porte alors le "i" de la legende. */
+    slopeColored: Boolean,
+    onScrub: (Double) -> Unit,
+    onZoom: (scale: Float, fraction: Float) -> Unit,
+    onDoubleTapZoom: (fraction: Float) -> Unit,
+    /** Ce que montre le panneau : le profil, ou les surfaces ou les types de voies (cf. TrackPanelView). */
+    panel: TrackPanelView = TrackPanelView.Initial,
+    /** Les voies de la couche, null tant qu'on ne les a pas demandees. */
+    ways: WaysLoad? = null,
+    /** La ligne de la couche montree : ses voies seules comptent ici. */
+    trackIndex: Int = 0,
+    onViewer: (PlannerViewer) -> Unit = {},
+    onSelect: (Any?) -> Unit = {},
+    onRetryWays: () -> Unit = {},
+    /** Le haut de ce que le profil recouvre dans le coin bas-droit - panneau ou infos du point -, en pixels
+     *  de la racine ; null une fois le profil ferme (cf. MapInsetsState.bottomRightCoverTopPx). */
+    onRightCoverTop: (Int?) -> Unit = {},
+) {
+    ProfilePanelLayer(
+        visible = activeLayerId != null,
+        computed = computed, lastComputed = lastComputed, loading = loading,
+        zoom = zoom, cursor = cursor, title = title, lineColor = lineColor,
+        settings = settings, imperial = imperial,
+        viewer = panel.viewer, offeredViewers = PlannerViewer.entries, onViewer = onViewer,
+        slopeLegend = slopeColored, slopeArea = slopeColored,
+        titleInfos = { stats, samples ->
+            // Temps de marche estime, pour une trace qui n'a pas d'horodatage : calcule sur les
+            // echantillons affiches, il suit donc le zoom du profil comme les autres totaux. Retenu tant
+            // qu'ils ne changent pas - une recomposition ne doit pas relancer un balayage de deux mille
+            // points.
+            val tobler = remember(samples) { samples?.let { TrackMath.toblerSeconds(it) } }
+            titleInfos(stats, settings.titleInfos, imperial, tobler)
+        },
+        pointInfos = { point -> cursorInfos(point, settings.cursorInfos, imperial) },
+        waysContent = { PanelWays(panel, ways, trackIndex, imperial, onSelect, onRetryWays) },
+        onHeightChange = onHeightChange, onExpandZoom = onExpandZoom,
+        onScrub = onScrub, onZoom = onZoom, onDoubleTapZoom = onDoubleTapZoom,
+        onRightCoverTop = onRightCoverTop,
+    )
+}
+
+/**
+ * Le panneau d'un profil au bas de la carte, quel que soit le trace : celui d'une trace de la bibliotheque
+ * (cf. [TrackProfileLayer]) et celui du parcours calcule (cf. PlannerViewerPanel) sont le MEME panneau -
+ * meme largeur, meme en-tete, le point courant au-dessus, le retour a la vue complete a gauche. Ils ne
+ * different que par ce qu'ils disent : leurs chiffres ([titleInfos], [pointInfos]), les surfaces et les
+ * voies ([waysContent]), et pour le calcul la fleche qui rend la bande ([leading]).
+ *
+ * [visible] l'ouvre et le ferme ; [computed] est le trace courant et [lastComputed] le dernier connu, qui
+ * tient l'affichage pendant l'animation de fermeture.
+ */
+@Composable
+internal fun BoxScope.ProfilePanelLayer(
+    visible: Boolean,
+    computed: ComputedTrack?,
+    lastComputed: ComputedTrack?,
+    loading: Boolean,
+    zoom: IntRange?,
+    cursor: Double?,
+    title: String,
+    lineColor: Color,
+    settings: SettingsEntity,
+    imperial: Boolean,
+    viewer: PlannerViewer,
+    offeredViewers: List<PlannerViewer>,
+    onViewer: (PlannerViewer) -> Unit,
+    /** Le "i" de la legende des pentes au bout du titre (profil seulement). */
+    slopeLegend: Boolean,
+    /** L'aire du profil coloriee selon la pente. */
+    slopeArea: Boolean,
+    /** Les totaux de la portion affichee : la trace entiere, ou sa fenetre zoomee. */
+    titleInfos: @Composable (stats: com.tunturo.app.domain.model.TrackStats, samples: List<com.tunturo.app.domain.model.Sample>?) -> List<com.tunturo.app.ui.profile.TitleInfo>,
+    /** Ce que dit le point courant, dans le bloc pose au-dessus du panneau. */
+    pointInfos: @Composable (com.tunturo.app.domain.model.Sample) -> List<com.tunturo.app.ui.profile.TitleInfo>,
+    /** Les surfaces ou les types de voies, a la place du graphique. */
+    waysContent: @Composable () -> Unit,
+    onHeightChange: (Int) -> Unit,
+    onExpandZoom: () -> Unit,
+    onScrub: (Double) -> Unit,
+    onZoom: (scale: Float, fraction: Float) -> Unit,
+    onDoubleTapZoom: (fraction: Float) -> Unit,
+    onRightCoverTop: (Int?) -> Unit = {},
+    /** Devant le titre : la fleche du calcul d'itineraire, qui rend la bande. */
+    leading: (@Composable () -> Unit)? = null,
+    panelTestTag: String? = null,
+    chartTestTag: String? = null,
+) {
+    val density = LocalDensity.current
+    var hautPanneau by remember { mutableStateOf<Float?>(null) }
+    var hautInfos by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(hautPanneau, hautInfos, visible) {
+        onRightCoverTop(if (!visible) null else listOfNotNull(hautPanneau, hautInfos).minOrNull()?.toInt())
+    }
+    val view = LocalView.current
+
+    // Décalage du dernier label de l'axe X pour dégager l'angle arrondi bas-droit de l'écran. On calcule
+    // l'intrusion réelle de l'arc À LA HAUTEUR du label (et non le rayon plein, qui n'est atteint que tout
+    // en bas) : le label est remonté par la barre de navigation, l'angle y mord donc bien moins.
+    //   - r = rayon de l'angle (px, API 31+, sinon 0 = écran plat)
+    //   - dy = distance verticale du label au bord bas de l'écran (barre de nav + ~6 px entre la
+    //     ligne de base du label et le bas du tracé)
+    //   - intrusion = r - sqrt(r^2 - (r - dy)^2) tant que dy < r, sinon 0
+    //   - on retranche le dégagement déjà présent (~10 dp : padding + marge interne)
+    val navBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+    val lastLabelInsetPx = remember(view, navBottomPx) {
+        val r = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            view.rootWindowInsets?.getRoundedCorner(android.view.RoundedCorner.POSITION_BOTTOM_RIGHT)?.radius ?: 0
+        else 0).toFloat()
+        if (r <= 0f) 0f else {
+            val dy = navBottomPx + 6f
+            val intrusion = if (dy >= r) 0f else r - kotlin.math.sqrt(r * r - (r - dy) * (r - dy))
+            (intrusion - with(density) { 10.dp.toPx() }).coerceAtLeast(0f)
+        }
+    }
+    // profil à afficher : le calcul courant sinon le dernier connu (animation de fermeture) ; pendant un
+    // chargement (tap/changement de trace) on n'affiche aucun graphique -> spinner.
+    val shown = computed ?: if (!loading) lastComputed else null
+    // Portion actuellement affichée (zoom A/B) : sous-liste de shown.samples, ou la trace complète si aucun
+    // zoom. Le kilométrage (Sample.x) n'est jamais remis à zéro (cumulé depuis le début de la trace) ;
+    // seules les infos (distance/D+/D- du bandeau titre) sont recalculées pour la seule portion visible
+    // (cf. TrackMath.statsOf, réutilisable sur une sous-plage).
+    //
+    // Mémorisé sur (shown, zoom) : sinon subList()/statsOf() recréaient une liste d'identité différente à
+    // CHAQUE recomposition (déplacement du curseur, etc.), invalidant le cache de rendu de ElevationProfile
+    // (comparaison par référence) -> reconstruction de tous les chemins à chaque frame pendant un zoom
+    // (jusqu'à ~2000 points), d'où une surcharge CPU.
+    val windowSamples = remember(shown, zoom) {
+        shown?.samples?.let { s ->
+            if (zoom != null && zoom.last < s.size) s.subList(zoom.first, zoom.last + 1) else s
+        }
+    }
+    val windowStats = remember(shown, zoom, windowSamples) {
+        if (zoom != null && windowSamples != null) TrackMath.statsOf(windowSamples) else shown?.stats
+    }
+    // Le curseur est une abscisse absolue : la fenetre zoomee n'a plus rien a lui retrancher, et
+    // l'echantillon qu'il designe s'obtient par interpolation (cf. TrackMath.sampleAt).
+    val cursorSample = remember(cursor, windowSamples) {
+        if (cursor == null || windowSamples == null) null
+        else TrackMath.sampleAt(windowSamples, cursor)
+            ?.takeIf { cursor >= windowSamples.first().x && cursor <= windowSamples.last().x }
+    }
+    // Hauteur mesuree du panneau : les deux blocs ci-dessous s'en decalent, et [onHeightChange] la rend a
+    // l'ecran, ou les infobulles de la retouche et de la mesure s'en servent aussi.
+    var panelHeightPx by remember { mutableIntStateOf(0) }
+    val panelBottomDp = with(density) { panelHeightPx.toDp() }
+
+    // Infos du point courant : flottent au-dessus de la carte, juste au-dessus du titre du profil (décalées
+    // de la hauteur mesurée du panneau, superposé à la carte). Sur le profil seulement : ailleurs, le point
+    // ne designe rien de ce qu'on regarde ; il reparait au retour sur le profil.
+    if (computed != null && cursorSample != null && viewer == PlannerViewer.PROFILE) {
+        // Memes colonnes que les infos de la trace, en plus petit : c'est la meme lecture, sur un point
+        // plutot que sur un parcours. A droite, ou le bouton de zoom se tenait : lui est seul et va a
+        // gauche, ces infos-ci sont trois ou quatre et prennent la largeur.
+        // Les infos parties, le coin se degage d'autant.
+        DisposableEffect(Unit) { onDispose { hautInfos = null } }
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            TrackInfoColumns(
+                pointInfos(cursorSample),
+                fontSp = settings.profCursorFont,
+                bold = settings.profCursorBold,
+                arrangement = Arrangement.spacedBy(14.dp),
+                // Meme ecart a droite qu'entre le bas du bloc et le profil : le coin se lit alors comme un
+                // coin, et non comme deux marges qui ne se repondent pas.
+                modifier = Modifier.align(Alignment.BottomEnd)
+                    .padding(end = CursorInfoGap, bottom = panelBottomDp + CursorInfoGap)
+                    .onGloballyPositioned { hautInfos = it.boundsInRoot().top }
+                    .shadow(3.dp, MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+    }
+    // Bouton de zoom du profil : même hauteur que les infos du point ci-dessus, mais à gauche - elles
+    // occupent désormais la droite.
+    if (visible && shown != null && viewer == PlannerViewer.PROFILE) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = panelBottomDp + 4.dp)
+                .shadow(3.dp, MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.surface, MaterialTheme.shapes.small),
+        ) {
+            // Seul bouton restant : le retour a la vue complete. Le zoom lui-meme se fait aux doigts sur le
+            // graphique (ecartement ou double-tap), comme dans le planificateur.
+            if (zoom != null) {
+                ProfileZoomButton(R.drawable.ic_profile_zoom_expand,
+                    stringResource(R.string.content_desc_profile_zoom_expand), active = false, onClick = onExpandZoom)
+            }
+        }
+    }
+    // Le panneau apparaît immédiatement (titre + spinner) ; le graphique le remplace une fois calculé.
+    AnimatedVisibility(
+        visible = visible, enter = expandVertically(), exit = shrinkVertically(),
+        modifier = Modifier.align(Alignment.BottomCenter),
+    ) {
+        // Une bande aux couleurs du theme, coins hauts arrondis, comme les autres bandes du bas - et non plus
+        // un aplat blanc fixe, qui trouait l'ecran en theme sombre. La forme dessine le fond et l'ombre sans
+        // decouper le contenu (cf. RoutePlannerBand).
+        val forme = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0), bottomEnd = CornerSize(0))
+        Column(
+            Modifier.fillMaxWidth()
+                .then(if (panelTestTag != null) Modifier.testTag(panelTestTag) else Modifier)
+                .shadow(8.dp, forme, clip = false)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f), forme)
+                .padding(start = Spacing.m, end = Spacing.m, top = 10.dp).navigationBarsPadding()
+                .onGloballyPositioned {
+                    panelHeightPx = it.size.height; onHeightChange(it.size.height)
+                    hautPanneau = it.boundsInRoot().top
+                },
+        ) {
+            DisposableEffect(Unit) { onDispose { hautPanneau = null } }
+            // Le titre a sa ligne, les infos la leur : elles s'etalent alors sur toute la largeur, en
+            // colonnes libellees, la ou les serrer a la suite du titre les reduisait a une file de valeurs
+            // sans nom.
+            //
+            /*
+             * Le "i" de la legende des pentes, au bout de la premiere ligne du titre, qui lui reserve sa
+             * place : il ne parait que si la couche est coloriee selon la pente, et montre la palette dans
+             * une fenetre (cf. SlopeLegendInfo).
+             */
+            /*
+             * A droite du titre, le choix de ce qu'on regarde : le profil, les surfaces, les types de voies
+             * - le meme choix que dans les VIEWER. Le "i" des pentes ne vaut que pour le profil.
+             */
+            val legende = slopeLegend && viewer == PlannerViewer.PROFILE
+            Row(Modifier.fillMaxWidth().padding(vertical = ProfileTitleGap), verticalAlignment = Alignment.Top) {
+                leading?.invoke()
+                Text(title, fontSize = (settings.profTitleFont).sp,
+                    fontWeight = if (settings.profTitleBold) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = Spacing.xs, end = Spacing.s))
+                ViewerSelect(viewer, offeredViewers, onPick = onViewer)
+                if (legende) {
+                    // En haut, non centre : sur un titre de deux lignes, un "i" centre tomberait entre les deux.
+                    SlopeLegendInfo(settings, Modifier.offset(y = (-6).dp))
+                }
+            }
+            // Les statistiques de la trace ne valent que pour le profil : les surfaces et les voies ont
+            // deja leurs distances par type, les chiffres generaux n'y feraient que prendre de la place.
+            if (windowStats != null && viewer == PlannerViewer.PROFILE) {
+                TrackInfoColumns(
+                    titleInfos(windowStats, windowSamples),
+                    fontSp = settings.profBarFont,
+                    bold = settings.profBarBold,
+                    modifier = Modifier.fillMaxWidth().testTag(PROFILE_TITLE_INFOS_TAG),
+                )
+            }
+            Spacer(Modifier.height(ProfileGraphGap))
+            if (viewer != PlannerViewer.PROFILE) {
+                waysContent()
+                Spacer(Modifier.height(Spacing.m))
+            } else
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val hauteurGraphe = if (windowSamples != null && windowStats != null && windowSamples.size >= 2) {
+                profileChartHeight(
+                    settings.profileVerticalScale, windowStats.min, windowStats.max,
+                    windowSamples.last().x - windowSamples.first().x,
+                    constraints.maxWidth, ProfileChartMaxHeight, settings.profAxisFont,
+                )
+            } else ProfileChartMaxHeight
+            Box(Modifier.fillMaxWidth().height(hauteurGraphe), contentAlignment = Alignment.Center) {
+                // Trace sans altitude : le profil serait une ligne plate et muette. On le remplace par un
+                // avertissement, plutôt que de laisser croire à un parcours plat.
+                if (shown != null && !shown.hasZ && !loading) {
+                    NoElevationBanner(Modifier.fillMaxSize())
+                } else if (windowSamples != null && windowStats != null && !loading) {
+                    ElevationProfile(
+                        samples = windowSamples, stats = windowStats,
+                        grid = settings.profileGrid,
+                        // L'aire suit le trait : coloriee par pente des que la couche l'est.
+                        slope = slopeArea,
+                        lineColor = if (lineColor != Color.Unspecified) lineColor else MaterialTheme.colorScheme.primary,
+                        axisFontSp = settings.profAxisFont,
+                        axisBold = settings.profAxisBold,
+                        cursorX = cursor, onScrub = onScrub,
+                        onZoom = onZoom,
+                        onDoubleTap = onDoubleTapZoom,
+                        lastLabelInsetPx = lastLabelInsetPx,
+                        verticalScale = settings.profileVerticalScale,
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight()
+                            .then(if (chartTestTag != null) Modifier.testTag(chartTestTag) else Modifier),
+                    )
+                } else {
+                    CircularProgressIndicator()
+                }
+            }
+            }
+        }
+    }
+}
+
+/**
+ * Les surfaces ou les types de voies de la ligne montree, a la place du graphique : la categorie mise en
+ * evidence et la barre des parts. Pendant la recherche des voies, un indicateur ; en cas d'echec, pourquoi -
+ * et de quoi reessayer quand c'est le reseau.
+ */
+@Composable
+private fun PanelWays(
+    view: TrackPanelView, ways: WaysLoad?, trackIndex: Int, imperial: Boolean,
+    onSelect: (Any?) -> Unit, onRetry: () -> Unit,
+) {
+    val sub = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(Modifier.fillMaxWidth().heightIn(min = 72.dp).testTag("track_panel_ways"), contentAlignment = Alignment.CenterStart) {
+        when (ways) {
+            is WaysLoad.Done -> {
+                val segments = remember(ways, trackIndex) { lineWays(ways.ways, trackIndex) }
+                if (segments.isEmpty()) Text(stringResource(R.string.stats_ways_no_match), color = sub,
+                    style = MaterialTheme.typography.bodyMedium)
+                else Column { WaysShareContent(view.viewer, segments, view.highlight, imperial, onSelect) }
+            }
+            WaysLoad.NoMatch -> Text(stringResource(R.string.stats_ways_no_match), color = sub,
+                style = MaterialTheme.typography.bodyMedium)
+            WaysLoad.Unreachable -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.stats_ways_unreachable), color = sub,
+                    style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                androidx.compose.material3.TextButton(onClick = onRetry, modifier = Modifier.testTag("track_panel_retry")) {
+                    Text(stringResource(R.string.planner_retry))
+                }
+            }
+            else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.m)) {
+                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.stats_ways_analyzing), color = sub, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+/** Hauteur maximale du graphe d'un profil : ce qu'il prend quand il remplit le cadre. */
+private val ProfileChartMaxHeight = 120.dp

@@ -1,7 +1,7 @@
-# Workflow CI/CD - Trailog
+# Workflow CI/CD - Tunturo
 
 Ce document explique comment fonctionne l'intégration continue et la distribution des
-APK de Trailog via GitHub Actions et GitHub Releases.
+APK de Tunturo via GitHub Actions et GitHub Releases.
 
 ## 1. Vue d'ensemble
 
@@ -31,7 +31,7 @@ la mise à jour (voir [section 6](#6-mises-à-jour-automatiques)).
 
 **Où trouver l'APK :** onglet **Actions** du dépôt -> sélectionner l'exécution du workflow
 correspondant au commit -> section **Artifacts** en bas de page -> télécharger
-`trailog-debug-<sha>.zip` (contient l'APK).
+`tunturo-debug-<sha>.zip` (contient l'APK).
 
 **Utilité :** tester rapidement les dernières modifications sur un appareil, sans créer de
 release officielle. L'APK debug n'est pas signé avec la clé de release.
@@ -66,8 +66,8 @@ release officielle. L'APK debug n'est pas signé avec la clé de release.
 **Où trouver l'APK :** page **Releases** du dépôt (publique).
 
 **Cinq APK par release, et non un seul.** Le bloc `splits` de `app/build.gradle.kts` produit un APK
-par architecture - `trailog-vX.Y.Z-arm64-v8a.apk` et ses trois voisins - plus un **universel**,
-`trailog-vX.Y.Z.apk`, qui les porte toutes. La raison est le poids : le code natif de MapLibre pèse
+par architecture - `tunturo-vX.Y.Z-arm64-v8a.apk` et ses trois voisins - plus un **universel**,
+`tunturo-vX.Y.Z.apk`, qui les porte toutes. La raison est le poids : le code natif de MapLibre pèse
 8 à 12 Mo **par architecture**, soit 71 % de l'APK universel, alors qu'un appareil n'en exécute
 qu'une. L'APK d'architecture fait ainsi 29,6 Mo là où l'universel en fait 61,6.
 
@@ -123,12 +123,12 @@ aux côtés de l'APK :
   "version": "0.2.0",
   "versionCode": 200,
   "releaseDate": "2026-07-15",
-  "apkUrl": "https://github.com/lc-4918/trailog/releases/download/v0.2.0/trailog-v0.2.0.apk",
+  "apkUrl": "https://github.com/lc-4918/tunturo/releases/download/v0.2.0/tunturo-v0.2.0.apk",
   "apkUrls": {
-    "arm64-v8a": "https://github.com/lc-4918/trailog/releases/download/v0.2.0/trailog-v0.2.0-arm64-v8a.apk",
-    "armeabi-v7a": ".../trailog-v0.2.0-armeabi-v7a.apk",
-    "x86": ".../trailog-v0.2.0-x86.apk",
-    "x86_64": ".../trailog-v0.2.0-x86_64.apk"
+    "arm64-v8a": "https://github.com/lc-4918/tunturo/releases/download/v0.2.0/tunturo-v0.2.0-arm64-v8a.apk",
+    "armeabi-v7a": ".../tunturo-v0.2.0-armeabi-v7a.apk",
+    "x86": ".../tunturo-v0.2.0-x86.apk",
+    "x86_64": ".../tunturo-v0.2.0-x86_64.apk"
   },
   "changelog": "- import : un fichier fautif n'interrompt plus rien, et le dit\n- reglages : les deux sliders parlent d'opacite, comme le code"
 }
@@ -145,7 +145,7 @@ checkout superficiel n'aurait ni les commits ni les tags. S'il n'existe pas de t
 (premier tag du dépôt), la liste part du début de l'historique.
 
 L'app le lit à l'URL stable
-`https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json`, que GitHub
+`https://github.com/lc-4918/tunturo/releases/latest/download/latest-release.json`, que GitHub
 redirige (302) vers l'asset de la dernière release, servi par son CDN.
 
 **Pourquoi un asset plutôt qu'un fichier commité ou l'API GitHub :** le CDN de téléchargement
@@ -178,7 +178,7 @@ suffixe (`0.2.0-23-gabc1234`), qu'un découpage numérique lirait comme plus ré
 
 ### Côté app
 
-Le détail vit dans `app/src/main/java/fr/lc4918/trailog/update/`. En résumé : lecture du
+Le détail vit dans `app/src/main/java/com/tunturo/app/update/`. En résumé : lecture du
 manifeste, comparaison, téléchargement via `DownloadManager` dans le dossier privé de l'app,
 puis lancement de l'installateur système. Le réglage **Système -> Mises à jour** offre le choix
 entre vérification automatique au démarrage et vérification manuelle.
@@ -208,5 +208,5 @@ au-delà lisent l'asset de release et se mettront à jour normalement.
   toujours passer par les secrets GitHub Actions.
 - **Vérifier le manifeste après une release** : la Release peut être verte et le manifeste
   faux. Contrôler que
-  [`latest-release.json`](https://github.com/lc-4918/trailog/releases/latest/download/latest-release.json)
+  [`latest-release.json`](https://github.com/lc-4918/tunturo/releases/latest/download/latest-release.json)
   annonce la bonne version et que son `apkUrl` répond bien.

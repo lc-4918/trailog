@@ -1,0 +1,1902 @@
+package com.tunturo.app.ui.components
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas as AndroidCanvas
+import android.graphics.BlurMaskFilter
+import android.graphics.Paint
+import android.graphics.PointF
+import android.graphics.RectF
+import android.view.MotionEvent
+import android.view.ViewConfiguration
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.tunturo.app.R
+import com.tunturo.app.data.db.DefaultGpsMarkerSizeDp
+import com.tunturo.app.domain.model.ComputedTrack
+import com.tunturo.app.domain.model.GpsMarkerStyle
+import com.tunturo.app.map.offline.Bbox
+import com.tunturo.app.map.AmbientCache
+import com.tunturo.app.ui.planner.StepMark
+import com.tunturo.app.ui.planner.StepMarkKind
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.gestures.MoveGestureDetector
+import org.maplibre.android.gestures.StandardScaleGestureDetector
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.sources.GeoJsonSource
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
+import kotlin.math.hypot
+import kotlin.math.pow
+
+/**
+ * Une couche a poser sur la carte. [slopeGeoJson], quand la couche est coloriee par pente : ses troncons
+ * de meme classe, chacun portant sa couleur (cf. SlopeLines) - le trait de la couleur de la couche
+ * s'efface alors derriere.
+ */
+data class RenderLayer(
+    val key: String, val uri: String, val revision: Long, val color: String,
+    val slopeGeoJson: String? = null,
+)
+
+/** Elargissements successifs de la fenetre de recherche d'une trace autour du doigt (cf. lineKeysNear) :
+ *  la tolerance des traces, puis 4 et 12 fois plus large - de quoi couvrir l'ecran sans le balayer. */
+private val LineSearchFactors = listOf(1f, 4f, 12f)
+
+/** Ecart, en dp, en dessous duquel deux traces comptent pour confondues sous le doigt. */
+private const val LineOverlapDp = 4f
+
+/**
+ * La couche a choisir parmi celles qui se confondent sous le doigt, de la plus haute ([topFirst]) a la plus
+ * basse : la plus basse tant qu'aucune n'est montree - c'est celle qu'on ne peut pas atteindre -, puis, a
+ * chaque tap, celle qui suit la couche [shown], en reboucle.
+ */
+internal fun pickAmongOverlapping(topFirst: List<String>, shown: String?): String? {
+    if (topFirst.isEmpty()) return null
+    val position = topFirst.indexOf(shown)
+    return if (position < 0) topFirst.last() else topFirst[(position + 1) % topFirst.size]
+}
+
+/** Bleu de la mise en evidence d'une categorie de l'itineraire, sur la carte comme dans la bande (cf.
+ *  MapController.setRouteHighlight) : la meme couleur designe la meme chose aux deux endroits. */
+const val RouteHighlightColor = "#2459C4"
+
+/** Un point d'interet a poser sur la carte : ce que la couche a besoin d'en savoir, et rien de plus.
+ *  [iconRes] est le pictogramme de sa categorie (cf. `ui/poi/PoiIcons.kt`), [colorHex] la teinte de son
+ *  groupe. */
+data class PoiMarker(
+    val id: String, val lon: Double, val lat: Double, val colorHex: String, val iconRes: Int,
+)
+
+/** Delai d'un appui sur une pastille d'etape avant qu'elle se laisse deplacer, en ms : bref, sous l'appui
+ *  long de la carte (500 ms). */
+private const val StepDragDelayMs = 250L
+
+/** Combien de temps au plus une pastille deposee reste tenue en place, en ms (cf. holdDroppedStep). */
+private const val DroppedHoldMs = 3_000L
+
+class MapController {
+    var map: MapLibreMap? = null
+    var style: Style? = null
+    /** (cle de couche, id du marqueur, lon, lat). Les coordonnees viennent de la geometrie interrogee :
+     *  elles permettent de placer l'infobulle des le tap, sans attendre le chargement de la couche. */
+    var onPickPoint: ((String, String, Double, Double) -> Unit)? = null
+    var onPickLine: ((String, Double, Double) -> Unit)? = null
+    var onTapEmpty: (() -> Unit)? = null
+    /** Tap sur le trace du planificateur (pas sur un trace de mesure), sur son depart ou son arrivee : rouvre la
+     *  bande de calcul et cadre la carte sur tout le parcours. Rend vrai si le tap a ete pris. */
+    var onPlannerRouteTap: (() -> Boolean)? = null
+    /** Tap sur un marqueur de point d'interet : recoit (identifiant, lon, lat). */
+    var onPickPoi: ((String, Double, Double) -> Unit)? = null
+    /** Appui long sur un endroit quelconque de la carte - hors trace et hors marqueur : reçoit (lon, lat).
+     *  Un appui long qui tombe sur une trace ou un marqueur ne l'appelle pas : ceux-là se décrivent déjà
+     *  eux-mêmes, par leur profil et leur infobulle. */
+    var onLongPressEmpty: ((Double, Double) -> Unit)? = null
+    /** Si défini, intercepte tout tap sur la carte AVANT le test de sélection point/ligne habituel
+     *  (mode de saisie exclusif, ex. tracé de bounding box hors-ligne) : reçoit (lon, lat). */
+    var onRawTap: ((Double, Double) -> Unit)? = null
+    var onCameraIdle: (() -> Unit)? = null
+    var onCameraMove: (() -> Unit)? = null
+    var onUserMoveBegin: (() -> Unit)? = null
+    var onStyleApplied: (() -> Unit)? = null
+    // Tolerance de tap, en dp, autour du doigt. Distincte pour les marqueurs et pour les traces : les
+    // marqueurs sont interroges en premier et l'emportent, une tolerance large sur eux rend une trace qui
+    // passe a cote difficile a atteindre.
+    var tapToleranceDp: Int = 10
+    var lineTapToleranceDp: Int = 16
+    private var density: Float = 2f
+    private var appContext: Context? = null
+
+    /** Geste de rotation à 2 doigts (réglage utilisateur) ; appliqué immédiatement si la carte est prête. */
+    var rotateGesturesEnabled: Boolean = false
+        set(value) { field = value; map?.uiSettings?.isRotateGesturesEnabled = value }
+
+    // une couche peut contenir points ET lignes : une seule source, deux style layers filtrés par géométrie.
+    private val layerKeys = linkedSetOf<String>()
+    // Derniere (revision, couleur) reellement appliquee a MapLibre par cle : evite de recharger une source
+    // dont le fichier .map n'a pas change. La geometrie est chargee par MapLibre depuis une URI file:// sur
+    // son propre thread de travail, jamais conservee en String cote JVM (revision = horodatage ^ taille).
+    private val applied = HashMap<String, Pair<Long, String>>()
+    // Contenu de la source de pente reellement pose, par cle de couche (cf. [RenderLayer.slopeGeoJson]).
+    private val appliedSlope = HashMap<String, String>()
+    // Largeur du trait (dp) et chevrons du sens de parcours, communs aux traces et aux itineraires.
+    private var trackWidthDp = com.tunturo.app.data.db.DefaultTrackLineWidthDp.toFloat()
+    private var trackArrows = false
+    private val chevronImages = hashSetOf<String>()
+    private val pinImages = hashSetOf<String>()
+    private val poiImages = hashSetOf<String>()
+    private val gpsImages = hashSetOf<String>()
+
+    // ---- repere de position GPS (cf. setUserMarker) ----
+    // La fleche pleine, comme le defaut du reglage : cet etat vaut jusqu'au premier setUserMarker, et un
+    // repli qui differe du defaut ferait clignoter le repere d'un symbole a l'autre au demarrage.
+    private var userMarker = GpsMarkerStyle.ARROW_FILLED
+    private var userMarkerColor = GpsMarkerStyle.ARROW_FILLED.defaultColor
+    private var userMarkerSizeDp = DefaultGpsMarkerSizeDp.toFloat()
+    /** Derniere orientation connue du telephone (degres, nord vrai), ou null tant que rien n'a ete mesure. */
+    private var userHeading: Float? = null
+    /** Derniere position recue : (lon, lat, precision en metres). */
+    private var lastUserFix: Triple<Double, Double, Float>? = null
+    /** Description du symbole reellement pose sur la carte, pour ne le refaire que s'il change. */
+    private var appliedUserMarker: String? = null
+
+    // style en attente / appliqué (évite le rechargement à chaque recomposition)
+    private var desiredJson: String? = null
+    private var desiredUrl: String? = null
+    private var desiredKey: String? = null
+    private var appliedKey: String? = null
+
+    fun attachDensity(d: Float) { density = d }
+    fun attachContext(c: Context) {
+        appContext = c.applicationContext
+        touchSlopPx = ViewConfiguration.get(c).scaledTouchSlop.toFloat()
+    }
+
+    // ---- tap rapide (voir handleFastTap) : etat du geste en cours, alimente par onMapTouch ----
+    private var downX = 0f
+    private var downY = 0f
+    private var multiTouch = false
+    private var fastPicked = false
+    private var touchSlopPx = 24f
+
+    /** Evenements tactiles bruts de la MapView, observes sans etre consommes : MapLibre continue de gerer
+     *  pan / fling / double-tap-zoom / long press normalement, on se contente d'un signal plus precoce. */
+    private val touchHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var dragCandidate: Long? = null
+    private var dragStart: Runnable? = null
+
+    /**
+     * @return vrai quand le geste est CONSOMME : une pastille d'etape est en train d'etre deplacee, et la
+     *   carte ne doit pas se deplacer avec elle.
+     *
+     * **Le glisser-deposer d'une pastille.** Un appui qui reste sur une pastille d'etape [StepDragDelayMs]
+     * la saisit - delai volontairement plus court que l'appui long de la carte, qui ouvrirait sinon l'infobulle
+     * du point. La carte recoit alors un ANNULER pour lacher son geste, et les mouvements suivants ne vont
+     * plus qu'a la pastille, qui suit le doigt ; au lever, l'etape prend ce point (cf. [onStepDropped]).
+     * Un doigt qui bouge avant le delai est un geste de carte : on ne saisit rien.
+     */
+    fun onMapTouch(e: MotionEvent, view: android.view.View): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = e.x; downY = e.y; multiTouch = false; fastPicked = false
+                cancelDragStart()
+                val id = plannerBadgeAt(PointF(e.x, e.y))
+                if (id != null) {
+                    dragCandidate = id
+                    val start = Runnable {
+                        val candidate = dragCandidate ?: return@Runnable
+                        dragCandidate = null
+                        draggedStepId = candidate
+                        dragLonLat = lonLatAt(downX, downY)
+                        buzzOnGrab(view)
+                        val cancel = MotionEvent.obtain(e.downTime, android.os.SystemClock.uptimeMillis(),
+                            MotionEvent.ACTION_CANCEL, downX, downY, 0)
+                        view.onTouchEvent(cancel)
+                        cancel.recycle()
+                    }
+                    dragStart = start
+                    touchHandler.postDelayed(start, StepDragDelayMs)
+                }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> { multiTouch = true; cancelDragStart() }
+            MotionEvent.ACTION_MOVE -> {
+                if (draggedStepId != null) {
+                    lonLatAt(e.x, e.y)?.let { dragLonLat = it }
+                    drawStepMarks()
+                    return true
+                }
+                if (dragCandidate != null && hypot((e.x - downX).toDouble(), (e.y - downY).toDouble()) > touchSlopPx) {
+                    cancelDragStart()
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                cancelDragStart()
+                val id = draggedStepId
+                if (id != null) {
+                    val dropped = if (e.actionMasked == MotionEvent.ACTION_UP) lonLatAt(e.x, e.y) else null
+                    draggedStepId = null
+                    dragLonLat = null
+                    if (dropped != null) {
+                        holdDroppedStep(id, dropped)
+                        onStepDropped?.invoke(id, dropped.first, dropped.second)
+                    }
+                    drawStepMarks()
+                    return true
+                }
+                if (e.actionMasked == MotionEvent.ACTION_UP) {
+                    val moved = hypot((e.x - downX).toDouble(), (e.y - downY).toDouble())
+                    val heldMs = e.eventTime - e.downTime
+                    if (!multiTouch && moved < touchSlopPx && heldMs < ViewConfiguration.getLongPressTimeout()) {
+                        handleFastTap(PointF(e.x, e.y))
+                    }
+                }
+            }
+        }
+        return draggedStepId != null
+    }
+
+    /**
+     * Une vibration franche a la saisie d'une pastille.
+     *
+     * Le retour haptique de la vue depend du reglage "retour tactile" du telephone et reste souvent
+     * imperceptible : on commande donc le vibreur lui-meme (permission VIBRATE), et la vue ne sert que de
+     * recours si l'appareil n'en a pas.
+     */
+    private fun buzzOnGrab(view: android.view.View) {
+        val vibrator = appContext?.let {
+            if (android.os.Build.VERSION.SDK_INT >= 31)
+                (it.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+            else @Suppress("DEPRECATION") (it.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator)
+        }
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(android.os.VibrationEffect.createOneShot(45, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+        }
+    }
+
+    private fun cancelDragStart() {
+        dragStart?.let { touchHandler.removeCallbacks(it) }
+        dragStart = null
+        dragCandidate = null
+    }
+
+    /**
+     * Selection d'un marqueur des le lever du doigt, sans attendre onMapClick.
+     *
+     * onMapClick = onSingleTapConfirmed : Android arme un message differe de
+     * ViewConfiguration.getDoubleTapTimeout() (300 ms) des l'ACTION_DOWN et ne livre le clic qu'a son
+     * expiration, le temps d'ecarter l'hypothese d'un double-tap. C'est un plancher incompressible sur ce
+     * chemin, mesure a ~306 ms, soit l'essentiel de la latence percue a l'ouverture d'une infobulle.
+     *
+     * Volontairement limite aux MARQUEURS : un double-tap pour zoomer ne doit pas ouvrir le profil d'une
+     * trace ni fermer l'infobulle en cours, donc les taps sur une ligne et dans le vide restent sur le
+     * chemin confirme, au comportement inchange.
+     * Contrepartie assumee : un double-tap pile sur un marqueur ouvre son infobulle en plus de zoomer.
+     */
+    private fun handleFastTap(screen: PointF) {
+        if (onRawTap != null) return          // mode de saisie exclusif (bbox hors-ligne) : pas de selection ici
+        val hit = markerPickAt(screen) ?: return
+        fastPicked = true
+        hit()
+    }
+
+    /** Action de selection du marqueur sous [screen], ou null si aucun n'y est. */
+    private fun markerPickAt(screen: PointF): (() -> Unit)? {
+        val m = map ?: return null
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        // La pastille d'une etape d'itineraire, posee par-dessus tout le reste.
+        plannerBadgeAt(screen)?.let { id -> return { onPickPlannerStep?.invoke(id) } }
+        // Le depart (A) et l'arrivee (B) : comme un tap sur le trace du parcours (cf. onPlannerRouteTap).
+        if (plannerEndpointAt(screen)) return { onPlannerRouteTap?.invoke() }
+        // Les points d'interet d'abord, parce qu'ils sont dessines par-dessus : sous le doigt, c'est celui
+        // qu'on voit qui doit repondre. Ils ne sont la que si la couche est allumee, donc rien ne change
+        // pour qui ne s'en sert pas.
+        if (style?.getLayer(POI_LAYER) != null) {
+            m.queryRenderedFeatures(rect, POI_LAYER).firstOrNull()?.let { f ->
+                val id = f.getStringProperty("__id")
+                val g = f.geometry() as? org.maplibre.geojson.Point
+                if (id != null && g != null) return { onPickPoi?.invoke(id, g.longitude(), g.latitude()) }
+            }
+        }
+        for (k in layerKeys) {
+            val hit = m.queryRenderedFeatures(rect, pointLayerId(k)).firstOrNull()?.let { pickOf(k, it) }
+            if (hit != null) return hit
+        }
+        return null
+    }
+
+    /** La couche dont la trace est montree au profil ("ly<id>") : un tap sur un chevauchement passe alors a la suivante. */
+    var activeLineKey: String? = null
+
+    /**
+     * Cle de la couche dont une ligne passe sous [screen], ou null. Tolerance propre aux traces, plus
+     * large que celle des marqueurs (cf. [lineTapToleranceDp]).
+     *
+     * Parmi les couches a portee du doigt, la plus PROCHE l'emporte : prendre la premiere trouvee donnait
+     * toujours la meme trace quand la tolerance en couvrait plusieurs, et la plus basse ne se touchait
+     * jamais. Quand plusieurs se confondent sous le doigt (a [LineOverlapDp] pres), on les parcourt de la
+     * plus haute a la plus basse : la plus basse d'abord - c'est celle qu'on ne peut pas atteindre -, puis,
+     * a chaque tap, celle qui suit la couche deja montree.
+     */
+    private fun lineKeyAt(screen: PointF): String? {
+        val m = map ?: return null
+        val s = style ?: return null
+        val tol = lineTapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        val distances = layerKeys.mapNotNull { key ->
+            val features = m.queryRenderedFeatures(rect, *lineLayerIds(key))
+            if (features.isEmpty()) return@mapNotNull null
+            val nearest = features.minOf { screenDistance(m, it.geometry(), screen) }
+            key to nearest
+        }
+        if (distances.isEmpty()) return null
+        val closest = distances.minOf { it.second }
+        val overlapping = distances.filter { it.second <= closest + LineOverlapDp * density }.map { it.first }
+        if (overlapping.size == 1) return overlapping.first()
+        val order = s.layers.map { it.id }
+        return pickAmongOverlapping(overlapping.sortedByDescending { order.indexOf(lineLayerId(it)) }, activeLineKey)
+    }
+
+    /**
+     * Vrai si le doigt tombe sur le trace du planificateur. Les tracés des mesures partagent ce calque, mais
+     * portent un autre proprietaire : un tap sur eux ne rouvre pas la bande de calcul.
+     */
+    private fun plannerRouteAt(screen: PointF): Boolean {
+        val m = map ?: return false
+        if (style?.getLayer(ROUTE_LINE) == null) return false
+        val tol = lineTapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, ROUTE_LINE)
+            .any { it.getStringProperty(SlopeLines.OwnerProperty) == SlopeLines.PlannerOwner }
+    }
+
+    /** Distance en pixels de [screen] a la ligne [geometry] (en lon/lat) ; infinie si ce n'en est pas une. */
+    private fun screenDistance(m: MapLibreMap, geometry: org.maplibre.geojson.Geometry?, screen: PointF): Float {
+        val lines: List<List<org.maplibre.geojson.Point>> = when (geometry) {
+            is org.maplibre.geojson.LineString -> listOf(geometry.coordinates())
+            is org.maplibre.geojson.MultiLineString -> geometry.coordinates()
+            else -> return Float.MAX_VALUE
+        }
+        var best = Float.MAX_VALUE
+        for (line in lines) {
+            var previous: PointF? = null
+            for (point in line) {
+                val current = m.projection.toScreenLocation(LatLng(point.latitude(), point.longitude()))
+                val from = previous
+                best = minOf(best, if (from == null) hypot(current.x - screen.x, current.y - screen.y)
+                    else distanceToSegment(screen, from, current))
+                previous = current
+            }
+        }
+        return best
+    }
+
+    private fun distanceToSegment(p: PointF, a: PointF, b: PointF): Float {
+        val dx = b.x - a.x; val dy = b.y - a.y
+        val lengthSquared = dx * dx + dy * dy
+        val t = if (lengthSquared == 0f) 0f else (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).coerceIn(0f, 1f)
+        return hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+    }
+
+    /**
+     * Cles des couches dont une ligne passe pres de (lon, lat) : les candidates a un point de mesure.
+     *
+     * Rabattre un tap sur une trace demande le profil precalcule de la couche, soit un fichier lu et
+     * decode : les passer TOUTES en revue coutait plusieurs secondes des qu'une carte en portait beaucoup.
+     * L'index de rendu de MapLibre repond, lui, dans l'instant, et n'interroge que ce qui est reellement
+     * dessine autour du doigt.
+     *
+     * La fenetre s'elargit tant qu'elle ne trouve rien : un tap dans le vide continue de se poser sur la
+     * trace d'a cote, comme un tap qui depasse un bout de trace se pose sur ce bout. Elle finit par
+     * renoncer - loin de toute trace, il n'y a rien a mesurer, et le tap reste sans effet.
+     */
+    fun lineKeysNear(lon: Double, lat: Double): List<String> {
+        val m = map ?: return emptyList()
+        val screen = m.projection.toScreenLocation(LatLng(lat, lon))
+        for (factor in LineSearchFactors) {
+            val tol = lineTapToleranceDp * density * factor
+            val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+            val keys = layerKeys.filter { m.queryRenderedFeatures(rect, *lineLayerIds(it)).isNotEmpty() }
+            if (keys.isNotEmpty()) return keys
+        }
+        return emptyList()
+    }
+
+    /** Action de selection d'un marqueur interroge, ou null si la feature n'est pas exploitable. */
+    private fun pickOf(key: String, f: org.maplibre.geojson.Feature): (() -> Unit)? {
+        val id = f.getStringProperty("__id") ?: return null
+        val g = f.geometry() as? org.maplibre.geojson.Point ?: return null
+        return { onPickPoint?.invoke(key, id, g.longitude(), g.latitude()) }
+    }
+
+    /** Decale la carte de (dx, dy) pixels ecran : le contenu, donc le marqueur, se deplace d'autant.
+     *  On deplace le centre courant de (-dx, -dy) puis on y anime la camera. */
+    fun panByScreen(dx: Float, dy: Float) {
+        if (dx == 0f && dy == 0f) return
+        val m = map ?: return
+        val center = m.cameraPosition.target ?: return
+        val p = m.projection.toScreenLocation(center)
+        val newCenter = m.projection.fromScreenLocation(PointF(p.x - dx, p.y - dy))
+        m.easeCamera(CameraUpdateFactory.newLatLng(newCenter), 250)
+    }
+
+    fun onMapReady(m: MapLibreMap) {
+        map = m
+        m.uiSettings.isCompassEnabled = false  // remplacé par un bouton Compose (positionnement fiable)
+        m.uiSettings.isRotateGesturesEnabled = rotateGesturesEnabled
+        applyStyleIfNeeded()
+    }
+
+    /** Cap actuel de la carte, en degrés (0 = nord en haut). */
+    fun bearing(): Double = map?.cameraPosition?.bearing ?: 0.0
+
+    /** Réoriente la carte pour remettre le nord en haut. */
+    fun resetNorth() { map?.easeCamera(CameraUpdateFactory.bearingTo(0.0)) }
+
+    /** Aucun style de repli : tant que json/url ne sont pas résolus (ex. fonds/réglages pas encore
+     *  chargés), on ne touche pas au style actuellement appliqué plutôt que d'afficher un style de
+     *  démonstration MapLibre (fond monde générique, un aplat de couleur par pays). */
+    fun requestStyle(json: String?, url: String?) {
+        if (json == null && url == null) return
+        desiredJson = json; desiredUrl = url; desiredKey = url ?: json
+        applyStyleIfNeeded()
+    }
+
+    private fun applyStyleIfNeeded() {
+        val m = map ?: return
+        val key = desiredKey ?: return
+        if (key == appliedKey) return
+        appliedKey = key
+        val b = if (desiredUrl != null) Style.Builder().fromUri(desiredUrl!!) else Style.Builder().fromJson(desiredJson!!)
+        m.setStyle(b) { st ->
+            style = st
+            /*
+             * Le nouveau style a vide sources, couches ET IMAGES : les caches qui retiennent ce qui y a
+             * ete pose doivent repartir a zero, TOUS.
+             *
+             * Deux y manquaient - celui des points d'interet et celui de l'ombre du marqueur selectionne -
+             * et l'oubli ne se voyait qu'en changeant de fond de carte : le cache disait l'image posee, le
+             * style ne la portait plus, et la couche renvoyait a une image absente. Les marqueurs
+             * disparaissaient sans que rien ne le signale, et aucun geste ne les ramenait.
+             */
+            layerKeys.clear(); applied.clear(); appliedSlope.clear(); chevronImages.clear()
+            pinImages.clear(); gpsImages.clear(); poiImages.clear(); shadowImages.clear()
+            appliedUserMarker = null
+            onStyleApplied?.invoke()
+        }
+    }
+
+    /**
+     * Remonte le trait de la couche [key] au-dessus des traits des autres couches : une trace qu'on touche
+     * pour son profil ou ses voies se lit sans qu'une autre la recouvre. Il passe au-dessus du dernier trait
+     * des autres couches, donc sous les calques de tete : le repere de position reste visible.
+     */
+    fun bringLayerToFront(key: String) {
+        val s = style ?: return
+        if (s.getLayer(lineLayerId(key)) == null) return
+        // Le dernier trait des AUTRES couches : les calques d'une couche s'ajoutent par paquets (trait, pins),
+        // un point d'ancrage pris sur les pins ne depasserait qu'un seul trait.
+        val others = layerKeys.filter { it != key }
+            .flatMap { listOf(lineLayerId(it), slopeLayerId(it), arrowLayerId(it)) }.toSet()
+        var anchor = s.layers.map { it.id }.lastOrNull { it in others } ?: return
+        for (id in listOf(lineLayerId(key), slopeLayerId(key), arrowLayerId(key))) {
+            val layer = s.getLayer(id) ?: continue
+            s.removeLayer(layer)
+            s.addLayerAbove(layer, anchor)
+            anchor = id
+        }
+    }
+
+    private fun src(key: String) = "src-$key"
+    private fun lineLayerId(key: String) = "$key-ln"
+    private fun pointLayerId(key: String) = "$key-pt"
+    private fun slopeSrc(key: String) = "src-$key-slope"
+    private fun slopeLayerId(key: String) = "$key-sl"
+    private fun arrowLayerId(key: String) = "$key-dir"
+    /** Les calques qui dessinent la ligne d'une couche : le trait de sa couleur, ou celui de ses pentes. */
+    private fun lineLayerIds(key: String): Array<String> =
+        if (appliedSlope.containsKey(key)) arrayOf(lineLayerId(key), slopeLayerId(key)) else arrayOf(lineLayerId(key))
+    /** Identifiants des calques/source du marqueur sélectionné : ombre portée, pin au sommet, source commune
+     *  (cf. [setSelectedMarker]). */
+    private val SEL_SHADOW = "sel-marker-shadow"
+    private val SEL_TOP = "sel-marker-top"
+    private val SEL_SRC = "sel-marker-src"
+    /** Source et couche des points d'interet (cf. [setPoiMarkers]). */
+    private val POI_SRC = "poi-src"
+    private val POI_LAYER = "poi-pt"
+    /** Source et couches du repere de position GPS : le cercle de precision, puis le symbole par-dessus. */
+    private val USER_SRC = "user-location"
+    private val USER_ACCURACY = MapHeadOverlays.USER_ACCURACY
+    private val USER_DOT = MapHeadOverlays.USER_DOT
+    /** Le plus bas des calques de tete presents (cf. [MapHeadOverlays]), sous lequel tout s'ajoute. */
+    private fun lowestHeadOverlay(s: Style): String? = MapHeadOverlays.lowest(s.layers.map { it.id })
+    /**
+     * Ajoute une couche SOUS les calques de tete : le repere de position et le curseur du profil restent
+     * visibles, quel que soit l'ordre dans lequel les couches sont arrivees.
+     *
+     * Sans cela, un itineraire enregistre dans la bibliotheque alors que le GPS tournait deja se posait
+     * par-dessus la fleche de position, qui disparaissait sous le trait.
+     */
+    private fun addLayerSafe(layer: org.maplibre.android.style.layers.Layer) {
+        val s = style ?: return
+        val below = lowestHeadOverlay(s)
+        if (below != null) s.addLayerBelow(layer, below) else s.addLayer(layer)
+    }
+
+    private val lineGeometryFilter: Expression = Expression.any(
+        Expression.eq(Expression.geometryType(), Expression.literal("LineString")),
+        Expression.eq(Expression.geometryType(), Expression.literal("MultiLineString")),
+    )
+    private val pointGeometryFilter: Expression = Expression.eq(Expression.geometryType(), Expression.literal("Point"))
+    private val polygonGeometryFilter: Expression = Expression.eq(Expression.geometryType(), Expression.literal("Polygon"))
+
+    /** Ajoute/actualise une source par couche, avec ses deux style layers (ligne + points) filtrés par géométrie. */
+    fun setLayers(list: List<RenderLayer>, markerHeightPx: Float) {
+        val s = style ?: return
+        val wanted = list.associateBy { it.key }
+        (layerKeys - wanted.keys).forEach { k ->
+            removeSlope(s, k)
+            s.getLayer(arrowLayerId(k))?.let { s.removeLayer(it) }
+            s.getLayer(pointLayerId(k))?.let { s.removeLayer(it) }
+            s.getLayer(lineLayerId(k))?.let { s.removeLayer(it) }
+            s.getSource(src(k))?.let { s.removeSource(it) }
+            layerKeys.remove(k)
+            applied.remove(k)
+        }
+        list.forEach { r ->
+            val prev = applied[r.key]
+            val source = s.getSourceAs<GeoJsonSource>(src(r.key))
+            if (source == null || prev == null || prev.first != r.revision) {
+                // (Re)cree la source depuis l'URI file:// du .map : MapLibre lit et parse le fichier sur son
+                // propre thread de travail (pas de blocage UI, pas de GeoJSON volumineux garde en memoire JVM).
+                // Si la revision a change (edition de points), on retire d'abord l'ancienne source : reutiliser
+                // la meme URI ne garantit pas un rechargement du contenu.
+                if (source != null) {
+                    removeSlope(s, r.key)
+                    s.getLayer(arrowLayerId(r.key))?.let { s.removeLayer(it) }
+                    s.getLayer(pointLayerId(r.key))?.let { s.removeLayer(it) }
+                    s.getLayer(lineLayerId(r.key))?.let { s.removeLayer(it) }
+                    s.getSource(src(r.key))?.let { s.removeSource(it) }
+                    layerKeys.remove(r.key)
+                }
+                val img = ensurePin(s, appContext, r.color, markerHeightPx)
+                s.addSource(GeoJsonSource(src(r.key), java.net.URI(r.uri)))
+                addLayerSafe(LineLayer(lineLayerId(r.key), src(r.key)).withProperties(
+                    PropertyFactory.lineColor(r.color), PropertyFactory.lineWidth(trackWidthDp),
+                    PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+                    .withFilter(lineGeometryFilter))
+                addLayerSafe(SymbolLayer(pointLayerId(r.key), src(r.key)).withProperties(
+                    PropertyFactory.iconImage(img),
+                    PropertyFactory.iconSize(1f),               // taille fixe à l'écran (pas d'échelle au zoom)
+                    PropertyFactory.iconAnchor("bottom"),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true))
+                    .withFilter(pointGeometryFilter))
+                layerKeys.add(r.key)
+            } else if (prev.second != r.color) {
+                val img = ensurePin(s, appContext, r.color, markerHeightPx)
+                (s.getLayer(lineLayerId(r.key)) as? LineLayer)?.setProperties(PropertyFactory.lineColor(r.color))
+                (s.getLayer(pointLayerId(r.key)) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+            }
+            applied[r.key] = r.revision to r.color
+            applySlope(s, r)
+            applyArrows(s, r.key, src(r.key), pointLayerId(r.key))
+        }
+    }
+
+    /**
+     * Le trait colorie par pente d'une couche, pose juste au-dessus de son trait ordinaire, qui s'efface.
+     *
+     * Le trait ordinaire est MASQUE et non retire : il garde la source et la geometrie completes, et c'est
+     * lui qu'on retrouve des que la couleur est retablie. Le toucher, lui, interroge les deux calques (cf.
+     * [lineLayerIds]) - un calque masque ne repond plus a la recherche de MapLibre.
+     */
+    private fun applySlope(s: Style, r: RenderLayer) {
+        val geo = r.slopeGeoJson
+        if (geo == null) {
+            if (appliedSlope.containsKey(r.key)) {
+                removeSlope(s, r.key)
+                s.getLayer(lineLayerId(r.key))?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            }
+            return
+        }
+        if (appliedSlope[r.key] == geo) return
+        val existing = s.getSourceAs<GeoJsonSource>(slopeSrc(r.key))
+        if (existing != null) existing.setGeoJson(geo)
+        else {
+            s.addSource(GeoJsonSource(slopeSrc(r.key), geo))
+            val layer = slopeLineLayer(slopeLayerId(r.key), slopeSrc(r.key))
+            if (s.getLayer(lineLayerId(r.key)) != null) s.addLayerAbove(layer, lineLayerId(r.key)) else addLayerSafe(layer)
+        }
+        s.getLayer(lineLayerId(r.key))?.setProperties(PropertyFactory.visibility(Property.NONE))
+        appliedSlope[r.key] = geo
+    }
+
+    private fun removeSlope(s: Style, key: String) {
+        s.getLayer(slopeLayerId(key))?.let { s.removeLayer(it) }
+        s.getSource(slopeSrc(key))?.let { s.removeSource(it) }
+        appliedSlope.remove(key)
+    }
+
+    /** Un trait dont chaque troncon porte sa couleur, dans sa propriete "color" (cf. SlopeLines). */
+    private fun slopeLineLayer(id: String, source: String): LineLayer =
+        LineLayer(id, source).withProperties(
+            PropertyFactory.lineColor(Expression.toColor(Expression.get("color"))),
+            PropertyFactory.lineWidth(trackWidthDp),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+            .withFilter(lineGeometryFilter)
+
+    /**
+     * Largeur du trait et chevrons du sens de parcours, pour toutes les traces et les itineraires.
+     *
+     * Applique aux calques deja poses : la largeur se change sur place, les chevrons se posent ou se
+     * retirent. Les couches posees ensuite les prennent a leur creation.
+     */
+    fun setTrackStyle(widthDp: Int, arrows: Boolean) {
+        val w = widthDp.toFloat()
+        if (w == trackWidthDp && arrows == trackArrows) return
+        trackWidthDp = w; trackArrows = arrows
+        val s = style ?: return
+        val lines = layerKeys.flatMap { listOf(lineLayerId(it), slopeLayerId(it)) } + ROUTE_LINE
+        lines.forEach { id -> (s.getLayer(id) as? LineLayer)?.setProperties(PropertyFactory.lineWidth(w)) }
+        // Les mises en evidence suivent le trait qu'elles recouvrent : elles s'y ajoutent.
+        HIGHLIGHT_KEYS.forEach { k ->
+            (s.getLayer(hlId(k)) as? LineLayer)?.setProperties(highlightWidth(HighlightWidth.lineStops(w)))
+            (s.getLayer(hlCasingId(k)) as? LineLayer)?.setProperties(highlightWidth(HighlightWidth.casingStops(w)))
+        }
+        layerKeys.forEach { k -> applyArrows(s, k, src(k), pointLayerId(k)) }
+        if (s.getSource(ROUTE_ARROW_SRC) != null) applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, null)
+    }
+
+    /**
+     * Les chevrons du sens de parcours d'une ligne : une image repetee le long du trait, tournee avec lui.
+     *
+     * Poses sous les epingles de la couche ([belowId]) : un marqueur ne doit pas disparaitre derriere une
+     * fleche. L'image depend de la largeur du trait, qu'elle ne doit guere deborder (cf. [chevronBitmap]) :
+     * une nouvelle largeur remplace donc l'image du calque.
+     */
+    private fun applyArrows(s: Style, key: String, source: String, belowId: String?) {
+        val id = arrowLayerId(key)
+        if (!trackArrows) { s.getLayer(id)?.let { s.removeLayer(it) }; return }
+        val img = ensureChevron(s)
+        val existing = s.getLayer(id) as? SymbolLayer
+        if (existing != null) {
+            existing.setProperties(PropertyFactory.iconImage(img), PropertyFactory.symbolSpacing(chevronSpacing()))
+            return
+        }
+        val layer = SymbolLayer(id, source).withProperties(
+            PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+            PropertyFactory.symbolSpacing(chevronSpacing()),
+            PropertyFactory.iconImage(img),
+            PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+            PropertyFactory.iconKeepUpright(false),
+            PropertyFactory.iconAllowOverlap(true),
+            PropertyFactory.iconIgnorePlacement(true))
+            .withFilter(lineGeometryFilter)
+        if (belowId != null && s.getLayer(belowId) != null) s.addLayerBelow(layer, belowId) else addLayerSafe(layer)
+    }
+
+    /** Ecart entre deux chevrons (dp) : serres comme chez OruxMaps, sans se toucher sur un trait large. */
+    private fun chevronSpacing(): Float = (trackWidthDp * 7f).coerceAtLeast(36f)
+
+    private fun ensureChevron(s: Style): String {
+        val h = TrackChevron.heightPx(trackWidthDp, density)
+        val name = "chevron_$h"
+        if (chevronImages.add(name)) s.addImage(name, chevronBitmap(h))
+        return name
+    }
+
+    /**
+     * Un chevron ">" pointant dans le sens de la ligne (l'axe x de l'image suit le trait), noir cerne de
+     * blanc : il se lit sur un trait clair comme sur le trait noir d'un itineraire. Sa hauteur deborde a
+     * peine la largeur du trait (cf. [TrackChevron]).
+     */
+    private fun chevronBitmap(h: Int): Bitmap {
+        val w = TrackChevron.widthPx(h)
+        val bmp = createBitmap(w, h)
+        val c = AndroidCanvas(bmp)
+        val stroke = TrackChevron.strokePx(h)
+        val haloW = TrackChevron.haloPx(h)
+        val path = android.graphics.Path().apply {
+            // Marge d'un demi-halo : le halo reste dans le cadre, qui ne deborde pas le trait.
+            val m = haloW / 2f
+            moveTo(m, m); lineTo(w - m, h / 2f); lineTo(m, h - m)
+        }
+        val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; strokeWidth = haloW; color = android.graphics.Color.WHITE
+            strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+        }
+        val ink = Paint(halo).apply { strokeWidth = stroke; color = android.graphics.Color.BLACK }
+        c.drawPath(path, halo); c.drawPath(path, ink)
+        return bmp
+    }
+
+    private val shadowImages = mutableSetOf<String>()
+
+    /**
+     * Marqueur sélectionné : son ombre portée (silhouette grise floutée du pin, décalée en bas à droite,
+     * posée sous les pins de sa trace [belowKey]) et une copie de son pin au sommet de la pile, pour qu'il
+     * passe DEVANT les marqueurs qui le chevauchent. Les deux partagent une source. Calques carte (et non
+     * surcouche Compose) : ils suivent seuls la carte au pan/zoom. [lon]/[lat] nuls retirent tout.
+     */
+    fun setSelectedMarker(
+        lon: Double?, lat: Double?, belowKey: String?, colorHex: String?, heightPx: Float,
+        iconRes: Int? = null,
+    ) {
+        val s = style ?: return
+        if (lon == null || lat == null) {
+            s.getLayer(SEL_TOP)?.let { s.removeLayer(it) }
+            s.getLayer(SEL_SHADOW)?.let { s.removeLayer(it) }
+            s.getSource(SEL_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val h = heightPx.toInt().coerceIn(24, 256)
+        val shadowImg = ensureShadowImage(s, appContext, h)
+        // Un point d'interet reprend sa bulle a pictogramme, un marqueur de trace son pin : la copie
+        // posee au sommet doit etre celle du marqueur qu'on vient de toucher, sans quoi il changerait de
+        // dessin en s'ouvrant.
+        val pinImg = if (iconRes != null) ensurePoiBubble(s, appContext, colorHex ?: "#1F6FB2", iconRes, heightPx)
+        else ensurePin(s, appContext, colorHex ?: "#1F6FB2", heightPx)
+        val geojson = "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}"
+        val existingSrc = s.getSourceAs<GeoJsonSource>(SEL_SRC)
+        if (existingSrc == null) s.addSource(GeoJsonSource(SEL_SRC, geojson)) else existingSrc.setGeoJson(geojson)
+        // Ombre, sous les pins de la trace du marqueur.
+        if (s.getLayer(SEL_SHADOW) == null) {
+            val shadow = SymbolLayer(SEL_SHADOW, SEL_SRC).withProperties(
+                PropertyFactory.iconImage(shadowImg), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                // léger décalage bas-droite, pour un effet d'ombre portée (le marqueur est ancré en bas)
+                PropertyFactory.iconOffset(arrayOf(3f, 4f)),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter)
+            val belowPts = belowKey?.let { pointLayerId(it) }
+            if (belowPts != null && s.getLayer(belowPts) != null) s.addLayerBelow(shadow, belowPts) else addLayerSafe(shadow)
+        } else {
+            (s.getLayer(SEL_SHADOW) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(shadowImg))
+        }
+        // Copie du pin au-dessus des autres marqueurs, mais SOUS les overlays de tête (point GPS, point
+        // courant du profil) : le marqueur cliqué passe devant ceux qui le chevauchent sans masquer le
+        // repère GPS. On l'insère sous le plus bas de ces overlays présents (style.layers est ordonné du bas
+        // vers le haut, d'où le premier match) ; à défaut, au sommet, rien à passer dessous.
+        if (s.getLayer(SEL_TOP) == null) {
+            val topPin = SymbolLayer(SEL_TOP, SEL_SRC).withProperties(
+                PropertyFactory.iconImage(pinImg), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter)
+            val lowestOverlay = lowestHeadOverlay(s)
+            if (lowestOverlay != null) s.addLayerBelow(topPin, lowestOverlay) else s.addLayer(topPin)
+        } else {
+            (s.getLayer(SEL_TOP) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(pinImg))
+        }
+    }
+
+    /**
+     * Marqueurs des points d'interet, dessines par-dessus les traces. Liste vide : la couche disparait.
+     *
+     * Une seule source pour tous, et l'icone choisie PAR MARQUEUR via une expression de style
+     * (`iconImage(get("__icon"))`) : une couche par groupe couterait quatre interrogations a chaque tap et
+     * autant de sources a tenir a jour, pour un resultat identique a l'ecran.
+     *
+     * Le meme pin que les marqueurs de trace, teinte a la couleur du groupe : la carte garde une seule
+     * grammaire de marqueur, et un point d'interet se distingue par sa couleur, non par une forme etrangere
+     * au reste de l'application.
+     */
+    suspend fun setPoiMarkers(markers: List<PoiMarker>, heightPx: Float) {
+        if (style == null) return
+        if (markers.isEmpty()) {
+            val s = style ?: return
+            s.getLayer(POI_LAYER)?.let { s.removeLayer(it) }
+            s.getSource(POI_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        // Les images d'abord, sur le fil de la carte : il n'y en a qu'une par couleur et par pictogramme.
+        val icones = markers.mapTo(HashSet()) { it.colorHex to it.iconRes }.associateWith { (c, r) ->
+            ensurePoiBubble(style ?: return, appContext, c, r, heightPx)
+        }
+        // Le texte, a cote : une ville dense en porte des milliers - quatre mille restaurants sur une seule
+        // cellule de Madrid -, et l'assembler sur le fil de l'interface figeait la carte le temps de le faire.
+        val geojson = withContext(Dispatchers.Default) {
+            val features = markers.joinToString(",") { m ->
+                val icon = icones.getValue(m.colorHex to m.iconRes)
+                """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lon},${m.lat}]},""" +
+                    """"properties":{"__id":"${m.id}","__icon":"$icon"}}"""
+            }
+            """{"type":"FeatureCollection","features":[$features]}"""
+        }
+        // Le style a pu changer pendant l'assemblage - un fond de carte recharge : on repart du courant, et
+        // ses images sont a reposer.
+        val s = style ?: return
+        icones.keys.forEach { (c, r) -> ensurePoiBubble(s, appContext, c, r, heightPx) }
+        val existing = s.getSourceAs<GeoJsonSource>(POI_SRC)
+        if (existing == null) s.addSource(GeoJsonSource(POI_SRC, geojson)) else existing.setGeoJson(geojson)
+        if (s.getLayer(POI_LAYER) == null) {
+            val layer = SymbolLayer(POI_LAYER, POI_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("__icon")),
+                PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                // Les marqueurs se recouvrent en ville, et MapLibre en masque alors une partie. On les
+                // montre tous : un point d'interet absent se lit comme un lieu qui n'existe pas.
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+            ).withFilter(pointGeometryFilter)
+            // Sous les overlays de tete (position GPS, curseur du profil), comme le marqueur selectionne :
+            // une nuee de points d'interet ne doit pas cacher le repere de position.
+            val lowest = lowestHeadOverlay(s)
+            if (lowest != null) s.addLayerBelow(layer, lowest) else s.addLayer(layer)
+        }
+    }
+
+    /**
+     * Bulle d'un point d'interet : une goutte pleine a la couleur du groupe, le pictogramme de la
+     * categorie en blanc dedans.
+     *
+     * La MEME silhouette que les marqueurs de trace (ic_pin_fill), et non une forme etrangere : la carte
+     * garde une seule grammaire de marqueur. Ce qui distingue un point d'interet, c'est son dessin.
+     *
+     * Le pictogramme occupe 44 % de la hauteur et se pose au centre de la TETE de la goutte, aux 38 % du
+     * haut - pas au milieu de l'image, ou il tomberait sur la pointe.
+     */
+    private fun ensurePoiBubble(s: Style, context: Context?, colorHex: String, iconRes: Int, heightPx: Float): String {
+        val h = heightPx.toInt().coerceIn(24, 256)
+        val name = "poi_${colorHex.removePrefix("#")}_${iconRes}_$h"
+        if (poiImages.add(name)) s.addImage(name, poiBubbleBitmap(context, colorHex.toColorInt(), iconRes, h))
+        return name
+    }
+
+    private fun poiBubbleBitmap(context: Context?, colorInt: Int, iconRes: Int, h: Int): Bitmap {
+        val bmp = createBitmap(h, h)
+        val c = AndroidCanvas(bmp)
+        if (context != null) {
+            ContextCompat.getDrawable(context, R.drawable.ic_pin_outline)?.apply {
+                setBounds(0, 0, h, h); draw(c)
+            }
+            // La goutte PLEINE, et non celle des traces : celle-ci porte un trou dans sa tete, qui
+            // masquait le pictogramme (cf. ic_poi_pin.xml).
+            ContextCompat.getDrawable(context, R.drawable.ic_poi_pin)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(colorInt); draw(c)
+            }
+            val g = (h * 0.44f).toInt()
+            val left = (h - g) / 2
+            val top = (h * 0.38f - g / 2f).toInt()
+            ContextCompat.getDrawable(context, iconRes)?.mutate()?.apply {
+                setBounds(left, top, left + g, top + g)
+                setTint(android.graphics.Color.WHITE)
+                draw(c)
+            }
+        }
+        return bmp
+    }
+
+    private fun ensureShadowImage(s: Style, context: Context?, h: Int): String {
+        val name = "pin_shadow_$h"
+        if (shadowImages.add(name)) s.addImage(name, pinShadowBitmap(context, h))
+        return name
+    }
+
+    /** Silhouette du pin (contour + remplissage) en gris translucide, floutée : l'ombre épouse ainsi la
+     *  forme réelle du marqueur au lieu d'un cercle. */
+    private fun pinShadowBitmap(context: Context?, h: Int): Bitmap {
+        val pin = createBitmap(h, h)
+        val pc = AndroidCanvas(pin)
+        context?.let { ctx ->
+            ContextCompat.getDrawable(ctx, R.drawable.ic_pin_outline)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(android.graphics.Color.BLACK); draw(pc)
+            }
+            ContextCompat.getDrawable(ctx, R.drawable.ic_pin_fill)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(android.graphics.Color.BLACK); draw(pc)
+            }
+        }
+        val blur = (h * 0.05f).coerceAtLeast(1f)
+        val offsetXY = IntArray(2)
+        val alpha = pin.extractAlpha(
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL) },
+            offsetXY)
+        val out = createBitmap(h, h)
+        // gris ~45 % d'opacité : ombre légère, pas un aplat opaque.
+        AndroidCanvas(out).drawBitmap(alpha, offsetXY[0].toFloat(), offsetXY[1].toFloat(),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x73555555.toInt() })
+        pin.recycle(); alpha.recycle()
+        return out
+    }
+
+    /** Rouge du cadre de la bbox hors-ligne, celui du bouton "Retour" de la barre de tracé. */
+    private val BBOX_RED = "#D32F2F"
+
+    /**
+     * Le couloir d'un telechargement le long d'une trace : la trace, et la zone tampon qu'on va
+     * telecharger autour d'elle. [points] en (lon, lat) ; [bands] la zone tampon, calculee par
+     * `CorridorShape` en bandes jointives.
+     *
+     * Une SURFACE et non un trait epais : a vingt kilometres d'epaisseur, les jonctions d'un trait se
+     * chevauchaient et leur transparence s'additionnait en eventails plus fonces. Les bandes se touchent sans
+     * se recouvrir, et le lissage des bords est coupe - il tracerait un fin liseret a chaque jointure.
+     */
+    fun setCorridorPreview(points: List<Pair<Double, Double>>, bands: List<com.tunturo.app.map.offline.Bbox>) {
+        val s = style ?: return
+        val coords = points.joinToString(",") { (lon, lat) -> "[$lon,$lat]" }
+        val polys = bands.joinToString(",") { b ->
+            "[[[${b.west},${b.south}],[${b.east},${b.south}],[${b.east},${b.north}],[${b.west},${b.north}],[${b.west},${b.south}]]]"
+        }
+        val zone = """{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[$polys]},"properties":{}}"""
+        val ligne = """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coords]},"properties":{}}"""
+        val zoneSrc = s.getSourceAs<GeoJsonSource>("corridor-zone-src")
+        if (zoneSrc == null) {
+            s.addSource(GeoJsonSource("corridor-zone-src", zone))
+            s.addSource(GeoJsonSource("corridor-src", ligne))
+            addLayerSafe(FillLayer("corridor-buffer", "corridor-zone-src").withProperties(
+                PropertyFactory.fillColor(BBOX_RED), PropertyFactory.fillOpacity(0.22f),
+                PropertyFactory.fillAntialias(false)))
+            addLayerSafe(LineLayer("corridor-line", "corridor-src").withProperties(
+                PropertyFactory.lineColor(BBOX_RED), PropertyFactory.lineWidth(2.5f),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND), PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)))
+        } else {
+            zoneSrc.setGeoJson(zone)
+            s.getSourceAs<GeoJsonSource>("corridor-src")?.setGeoJson(ligne)
+        }
+    }
+
+    /** Coins posés pendant le tracé de la bbox hors-ligne : rendus en croix "viseur" (pas les épingles
+     *  habituelles) + cadre rouge et emprise blanchie une fois 2 coins posés. Source/couches dédiées,
+     *  indépendantes du système générique [setLayers]/[RenderLayer] (overlay propre à l'app, pas une
+     *  couche importée).
+     *
+     *  [showPoints] est faux pour la vue d'ensemble de l'écran de téléchargement : l'emprise y est déjà
+     *  fixée, ses coins n'ont plus rien à montrer - seul le cadre compte. */
+    fun setBboxDraw(points: List<Pair<Double, Double>>, showPoints: Boolean = true) {
+        val s = style ?: return
+        if (points.isEmpty()) {
+            s.getLayer("bbox-draw-pt")?.let { s.removeLayer(it) }
+            s.getLayer("bbox-draw-line")?.let { s.removeLayer(it) }
+            s.getLayer("bbox-draw-fill")?.let { s.removeLayer(it) }
+            s.getSource("bbox-draw-src")?.let { s.removeSource(it) }
+            return
+        }
+        val geojson = bboxDrawGeoJson(points)
+        val existing = s.getSourceAs<GeoJsonSource>("bbox-draw-src")
+        if (existing == null) {
+            s.addSource(GeoJsonSource("bbox-draw-src", geojson))
+            // Emprise blanchie sous le cadre : elle éclaircit le fond sans le masquer, là où un aplat de
+            // la couleur du cadre teindrait la carte et rendrait ses couleurs illisibles.
+            addLayerSafe(FillLayer("bbox-draw-fill", "bbox-draw-src").withProperties(
+                PropertyFactory.fillColor("#FFFFFF"), PropertyFactory.fillOpacity(0.1f))
+                .withFilter(polygonGeometryFilter))
+            addLayerSafe(LineLayer("bbox-draw-line", "bbox-draw-src").withProperties(
+                PropertyFactory.lineColor(BBOX_RED), PropertyFactory.lineWidth(3f))
+                .withFilter(lineGeometryFilter))
+            val img = "bbox_crosshair"
+            s.addImage(img, crosshairBitmap(android.graphics.Color.BLACK, (40 * density).toInt()))
+            // Explicitement au-dessus du rectangle (pas seulement dans l'ordre d'ajout) : la croix doit
+            // rester visible même là où elle touche le contour du rectangle.
+            s.addLayerAbove(
+                SymbolLayer("bbox-draw-pt", "bbox-draw-src").withProperties(
+                    PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f), PropertyFactory.iconAnchor("center"),
+                    PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.visibility(if (showPoints) Property.VISIBLE else Property.NONE))
+                    .withFilter(pointGeometryFilter),
+                "bbox-draw-line",
+            )
+        } else {
+            existing.setGeoJson(geojson)
+            (s.getLayer("bbox-draw-pt") as? SymbolLayer)?.setProperties(
+                PropertyFactory.visibility(if (showPoints) Property.VISIBLE else Property.NONE))
+        }
+    }
+
+    /** Le rectangle est décrit deux fois, en ligne et en polygone : la ligne porte le cadre, le polygone
+     *  l'emprise blanchie, et une seule géométrie ne peut pas faire les deux. */
+    private fun bboxDrawGeoJson(points: List<Pair<Double, Double>>): String {
+        val features = StringBuilder()
+        points.forEach { (lon, lat) ->
+            if (features.isNotEmpty()) features.append(',')
+            features.append("""{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}""")
+        }
+        if (points.size >= 2) {
+            val (lon1, lat1) = points[0]; val (lon2, lat2) = points[1]
+            val w = minOf(lon1, lon2); val e = maxOf(lon1, lon2)
+            val south = minOf(lat1, lat2); val n = maxOf(lat1, lat2)
+            val ring = """[[$w,$south],[$e,$south],[$e,$n],[$w,$n],[$w,$south]]"""
+            if (features.isNotEmpty()) features.append(',')
+            features.append(
+                """{"type":"Feature","geometry":{"type":"LineString","coordinates":$ring},"properties":{}},""" +
+                    """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[$ring]},"properties":{}}"""
+            )
+        }
+        return """{"type":"FeatureCollection","features":[$features]}"""
+    }
+
+    /** Identifiants des marqueurs noirs du géocodage : le lieu trouvé, et le point de référence choisi à la
+     *  main pour une mesure de distance. Deux couches distinctes, les deux pouvant coexister. */
+    private val GEO_PLACE = "geocode-place"
+    private val GEO_REF = "geocode-ref"
+    /** Calque et source des tracés d'itinéraire mesurés (cf. [setRouteLines]). */
+    private val ROUTE_LINE = "geocode-route"
+    private val ROUTE_SRC = "geocode-route-src"
+    /** Cle des chevrons de l'itineraire (cf. [applyArrows]). */
+    private val ROUTE_KEY = "geocode-route"
+    /**
+     * Source des chevrons de l'itineraire : chaque trace d'UN tenant, et non la source du trait.
+     *
+     * Le trait colorie par pente est coupe en un troncon par couleur (cf. SlopeLines), et MapLibre pose les
+     * symboles d'une ligne en repartant de son debut : sur la source du trait, les chevrons se tassaient la
+     * ou la pente change souvent et manquaient sur les troncons trop courts pour en porter un. Sur une
+     * ligne continue, ils gardent le meme ecart a tous les niveaux de zoom.
+     */
+    private val ROUTE_ARROW_SRC = "geocode-route-dir-src"
+
+    /**
+     * Épingle noire du géocodage : le lieu trouvé ([GEO_PLACE]) ou le point de référence d'une mesure de
+     * distance ([GEO_REF]). Même épingle que les marqueurs de couches, teintée en noir. [lon]/[lat] nuls
+     * la retirent.
+     *
+     * Posée au sommet du style, sans le soin apporté à [setSelectedMarker] pour se glisser sous les repères
+     * de tête : ces deux marqueurs sont, le temps de la recherche, ce que l'utilisateur regarde.
+     */
+    fun setGeocodeMarker(reference: Boolean, lon: Double?, lat: Double?, heightPx: Float) {
+        val s = style ?: return
+        val id = if (reference) GEO_REF else GEO_PLACE
+        val srcId = "$id-src"
+        if (lon == null || lat == null) {
+            s.getLayer(id)?.let { s.removeLayer(it) }
+            s.getSource(srcId)?.let { s.removeSource(it) }
+            return
+        }
+        val img = ensurePin(s, appContext, "#000000", heightPx)
+        val geojson = "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}"
+        val existing = s.getSourceAs<GeoJsonSource>(srcId)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(srcId, geojson))
+            s.addLayer(SymbolLayer(id, srcId).withProperties(
+                PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter))
+        } else {
+            existing.setGeoJson(geojson)
+            (s.getLayer(id) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+        }
+    }
+
+    /** Calque et source des epingles noires du point designe par un appui long (cf. [setMapPointMarkers]). */
+    private val MAP_POINTS = "map-point-pins"
+    private val MAP_POINTS_SRC = "map-point-pins-src"
+
+    /**
+     * Épingles noires du point désigné par un appui long, et de son point de référence (zéro, une ou deux).
+     *
+     * Une seule source pour les deux, comme les bouts d'une mesure sur trace : elles ont même style, et
+     * apparaissent et disparaissent ensemble - l'infobulle du point refermée n'en laisse aucune. Distinctes
+     * des épingles du géocodage, qui peuvent être à l'écran en même temps et ne se ferment pas par le même
+     * geste.
+     */
+    fun setMapPointMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
+        setBlackPins(MAP_POINTS, MAP_POINTS_SRC, points, heightPx)
+
+    /** Calques et source des marqueurs d'etapes (cf. [setStepMarks]) : les epingles A et B, les pastilles. */
+    private val PLANNER_PTS = "planner-pins"
+    private val PLANNER_BADGES = "planner-badges"
+    private val PLANNER_SRC = "planner-pins-src"
+
+    /** Les marqueurs d'etapes tels que la carte les montre : ce que le planificateur a dit, moins le
+     *  deplacement en cours d'une pastille (cf. [onMapTouch]). */
+    private var stepMarks: List<StepMark> = emptyList()
+    private var stepPinPx = 64f
+    private var stepFillColor = android.graphics.Color.BLACK
+    private var stepTextColor = android.graphics.Color.WHITE
+    private var draggedStepId: Long? = null
+    private var dragLonLat: Pair<Double, Double>? = null
+
+    /** La pastille deposee, tenue a son point de depot le temps que le planificateur la rattrape (cf.
+     *  [DroppedStepHold]). */
+    private val dropped = DroppedStepHold()
+    private val releaseDropped = Runnable { dropped.release(); drawStepMarks() }
+
+    private fun holdDroppedStep(id: Long, at: Pair<Double, Double>) {
+        dropped.hold(id, at)
+        // Garde-fou : une etape que le planificateur n'a pas relocalisee ne doit pas rester epinglee ici.
+        touchHandler.removeCallbacks(releaseDropped)
+        touchHandler.postDelayed(releaseDropped, DroppedHoldMs)
+    }
+
+    /** Diametre d'une pastille d'etape, en dp. */
+    private val badgeDp = 26f
+
+    /** Une pastille d'etape deposee apres un appui long : (identifiant de l'etape, lon, lat). */
+    var onStepDropped: ((Long, Double, Double) -> Unit)? = null
+
+    /** Tap sur la pastille d'une etape : recoit son identifiant. */
+    var onPickPlannerStep: ((Long) -> Unit)? = null
+
+    /**
+     * Les marqueurs des etapes : une epingle noire portant A au depart et B a l'arrivee, une petite
+     * pastille ronde numerotee pour chaque etape intermediaire.
+     *
+     * Les deux genres ont chacun leur calque, sur la meme source : l'epingle se pose par sa pointe, la
+     * pastille par son centre. Leur propre calque, comme les precedents : le planificateur reste ouvert
+     * pendant qu'on consulte un point d'interet ou qu'on cherche un lieu.
+     */
+    fun setStepMarks(
+        marks: List<StepMark>, heightPx: Float,
+        /** Couleurs du theme : le fond des epingles A/B et des pastilles, et leur libelle. */
+        fillColor: Int = android.graphics.Color.BLACK,
+        textColor: Int = android.graphics.Color.WHITE,
+    ) {
+        if (dropped.confirm(marks)) touchHandler.removeCallbacks(releaseDropped)
+        stepMarks = marks
+        stepPinPx = heightPx
+        stepFillColor = fillColor
+        stepTextColor = textColor
+        drawStepMarks()
+    }
+
+    private fun drawStepMarks() {
+        val s = style ?: return
+        if (stepMarks.isEmpty()) {
+            s.getLayer(PLANNER_PTS)?.let { s.removeLayer(it) }
+            s.getLayer(PLANNER_BADGES)?.let { s.removeLayer(it) }
+            s.getSource(PLANNER_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val badgePx = badgeDp * density
+        val features = stepMarks.joinToString(",") { m ->
+            val planned = m.lon to m.lat
+            val (lon, lat) = if (m.stepId == draggedStepId) dragLonLat ?: planned else dropped.position(m.stepId, planned)
+            val img = when (m.kind) {
+                StepMarkKind.Start -> ensureLetterPin(s, "A")
+                StepMarkKind.End -> ensureLetterPin(s, "B")
+                StepMarkKind.Via -> ensureBadge(s, m.number, badgePx)
+            }
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{"id":${m.stepId},"via":${m.kind == StepMarkKind.Via},"img":"$img"}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(PLANNER_SRC)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(PLANNER_SRC, geojson))
+            val isVia = Expression.eq(Expression.get("via"), Expression.literal(true))
+            addLayerSafe(SymbolLayer(PLANNER_PTS, PLANNER_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("img")), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(Expression.all(pointGeometryFilter, Expression.not(isVia))))
+            addLayerSafe(SymbolLayer(PLANNER_BADGES, PLANNER_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("img")), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("center"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(Expression.all(pointGeometryFilter, isVia)))
+        } else {
+            existing.setGeoJson(geojson)
+        }
+    }
+
+    /** Vrai si le depart (A) ou l'arrivee (B) du parcours est sous [screen]. */
+    private fun plannerEndpointAt(screen: PointF): Boolean {
+        val m = map ?: return false
+        if (style?.getLayer(PLANNER_PTS) == null) return false
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, PLANNER_PTS).isNotEmpty()
+    }
+
+    /** L'identifiant de l'etape dont la pastille est sous [screen], ou null. */
+    private fun plannerBadgeAt(screen: PointF): Long? {
+        val m = map ?: return null
+        if (style?.getLayer(PLANNER_BADGES) == null) return null
+        val tol = tapToleranceDp * density
+        val rect = RectF(screen.x - tol, screen.y - tol, screen.x + tol, screen.y + tol)
+        return m.queryRenderedFeatures(rect, PLANNER_BADGES).firstOrNull()
+            ?.getNumberProperty("id")?.toLong()
+    }
+
+    /** Position ecran de la pastille de l'etape [stepId], pour y accrocher un menu. */
+    fun stepScreenPosition(stepId: Long): PointF? =
+        stepMarks.firstOrNull { it.stepId == stepId }?.let { screenOf(it.lon, it.lat) }
+
+    private fun ensureLetterPin(s: Style, letter: String): String {
+        val h = stepPinPx.toInt().coerceIn(24, 256)
+        // Les couleurs entrent dans le nom : changer de theme redessine l'image au lieu de reprendre l'ancienne.
+        val name = "steppin_${letter}_${h}_${stepFillColor}_$stepTextColor"
+        if (pinImages.add(name)) s.addImage(name, letterPinBitmap(appContext, h, letter, stepFillColor, stepTextColor))
+        return name
+    }
+
+    private fun ensureBadge(s: Style, number: Int, diameterPx: Float): String {
+        val d = diameterPx.toInt().coerceIn(24, 128)
+        val name = "stepbadge_${number}_${d}_${stepFillColor}_$stepTextColor"
+        if (pinImages.add(name)) s.addImage(name, badgeBitmap(d, number.toString(), stepFillColor, stepTextColor))
+        return name
+    }
+
+    /** L'epingle PLEINE aux couleurs du theme - le trou du dessin est rebouche, sans contour - et sa lettre,
+     *  du meme corps que le numero d'une pastille ([badgeTextPx]). */
+    private fun letterPinBitmap(context: Context?, h: Int, letter: String, fillColor: Int, textColor: Int): Bitmap {
+        val bmp = pinBitmap(context, fillColor, h)
+        val c = AndroidCanvas(bmp)
+        // Centre et rayon du trou de ic_pin_fill, dans son repere 128 x 128 ; le rebouchage deborde un peu
+        // pour ne laisser aucun liseré.
+        val cx = 63.5f / 128f * h
+        val cy = 41.9f / 128f * h
+        val hole = 16.5f / 128f * h
+        c.drawCircle(cx, cy, hole, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textColor
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = badgeTextPx(1)
+        }
+        c.drawText(letter, cx, cy - (text.ascent() + text.descent()) / 2f, text)
+        return bmp
+    }
+
+    /** Le corps du texte d'un marqueur d'etape : celui du numero d'une pastille, A et B le reprennent. */
+    private fun badgeTextPx(digits: Int): Float =
+        badgeDp * density * (if (digits > 1) 0.42f else 0.52f)
+
+    /** La pastille ronde d'une etape intermediaire : aux couleurs du theme, cerclee de blanc, son numero au centre. */
+    private fun badgeBitmap(d: Int, label: String, fillColor: Int, textColor: Int): Bitmap {
+        val bmp = createBitmap(d, d)
+        val c = AndroidCanvas(bmp)
+        val half = d / 2f
+        val ring = d * 0.08f
+        c.drawCircle(half, half, half, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE })
+        c.drawCircle(half, half, half - ring, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = textColor
+            textAlign = Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = badgeTextPx(label.length)
+        }
+        c.drawText(label, half, half - (text.ascent() + text.descent()) / 2f, text)
+        return bmp
+    }
+
+    /** Calque et source des marqueurs noirs de la mesure sur trace (cf. [setMeasureMarkers]). */
+    private val MEASURE_PTS = "measure-points"
+    private val MEASURE_SRC = "measure-points-src"
+
+    /**
+     * Épingles noires des deux bouts d'une mesure sur trace (zéro, une ou deux).
+     *
+     * Une seule source pour les deux : elles ont même style, apparaissent et disparaissent ensemble, et
+     * deux couches n'apporteraient qu'un ordre d'empilement à tenir. Distinctes des épingles du géocodage,
+     * qui peuvent être à l'écran en même temps et ne se ferment pas par le même geste.
+     */
+    fun setMeasureMarkers(points: List<Pair<Double, Double>>, heightPx: Float) =
+        setBlackPins(MEASURE_PTS, MEASURE_SRC, points, heightPx)
+
+    /** Un groupe d'épingles noires posé au sommet du style, sous ses propres identifiants : une source et
+     *  un calque par groupe, les groupes pouvant être à l'écran en même temps. Vide = tout est retiré. */
+    private fun setBlackPins(
+        layerId: String, srcId: String, points: List<Pair<Double, Double>>, heightPx: Float,
+    ) {
+        val s = style ?: return
+        if (points.isEmpty()) {
+            s.getLayer(layerId)?.let { s.removeLayer(it) }
+            s.getSource(srcId)?.let { s.removeSource(it) }
+            return
+        }
+        val img = ensurePin(s, appContext, "#000000", heightPx)
+        val features = points.joinToString(",") { (lon, lat) ->
+            """{"type":"Feature","geometry":{"type":"Point","coordinates":[$lon,$lat]},"properties":{}}"""
+        }
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(srcId)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(srcId, geojson))
+            addLayerSafe(SymbolLayer(layerId, srcId).withProperties(
+                PropertyFactory.iconImage(img), PropertyFactory.iconSize(1f),
+                PropertyFactory.iconAnchor("bottom"),
+                PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true))
+                .withFilter(pointGeometryFilter))
+        } else {
+            existing.setGeoJson(geojson)
+            (s.getLayer(layerId) as? SymbolLayer)?.setProperties(PropertyFactory.iconImage(img))
+        }
+    }
+
+    /**
+     * Tracés des itinéraires mesurés depuis l'infobulle d'un lieu (zéro, un ou deux : depuis la position,
+     * depuis un point choisi). Une seule source pour les deux : ils ont même style et changent ensemble,
+     * deux couches n'apporteraient qu'un ordre d'empilement à tenir.
+     *
+     * Noirs par défaut ; teintés par classe de pente ([colorBySlope]) quand le moteur a rendu des altitudes,
+     * avec la rampe et les classes du profil (cf. [SlopeRamp]) - une même couleur y désigne donc la même
+     * pente, en haut sur le graphique et en bas sur la carte.
+     *
+     * La couleur voyage dans une propriété de chaque tronçon et non dans le style : le style est fixe, et
+     * les couleurs, elles, changent à chaque mesure.
+     *
+     * Posés SOUS les épingles noires quand elles existent : le tracé aboutit au lieu trouvé, son trait ne
+     * doit pas passer devant le marqueur qui le termine.
+     */
+    fun setRouteLines(
+        plannerTrack: ComputedTrack?, measureTracks: List<ComputedTrack>, colorBySlope: Boolean, classTenths: Int,
+        /** Couleur unie du trace du planificateur, celle du theme ; la coloration par pente l'emporte. */
+        plannerColor: String = "#000000",
+    ) {
+        val s = style ?: return
+        val plannerDrawable = listOfNotNull(plannerTrack).filter { it.samples.size >= 2 }
+        val measureDrawable = measureTracks.filter { it.samples.size >= 2 }
+        val drawable = plannerDrawable + measureDrawable
+        if (drawable.isEmpty()) {
+            s.getLayer(arrowLayerId(ROUTE_KEY))?.let { s.removeLayer(it) }
+            s.getLayer(ROUTE_LINE)?.let { s.removeLayer(it) }
+            s.getSource(ROUTE_SRC)?.let { s.removeSource(it) }
+            s.getSource(ROUTE_ARROW_SRC)?.let { s.removeSource(it) }
+            return
+        }
+        val plannerFeatures = plannerDrawable.map {
+            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, plannerColor, SlopeLines.PlannerOwner)
+        }
+        val measureFeatures = measureDrawable.map {
+            SlopeLines.features(it.samples, if (colorBySlope && it.hasZ) classTenths else null, "#000000")
+        }
+        val features = (plannerFeatures + measureFeatures).filter { it.isNotEmpty() }.joinToString(",")
+        val geojson = """{"type":"FeatureCollection","features":[$features]}"""
+        val existing = s.getSourceAs<GeoJsonSource>(ROUTE_SRC)
+        if (existing == null) {
+            s.addSource(GeoJsonSource(ROUTE_SRC, geojson))
+            val layer = slopeLineLayer(ROUTE_LINE, ROUTE_SRC)
+            val belowPin = routeBelow(s)
+            if (belowPin != null) s.addLayerBelow(layer, belowPin) else addLayerSafe(layer)
+        } else {
+            existing.setGeoJson(geojson)
+        }
+        val fleches = SlopeLines.continuous(drawable.map { it.samples })
+        val sourceFleches = s.getSourceAs<GeoJsonSource>(ROUTE_ARROW_SRC)
+        if (sourceFleches == null) s.addSource(GeoJsonSource(ROUTE_ARROW_SRC, fleches)) else sourceFleches.setGeoJson(fleches)
+        val belowPin = routeBelow(s)
+        applyArrows(s, ROUTE_KEY, ROUTE_ARROW_SRC, belowPin)
+    }
+
+    /**
+     * Calques et source de la mise en evidence d'une categorie (cf. [setRouteHighlight]), par proprietaire :
+     * l'itineraire (`planner`), une trace de la bibliotheque (`layer`) et le panneau du profil (`profile`) ont chacun les leurs, et l'un ne
+     * peut pas effacer ce que l'autre vient de poser.
+     */
+    private val HIGHLIGHT_KEYS = listOf("planner", "layer", "profile")
+    private fun hlId(key: String) = "$key-highlight"
+    private fun hlCasingId(key: String) = "$key-highlight-casing"
+    private fun hlSrcId(key: String) = "$key-highlight-src"
+
+    /** La largeur de la mise en evidence, interpolee sur le zoom entre les paliers [stops] (cf. HighlightWidth). */
+    private fun highlightWidth(stops: List<Pair<Float, Float>>) = PropertyFactory.lineWidth(
+        Expression.interpolate(Expression.linear(), Expression.zoom(),
+            *stops.map { (z, w) -> Expression.stop(z, w) }.toTypedArray()))
+
+    /**
+     * Met en evidence des morceaux de l'itineraire - ceux d'un revetement, ou d'un type de voie -, chacun
+     * donne en (lon, lat). Vide : rien n'est mis en evidence. [key] : a qui appartient la mise en evidence
+     * (cf. [hlId]) ; une trace de la bibliotheque s'en sert de la meme facon.
+     *
+     * Un trait plus large que celui du parcours, bleu franc borde de blanc : il doit se detacher du trace
+     * noir ou teinte par pente qu'il recouvre, sur un fond clair comme sombre. Pose juste au-dessus du
+     * trace, et donc sous les epingles et le repere de position, comme lui.
+     */
+    fun setRouteHighlight(pieces: List<List<Pair<Double, Double>>>, key: String = "planner") {
+        val s = style ?: return
+        val hl = hlId(key)
+        val hlCasing = hlCasingId(key)
+        val hlSrc = hlSrcId(key)
+        val lignes = pieces.filter { it.size >= 2 }
+        if (lignes.isEmpty()) {
+            s.getLayer(hl)?.let { s.removeLayer(it) }
+            s.getLayer(hlCasing)?.let { s.removeLayer(it) }
+            s.getSource(hlSrc)?.let { s.removeSource(it) }
+            return
+        }
+        val coords = lignes.joinToString(",") { l -> l.joinToString(",", "[", "]") { (lon, lat) -> "[$lon,$lat]" } }
+        val geojson = """{"type":"Feature","geometry":{"type":"MultiLineString","coordinates":[$coords]},"properties":{}}"""
+        val existing = s.getSourceAs<GeoJsonSource>(hlSrc)
+        if (existing != null) { existing.setGeoJson(geojson); return }
+        s.addSource(GeoJsonSource(hlSrc, geojson))
+        val casing = LineLayer(hlCasing, hlSrc).withProperties(
+            PropertyFactory.lineColor("#FFFFFF"), highlightWidth(HighlightWidth.casingStops(trackWidthDp)),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+        val ligne = LineLayer(hl, hlSrc).withProperties(
+            PropertyFactory.lineColor(RouteHighlightColor), highlightWidth(HighlightWidth.lineStops(trackWidthDp)),
+            PropertyFactory.lineCap("round"), PropertyFactory.lineJoin("round"))
+        val dessous = routeBelow(s)
+        if (dessous != null) { s.addLayerBelow(casing, dessous); s.addLayerBelow(ligne, dessous) }
+        else { addLayerSafe(casing); addLayerSafe(ligne) }
+    }
+
+    /**
+     * Le calque sous lequel se glisse le trace d'un itineraire mesure : le plus bas des epingles noires
+     * qu'il relie et des calques de tete. Il aboutit a un lieu trouve, son trait ne doit masquer ni
+     * l'epingle qui le termine, ni le repere de position.
+     */
+    private fun routeBelow(s: Style): String? {
+        val wanted = MapHeadOverlays.ids + setOf(GEO_PLACE, GEO_REF, MAP_POINTS, PLANNER_PTS, PLANNER_BADGES)
+        return s.layers.firstOrNull { it.id in wanted }?.id
+    }
+
+    /** Croix "+" traversante, cerclée en son centre : les deux traits se croisent exactement au point posé
+     *  (un viseur à cercle vide laisserait le point lui-même invisible), et le petit cercle marque
+     *  l'intersection au milieu des lignes de la carte, qui autrement se confondent avec la croix. */
+    private fun crosshairBitmap(colorInt: Int, sizePx: Int): Bitmap {
+        // Meme borne haute que les epingles (256) : sur un ecran tres dense, un cote demande en dp depasse
+        // vite 128 px, et la croix se retrouvait alors dessinee plus petite que la taille demandee.
+        val size = sizePx.coerceIn(16, 256)
+        val bmp = createBitmap(size, size)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = colorInt; style = Paint.Style.STROKE; strokeWidth = size * 0.07f
+        }
+        val cx = size / 2f; val cy = size / 2f
+        c.drawLine(cx, 0f, cx, size.toFloat(), paint)
+        c.drawLine(0f, cy, size.toFloat(), cy, paint)
+        c.drawCircle(cx, cy, size * 0.18f, paint)
+        return bmp
+    }
+
+    /** Crée (une fois) une épingle de la couleur et taille demandées. */
+    private fun ensurePin(s: Style, context: Context?, colorHex: String, heightPx: Float): String {
+        val h = heightPx.toInt().coerceIn(24, 256)
+        val name = "pin_${colorHex.removePrefix("#")}_$h"
+        if (pinImages.add(name)) s.addImage(name, pinBitmap(context, colorHex.toColorInt(), h))
+        return name
+    }
+
+    /** Contour fixe (ic_pin_outline) + remplissage (ic_pin_fill) teinté dynamiquement à la couleur de la couche. */
+    private fun pinBitmap(context: Context?, colorInt: Int, h: Int): Bitmap {
+        val bmp = createBitmap(h, h)
+        val c = AndroidCanvas(bmp)
+        if (context != null) {
+            ContextCompat.getDrawable(context, R.drawable.ic_pin_outline)?.apply {
+                setBounds(0, 0, h, h); draw(c)
+            }
+            ContextCompat.getDrawable(context, R.drawable.ic_pin_fill)?.mutate()?.apply {
+                setBounds(0, 0, h, h); setTint(colorInt); draw(c)
+            }
+        }
+        return bmp
+    }
+
+    /**
+     * Camera visant [lat]/[lon] AU MILIEU DE L'ECRAN, orientation et inclinaison inchangees.
+     *
+     * Le decalage de vue ("padding") est explicitement remis a zero, et c'est tout l'objet de ce detour :
+     * un cadrage sur emprise (cf. [fitTo]) rend une camera qui PORTE le decalage qu'on lui a demande, et
+     * MapLibre le conserve ensuite pour toutes les transitions - c'est ecrit dans son contrat. Un
+     * recentrage venant apres posait donc son point au milieu de la zone restante, sous les boutons du
+     * haut et au-dessus de la bande du bas : la position s'affichait bien, mais decalee, et le bouton de
+     * recentrage ne disparaissait pas puisqu'elle n'etait toujours pas au centre.
+     */
+    private fun centeredCamera(lat: Double, lon: Double, zoom: Double? = null): CameraPosition? {
+        val cur = map?.cameraPosition ?: return null
+        return CameraPosition.Builder(cur)
+            .target(LatLng(lat, lon))
+            .zoom(zoom ?: cur.zoom)
+            .padding(0.0, 0.0, 0.0, 0.0)
+            .build()
+    }
+
+    fun moveTo(lat: Double, lon: Double, zoom: Double) {
+        val cam = centeredCamera(lat, lon, zoom) ?: return
+        map?.moveCamera(CameraUpdateFactory.newCameraPosition(cam))
+    }
+    /** Recentre sur un point sans changer le niveau de zoom courant (bouton de recentrage GPS). */
+    fun centerOn(lat: Double, lon: Double) {
+        val cam = centeredCamera(lat, lon) ?: return
+        map?.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
+    }
+
+    /** Recentre sur un point en garantissant [minZoom] : un zoom déjà plus serré est conservé. Sert au lieu
+     *  trouvé par la recherche, qui, depuis une vue à l'échelle d'un pays, se poserait sinon sur une carte
+     *  où rien ne permet de le situer. */
+    fun centerOnAtLeast(lat: Double, lon: Double, minZoom: Double) {
+        val z = map?.cameraPosition?.zoom ?: return
+        if (z >= minZoom) centerOn(lat, lon)
+        else {
+            val cam = centeredCamera(lat, lon, minZoom) ?: return
+            map?.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
+        }
+    }
+    fun cameraState(): Triple<Double, Double, Double>? {
+        val cp = map?.cameraPosition ?: return null
+        val t = cp.target ?: return null
+        return Triple(t.latitude, t.longitude, cp.zoom)
+    }
+    fun metersPerPixel(lat: Double): Double = map?.projection?.getMetersPerPixelAtLatitude(lat) ?: 0.0
+
+    /** Emprise géographique actuellement à l'écran, ou null si la carte n'est pas encore prête.
+     *  Lue sur la région visible et non calculée depuis le centre : elle tient compte de la rotation
+     *  et de l'inclinaison de la caméra. */
+    fun visibleBounds(): Bbox? {
+        val b = map?.projection?.visibleRegion?.latLngBounds ?: return null
+        return Bbox.of(b.longitudeWest, b.latitudeSouth, b.longitudeEast, b.latitudeNorth)
+    }
+
+    fun setCursor(lon: Double, lat: Double) {
+        val s = style ?: return
+        if (s.getSourceAs<GeoJsonSource>("cursor") == null) {
+            s.addSource(GeoJsonSource("cursor", emptyFc()))
+            s.addLayer(CircleLayer(MapHeadOverlays.CURSOR_DOT, "cursor").withProperties(
+                // Rayon constant (4) jusqu'au zoom 16, puis croissant : l'interpolation se fige sur la
+                // première butée en deçà de 16, donc l'agrandissement ne commence qu'à partir de ce niveau.
+                PropertyFactory.circleRadius(Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(16f, 4f), Expression.stop(22f, 11f))),
+                PropertyFactory.circleColor("#ffffff"),
+                PropertyFactory.circleStrokeColor("#1F6FB2"), PropertyFactory.circleStrokeWidth(2f)))
+        }
+        s.getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(
+            "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}")
+    }
+    fun clearCursor() { style?.getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(emptyFc()) }
+
+    /**
+     * Repère de position GPS : le symbole choisi (cf. [setUserMarker]), entouré du cercle de précision
+     * semi-transparent dimensionné en mètres réels.
+     *
+     * La dernière position reçue est CONSERVÉE : un changement de symbole, comme un rechargement de style
+     * (qui vide sources et couches), doit pouvoir replacer le repère sans attendre le point suivant - le
+     * capteur ne parle que toutes les deux secondes, et seulement si l'on bouge.
+     */
+    fun setUserLocation(lon: Double, lat: Double, accuracyMeters: Float) {
+        lastUserFix = Triple(lon, lat, accuracyMeters)
+        val s = style ?: return
+        ensureUserLayers(s)
+        // rayon du cercle de précision en pixels écran, recalculé pour rester exact à tout niveau de zoom :
+        // à échelle Web Mercator, mètres/pixel double à chaque niveau de zoom, donc rayon(z) = rayon(0) * 2^z ;
+        // une interpolation exponentielle de base 2 entre deux points quelconques de cette courbe la reproduit
+        // exactement (pas juste une approximation), pas besoin de la recalculer à chaque changement de zoom.
+        val mpp = metersPerPixel(lat)
+        val zoom = map?.cameraPosition?.zoom
+        if (mpp > 0.0 && zoom != null && accuracyMeters > 0f) {
+            val r0 = (accuracyMeters / mpp / 2.0.pow(zoom)).toFloat()
+            val r22 = (r0 * 2.0.pow(22.0)).toFloat()
+            (s.getLayer(USER_ACCURACY) as? CircleLayer)?.setProperties(
+                PropertyFactory.circleRadius(Expression.interpolate(
+                    Expression.exponential(2f), Expression.zoom(),
+                    Expression.stop(0f, r0), Expression.stop(22f, r22))))
+        }
+        s.getSourceAs<GeoJsonSource>(USER_SRC)?.setGeoJson(
+            "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[$lon,$lat]},\"properties\":{}}")
+    }
+    fun clearUserLocation() {
+        lastUserFix = null
+        style?.getSourceAs<GeoJsonSource>(USER_SRC)?.setGeoJson(emptyFc())
+    }
+
+    /**
+     * Symbole du repère de position, sa couleur et sa taille (dp) - réglage utilisateur.
+     *
+     * Le repère déjà à l'écran est redessiné sur-le-champ, sans attendre la prochaine position : on règle
+     * son symbole en le regardant. Appelé aussi après un rechargement de style, qui a emporté ses couches.
+     */
+    fun setUserMarker(marker: GpsMarkerStyle, colorHex: String, sizeDp: Float) {
+        userMarker = marker
+        userMarkerColor = colorHex
+        userMarkerSizeDp = sizeDp
+        val (lon, lat, acc) = lastUserFix ?: return
+        setUserLocation(lon, lat, acc)
+    }
+
+    /**
+     * Orientation du téléphone, en degrés depuis le nord VRAI (celui de la carte, pas celui de la boussole
+     * : la déclinaison est corrigée en amont).
+     *
+     * Retenue même quand le symbole du moment n'en fait rien : le capteur ne redonne pas d'orientation à la
+     * demande, et une flèche choisie entre deux mesures doit partir dans la bonne direction.
+     */
+    fun setUserHeading(deg: Float) {
+        userHeading = deg
+        if (!userMarker.oriented) return
+        (style?.getLayer(USER_DOT) as? SymbolLayer)?.setProperties(PropertyFactory.iconRotate(deg))
+    }
+
+    /**
+     * Source et couches du repère, (re)posées telles que le réglage les demande.
+     *
+     * Le symbole est refait quand sa description change - style, couleur, taille - et lui seul : le cercle
+     * de précision garde sa couche, donc le rayon déjà calculé pour le zoom courant. Il reprend en revanche
+     * la couleur du symbole : c'est l'imprécision DE CE repère-là qu'il dessine, pas un halo indépendant.
+     */
+    private fun ensureUserLayers(s: Style) {
+        // Couleur illisible : celle que SON symbole porte par defaut, et non celle d'un autre - un repere
+        // en forme de fleche rouge ne doit pas virer au bleu de la puce parce qu'un reglage est corrompu.
+        val colorInt = runCatching { userMarkerColor.toColorInt() }
+            .getOrElse { userMarker.defaultColor.toColorInt() }
+        if (s.getSourceAs<GeoJsonSource>(USER_SRC) == null) {
+            s.addSource(GeoJsonSource(USER_SRC, emptyFc()))
+            s.addLayer(CircleLayer(USER_ACCURACY, USER_SRC).withProperties(
+                PropertyFactory.circleOpacity(0.16f),
+                PropertyFactory.circleStrokeOpacity(0.5f), PropertyFactory.circleStrokeWidth(1f)))
+        }
+        val key = "${userMarker.key}|$userMarkerColor|$userMarkerSizeDp"
+        if (key == appliedUserMarker && s.getLayer(USER_DOT) != null) return
+        appliedUserMarker = key
+        (s.getLayer(USER_ACCURACY) as? CircleLayer)?.setProperties(
+            PropertyFactory.circleColor(colorInt), PropertyFactory.circleStrokeColor(colorInt))
+        // Retiree avant d'etre refaite : d'une puce a une fleche, ce n'est meme plus le meme type de
+        // couche, un setProperties ne saurait pas passer de l'une a l'autre.
+        s.getLayer(USER_DOT)?.let { s.removeLayer(it) }
+        s.addLayer(userMarkerLayer(s, colorInt))
+    }
+
+    /** La couche du symbole : un cercle pour la puce, une image pour les trois autres. */
+    private fun userMarkerLayer(s: Style, colorInt: Int): org.maplibre.android.style.layers.Layer {
+        val dp = userMarkerSizeDp
+        if (userMarker == GpsMarkerStyle.DOT) {
+            // Proportions de la puce d'origine (rayon 7, contour 2,5 pour 20 dp de cote), reprises en
+            // fractions du cote : elle grandit sans que son contour blanc ne l'etrangle ni ne la noie.
+            return CircleLayer(USER_DOT, USER_SRC).withProperties(
+                PropertyFactory.circleRadius(dp * 0.35f), PropertyFactory.circleColor(colorInt),
+                PropertyFactory.circleStrokeColor("#ffffff"), PropertyFactory.circleStrokeWidth(dp * 0.125f))
+        }
+        val px = (dp * density).toInt().coerceIn(16, 256)
+        val name = "gps_${userMarker.key}_${userMarkerColor.removePrefix("#")}_$px"
+        if (gpsImages.add(name)) {
+            s.addImage(name, when (userMarker) {
+                GpsMarkerStyle.CROSSHAIR -> crosshairBitmap(colorInt, px)
+                else -> navigationArrowBitmap(colorInt, px, filled = userMarker == GpsMarkerStyle.ARROW_FILLED)
+            })
+        }
+        return SymbolLayer(USER_DOT, USER_SRC).withProperties(
+            PropertyFactory.iconImage(name), PropertyFactory.iconSize(1f), PropertyFactory.iconAnchor("center"),
+            PropertyFactory.iconAllowOverlap(true), PropertyFactory.iconIgnorePlacement(true),
+            // Rotation prise DANS LE REPERE DE LA CARTE : la fleche vise le nord vrai, et suit donc la
+            // carte quand celle-ci tourne, au lieu de pointer une direction de l'ecran.
+            PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+            PropertyFactory.iconRotate(if (userMarker.oriented) userHeading ?: 0f else 0f))
+    }
+
+    /**
+     * Fleche de navigation : pointe en haut, deux ailes vers le bas, encochee en son milieu - le dessin
+     * qu'on lit d'emblee comme "je suis la, et je regarde par la".
+     *
+     * [filled] la remplit de la couleur et lui pose un contour blanc, comme la puce : un aplat de couleur
+     * sur une orthophoto de la meme teinte disparaitrait sans lui. Au trait, elle reste creuse : le fond de
+     * carte se lit AU TRAVERS du repere, ce qui est tout l'interet de ce symbole-la.
+     */
+    private fun navigationArrowBitmap(colorInt: Int, sizePx: Int, filled: Boolean): Bitmap {
+        val size = sizePx.coerceIn(16, 256)
+        val bmp = createBitmap(size, size)
+        val c = AndroidCanvas(bmp)
+        val stroke = size * 0.11f
+        val inset = stroke                       // de quoi loger le trait, dedans comme dehors
+        val cx = size / 2f
+        val top = inset
+        val bottom = size - inset
+        val half = (size / 2f - inset) * 0.72f   // demi-envergure : plus etroite que haute, comme un chevron
+        val notch = (bottom - top) * 0.28f       // profondeur de l'encoche du talon
+        val path = android.graphics.Path().apply {
+            moveTo(cx, top)
+            lineTo(cx + half, bottom)
+            lineTo(cx, bottom - notch)
+            lineTo(cx - half, bottom)
+            close()
+        }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            strokeJoin = Paint.Join.ROUND; strokeCap = Paint.Cap.ROUND
+        }
+        if (filled) {
+            paint.color = android.graphics.Color.WHITE
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = stroke
+            c.drawPath(path, paint)
+            paint.color = colorInt
+            paint.style = Paint.Style.FILL
+            c.drawPath(path, paint)
+        } else {
+            paint.color = colorInt
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = stroke
+            c.drawPath(path, paint)
+        }
+        return bmp
+    }
+
+    fun screenOf(lon: Double, lat: Double): PointF? = map?.projection?.toScreenLocation(LatLng(lat, lon))
+
+    /** Le point de la carte sous ce point de l'ecran, en (lon, lat) : l'inverse de [screenOf]. */
+    fun lonLatAt(x: Float, y: Float): Pair<Double, Double>? =
+        map?.projection?.fromScreenLocation(PointF(x, y))?.let { it.longitude to it.latitude }
+
+    /**
+     * Le point est-il dans la vue, avec une marge de confort ?
+     *
+     * Mesure a l'ecran et non sur les coordonnees : c'est bien "le voit-on" qu'on demande, et la reponse
+     * doit valoir a tout zoom. La marge evite de declarer visible un point colle au bord, que la moindre
+     * inclinaison ou le bandeau du profil recouvriraient.
+     */
+    fun isOnScreen(lon: Double, lat: Double, marginPx: Float = 96f): Boolean {
+        val m = map ?: return true
+        val p = screenOf(lon, lat) ?: return true
+        return p.x > marginPx && p.y > marginPx &&
+            p.x < m.width - marginPx && p.y < m.height - marginPx
+    }
+
+    /**
+     * Le point est-il dans la part VISIBLE de la carte - hors de ce que cachent en haut [topCoverPx] et en
+     * bas [bottomCoverPx] (cf. VisibleArea) ?
+     */
+    fun isInView(lon: Double, lat: Double, topCoverPx: Int, bottomCoverPx: Int, marginPx: Float = 96f): Boolean {
+        val m = map ?: return true
+        val p = screenOf(lon, lat) ?: return true
+        return VisibleArea(m.width.toFloat(), m.height.toFloat(), topCoverPx.toFloat(), bottomCoverPx.toFloat())
+            .contains(p.x, p.y, marginPx)
+    }
+
+    /**
+     * Amene le point au milieu de la part VISIBLE de la carte, zoom inchange (cf. VisibleArea.centerFor).
+     * Au milieu de la carte entiere, il pouvait retomber sous le panneau qui le cachait deja.
+     */
+    fun centerInView(lat: Double, lon: Double, topCoverPx: Int, bottomCoverPx: Int) {
+        val m = map ?: return
+        val p = screenOf(lon, lat) ?: return
+        val (cx, cy) = VisibleArea(m.width.toFloat(), m.height.toFloat(), topCoverPx.toFloat(), bottomCoverPx.toFloat())
+            .centerFor(p.x, p.y)
+        val cible = m.projection.fromScreenLocation(PointF(cx, cy))
+        val cam = centeredCamera(cible.latitude, cible.longitude) ?: return
+        m.easeCamera(CameraUpdateFactory.newCameraPosition(cam))
+    }
+
+    /**
+     * [topPaddingPx] / [bottomPaddingPx] : hauteurs masquees en haut (barre de statut, la carte passant
+     * dessous en mode bord-a-bord) et en bas (bande du planificateur). A laisser libres pour que le
+     * contenu cadre tienne dans ce qu'on voit REELLEMENT, et non sous une barre ou un panneau.
+     */
+    fun fitTo(
+        west: Double, south: Double, east: Double, north: Double,
+        topPaddingPx: Int = 0, bottomPaddingPx: Int = 0,
+    ) {
+        val m = map ?: return
+        if (west == 0.0 && east == 0.0) return
+        val b = LatLngBounds.Builder().include(LatLng(north, east)).include(LatLng(south, west)).build()
+        m.easeCamera(CameraUpdateFactory.newLatLngBounds(b, 90, 90 + topPaddingPx, 90, 90 + bottomPaddingPx))
+    }
+
+    fun handleTap(latLng: LatLng, screen: PointF) {
+        // Marqueur deja selectionne au lever du doigt (handleFastTap) : ne rien refaire ici.
+        if (fastPicked) return
+        onRawTap?.let { it(latLng.longitude, latLng.latitude); return }
+        markerPickAt(screen)?.let { it(); return }
+        // Le trace du planificateur ne designe ni profil ni infobulle : s'il ne rouvre rien, le tap suit son
+        // chemin habituel, comme dans le vide.
+        if (plannerRouteAt(screen) && onPlannerRouteTap?.invoke() == true) return
+        lineKeyAt(screen)?.let { onPickLine?.invoke(it, latLng.longitude, latLng.latitude); return }
+        onTapEmpty?.invoke()
+    }
+
+    /**
+     * Appui long : designe un endroit de la carte, trace comprise.
+     *
+     * Un mode de saisie exclusif le neutralise, comme il neutralise la selection : la ou tout tap pose un
+     * point, un appui long est un tap qui a dure, et non un second geste a interpreter.
+     *
+     * **Une trace ne l'arrete plus.** Un appui long sur une trace n'etait attache a rien : le geste ne
+     * produisait donc rien du tout, et il fallait viser a cote pour obtenir l'adresse d'un col ou d'un
+     * croisement - c'est-a-dire precisement des endroits ou passe un sentier. Il ouvre desormais le point
+     * qu'on montre, comme partout ailleurs sur la carte. Le TAP sur une trace, lui, ouvre toujours son
+     * profil : les deux gestes ne se disputent plus rien.
+     *
+     * Les marqueurs restent ecartes, avec la meme tolerance que le tap : une epingle qu'un tap selectionne
+     * doit se comporter en epingle sous un doigt qui s'attarde, et son infobulle repond deja de cet
+     * endroit-la.
+     */
+    fun handleLongPress(latLng: LatLng, screen: PointF) {
+        if (onRawTap != null) return
+        val cb = onLongPressEmpty ?: return
+        if (markerPickAt(screen) != null) return
+        cb(latLng.longitude, latLng.latitude)
+    }
+
+    private fun emptyFc() = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+}
+
+/**
+ * La carte, et le controleur qui la pilote.
+ *
+ * [gesturesEnabled] et [destroyOnDispose] valent pour les cartes de decor - la vue d'ensemble d'une
+ * emprise, par exemple : on ne les manipule pas, et elles vont et viennent avec un ecran, la ou la carte
+ * principale vit aussi longtemps que l'application. Les valeurs par defaut sont celles de cette
+ * derniere : gestes ouverts, et surtout pas de destruction a la sortie de composition.
+ */
+@Composable
+fun MapLibreView(
+    modifier: Modifier = Modifier,
+    controller: MapController,
+    styleJson: String?,
+    styleUrl: String?,
+    gesturesEnabled: Boolean = true,
+    destroyOnDispose: Boolean = false,
+    /** Taille du cache de tuiles, en Mo, telle que les reglages la veulent (cf. [AmbientCache]). */
+    ambientCacheMb: Int = 0,
+    onReady: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val density = LocalDensity.current.density
+    val mapView = remember { MapLibre.getInstance(context); MapView(context).apply { onCreate(null) } }
+    // La taille du cache, appliquee apres l'initialisation de la bibliotheque - qui cree le fichier - et
+    // relancee si le reglage change. Sans cela, MapLibre restait sur ses 50 Mo et le reglage affiche ne
+    // commandait rien.
+    LaunchedEffect(ambientCacheMb) { AmbientCache.apply(context, ambientCacheMb) }
+
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, e ->
+            when (e) {
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(obs)
+            if (destroyOnDispose) mapView.onDestroy()
+        }
+    }
+
+    LaunchedEffect(controller) { controller.onStyleApplied = onReady }
+    LaunchedEffect(styleJson, styleUrl) { controller.requestStyle(styleJson, styleUrl) }
+
+    AndroidView(modifier = modifier, factory = {
+        mapView.also { mv ->
+            // Evenements tactiles bruts : servent au tap rapide (selection d'un marqueur des le lever du
+            // doigt). On renvoie false = evenement non consomme, MapLibre le traite ensuite normalement.
+            mv.setOnTouchListener { v, e -> controller.onMapTouch(e, v) }
+            mv.getMapAsync { map ->
+                controller.attachDensity(density)
+                controller.attachContext(context)
+                map.uiSettings.isAttributionEnabled = false
+                map.uiSettings.isLogoEnabled = false
+                controller.onMapReady(map)
+                if (!gesturesEnabled) map.uiSettings.setAllGesturesEnabled(false)
+                map.addOnMapClickListener { ll -> controller.handleTap(ll, map.projection.toScreenLocation(ll)); false }
+                // false = evenement non consomme : MapLibre garde son comportement d'appui long.
+                map.addOnMapLongClickListener { ll ->
+                    controller.handleLongPress(ll, map.projection.toScreenLocation(ll)); false
+                }
+                map.addOnCameraIdleListener { controller.onCameraIdle?.invoke() }
+                map.addOnCameraMoveListener { controller.onCameraMove?.invoke() }
+                // Gestes déclenchés par l'UTILISATEUR uniquement (jamais les mouvements programmatiques
+                // comme moveTo/centerOn/fitTo) : estompent le bouton GPS, et disent qu'un cadrage
+                // automatique ne doit plus être rejoué - la vue est désormais celle qu'on a choisie.
+                // Le zoom à deux doigts compte autant que le déplacement, d'où les DEUX écouteurs :
+                // pincer pour regarder de plus près est tout aussi délibéré que faire glisser.
+                map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
+                    override fun onMoveBegin(detector: MoveGestureDetector) { controller.onUserMoveBegin?.invoke() }
+                    override fun onMove(detector: MoveGestureDetector) {}
+                    override fun onMoveEnd(detector: MoveGestureDetector) {}
+                })
+                map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
+                    override fun onScaleBegin(detector: StandardScaleGestureDetector) { controller.onUserMoveBegin?.invoke() }
+                    override fun onScale(detector: StandardScaleGestureDetector) {}
+                    override fun onScaleEnd(detector: StandardScaleGestureDetector) {}
+                })
+            }
+        }
+    }) { /* pas de re-setStyle ici : géré par requestStyle */ }
+}

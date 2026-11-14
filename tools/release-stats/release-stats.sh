@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Compteurs de telechargement des releases GitHub de Trailog : le seul signal d'usage dont on dispose
+# Compteurs de telechargement des releases GitHub de Tunturo : le seul signal d'usage dont on dispose
 # sans serveur.
 #
 #   APK downloads   telechargements des APK (mise a jour de l'appli, ou installation a la main)
@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-repository="lc-4918/trailog"
+repository="lc-4918/tunturo"
 limit=0
 
 while [ $# -gt 0 ]; do

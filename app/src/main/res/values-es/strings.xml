@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Trailog</string>
+    <string name="app_name">Tunturo</string>
 
     <!-- Acciones comunes -->
     <string name="action_back">Atrás</string>
@@ -46,7 +46,7 @@
     <string name="backup_failed">No se ha podido escribir la copia.</string>
     <string name="backup_restore_warning">Restaurar sustituye TODO lo que contiene la aplicación: trazas, puntos, fotos y ajustes. Lo que no esté en el archivo se perderá.</string>
     <string name="backup_restored">Copia restaurada. La aplicación se reiniciará.</string>
-    <string name="backup_not_a_backup">Este archivo no es una copia de Trailog. No se ha modificado nada.</string>
+    <string name="backup_not_a_backup">Este archivo no es una copia de Tunturo. No se ha modificado nada.</string>
     <string name="backup_too_recent">Esta copia viene de una versión más reciente. No se ha modificado nada.</string>
     <string name="backup_restore_failed">La restauración ha fallado. No se ha modificado nada.</string>
     <string name="edit_toolbar">Editar las trazas</string>
@@ -424,8 +424,8 @@
     <string name="update_action_install">Instalar</string>
     <string name="update_action_later">Más tarde</string>
     <string name="update_unknown_sources_title">Permiso necesario</string>
-    <string name="update_unknown_sources_text">Android debe pedirle que autorice a Trailog a instalar aplicaciones. Abra el ajuste, conceda el permiso y vuelva a iniciar la actualización.</string>
-    <string name="update_download_title">Actualización de Trailog</string>
+    <string name="update_unknown_sources_text">Android debe pedirle que autorice a Tunturo a instalar aplicaciones. Abra el ajuste, conceda el permiso y vuelva a iniciar la actualización.</string>
+    <string name="update_download_title">Actualización de Tunturo</string>
     <string name="update_download_desc">Descargando la versión %1$s</string>
     <string name="update_state_downloading">Descargando la actualización…</string>
     <string name="update_state_installing">Instalando…</string>
@@ -435,12 +435,12 @@
     <string name="update_state_retrying">Instalación bloqueada, nuevo intento…</string>
     <string name="update_install_stalled">Android no ha terminado la instalación. Inténtalo más tarde o desactiva el análisis de aplicaciones de Play Protect en Play Store.</string>
     <string name="update_install_closes">La aplicación se cerrará para instalarse. Vuelve a abrirla después.</string>
-    <string name="update_done_title">Trailog: actualización terminada</string>
+    <string name="update_done_title">Tunturo: actualización terminada</string>
     <string name="update_installing_title">Instalando la actualización</string>
-    <string name="update_installing_text">Trailog se cierra para instalarse. Espera la notificación de actualización completada antes de volver a abrirlo.</string>
+    <string name="update_installing_text">Tunturo se cierra para instalarse. Espera la notificación de actualización completada antes de volver a abrirlo.</string>
     <string name="update_done_open">Abrir</string>
     <string name="update_done_channel">Actualizaciones</string>
-    <string name="update_downloaded_title">Trailog: actualización descargada</string>
+    <string name="update_downloaded_title">Tunturo: actualización descargada</string>
     <string name="update_done_install">Instalar</string>
 
     <string name="dialog_import_result_title">Importación</string>
@@ -545,7 +545,7 @@
     <string name="settings_off_track_sound_default">Predeterminado</string>
     <string name="settings_off_track_hint">La campana aparece en el panel en cuanto sigues una traza. Activada, avisa si te alejas; desactivada, al dejar la traza simplemente se abandona.</string>
     <string name="settings_off_track_wake_title">Encender la pantalla</string>
-    <string name="settings_off_track_wake_text">Para que la alerta encienda la pantalla y aparezca sobre el bloqueo, Android exige un permiso: \"Notificaciones a pantalla completa\". Abra el ajuste y actívelo para Trailog. Sin él, la alerta suena pero la pantalla sigue apagada.</string>
+    <string name="settings_off_track_wake_text">Para que la alerta encienda la pantalla y aparezca sobre el bloqueo, Android exige un permiso: \"Notificaciones a pantalla completa\". Abra el ajuste y actívelo para Tunturo. Sin él, la alerta suena pero la pantalla sigue apagada.</string>
     <string name="settings_off_track_wake_open">Abrir ajuste</string>
     <string name="location_channel_name">Seguimiento de posición</string>
     <string name="location_alert_channel_name">Seguimiento de posición interrumpido</string>
@@ -625,7 +625,7 @@
     <string name="settings_poi_cache_empty">Ningún lugar en caché</string>
     <string name="settings_poi_cache_count">%1$d lugares guardados</string>
     <string name="settings_poi_cache_pinned">Se conservan %1$d lugares llevados con una zona sin conexión</string>
-    <string name="settings_poi_cache_hint">Los lugares vistos una vez siguen disponibles sin red durante una semana. Vaciarlos obliga a Trailog a pedirlos de nuevo, por ejemplo si una ficha es errónea.</string>
+    <string name="settings_poi_cache_hint">Los lugares vistos una vez siguen disponibles sin red durante una semana. Vaciarlos obliga a Tunturo a pedirlos de nuevo, por ejemplo si una ficha es errónea.</string>
     <string name="poi_from_cache">Últimos puntos conocidos (sin conexión)</string>
     <string name="poi_partial">Vista demasiado amplia: solo se muestran los lugares cercanos al centro</string>
     <string name="poi_away_from_tracks">Ninguna traza cerca (ajuste de distancia)</string>
@@ -711,7 +711,7 @@
     <string name="offline_config_section_label">Parte de la traza</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Son solo los datos regionales del motor de rutas (BRouter), para calcular una ruta sin red. Ni mapas base ni trazas: el mapa sin conexión se descarga aparte.</string>
-    <string name="settings_updates_info">Auto: al iniciarse, Trailog comprueba si hay una nueva versión publicada y propone instalarla. Manual: la comprobación solo se hace cuando la pides.</string>
+    <string name="settings_updates_info">Auto: al iniciarse, Tunturo comprueba si hay una nueva versión publicada y propone instalarla. Manual: la comprobación solo se hace cuando la pides.</string>
     <string name="settings_expert_on">Modo experto activado</string>
     <string name="settings_expert_off">Modo experto desactivado</string>
     <string name="settings_clear_map_cache">Borrar la caché del mapa</string>

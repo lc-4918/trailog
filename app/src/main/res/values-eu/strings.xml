@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Trailog</string>
+    <string name="app_name">Tunturo</string>
 
     <!-- Ekintza arruntak -->
     <string name="action_back">Atzera</string>
@@ -46,7 +46,7 @@
     <string name="backup_failed">Ezin izan da babeskopia idatzi.</string>
     <string name="backup_restore_warning">Berreskuratzeak aplikazioaren DENA ordezkatzen du: ibilbideak, puntuak, argazkiak eta ezarpenak. Artxiboan ez dagoena galduko da.</string>
     <string name="backup_restored">Babeskopia berreskuratuta. Aplikazioa berrabiaraziko da.</string>
-    <string name="backup_not_a_backup">Fitxategi hau ez da Trailog babeskopia. Ez da ezer aldatu.</string>
+    <string name="backup_not_a_backup">Fitxategi hau ez da Tunturo babeskopia. Ez da ezer aldatu.</string>
     <string name="backup_too_recent">Babeskopia hau bertsio berriago batekoa da. Ez da ezer aldatu.</string>
     <string name="backup_restore_failed">Berreskuratzeak huts egin du. Ez da ezer aldatu.</string>
     <string name="edit_toolbar">Editatu ibilbideak</string>
@@ -424,8 +424,8 @@
     <string name="update_action_install">Instalatu</string>
     <string name="update_action_later">Geroago</string>
     <string name="update_unknown_sources_title">Baimena beharrezkoa</string>
-    <string name="update_unknown_sources_text">Androidek Trailog-i aplikazioak instalatzeko baimena emateko eskatu behar dizu. Ireki ezarpena, eman baimena eta abiarazi berriro eguneraketa.</string>
-    <string name="update_download_title">Trailog eguneraketa</string>
+    <string name="update_unknown_sources_text">Androidek Tunturo-ri aplikazioak instalatzeko baimena emateko eskatu behar dizu. Ireki ezarpena, eman baimena eta abiarazi berriro eguneraketa.</string>
+    <string name="update_download_title">Tunturo eguneraketa</string>
     <string name="update_download_desc">%1$s bertsioa deskargatzen</string>
     <string name="update_state_downloading">Eguneratzea deskargatzen…</string>
     <string name="update_state_installing">Instalatzen…</string>
@@ -435,12 +435,12 @@
     <string name="update_state_retrying">Instalazioa trabatuta, berriro saiatzen…</string>
     <string name="update_install_stalled">Androidek ez du instalazioa amaitu. Saiatu berriro geroago, edo desaktibatu Play Protect-en aplikazioen azterketa Play Store-n.</string>
     <string name="update_install_closes">Aplikazioa itxi egingo da instalatzeko. Ireki berriro ondoren.</string>
-    <string name="update_done_title">Trailog: eguneratzea amaituta</string>
+    <string name="update_done_title">Tunturo: eguneratzea amaituta</string>
     <string name="update_installing_title">Eguneratzea instalatzen</string>
-    <string name="update_installing_text">Trailog itxi egiten da instalatzeko. Itxaron eguneratzea amaitu dela dioen jakinarazpenari berriro ireki aurretik.</string>
+    <string name="update_installing_text">Tunturo itxi egiten da instalatzeko. Itxaron eguneratzea amaitu dela dioen jakinarazpenari berriro ireki aurretik.</string>
     <string name="update_done_open">Ireki</string>
     <string name="update_done_channel">Eguneratzeak</string>
-    <string name="update_downloaded_title">Trailog: eguneratzea deskargatuta</string>
+    <string name="update_downloaded_title">Tunturo: eguneratzea deskargatuta</string>
     <string name="update_done_install">Instalatu</string>
 
     <string name="dialog_import_result_title">Inportazioa</string>
@@ -545,7 +545,7 @@
     <string name="settings_off_track_sound_default">Lehenetsia</string>
     <string name="settings_off_track_hint">Kanpaia aginte-panelean agertzen da arrasto bat jarraitzen duzunean. Piztuta, abisatzen dizu urruntzen bazara; itzalita, arrastoa uztean besterik gabe baztertzen da.</string>
     <string name="settings_off_track_wake_title">Pantaila piztu</string>
-    <string name="settings_off_track_wake_text">Alertak pantaila pizteko eta blokeoaren gainean agertzeko, Android-ek baimen bat eskatzen du: \"Pantaila osoko jakinarazpenak\". Ireki ezarpena eta aktibatu Trailog-entzat. Hori gabe, alertak jotzen du baina pantaila itzalita geratzen da.</string>
+    <string name="settings_off_track_wake_text">Alertak pantaila pizteko eta blokeoaren gainean agertzeko, Android-ek baimen bat eskatzen du: \"Pantaila osoko jakinarazpenak\". Ireki ezarpena eta aktibatu Tunturo-rentzat. Hori gabe, alertak jotzen du baina pantaila itzalita geratzen da.</string>
     <string name="settings_off_track_wake_open">Ezarpena ireki</string>
     <string name="location_channel_name">Kokapenaren jarraipena</string>
     <string name="location_alert_channel_name">Kokapenaren jarraipena etenda</string>
@@ -625,7 +625,7 @@
     <string name="settings_poi_cache_empty">Cachean lekurik ez</string>
     <string name="settings_poi_cache_count">Gordetako %1$d leku</string>
     <string name="settings_poi_cache_pinned">Lineaz kanpoko eremu batekin eramandako %1$d leku gordeta geratzen dira</string>
-    <string name="settings_poi_cache_hint">Behin ikusitako lekuak astebetez daude eskuragarri sarerik gabe. Hustean, Trailogek berriro eskatuko ditu, adibidez fitxa bat okerra bada.</string>
+    <string name="settings_poi_cache_hint">Behin ikusitako lekuak astebetez daude eskuragarri sarerik gabe. Hustean, Tunturo-k berriro eskatuko ditu, adibidez fitxa bat okerra bada.</string>
     <string name="poi_from_cache">Azken puntu ezagunak (lineaz kanpo)</string>
     <string name="poi_partial">Ikuspegi zabalegia: erdigunetik gertu dauden lekuak soilik erakusten dira</string>
     <string name="poi_away_from_tracks">Ez dago aztarnarik gertu (distantzia-ezarpena)</string>
@@ -711,7 +711,7 @@
     <string name="offline_config_section_label">Arrasto-zatia</string>
     <string name="offline_config_section_value">km %1$d - %2$d</string>
     <string name="settings_offline_routing_info">Ibilbide-motorraren (BRouter) eskualdeko datuak baino ez dira, sarerik gabe ibilbide bat kalkulatzeko. Ez oinarri-maparik ez arrastorik: lineaz kanpoko mapa bereiz deskargatzen da.</string>
-    <string name="settings_updates_info">Auto: abiaraztean, Trailog-ek bertsio berririk argitaratu den egiaztatzen du eta instalatzea proposatzen du. Eskuzkoa: egiaztapena eskatzen duzunean bakarrik egiten da.</string>
+    <string name="settings_updates_info">Auto: abiaraztean, Tunturo-k bertsio berririk argitaratu den egiaztatzen du eta instalatzea proposatzen du. Eskuzkoa: egiaztapena eskatzen duzunean bakarrik egiten da.</string>
     <string name="settings_expert_on">Aditu modua aktibatuta</string>
     <string name="settings_expert_off">Aditu modua desaktibatuta</string>
     <string name="settings_clear_map_cache">Maparen cachea ezabatu</string>

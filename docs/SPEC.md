@@ -1,4 +1,4 @@
-# Trailog - Spécification fonctionnelle
+# Tunturo - Spécification fonctionnelle
 
 > Ce document décrit l'application **telle qu'elle est**. Il a d'abord décrit le périmètre v1 tel que
 > défini au démarrage du projet ; ces intentions d'origine restent dans l'historique git, où elles sont
@@ -15,7 +15,7 @@
 
 ## 1. Périmètre
 
-Trailog garde des traces et des points d'intérêt **localement**, les affiche sur une carte avec un profil
+Tunturo garde des traces et des points d'intérêt **localement**, les affiche sur une carte avec un profil
 altimétrique synchronisé, et sait travailler sans réseau.
 
 Ce qu'elle fait :
@@ -87,7 +87,7 @@ La force de l'ombrage se règle dans sa fiche.
 - Bouton *Importer* -> sélecteur de fichiers -> lecture GPX / GeoJSON / KML / KMZ -> aperçu (nom,
   distance, D+/D-, présence d'altitude et d'horodatage) -> choix de la destination.
 - Destination : dossier existant, ou nouveau dossier (racine ou sous-dossier).
-- **Ouvrir un fichier depuis ailleurs** : Trailog figure dans le "Ouvrir avec" et le "Partager vers" du
+- **Ouvrir un fichier depuis ailleurs** : Tunturo figure dans le "Ouvrir avec" et le "Partager vers" du
   téléphone pour un GPX, un KML, un KMZ ou un GeoJSON. Un fichier reçu par courriel, posé dans un
   gestionnaire de fichiers ou téléchargé par le navigateur s'importe donc sans passer par le bouton, et
   plusieurs d'un coup si l'on en partage plusieurs. Le chemin est ensuite le même que celui du bouton :

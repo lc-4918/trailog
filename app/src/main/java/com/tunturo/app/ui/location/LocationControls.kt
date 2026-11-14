@@ -1,0 +1,710 @@
+package com.tunturo.app.ui.location
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.Build
+import android.os.CancellationSignal
+import android.os.SystemClock
+import android.provider.Settings
+import android.view.WindowManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.tunturo.app.domain.geo.FirstAnswer
+import com.tunturo.app.domain.geo.FixAge
+import com.tunturo.app.location.LocationHub
+import com.tunturo.app.location.LocationService
+import com.tunturo.app.ui.components.MapController
+import kotlin.coroutines.resume
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+
+/**
+ * Age en deca duquel la derniere position connue du systeme vaut "ou je suis", et dispense d'interroger le
+ * capteur (cf. [LocationControls.currentPosition]).
+ *
+ * Deux minutes : a velo, cela fait moins d'un kilometre, et le moteur d'itineraire rattache de toute facon
+ * le depart a la route la plus proche. La gagner instantanement vaut mieux que la dizaine de secondes -
+ * quand elles suffisent - d'un point neuf.
+ */
+private const val FRESH_FIX_MS = 2 * 60 * 1000L
+
+/**
+ * Age maximal d'une derniere position connue acceptee EN DERNIER RECOURS, quand le capteur n'a rien rendu.
+ *
+ * Un quart d'heure : on n'a pas change de region entre-temps, et un depart approximatif vaut infiniment
+ * mieux qu'un "Aucun itineraire" pour un trajet qu'on n'a meme pas demande. Au-dela, on prefere ne rien
+ * rendre - une position d'hier ferait calculer, sans un mot, un trajet depuis une autre ville.
+ */
+private const val STALE_FIX_MS = 15 * 60 * 1000L
+
+/**
+ * Attente maximale d'une position neuve demandee aux capteurs (cf. [LocationControls.currentPosition]).
+ *
+ * Vingt secondes : de quoi laisser le GPS accrocher a ciel ouvert, sans laisser le rond d'attente tourner
+ * la minute que le systeme, lui, s'accorde avant d'avouer qu'il ne rendra rien. Passe ce delai, il reste
+ * les dernieres positions connues, et a defaut un message qui dit ce qu'il en est.
+ */
+private const val SENSOR_WAIT_MS = 20_000L
+
+/**
+ * Tout ce que l'ecran de carte doit savoir faire avec la position : l'allumer, l'eteindre, en demander
+ * une seule, et savoir si le telephone veut bien en donner.
+ *
+ * **Pourquoi un porteur d'etat.** Ces deux cent lignes vivaient au milieu de `MainScreen`, entre le
+ * telechargement hors-ligne et l'alerte d'eloignement, alors qu'elles ne parlent qu'entre elles : trois
+ * autorisations, un recepteur systeme, un service de premier plan et deux cadrages de camera. Ce qui les
+ * lie au reste de l'ecran tient en six lectures - [gpsActive], [lastUserLocation], [sensorEnabled] - et
+ * quatre gestes. C'est ce que ce porteur expose, et rien d'autre.
+ *
+ * **Ce qu'il ne fait pas.** Il ne lit pas le capteur : c'est [LocationService] qui l'ecoute, depuis un
+ * service de premier plan, et [LocationHub] qui en publie le flux. C'est ce qui fait survivre le suivi a
+ * l'extinction de l'ecran - la composition, elle, s'arrete des que la carte n'est plus visible, et le
+ * suivi s'arretait avec elle.
+ *
+ * Il reste ici les deux choses que le service ne fait pas : demander le capteur pour une seule question
+ * (cf. [currentPosition]), et savoir si la localisation est allumee dans le telephone (cf.
+ * [sensorEnabled]) - deux lectures qui ne demandent rien a personne.
+ *
+ * Il ne dessine rien non plus : le symbole du repere, sa couleur et son orientation restent a l'ecran,
+ * qui les tire des reglages et les pose sur le controleur avec le reste de ce qu'il affiche.
+ *
+ * S'obtient par [rememberLocationControls] : les autorisations et les effets qu'il porte ne peuvent
+ * naitre que dans une composition.
+ */
+@Stable
+class LocationControls internal constructor(
+    private val ctx: Context,
+    private val controller: MapController,
+    private val locationManager: LocationManager,
+    private val trackingState: State<Boolean>,
+    private val fixState: State<LocationHub.Fix?>,
+) {
+
+    /** Le suivi tourne : le service ecoute et le repere est pose sur la carte. */
+    val gpsActive: Boolean get() = trackingState.value
+
+    /** La derniere position connue, en (lat, lon), ou null tant que le suivi n'a rien recu. */
+    val lastUserLocation: Pair<Double, Double>? get() = fixState.value?.let { it.lat to it.lon }
+
+    /** La derniere mesure entiere, pour ce qui a besoin d'autre chose que des coordonnees - le cap et la
+     *  vitesse de la fleche de position (cf. HeadingEffect). */
+    val lastFix: LocationHub.Fix? get() = fixState.value
+
+    /**
+     * La localisation est-elle allumee dans le telephone.
+     *
+     * A ne pas confondre avec [gpsActive], qui dit seulement si le REPERE est pose sur la carte. Ce qui se
+     * CALCULE a partir de la position - partir d'ou l'on est dans le planificateur, mesurer une distance
+     * depuis la position - ne demande que le capteur : le reglage "Localisation GPS" et son bouton ne
+     * commandent, eux, que l'affichage du repere.
+     *
+     * Relu a chaque bascule de la localisation, que le systeme diffuse, et au retour au premier plan :
+     * sans cela, l'eteindre depuis le volet des reglages rapides laissait des propositions qui ne
+     * pouvaient plus aboutir, et l'allumer n'en ramenait aucune.
+     */
+    var sensorEnabled by mutableStateOf(false)
+        private set
+
+    /** Le suivi a ete demande alors que la localisation est eteinte : l'ecran propose d'aller l'allumer. */
+    var showDisabledDialog by mutableStateOf(false)
+
+    /**
+     * Instant du dernier geste sur la carte (0 = aucun), en temps depuis le demarrage de l'appareil et non
+     * en heure murale : le suivi de position s'y refere, et un changement d'heure - fuseau, mise a l'heure
+     * du reseau - ne doit pas le suspendre pour l'eternite ni le reveiller trop tot.
+     */
+    var lastUserGestureAt by mutableLongStateOf(0L)
+        private set
+
+    /** Vrai tant qu'un recentrage automatique est du (activation du capteur, ou retour au premier plan) :
+     *  consomme des que la prochaine position arrive. */
+    private var pendingCenter by mutableStateOf(false)
+
+    /**
+     * Le reglage "recentrer la carte a l'allumage de la localisation", tenu a jour par l'ecran.
+     *
+     * Une propriete et non un parametre de [startGps] : le reglage vit dans la base, l'ecran le lit deja,
+     * et le passer de main en main jusqu'ici n'apprendrait rien de plus.
+     */
+    var recenterOnStart: Boolean = false
+
+    /**
+     * La bande du planificateur est DEPLOYEE : elle cadre le trajet qu'on compose, et l'ecran maintient
+     * deja le suivi CONTINU en pause pour cette raison (cf. MapFollow.follows). Ce drapeau evite le meme
+     * accroc au premier saut - celui qu'[startGps] ferait sur la derniere position connue, ou celui
+     * qu'[onFix] ferait sur la premiere mesure recue - qui sauterait hors du trajet qu'on est en train de
+     * regarder.
+     *
+     * Tenu a jour depuis l'ecran (cf. rememberLocationControls), au meme titre que les proprietes du
+     * controleur de carte : ce n'est pas ce porteur qui connait le planificateur, seulement s'il occupe
+     * l'ecran.
+     */
+    var plannerExpanded: Boolean = false
+
+    /** Geste mis en attente de l'autorisation : rejoue des qu'elle est accordee. L'autorisation se demande
+     *  depuis plusieurs endroits (le bouton de position, mais aussi le planificateur et la mesure depuis la
+     *  position), et chacun a sa propre suite a donner. */
+    private var pendingAction: (() -> Unit)? = null
+
+    // Les trois lanceurs d'autorisation, poses par [rememberLocationControls] : ils ne peuvent naitre que
+    // dans une composition, et leurs suites appellent des methodes d'ici - d'ou l'aller-retour.
+    internal lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
+    internal lateinit var locationPermissionLauncher: ActivityResultLauncher<String>
+    internal lateinit var locationSettingsLauncher: ActivityResultLauncher<Intent>
+
+    /** Un geste sur la carte vient d'avoir lieu : le suivi de position s'y refere (cf. MapFollow). */
+    fun noteUserGesture() { lastUserGestureAt = SystemClock.elapsedRealtime() }
+
+    /**
+     * Le silence d'apres-geste est leve : la carte peut recentrer sans attendre.
+     *
+     * Deux appelants, et la meme raison dans les deux cas - le geste auquel ce silence protegeait la
+     * reponse n'a plus lieu d'etre respecte :
+     * - le bouton de suivi qu'on vient de rallumer EST le geste, et faire attendre cinq secondes celui
+     *   qui vient de demander a etre suivi laisserait croire que le bouton n'a rien fait ;
+     * - le retour au premier plan, ou le dernier geste date d'avant qu'on quitte l'ecran : celui qui
+     *   revient veut voir ou il est, pas purger une attente heritee.
+     */
+    fun clearUserGesture() { lastUserGestureAt = 0L }
+
+    fun hasLocationPermission() =
+        ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    internal fun refreshSensorEnabled() { sensorEnabled = LocationManagerCompat.isLocationEnabled(locationManager) }
+
+    /**
+     * L'autorisation de notifier, demandee au premier allumage du suivi et a lui seul.
+     *
+     * Depuis Android 13, une notification refusee ne s'affiche pas - le service, lui, tourne quand meme.
+     * Ce serait une position qui consomme la batterie sans que rien ne le dise ni ne l'arrete, exactement
+     * ce qu'on reproche aux applications qui suivent en cachette. Un refus n'empeche donc rien : il est
+     * pris pour ce qu'il est, et le bouton de la carte reste le second moyen d'arreter.
+     */
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val accordee = ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!accordee) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /**
+     * Fin du suivi DEMANDEE : le service s'arrete, et le repere disparait avec lui.
+     *
+     * Le geste est enregistre avant l'arret. C'est ce qui distingue cet arret-ci de tous les autres :
+     * il n'a rien a annoncer, et rien ne doit le rallumer.
+     */
+    fun stopGps() {
+        startedForFollow = false
+        LocationHub.stopRequestedByUser()
+        LocationService.stop(ctx)
+    }
+
+    /** L'annonce d'un arret subi a ete lue : la banniere se retire. */
+    fun dismissStopNotice() { LocationHub.clearStopNotice() }
+
+    /** Le fournisseur de position a interroger pour ALLUMER LE SUIVI : le GPS s'il est allume, le reseau
+     *  sinon, rien si les deux sont eteints. Le suivi, lui, s'abonne ensuite a tous ceux qui repondent
+     *  (cf. `LocationService.enabledProviders`). */
+    private fun enabledProvider(): String? = enabledProviders().firstOrNull()
+
+    /**
+     * Les fournisseurs allumes, du plus fin au plus disponible.
+     *
+     * **Tous, et non le meilleur.** Une position ponctuelle n'etait demandee qu'au GPS des lors qu'il
+     * etait allume - or le GPS, sous un toit, ne rend rien : arrive au travail, le planificateur
+     * annoncait "Position introuvable" alors que le fournisseur reseau, lui, savait parfaitement ou se
+     * trouvait le telephone. Il n'y a aucune raison de ne pas lui poser la question.
+     */
+    private fun enabledProviders(): List<String> =
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
+
+    /**
+     * Allume le capteur.
+     *
+     * [forFollow] dit que c'est le choix d'une trace qui le demande, et non le demarrage automatique :
+     * l'arret de la trace le rendra alors (cf. [startedForFollow]).
+     */
+    @SuppressLint("MissingPermission")
+    fun startGps(forFollow: Boolean = false) {
+        if (!hasLocationPermission()) return
+        val provider = enabledProvider() ?: return
+        askNotificationPermission()
+        // Un allumage automatique ADOPTE le capteur : ce qui suit ne se rendra plus a l'arret d'une trace,
+        // le suivi tournant pour lui-meme.
+        startedForFollow = forFollow && !gpsActive
+        LocationHub.wantTracking()
+        LocationService.start(ctx)
+        // Le planificateur DEPLOYE cadre deja le trajet qu'on compose : sauter sur la position a
+        // l'instant meme ou on allume le capteur l'emporterait hors de l'ecran. Le repere se pose quand
+        // meme - c'est le service qui le fait, plus bas - seule la camera ne bouge pas.
+        if (plannerExpanded) { pendingCenter = false; return }
+        /*
+         * **Le zoom ne bouge JAMAIS a l'allumage du capteur**, et le recentrage ne se fait que si on l'a
+         * demande.
+         *
+         * Allumer la localisation sautait a la position AU ZOOM 15, quel que soit celui qu'on avait :
+         * on regardait une vallee pour preparer la suite, on touchait le bouton pour savoir ou l'on est,
+         * et l'on se retrouvait au coin d'une rue - la zone qu'on etudiait perdue, et rien pour la
+         * retrouver. Or les deux questions sont distinctes : "ou suis-je" ne veut pas dire "emmene-moi".
+         *
+         * Le recentrage lui-meme est donc un reglage, ETEINT par defaut (cf. `SettingsEntity`.
+         * gpsRecenterOnStart) : le repere se pose sur la carte, et celui qui veut l'y rejoindre a le
+         * bouton de recentrage sous le pouce.
+         */
+        if (!recenterOnStart) {
+            pendingCenter = false
+            // Et le suivi continu ne prend pas la main non plus : sans cela il recentrerait a la premiere
+            // position, ce que le reglage vient precisement de refuser (cf. cameraReleased).
+            cameraReleased = true
+            return
+        }
+        // Recentrage demande : la camera est a nouveau au suivi.
+        cameraReleased = false
+        // Recentrage demande : on se pose sur la derniere position connue sans toucher au zoom, et l'on
+        // attend la premiere mesure quand il n'y en a pas.
+        val last = runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+        if (last != null) {
+            controller.centerOn(last.latitude, last.longitude)
+            pendingCenter = false
+        } else {
+            pendingCenter = true   // pas de derniere position connue : on centre des que le capteur en donne une
+        }
+    }
+
+    /** Recentre la carte sur la derniere position GPS connue (bouton de recentrage). Le geste reclame la
+     *  camera : on vient de demander la position, le suivi continu peut reprendre (cf. [cameraReleased]). */
+    fun recenterOnGps() {
+        claimCamera()
+        lastUserLocation?.let { (la, lo) -> controller.centerOn(la, lo) }
+    }
+
+    /**
+     * Une position, en (lat, lon), pour ce qui se CALCULE a partir d'elle - sans rien poser sur la carte.
+     *
+     * Le repere affiche donne deja un flux de positions : on s'en sert SI ELLE EST FRAICHE. Sinon on lit ce
+     * que le systeme sait deja, puis on demande au capteur. C'est ce qui affranchit le planificateur et les
+     * mesures de l'affichage du repere : ils ne l'allument pas, ils lisent le capteur le temps d'une question.
+     *
+     * **La fraicheur du repere se verifie, et c'est le second defaut signale.** Le suivi peut se taire
+     * longtemps sans s'arreter : l'economie d'energie eteint le GPS des que l'ecran s'eteint (cf.
+     * `PowerSave`), et la derniere position recue reste celle du moment ou l'ecran s'est eteint. Un
+     * itineraire demande au dixieme kilometre partait donc de la maison, sans un mot. Une position qui a
+     * fait son temps ne vaut pas mieux ici qu'ailleurs : elle passe la main aux sources suivantes, dont le
+     * capteur, qui, lui, rendra le point d'aujourd'hui.
+     *
+     * **Trois sources, dans cet ordre, et c'est l'ordre qui repare le defaut signale.** Le repere allume ;
+     * la derniere position connue si elle est FRAICHE ; le capteur enfin. La derniere position connue
+     * n'etait pas lue du tout, et l'on demandait donc un point neuf au GPS a chaque fois : sous un toit,
+     * celui-ci ne rend rien avant le delai que le systeme s'accorde, et le planificateur annoncait "Aucun
+     * itineraire" pour un trajet qu'il n'avait meme pas demande. Le signalement le disait ainsi - "quand
+     * j'ai le capteur active mais que le bouton est inactif, j'ai systematiquement Aucun itineraire".
+     *
+     * **Et deux en dernier recours** : une derniere position connue plus agee, puis le repere lui-meme
+     * vieilli, tous deux jusqu'a [STALE_FIX_MS]. Un point d'il y a un quart d'heure est un depart de trajet
+     * parfaitement utilisable - on n'a pas traverse la France entre-temps - la ou l'absence de reponse ne
+     * l'est pas du tout. Au-dela, on rend null : une position d'hier ferait calculer, sans un mot, un
+     * trajet depuis une autre region.
+     *
+     * Null si aucune de ces sources ne repond - autorisation refusee ou localisation eteinte comprises.
+     */
+    @SuppressLint("MissingPermission")
+    suspend fun currentPosition(): Pair<Double, Double>? {
+        freshUserLocation(FRESH_FIX_MS)?.let { return it }
+        // Plus rien a demander - autorisation refusee, localisation eteinte : il reste ce que le suivi a
+        // recu, meme vieilli. C'est tout ce qu'on a, et un depart approximatif vaut mieux que rien.
+        if (!hasLocationPermission()) return freshUserLocation(STALE_FIX_MS)
+        val providers = enabledProviders()
+        if (providers.isEmpty()) return freshUserLocation(STALE_FIX_MS)
+        lastKnown(FRESH_FIX_MS)?.let { return it }
+        // Le capteur muet : la position du suivi revient dans la course, avec la meme tolerance que la
+        // derniere position connue du systeme. Un point d'il y a un quart d'heure est un depart utilisable ;
+        // ce qu'on refusait plus haut, c'est qu'il passe AVANT une source capable de faire mieux.
+        return fromSensors(providers) ?: lastKnown(STALE_FIX_MS) ?: freshUserLocation(STALE_FIX_MS)
+    }
+
+    /**
+     * Une position neuve, demandee a TOUS les fournisseurs allumes a la fois ; la premiere reponse gagne,
+     * les autres demandes sont abandonnees.
+     *
+     * **En parallele, et non l'un apres l'autre.** Le GPS s'accorde une bonne demi-minute avant d'avouer
+     * qu'il ne rend rien : l'interroger d'abord et le reseau ensuite ferait tourner le rond d'attente une
+     * minute pour une reponse que le reseau tenait des la premiere seconde.
+     *
+     * **La premiere reponse, et non la plus precise.** Une centaine de metres ne change rien a un depart
+     * d'itineraire - le moteur le rattache a la route la plus proche -, la ou l'attente, elle, se voit.
+     *
+     * [SENSOR_WAIT_MS] borne l'ensemble : un rond qui tourne sans fin ne dit rien a personne.
+     */
+    @SuppressLint("MissingPermission")
+    private suspend fun fromSensors(providers: List<String>): Pair<Double, Double>? =
+        FirstAnswer.from(providers.map { p -> suspend { fromSensor(p) } }, SENSOR_WAIT_MS)
+
+    /** Une position neuve demandee a [provider], ou null s'il n'en rend pas. */
+    @SuppressLint("MissingPermission")
+    private suspend fun fromSensor(provider: String): Pair<Double, Double>? =
+        suspendCancellableCoroutine { cont ->
+            val signal = CancellationSignal()
+            cont.invokeOnCancellation { signal.cancel() }
+            runCatching {
+                LocationManagerCompat.getCurrentLocation(
+                    locationManager, provider, signal, ContextCompat.getMainExecutor(ctx),
+                ) { loc -> if (cont.isActive) cont.resume(loc?.let { it.latitude to it.longitude }) }
+            }.onFailure { if (cont.isActive) cont.resume(null) }
+        }
+
+    /**
+     * La position du suivi, en (lat, lon), si elle a moins de [maxAgeMs] - sinon null.
+     *
+     * L'age est pris sur l'instant MONOTONE de la mesure (cf. `LocationHub.Fix.elapsedAtMs`), le seul qui
+     * ne bouge pas quand le telephone se remet a l'heure.
+     */
+    private fun freshUserLocation(maxAgeMs: Long): Pair<Double, Double>? =
+        fixState.value
+            ?.takeIf { FixAge.fresh(it.elapsedAtMs, SystemClock.elapsedRealtime(), maxAgeMs) }
+            ?.let { it.lat to it.lon }
+
+    /**
+     * Ou l'on est, SANS RIEN DEMANDER AU CAPTEUR ni faire attendre personne, en (lon, lat).
+     *
+     * **Le pendant instantane de [currentPosition]**, pour ce qui se decide sous le doigt : ou glisser une
+     * etape ajoutee depuis la carte, autour de quoi classer les propositions du geocodeur. Ces reponses-la
+     * ne peuvent pas attendre les dix secondes d'un point neuf, et une position d'il y a un quart d'heure
+     * y suffit largement - on n'a pas traverse la France entre-temps.
+     *
+     * **A ne pas confondre avec [lastFix], qui ne dit que ce que le SUIVI a recu** : suivi eteint, il est
+     * nul, meme quand le telephone sait parfaitement ou il se trouve. C'est le defaut qu'a revele le
+     * terrain - un depart pose sur la position du porteur, sans coordonnees, et une etape ajoutee qui
+     * tombait a l'autre bout du trajet (cf. RoutePlannerState.addWaypoint).
+     *
+     * L'ordre (lon, lat) est celui des lieux et des etapes, non celui du capteur : les appelants sont du
+     * cote de la carte.
+     */
+    fun knownPosition(): Pair<Double, Double>? {
+        freshUserLocation(STALE_FIX_MS)?.let { (lat, lon) -> return lon to lat }
+        if (!hasLocationPermission()) return null
+        return lastKnown(STALE_FIX_MS)?.let { (lat, lon) -> lon to lat }
+    }
+
+    /**
+     * La derniere position connue du systeme, si elle a moins de [maxAgeMs], en (lat, lon).
+     *
+     * Les DEUX fournisseurs sont interroges, et la plus recente l'emporte : le reseau rend souvent un point
+     * la ou le GPS n'a rien - sous un toit, precisement le cas ou l'on prepare un trajet.
+     *
+     * Elle ne coute rien : le systeme la tient deja, de nos requetes comme de celles des autres
+     * applications. C'est ce qui rend le premier appel instantane, la ou le capteur demandait sa dizaine de
+     * secondes.
+     */
+    @SuppressLint("MissingPermission")
+    private fun lastKnown(maxAgeMs: Long): Pair<Double, Double>? {
+        val maintenant = System.currentTimeMillis()
+        return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .filter { runCatching { locationManager.isProviderEnabled(it) }.getOrDefault(false) }
+            .mapNotNull { runCatching { locationManager.getLastKnownLocation(it) }.getOrNull() }
+            .filter { maintenant - it.time in 0..maxAgeMs }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
+    }
+
+    /** Fait [action] avec le capteur, en demandant d'abord l'autorisation si elle manque. */
+    fun withLocationPermission(action: () -> Unit) {
+        if (hasLocationPermission()) action()
+        else {
+            pendingAction = action
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    /** La permission a deja ete demandee pour le demarrage automatique, depuis l'ouverture de l'ecran. */
+    private var automaticPermissionAsked = false
+
+    /**
+     * Le suivi s'allume de lui-meme, sans bouton : a l'ouverture de la carte et des que la localisation du
+     * telephone s'allume (cf. [automaticStart]). Allume, il survit a l'arriere-plan comme quand le bouton
+     * l'allumait ; il s'arrete depuis sa notification, ou quand la localisation du telephone s'eteint.
+     */
+    fun startAutomatically() {
+        when (automaticStart(sensorEnabled, gpsActive, hasLocationPermission(), automaticPermissionAsked)) {
+            AutomaticStart.NONE -> Unit
+            AutomaticStart.START -> startGps()
+            AutomaticStart.ASK_PERMISSION -> {
+                automaticPermissionAsked = true
+                withLocationPermission { startGps() }
+            }
+        }
+    }
+
+    /**
+     * Le suivi peut de nouveau continuer ecran eteint (cf. LocationHub.backgroundAllowed) : s'il tourne en
+     * mode "ecran seul", il repasse au premier plan, avec sa notification.
+     */
+    fun allowBackgroundTracking() {
+        LocationHub.allowBackgroundTracking()
+        if (gpsActive) LocationService.start(ctx)
+    }
+
+    /**
+     * Relance le suivi arrete par le systeme, depuis la notification d'arret. Il n'y a plus de bouton : le
+     * suivi s'allume de lui-meme (cf. [startAutomatically]), ou se relance d'ici.
+     */
+    fun resumeGps() {
+        withLocationPermission {
+            if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
+            else showDisabledDialog = true
+        }
+    }
+
+    /** Ouvre les reglages de localisation du systeme (proposition de la boite de dialogue). */
+    fun openLocationSettings() {
+        locationSettingsLauncher.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+    }
+
+    internal fun onPermissionResult(granted: Boolean) {
+        val action = pendingAction
+        pendingAction = null
+        if (granted) action?.invoke()
+    }
+
+    internal fun onReturnFromSettings() {
+        refreshSensorEnabled()
+        if (LocationManagerCompat.isLocationEnabled(locationManager)) startGps()
+    }
+
+    /** Une position de plus : le repere se deplace, et la camera le suit si un recentrage etait du - sauf
+     *  si le planificateur deploye l'interdit entre-temps (cf. [plannerExpanded]). */
+    internal fun onFix(fix: LocationHub.Fix) {
+        // Le suivi a repris : le point fige n'a plus lieu d'etre, celui-ci est vivant. C'est ce qui rend
+        // le gris honnete - il dirait "plus suivi" sur un repere qui vient de recommencer a bouger.
+        lastFixShown = null
+        controller.setUserLocation(fix.lon, fix.lat, fix.accuracyM)
+        if (pendingCenter && !plannerExpanded) { controller.centerOn(fix.lat, fix.lon); pendingCenter = false }
+    }
+
+    /**
+     * Suivi arrete : le repere s'efface, ou reste en gris a la derniere position mesuree.
+     *
+     * Le reglage eteint - le defaut - rien ne subsiste : c'est le comportement de toujours. Allume, le
+     * point reste la ou le capteur l'a laisse, dans le gris qui dit "ce n'est plus suivi" : on retrouve
+     * d'ou l'on vient sur la carte, sans confondre avec un repere vivant.
+     */
+    internal fun onTrackingStopped() {
+        val derniere = fixState.value?.takeIf { showLastFix }
+        lastFixShown = derniere
+        if (derniere == null) controller.clearUserLocation()
+        else controller.setUserLocation(derniere.lon, derniere.lat, derniere.accuracyM)
+        pendingCenter = false
+    }
+
+    /**
+     * La derniere position mesuree, gardee APRES l'arret du suivi (cf. `SettingsEntity.gpsShowLastFix`).
+     *
+     * **Ce qui a disparu d'ici, et pourquoi.** Le repere passait au gris quand le capteur n'avait plus
+     * rien donne depuis trente secondes : l'idee etait qu'un repere fige est visuellement identique a un
+     * repere juste. Mais un cycliste s'arrete - un col, un pique-nique, une reparation - et le repere
+     * virait au gris alors qu'il disait parfaitement vrai. La couleur annoncait un doute qui n'existait
+     * pas, sur ce qui est le plus regarde de la carte.
+     *
+     * Le gris sert desormais a autre chose, et a quelque chose de sur : dire que ce point n'est PLUS
+     * suivi. Le suivi arrete, la derniere position reste sur la carte, immobile et grise - on sait d'ou
+     * l'on vient, sans croire un instant que le point continue de suivre.
+     */
+    var lastFixShown by mutableStateOf<LocationHub.Fix?>(null)
+        private set
+
+    /** Le reglage "Afficher la derniere position mesuree", tenu a jour par l'ecran comme les autres. */
+    var showLastFix: Boolean = false
+
+    /**
+     * La camera est LAISSEE OU ELLE EST : l'allumage du suivi ne doit pas l'emmener sur la position.
+     *
+     * **Ce que ce drapeau repare.** [recenterOnStart] eteint suffisait a ce que `startGps` ne bouge rien -
+     * mais le suivi CONTINU de la camera (cf. MapFollow), arme par le bouton de la carte, se recentre a
+     * chaque position recue. La premiere arrivait dans la seconde, et la carte sautait donc quand meme sur
+     * la position : le reglage semblait sans effet, et il l'etait a peu pres.
+     *
+     * Il ne se leve QUE sur un geste qui demande explicitement la position : le bouton de recentrage, ou
+     * l'armement du suivi. Ni un deplacement de carte, ni le temps qui passe - ils ne disent pas qu'on veut
+     * etre rejoint.
+     */
+    var cameraReleased by mutableStateOf(false)
+        private set
+
+    /** Le bouton de recentrage, ou l'armement du suivi : on demande la position, la camera la rejoint. */
+    fun claimCamera() { cameraReleased = false }
+
+    /**
+     * Le capteur a ete allume POUR SUIVRE UNE TRACE, et non par le bouton de localisation.
+     *
+     * **Ce que ce drapeau repare.** Choisir une trace allume le suivi tout seul - c'est ce qu'on vient
+     * demander, et l'alerte a besoin du service pour mesurer l'ecart ecran eteint. Mais l'arret de la
+     * trace ne rendait rien : le service continuait de tourner, et sa notification restait dans le volet
+     * avec son bouton "Arreter", seul moyen de s'en defaire. On avait allume sans le demander, et il
+     * fallait eteindre a la main.
+     *
+     * Le capteur allume PAR L'UTILISATEUR, lui, survit a l'arret de la trace : il ne l'a pas allume pour
+     * elle, et le repere qu'il regarde n'a pas a disparaitre parce qu'il cesse de suivre un itineraire.
+     */
+    var startedForFollow by mutableStateOf(false)
+        private set
+
+}
+
+/** Le porteur de la position, avec les autorisations et les effets qui le tiennent en vie. */
+@Composable
+fun rememberLocationControls(controller: MapController): LocationControls {
+    val ctx = LocalContext.current
+    val locationManager = remember(ctx) { ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
+    val trackingState = LocationHub.tracking.collectAsState()
+    val fixState = LocationHub.fix.collectAsState()
+    val controls = remember(ctx, controller, locationManager, trackingState, fixState) {
+        LocationControls(ctx, controller, locationManager, trackingState, fixState)
+    }
+
+    controls.notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    controls.locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { controls.onPermissionResult(it) }
+    controls.locationSettingsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { controls.onReturnFromSettings() }
+
+    // Le repere suit le flux du concentrateur : une position de plus, un repere deplace. Le rechargement
+    // de style, lui, ne demande rien - le controleur garde la derniere position et la repose lui-meme.
+    val fix by fixState
+    LaunchedEffect(fix) { fix?.let { controls.onFix(it) } }
+    // Suivi arrete : plus de repere. Ici et non dans stopGps, parce que le service peut aussi s'arreter de
+    // lui-meme - la notification, ou le systeme qui reprend sa memoire.
+    val tracking by trackingState
+    // Le suivi s'arrete : le repere s'efface, ou reste en gris a la derniere position mesuree selon le
+    // reglage (cf. onTrackingStopped). Relance sur `fix` aussi : au tout premier passage, la mesure n'est
+    // pas encore arrivee, et il n'y aurait rien a figer.
+    LaunchedEffect(tracking, fix) { if (!tracking) controls.onTrackingStopped() }
+
+    // La bascule de la localisation dans le telephone, et le retour au premier plan (cf. sensorEnabled).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, controls) {
+        controls.refreshSensorEnabled()
+        val observer = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) {
+                controls.refreshSensorEnabled()
+                // Apres "Arreter", le suivi "ecran seul" s'arrete en arriere-plan : le curseur revient des
+                // que l'application revient a l'ecran, sans attendre un rallumage de la localisation.
+                controls.startAutomatically()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) { controls.refreshSensorEnabled() }
+        }
+        // Les deux annonces : la bascule generale de la localisation, et l'allumage ou l'extinction d'un
+        // fournisseur en particulier - c'est celle-la que les anciennes versions d'Android envoient.
+        val filter = IntentFilter(LocationManager.MODE_CHANGED_ACTION).apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+        }
+        ContextCompat.registerReceiver(ctx, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            runCatching { ctx.unregisterReceiver(receiver) }
+        }
+    }
+
+    // Sans bouton de localisation, le suivi s'allume de lui-meme : a l'ouverture de la carte, et a chaque
+    // fois que la localisation du telephone revient (cf. LocationControls.startAutomatically).
+    LaunchedEffect(controls.sensorEnabled) { controls.startAutomatically() }
+
+    /*
+     * La localisation du telephone n'est PLUS surveillee ici.
+     *
+     * L'ecran la coupait lui-meme quand elle s'eteignait, et personne ne la rallumait : une coupure d'une
+     * seconde - l'economie d'energie d'un Samsung en fin de batterie - arretait le suivi pour le reste de
+     * la sortie. Le service s'en charge desormais de bout en bout : il attend le capteur au lieu de
+     * renoncer, se rebranche des qu'il revient, et le dit dans les deux sens. Un seul proprietaire, et
+     * c'est celui qui survit a l'ecran.
+     *
+     * [LocationControls.sensorEnabled] reste lu, mais pour ce qui INTERROGE le capteur sans afficher de
+     * repere - le planificateur, les mesures depuis la position.
+     */
+
+    /*
+     * Rien n'est desabonne a la disparition de l'ecran, et c'est tout l'objet du service : le suivi doit
+     * survivre a la carte qu'on quitte, a l'ecran qui s'endort, et a l'application passee en arriere-plan.
+     * Il ne s'arrete que sur un geste - la notification - ou quand la localisation s'eteint.
+     */
+    return controls
+}
+
+/**
+ * Ecran maintenu allume tant que [enabled], c'est-a-dire tant que le suivi tourne et que le reglage le
+ * demande.
+ *
+ * Ici parce que son declencheur est le suivi de position, et qu'il n'a de sens qu'avec lui : ce n'est plus
+ * ce qui garde le suivi EN VIE - le service s'en charge, veille comprise - mais ce qui garde la carte
+ * LISIBLE, telephone sur un guidon, ou consulte d'un coup d'oeil sans y toucher. D'ou le lien avec le
+ * suivi plutot qu'avec l'ecran de carte : allumer indefiniment l'ecran de quelqu'un qui consulte ses
+ * traces sur son canape n'aurait aucun sens.
+ *
+ * Le drapeau est pose sur la FENETRE et retire au depart de l'ecran : laisse en place, il survivrait a la
+ * carte, et rien a l'ecran ne dirait plus pourquoi le telephone ne s'endort pas.
+ */
+@Composable
+fun KeepScreenOnEffect(enabled: Boolean) {
+    val ctx = LocalContext.current
+    // L'activite se cherche en remontant les contextes : celui de la composition est parfois un habillage -
+    // c'en est un ici, la langue etant posee par attachBaseContext (cf. LocalePrefs).
+    val fenetre = remember(ctx) {
+        generateSequence(ctx) { (it as? ContextWrapper)?.baseContext }
+            .filterIsInstance<Activity>().firstOrNull()?.window
+    }
+    DisposableEffect(enabled, fenetre) {
+        if (enabled) fenetre?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { fenetre?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
+}
+
+/** Ce que fait le demarrage automatique du suivi (cf. [automaticStart]). */
+internal enum class AutomaticStart { NONE, START, ASK_PERMISSION }
+
+/**
+ * Le demarrage automatique du suivi, sans bouton : rien si la localisation du telephone est eteinte ou si
+ * le suivi tourne deja ; le suivi si la permission est accordee ; sinon, la demande de permission, une
+ * seule fois depuis l'ouverture de l'ecran - refusee, elle n'est pas redemandee a chaque retour du capteur.
+ */
+internal fun automaticStart(
+    sensorEnabled: Boolean,
+    trackingActive: Boolean,
+    permissionGranted: Boolean,
+    permissionAlreadyAsked: Boolean,
+): AutomaticStart = when {
+    !sensorEnabled || trackingActive -> AutomaticStart.NONE
+    permissionGranted -> AutomaticStart.START
+    permissionAlreadyAsked -> AutomaticStart.NONE
+    else -> AutomaticStart.ASK_PERMISSION
+}

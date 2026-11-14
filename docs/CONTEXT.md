@@ -1,4 +1,4 @@
-# Contexte - Trailog
+# Contexte - Tunturo
 
 Ce document explique **pourquoi** l'application est faite ainsi. Les autres documents disent autre
 chose : [`README.fr.md`](README.fr.md) ce qu'elle fait pour l'utilisateur, [`DEVELOPER.md`](DEVELOPER.md)
@@ -16,7 +16,7 @@ Il s'adresse à qui reprend le code et se demande pourquoi tel choix a été fai
 
 ## D'où vient le projet
 
-Trailog est le portage Android natif d'une application web personnelle (`tefeciste/2024`, dont
+Tunturo est le portage Android natif d'une application web personnelle (`tefeciste/2024`, dont
 `js/map.js` a fourni le registre de fonds de carte initial, et dont le profil altimétrique
 réimplémente la logique de `ol-elevation-profile`). Le dépôt démarre le 11 juillet 2026.
 
@@ -104,7 +104,7 @@ visible : le build passe, les tests passent, et les données disparaissent chez 
 
 ### Le catalogue de fonds n'est semé qu'à vide
 
-`TrailogRepository.ensureSeed` n'insère les fonds par défaut que si la table est vide.
+`TunturoRepository.ensureSeed` n'insère les fonds par défaut que si la table est vide.
 
 Pourquoi : l'utilisateur peut supprimer un fond, en modifier l'URL ou la clé. Un seed rejoué à chaque
 lancement les ressusciterait ou écraserait ses modifications.
@@ -116,13 +116,13 @@ que sur une installation neuve. Pour une base déjà en place, il faut l'insére
 ### L'import entre aussi par une intention
 
 Le sens sortant existait depuis longtemps - partager une trace en GPX -, mais l'entrant passait
-obligatoirement par le bouton *Importer* : un GPX reçu par courriel ne pouvait pas s'ouvrir dans Trailog.
+obligatoirement par le bouton *Importer* : un GPX reçu par courriel ne pouvait pas s'ouvrir dans Tunturo.
 Le manifeste déclare donc les filtres qui font apparaître l'application dans le "Ouvrir avec" et le
 "Partager vers".
 
 Deux filtres et non un, parce que les fournisseurs de fichiers ne s'accordent pas : les uns annoncent un type
 MIME propre, les autres retombent sur `application/octet-stream` ou `text/xml` et ne laissent que l'extension
-pour trancher. Le second n'est délibérément **pas** un `*/*` général : sans son `pathPattern`, Trailog se
+pour trancher. Le second n'est délibérément **pas** un `*/*` général : sans son `pathPattern`, Tunturo se
 proposerait pour tout fichier du téléphone.
 
 Deux conséquences à connaître. L'activité passe en `singleTask` : sans cela, un fichier ouvert pendant que

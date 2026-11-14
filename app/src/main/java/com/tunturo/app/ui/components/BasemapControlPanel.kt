@@ -1,0 +1,496 @@
+package com.tunturo.app.ui.components
+
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Terrain
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Terrain
+import androidx.compose.material.icons.outlined.Folder as FolderOutlined
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.zIndex
+import coil3.compose.AsyncImage
+import com.tunturo.app.R
+import androidx.compose.foundation.shape.CircleShape
+import com.tunturo.app.data.db.BasemapFolderEntity
+import com.tunturo.app.data.db.CompositeEntity
+import com.tunturo.app.data.db.ProviderEntity
+import com.tunturo.app.map.compositeBasemapId
+import com.tunturo.app.map.flagAssetModel
+import com.tunturo.app.map.flagCodeFor
+import com.tunturo.app.ui.routes.DropPosition
+import kotlinx.coroutines.launch
+
+internal enum class BHoverZone { BEFORE, INTO, AFTER }
+internal data class BDragInfo(val kind: String, val id: String, val offset: Float)
+internal data class BHoverTarget(val kind: String, val id: String, val zone: BHoverZone)
+/** Bornes mesurées d'une ligne (position root Y, hauteur réelle) utilisées pour la détection de zone de dépose. */
+internal data class BRowBounds(val top: Float, val height: Float)
+
+private class BDragCtx(
+    val rowBounds: MutableMap<Pair<String, String>, BRowBounds>,
+    val dragInfo: BDragInfo?,
+    val hoverTarget: BHoverTarget?,
+    val onStart: (String, String) -> Unit,
+    val onDrag: (String, String, Float) -> Unit,
+    val onEnd: (String, String) -> Unit,
+)
+
+internal fun combinedBasemapChildren(
+    parentId: Long?, folders: List<BasemapFolderEntity>, providers: List<ProviderEntity>, composites: List<CompositeEntity>,
+): List<Any> {
+    val f = folders.filter { it.parentId == parentId }
+    // Le relief n'est plus une ligne de la liste : il a son bouton dans l'en-tete (cf. reliefAvailable).
+    // Ce n'est pas un fond qu'on choisit mais un ombrage qui se pose sur le fond courant.
+    val p = providers.filter { it.enabled && it.folderId == parentId && !it.isRelief }
+    val c = composites.filter { it.enabled && it.folderId == parentId }
+    fun order(e: Any) = when (e) { is BasemapFolderEntity -> e.sortOrder; is ProviderEntity -> e.sortOrder; is CompositeEntity -> e.sortOrder; else -> 0 }
+    fun typeRank(e: Any) = when (e) { is BasemapFolderEntity -> 0; is ProviderEntity -> 1; else -> 2 }
+    return (f + p + c).sortedWith(compareBy({ order(it) }, { typeRank(it) }))
+}
+
+private val ProviderEntity.isRelief: Boolean get() = type == "DEM"
+
+/**
+ * Le bouton du relief s'affiche dans l'en-tete du panneau si un fond de relief est coche dans les reglages :
+ * la meme regle qui le faisait paraitre dans la liste avant qu'il n'en sorte.
+ */
+internal fun reliefAvailable(providers: List<ProviderEntity>): Boolean = providers.any { it.enabled && it.isRelief }
+
+/** Clé stable (kind, id) d'un noeud, pour préserver l'identité de composition (état "expanded", drag)
+ *  quand la liste se réordonne (drag & drop, activation/désactivation d'un provider ailleurs, etc.). */
+private fun basemapNodeKey(item: Any): Pair<String, String> = when (item) {
+    is BasemapFolderEntity -> "folder" to item.id.toString()
+    is ProviderEntity -> "provider" to item.id
+    is CompositeEntity -> "composite" to item.id.toString()
+    else -> "unknown" to item.toString()
+}
+
+/**
+ * Cible de dépôt sous l'élément glissé, ou null si le geste ne vise rien de valide. Le centre de la ligne
+ * glissée désigne la ligne survolée ; sa position relative dans celle-ci donne la zone (quart haut/bas =
+ * réordonner avant/après, milieu d'un dossier = déposer dedans). Un dossier ne peut pas être déposé dans
+ * lui-même ni dans sa propre descendance, ce qui détacherait la branche de l'arbre.
+ * Extraite du composable pour être testable : c'est ici que se joue tout le drag & drop du panneau.
+ */
+internal fun basemapHoverTarget(
+    info: BDragInfo,
+    rowBounds: Map<Pair<String, String>, BRowBounds>,
+    folders: List<BasemapFolderEntity>,
+    providers: List<ProviderEntity>,
+    composites: List<CompositeEntity>,
+): BHoverTarget? {
+    val start = rowBounds[info.kind to info.id] ?: return null
+    val centerY = start.top + start.height / 2f + info.offset
+    val hit = rowBounds.entries.firstOrNull { (k, b) ->
+        centerY in b.top..(b.top + b.height) && !(k.first == info.kind && k.second == info.id)
+    } ?: return null
+    val (key, bounds) = hit
+    val rel = (centerY - bounds.top) / bounds.height
+    val zone = when {
+        rel < 0.25f -> BHoverZone.BEFORE
+        rel > 0.75f -> BHoverZone.AFTER
+        key.first == "folder" -> BHoverZone.INTO
+        rel < 0.5f -> BHoverZone.BEFORE
+        else -> BHoverZone.AFTER
+    }
+    if (info.kind == "folder") {
+        val prospectiveId = if (zone == BHoverZone.INTO) key.second.toLongOrNull() else when (key.first) {
+            "folder" -> folders.firstOrNull { it.id.toString() == key.second }?.parentId
+            "provider" -> providers.firstOrNull { it.id == key.second }?.folderId
+            else -> composites.firstOrNull { it.id.toString() == key.second }?.folderId
+        }
+        val selfId = info.id.toLongOrNull()
+        if (prospectiveId != null && selfId != null &&
+            (prospectiveId == selfId || isDescendantBasemapFolder(prospectiveId, selfId, folders))) {
+            return null
+        }
+    }
+    return BHoverTarget(key.first, key.second, zone)
+}
+
+internal fun isDescendantBasemapFolder(candidateId: Long, ancestorId: Long, folders: List<BasemapFolderEntity>): Boolean {
+    var cur = folders.firstOrNull { it.id == candidateId }?.parentId
+    while (cur != null) {
+        if (cur == ancestorId) return true
+        cur = folders.firstOrNull { it.id == cur }?.parentId
+    }
+    return false
+}
+
+private fun strongHaptic(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION") context.getSystemService(Vibrator::class.java)
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator?.vibrate(VibrationEffect.createOneShot(50, 200))
+    } else {
+        @Suppress("DEPRECATION") vibrator?.vibrate(50)
+    }
+}
+
+/**
+ * Détecteur de geste unique (tap OU appui long + glisser), remplace un couple `clickable` + drag séparé :
+ * deux détecteurs de gestes indépendants sur la même ligne se neutralisent en pratique (le `clickable` du
+ * parent consomme l'évènement "down" pour son ripple, ce qui annule la détection d'appui long de l'enfant).
+ * Si le doigt bouge au-delà du seuil de toucher AVANT la fin du délai d'appui long, l'évènement n'est PAS
+ * consommé : le parent (ici le `verticalScroll` du panneau) reprend la main normalement pour faire défiler.
+ */
+private suspend fun PointerInputScope.detectTapOrLongPressDrag(
+    onTap: () -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+
+        // Le délai d'appui long court EN PARALLÈLE de l'attente d'évènements, et non par comparaison
+        // d'horloge à l'intérieur de la boucle : `awaitPointerEvent` ne rend la main qu'à l'arrivée d'un
+        // évènement, or un doigt parfaitement immobile n'en produit aucun. Le délai n'était donc constaté
+        // qu'au premier mouvement, et l'appui long n'était pris en compte qu'à ce moment-là - le retour
+        // haptique arrivait quand on commençait à déplacer, au lieu de dire qu'on POUVAIT déplacer.
+        // Renvoie non-null si le geste est fini ou abandonné avant l'appui long ; null si le délai expire,
+        // doigt toujours posé, ce qui est justement le cas où le drag devient disponible.
+        val fini = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull true
+                if (!change.pressed) {
+                    onTap()
+                    change.consume()
+                    return@withTimeoutOrNull true
+                }
+                val dx = change.position.x - down.position.x
+                val dy = change.position.y - down.position.y
+                // Surtout ne rien consommer avant l'appui long : le `scrollable` parent annule sa propre
+                // détection dès qu'un enfant consomme un mouvement, et ne la reprend pas de tout le geste.
+                // Consommer ici, meme sous le seuil, tuait donc le defilement des que le doigt se posait
+                // sur un nom de couche.
+                if (kotlin.math.sqrt(dx * dx + dy * dy) > viewConfiguration.touchSlop) {
+                    return@withTimeoutOrNull true   // laisse le parent (scroll) gérer ce mouvement
+                }
+            }
+        }
+        if (fini != null) return@awaitEachGesture
+
+        onDragStart()
+        var totalDy = 0f
+        while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            if (!change.pressed) {
+                onDragEnd()
+                change.consume()
+                break
+            }
+            totalDy += change.positionChange().y
+            onDrag(totalDy)
+            change.consume()
+        }
+    }
+}
+
+/** Panneau latéral droit du Basemap Control : fonds activés, organisation en dossiers, drag & drop
+ *  (appui long sur le nom, pas de poignée). Tap sur un fond -> le sélectionne et ferme le panneau ;
+ *  le relief n'est pas dans la liste : son bouton, dans l'en-tete, bascule l'ombrage (cf. ReliefToggle). */
+@Composable
+fun BasemapControlPanel(
+    folders: List<BasemapFolderEntity>,
+    providers: List<ProviderEntity>,
+    composites: List<CompositeEntity>,
+    currentBasemapId: String,
+    widthFraction: Float,
+    backgroundAlpha: Float,
+    onSelect: (String) -> Unit,
+    onCreateFolder: (String, Long?) -> Unit,
+    onReorderDrop: suspend (String, String, String, String, DropPosition) -> Unit,
+    reliefOn: Boolean,
+    onToggleRelief: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val rowBounds = remember { mutableStateMapOf<Pair<String, String>, BRowBounds>() }
+    var dragInfo by remember { mutableStateOf<BDragInfo?>(null) }
+    val hoverTarget: BHoverTarget? = dragInfo?.let {
+        basemapHoverTarget(it, rowBounds, folders, providers, composites)
+    }
+    val context = LocalContext.current
+    val dctx = BDragCtx(
+        rowBounds = rowBounds, dragInfo = dragInfo, hoverTarget = hoverTarget,
+        onStart = { kind, id -> strongHaptic(context); dragInfo = BDragInfo(kind, id, 0f) },
+        onDrag = { kind, id, total -> if (dragInfo?.kind == kind && dragInfo?.id == id) dragInfo = dragInfo!!.copy(offset = total) },
+        onEnd = { kind, id ->
+            val info = dragInfo; val target = hoverTarget
+            if (info != null && info.kind == kind && info.id == id && target != null) {
+                val position = when (target.zone) { BHoverZone.BEFORE -> DropPosition.BEFORE; BHoverZone.INTO -> DropPosition.INTO; BHoverZone.AFTER -> DropPosition.AFTER }
+                scope.launch { onReorderDrop(kind, id, target.kind, target.id, position); dragInfo = null }
+            } else dragInfo = null
+        },
+    )
+
+    var newFolderDialog by remember { mutableStateOf(false) }
+
+    // Surface (et non Box+background) : fournit LocalContentColor adapté au thème pour le texte/les icônes
+    // du panneau. Un Box+background nu laisse LocalContentColor à sa valeur par défaut (noir), d'où les
+    // textes/icônes illisibles en thème sombre.
+    Surface(
+        color = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.fillMaxWidth(widthFraction).fillMaxHeight(),
+    ) {
+        // Défilement désactivé pendant un drag actif : sans ça, le scroll du panneau peut reprendre la main
+        // sur le geste en cours de route et casser le suivi du glisser (indicateurs de zone qui "sautent").
+        // CompositionLocalProvider : désactive le plancher tactile de 48dp que Material3 impose par défaut
+        // aux IconButton (cf. Groupe N) nécessaire à la fois pour le header 1 ligne compact (section 7.1) et pour
+        // que le chevron plie/déplie des dossiers fasse bien 32dp comme le Spacer d'alignement des basemaps
+        // racine, sans quoi les deux ne s'alignent pas (section 7.2).
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState(), enabled = dragInfo == null)) {
+            Box(Modifier.fillMaxWidth().padding(4.dp)) {
+                Row(Modifier.align(Alignment.CenterStart), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = { newFolderDialog = true }, modifier = Modifier.size(32.dp)) {
+                        // Meme icone que le "nouveau dossier" du menu lateral : c'est la meme action, sur
+                        // l'autre arbre de l'application.
+                        Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.label_new_folder), Modifier.size(18.dp))
+                    }
+                    if (reliefAvailable(providers)) ReliefToggle(reliefOn, onToggleRelief)
+                }
+                // Décalé au maximum vers l'angle haut-droit du gestionnaire (SPEC section 7.1).
+                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) {
+                    Icon(Icons.Filled.Close, stringResource(R.string.action_close), Modifier.size(18.dp))
+                }
+            }
+            HorizontalDivider()
+            combinedBasemapChildren(null, folders, providers, composites).forEach { item ->
+                key(basemapNodeKey(item)) {
+                    BasemapNode(item, folders, providers, composites, 0, dctx, currentBasemapId, onSelect)
+                }
+            }
+        }
+        }
+    }
+
+    if (newFolderDialog) {
+        var name by remember { mutableStateOf("") }
+        val focus = remember { FocusRequester() }
+        AlertDialog(
+            onDismissRequest = { newFolderDialog = false },
+            title = { Text(stringResource(R.string.label_new_folder)) },
+            text = {
+                CompactOutlinedTextField(name, { name = it }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus))
+                // Le focus se demande DANS la boite, une fois son champ compose : demande depuis le
+                // panneau, il partait avant que la fenetre de la boite n'existe, et levait.
+                LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onCreateFolder(name.ifBlank { null } ?: return@TextButton, null); newFolderDialog = false
+                }) { Text(stringResource(R.string.action_create)) }
+            },
+            dismissButton = { TextButton(onClick = { newFolderDialog = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+}
+
+@Composable
+private fun BasemapNode(
+    item: Any, allFolders: List<BasemapFolderEntity>, allProviders: List<ProviderEntity>, allComposites: List<CompositeEntity>,
+    depth: Int, dctx: BDragCtx, currentBasemapId: String,
+    onSelect: (String) -> Unit,
+) {
+    when (item) {
+        is BasemapFolderEntity -> {
+            var expanded by remember { mutableStateOf(true) }
+            val key = "folder" to item.id.toString()
+            val isDragging = dctx.dragInfo?.kind == "folder" && dctx.dragInfo.id == item.id.toString()
+            val offset = if (isDragging) dctx.dragInfo.offset else 0f
+            val hoverZone = dctx.hoverTarget?.takeIf { it.kind == "folder" && it.id == item.id.toString() }?.zone
+            // pointerInput(item.id) ne relance jamais son bloc tant que l'id ne change pas : sans
+            // rememberUpdatedState, la coroutine de geste resterait figée sur le dctx de la toute première
+            // composition (hoverTarget alors toujours null) et le drop ne ferait jamais rien (bug 1.1).
+            val currentDctx by rememberUpdatedState(dctx)
+
+            if (hoverZone == BHoverZone.BEFORE) DropLine()
+            Row(Modifier.fillMaxWidth()
+                .onGloballyPositioned { dctx.rowBounds[key] = BRowBounds(it.positionInRoot().y, it.size.height.toFloat()) }
+                .zIndex(if (isDragging) 1f else 0f)
+                .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
+                .background(if (hoverZone == BHoverZone.INTO) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
+                .padding(start = (12 + depth * 16).dp, top = 8.dp, bottom = 8.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Chevron aligné à gauche de sa zone tactile (au lieu du centrage par défaut d'IconButton) :
+                // sans ça, son icône (24dp) centrée dans les 32dp du bouton retombe 4dp plus à droite que
+                // l'icône d'une couche à plat, cassant l'alignement caret/icône demandé (bug 1.2).
+                IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(32.dp)) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                        Icon(if (expanded) Icons.Filled.ExpandMore else Icons.Filled.ChevronRight, null)
+                    }
+                }
+                // Couleur adaptée au thème (clair/sombre), pas figée : contour/remplissage noir en thème
+                // clair, blanc en thème sombre, dans les deux cas (ouvert ou fermé) (bug 4.1).
+                // Icons.Filled.FolderOpen dessine un dossier "entrouvert" dont seul l'onglet arrière est
+                // rempli (le reste en contour) : on garde la MÊME silhouette que la version fermée
+                // (Icons.Filled.Folder, pleine) pour un remplissage total quand le dossier est ouvert.
+                Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.FolderOutlined, null, Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.width(8.dp))
+                Text(item.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)
+                    .pointerInput(item.id) {
+                        detectTapOrLongPressDrag(
+                            onTap = {},
+                            onDragStart = { currentDctx.onStart("folder", item.id.toString()) },
+                            onDrag = { total -> currentDctx.onDrag("folder", item.id.toString(), total) },
+                            onDragEnd = { currentDctx.onEnd("folder", item.id.toString()) },
+                        )
+                    })
+            }
+            if (hoverZone == BHoverZone.AFTER) DropLine()
+            if (expanded) {
+                combinedBasemapChildren(item.id, allFolders, allProviders, allComposites).forEach { child ->
+                    key(basemapNodeKey(child)) {
+                        BasemapNode(child, allFolders, allProviders, allComposites, depth + 1, dctx, currentBasemapId,
+                            onSelect)
+                    }
+                }
+            }
+        }
+        is ProviderEntity -> BasemapLeaf(
+            kind = "provider", id = item.id, name = item.name, depth = depth,
+            selected = item.id == currentBasemapId, dctx = dctx, onSelect = { onSelect(item.id) },
+        ) { BasemapIcon(item) }
+        is CompositeEntity -> BasemapLeaf(
+            kind = "composite", id = item.id.toString(), name = item.name, depth = depth,
+            selected = compositeBasemapId(item.id) == currentBasemapId, dctx = dctx,
+            onSelect = { onSelect(compositeBasemapId(item.id)) },
+        ) { Icon(Icons.Filled.Layers, null, Modifier.size(20.dp)) }
+    }
+}
+
+@Composable
+private fun BasemapLeaf(
+    kind: String, id: String, name: String, depth: Int, selected: Boolean, dctx: BDragCtx,
+    onSelect: () -> Unit, trailing: (@Composable () -> Unit)? = null, icon: @Composable () -> Unit,
+) {
+    val key = kind to id
+    val isDragging = dctx.dragInfo?.kind == kind && dctx.dragInfo.id == id
+    val offset = if (isDragging) dctx.dragInfo.offset else 0f
+    val hoverZone = dctx.hoverTarget?.takeIf { it.kind == kind && it.id == id }?.zone
+    // Cf. commentaire équivalent dans BasemapNode (bug 1.1) : sans ça, le drop ne déclenche jamais rien.
+    val currentDctx by rememberUpdatedState(dctx)
+
+    if (hoverZone == BHoverZone.BEFORE) DropLine()
+    Row(Modifier.fillMaxWidth()
+        .onGloballyPositioned { dctx.rowBounds[key] = BRowBounds(it.positionInRoot().y, it.size.height.toFloat()) }
+        .zIndex(if (isDragging) 1f else 0f)
+        .graphicsLayer { translationY = offset; alpha = if (isDragging) 0.85f else 1f }
+        .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+        // Indentation basée sur la profondeur du DOSSIER PARENT (depth - 1), pas la profondeur propre de la
+        // couche : une couche imbriquée doit s'aligner sur l'icône de son dossier contenant, pas creuser un
+        // niveau d'indentation supplémentaire pour elle-même. À la racine (depth 0), aucune indentation.
+        .padding(start = (12 + (depth - 1).coerceAtLeast(0) * 16).dp, top = 8.dp, bottom = 8.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Réservée seulement à partir d'un niveau imbriqué, pour aligner l'icône sur celle du dossier
+        // parent : à la racine, une couche est à plat, sans indentation (bug 1.2).
+        if (depth > 0) Spacer(Modifier.width(32.dp))
+        icon()
+        Spacer(Modifier.width(8.dp))
+        Text(name, modifier = Modifier.weight(1f)
+            .pointerInput(id) {
+                detectTapOrLongPressDrag(
+                    onTap = onSelect,
+                    onDragStart = { currentDctx.onStart(kind, id) },
+                    onDrag = { total -> currentDctx.onDrag(kind, id, total) },
+                    onDragEnd = { currentDctx.onEnd(kind, id) },
+                )
+            })
+        trailing?.invoke()
+    }
+    if (hoverZone == BHoverZone.AFTER) DropLine()
+}
+
+/** Drapeau du pays (asset SVG bundlé) pour les fonds nationaux détectés, sinon globe générique. */
+@Composable
+private fun BasemapIcon(p: ProviderEntity) {
+    val code = flagCodeFor(p)
+    when {
+        code != null -> AsyncImage(model = flagAssetModel(code), contentDescription = null,
+            contentScale = ContentScale.Crop, modifier = Modifier.size(20.dp).clip(RoundedCornerShape(2.dp)))
+        // Le relief porte une montagne, et non le globe des fonds mondiaux : ce n'est pas une carte de
+        // plus, c'est un ombrage qui se pose sur celle qui est dessous.
+        p.type == "DEM" -> Icon(Icons.Outlined.Terrain, null, Modifier.size(20.dp))
+        else -> Icon(Icons.Outlined.Public, null, Modifier.size(20.dp))
+    }
+}
+
+/**
+ * Le relief, en icone seule dans l'en-tete : allume, la montagne prend la couleur d'accent sur une pastille
+ * teintee ; eteint, elle reste au trait, noire, sans fond. Deux etats qui se distinguent d'un coup d'oeil,
+ * sans libelle - et le lecteur d'ecran les annonce, l'icone etant un interrupteur (IconToggleButton).
+ *
+ * Le tap allume ou eteint l'ombrage sans fermer le panneau ni changer le fond courant : il se pose sur
+ * celui-ci, il ne le remplace pas.
+ */
+@Composable
+private fun ReliefToggle(on: Boolean, onToggle: () -> Unit) {
+    IconToggleButton(
+        checked = on, onCheckedChange = { onToggle() }, modifier = Modifier.size(32.dp),
+        colors = IconButtonDefaults.iconToggleButtonColors(
+            // Eteint : la couleur du texte du panneau, comme l'icone du nouveau dossier et comme la
+            // montagne de l'ancienne ligne du relief - noire en theme clair, pas grisee.
+            contentColor = LocalContentColor.current,
+            checkedContentColor = MaterialTheme.colorScheme.primary,
+            checkedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+        ),
+    ) {
+        Icon(if (on) Icons.Filled.Terrain else Icons.Outlined.Terrain,
+            stringResource(R.string.content_desc_relief_toggle), Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun DropLine() {
+    Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
+}

@@ -32,12 +32,12 @@ val appVersionCode = semver?.destructured?.let { (maj, min, patch) ->
 val appVersionName = gitVersion.removePrefix("v")
 
 android {
-    namespace = "fr.lc4918.trailog"
+    namespace = "com.tunturo.app"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "fr.lc4918.trailog"
+        applicationId = "com.tunturo.app"
         minSdk = 24
         targetSdk = 35
         versionCode = appVersionCode.coerceAtLeast(1)
@@ -138,7 +138,7 @@ android {
 // que voit l'utilisateur en téléchargeant l'APK depuis la page GitHub Releases (§WORKFLOW.md §5).
 androidComponents {
     onVariants { variant ->
-        val base = if (variant.buildType == "release") "trailog-$gitVersion" else "trailog-debug-$gitVersion"
+        val base = if (variant.buildType == "release") "tunturo-$gitVersion" else "tunturo-debug-$gitVersion"
         variant.outputs.forEach { output ->
             val impl = output as com.android.build.api.variant.impl.VariantOutputImpl
             // Une sortie par architecture depuis les splits : sans le suffixe, les cinq s'ecriraient dans

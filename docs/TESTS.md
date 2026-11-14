@@ -1,4 +1,4 @@
-# Tests - Trailog
+# Tests - Tunturo
 
 Ce document recense les tests de l'application : ce qu'ils couvrent, ce qu'ils ne couvrent pas, et
 pourquoi. Il s'adresse à qui doit ajouter un test ou comprendre pourquoi la couverture affiche le
@@ -76,7 +76,7 @@ Chiffres réels, produits par Jacoco, non estimés.
 | `ui/geocode` | 49/174 | 28 % |
 | `ui/measure` | 36/135 | 27 % |
 | `map/offline` | 85/361 | 24 % |
-| `ui/nav`, `ui/theme`, racine (`MainActivity`, `TrailogApp`) | 16/67 | 24 % |
+| `ui/nav`, `ui/theme`, racine (`MainActivity`, `TunturoApp`) | 16/67 | 24 % |
 | `update` | 29/132 | 22 % |
 | `location` | 35/190 | 18 % |
 | `ui/points` | 82/517 | 16 % |
@@ -246,14 +246,14 @@ Points vérifiés :
 | Fichier | Tests | Ce qui est verrouillé |
 |---|---|---|
 | `LayerGeoJsonTest` | 13 | aller-retour du format de stockage des couches |
-| `TrailogRepositoryTest` | 9 | import bout en bout, refus, amorçage |
+| `TunturoRepositoryTest` | 9 | import bout en bout, refus, amorçage |
 
 `LayerGeoJsonTest` protège le format de persistance : une régression y rendrait illisibles des traces
 déjà importées. Il vérifie l'aller-retour des trois types de propriété, l'ordre des clés, l'image de
 garde épinglée, et que la simplification du fichier de rendu allège la géométrie **sans déplacer les
 extrémités** de la trace.
 
-`TrailogRepositoryTest` vérifie qu'un fichier refusé ne laisse **aucune** trace en base ni sur le
+`TunturoRepositoryTest` vérifie qu'un fichier refusé ne laisse **aucune** trace en base ni sur le
 disque, et que l'amorçage ne ressuscite pas un fond que l'utilisateur a supprimé.
 
 ### `data/db` - base de données
@@ -837,7 +837,7 @@ supposé : `MapLibre.getInstance` lève `UnsatisfiedLinkError`, `MapView(context
 Deux coutures ont suffi, et aucune ne change ce que fait l'application :
 
 - **la surface de carte passe en paramètre** (`MapSurface`), sa valeur par défaut étant la vraie ;
-- **`TrailogApp` isole deux points d'entrée** : l'init du moteur natif, et ce que le démarrage lance en
+- **`TunturoApp` isole deux points d'entrée** : l'init du moteur natif, et ce que le démarrage lance en
   tâche de fond. Le second parce que le semis y écrit les réglages sur un autre thread : un test qui pose
   les siens juste après courait contre lui, et perdait une fois sur dix.
 
@@ -884,12 +884,12 @@ dossier. Le bug est donc ailleurs (geste, défilement, ou visibilité de la cibl
 Trois réglages, sans lesquels rien ne fonctionne.
 
 **`robolectric.properties`** (`app/src/test/resources/`) impose une `Application` neutre par défaut. La
-vraie (`TrailogApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas
+vraie (`TunturoApp`) initialise MapLibre au démarrage, dont les bibliothèques natives ne se chargent pas
 sur la JVM : tous les tests Robolectric échouaient en `UnsatisfiedLinkError`. Aucun test unitaire n'a
 besoin de la carte.
 
 `MainScreenUiTest`, lui, en a besoin d'une vraie - il monte le dépôt et les réglages. Il déclare donc la
-sienne, `@Config(application = TestTrailogApp::class)`, qui hérite de `TrailogApp` et ne neutralise que
+sienne, `@Config(application = TestTunturoApp::class)`, qui hérite de `TunturoApp` et ne neutralise que
 deux points d'entrée : le moteur natif, et le démarrage en tâche de fond. Une `Application` déclarée par
 classe l'emporte sur `robolectric.properties`.
 
@@ -900,7 +900,7 @@ par Robolectric. Sans lui, le rapport annonce 0 % sur du code pourtant couvert.
 réels de l'app. Sans lui, aucun test ne peut lire une chaîne ou un asset.
 
 Enfin, la base est un **singleton** : les méthodes d'une même classe de test la partagent. Un test qui
-suppose un ordre de liste devient dépendant des autres. `TrailogRepositoryTest` vise donc explicitement
+suppose un ordre de liste devient dépendant des autres. `TunturoRepositoryTest` vise donc explicitement
 la dernière couche insérée par son identifiant.
 
 ## Ce qu'une classe de test peut casser chez les autres
