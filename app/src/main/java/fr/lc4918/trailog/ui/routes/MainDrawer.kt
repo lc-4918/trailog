@@ -31,7 +31,6 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CenterFocusWeak
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Landscape
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Watch
@@ -216,7 +215,7 @@ internal fun FolderNode(
             onClick = { vm.setFolderVisible(folder.id, !allVisible) },
         )
         /*
-         * De l'icone du dossier jusqu'a la poignee (exclue), tout appui simple ouvre ou ferme le dossier : le
+         * Du nom du dossier jusqu'a la poignee (exclue), tout appui simple ouvre ou ferme le dossier : le
          * caret seul etait une cible trop petite pour un geste aussi frequent. Pas d'infobulle ici, a la
          * difference d'une couche : le nom d'un dossier se lit en l'ouvrant. L'appui long ouvre la
          * selection, comme sur le nom.
@@ -233,11 +232,8 @@ internal fun FolderNode(
             horizontalArrangement = Arrangement.spacedBy(DrawerRowGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Couleur adaptée au thème (clair/sombre), pas figée : contour (fermé) ou remplissage (ouvert)
-            // noir en thème clair, blanc en thème sombre (bug 4.1). Même silhouette pleine (Filled.Folder) dans
-            // les deux états : Filled.FolderOpen ne remplit que l'onglet arrière, pas tout le dossier.
-            Icon(if (expanded) Icons.Filled.Folder else Icons.Outlined.Folder, null,
-                Modifier.size(DrawerIconSize), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Plus d'icone de dossier : le chevron dit deja qu'on peut l'ouvrir, et le nom en demi-gras le
+            // distingue des couches.
             // Nom d'un dossier : demi-gras. Il ne porte pas de couleur, contrairement a une couche, et n'a que
             // sa graisse pour se distinguer de ce qu'il contient. Plus de capitales : elles criaient, et
             // allongeaient les noms au point de les couper plus tot que ceux des couches.
