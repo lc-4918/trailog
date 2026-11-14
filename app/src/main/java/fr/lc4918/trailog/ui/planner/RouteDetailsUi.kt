@@ -433,8 +433,6 @@ private fun LegendRow(color: Color, label: String, meters: Double, fraction: Dou
 }
 
 /** Hauteur maximale du profil dans le panneau VIEWER : un peu plus que dans la bande, il y est seul. */
-/** Hauteur maximale du graphe d'un profil de VIEWER pose sur une couche (cf. ProfileViewerContent). */
-private val ViewerChartMaxHeight = 150.dp
 
 /**
  * Le panneau d'un affichage VIEWER, qui remplace la bande au bas de l'ecran : le profil du parcours, ou ses
@@ -508,59 +506,6 @@ fun PlannerViewerPanel(
             panelTestTag = "planner_viewer",
             chartTestTag = "planner_viewer_profile",
         )
-    }
-}
-
-/**
- * Le contenu d'un VIEWER Profil, quel que soit le trace : les chiffres ([infos], ceux du point [cursor] ou,
- * a defaut, ceux de la portion affichee), puis le profil de [all] - ou de sa fenetre [zoom] -, qu'on
- * parcourt au doigt ([onScrub]), qu'on pince ou qu'on touche deux fois pour grossir ([onZoom]).
- */
-@Composable
-internal fun ProfileViewerContent(
-    all: List<Sample>,
-    fullStats: TrackStats,
-    zoom: IntRange?,
-    cursor: Double?,
-    settings: SettingsEntity,
-    slope: Boolean,
-    lineColor: Color,
-    infos: @Composable (point: Sample?, stats: TrackStats) -> List<TitleInfo>,
-    onScrub: (Double) -> Unit,
-    onZoom: (scale: Float, fraction: Float) -> Unit,
-    modifier: Modifier = Modifier,
-    lastLabelInsetPx: Float = 0f,
-) {
-    val samples = remember(all, zoom) {
-        if (zoom != null && zoom.last < all.size) all.subList(zoom.first, zoom.last + 1) else all
-    }
-    val stats = remember(all, zoom, samples) { if (zoom != null) TrackMath.statsOf(samples) else fullStats }
-    val point = cursor?.let { TrackMath.sampleAt(all, it) }
-    TrackInfoColumns(infos(point, stats), fontSp = settings.profBarFont, bold = settings.profBarBold,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.xs, vertical = Spacing.xs))
-    if (samples.size < 2) return
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = Spacing.s)) {
-        val hauteur = profileChartHeight(
-            settings.profileVerticalScale, stats.min, stats.max, samples.last().x - samples.first().x,
-            constraints.maxWidth, ViewerChartMaxHeight, settings.profAxisFont,
-        )
-        Box(Modifier.fillMaxWidth().height(hauteur), contentAlignment = Alignment.Center) {
-            ElevationProfile(
-                samples = samples, stats = stats,
-                grid = settings.profileGrid,
-                slope = slope,
-                lineColor = lineColor,
-                axisFontSp = settings.profAxisFont,
-                axisBold = settings.profAxisBold,
-                cursorX = cursor,
-                onScrub = onScrub,
-                onZoom = onZoom,
-                onDoubleTap = { fraction -> onZoom(2f, fraction) },
-                lastLabelInsetPx = lastLabelInsetPx,
-                verticalScale = settings.profileVerticalScale,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight().then(modifier),
-            )
-        }
     }
 }
 
@@ -651,96 +596,6 @@ private fun <K> ShareViewer(
         cursorColor = MaterialTheme.colorScheme.onSurface,
         cursorFill = MaterialTheme.colorScheme.surface,
     )
-}
-
-/**
- * Le panneau VIEWER d'une trace de la BIBLIOTHEQUE : le meme que celui du planificateur (cf.
- * [PlannerViewerPanel]) - le profil, les surfaces, les types de voies -, pose sur une couche.
- *
- * En-tete : le retour, le VIEWER en cours et son menu ([offered] : ceux qui ont quelque chose a montrer),
- * [headerActions] au bout, puis le nom de la couche - on vient de quitter la fenetre qui le portait, et
- * c'est lui que la carte montre. Dessous, [profile] pour le profil ; sinon la categorie mise en evidence et
- * la barre des parts, dont le choix appelle [onSelect].
- */
-@Composable
-internal fun WaysViewerPanel(
-    viewer: PlannerViewer,
-    title: String,
-    segments: List<WaySegment>,
-    highlight: Any?,
-    imperial: Boolean,
-    offered: List<PlannerViewer>,
-    onSwitch: (PlannerViewer, Any?) -> Unit,
-    onSelect: (Any?) -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    headerActions: @Composable RowScope.() -> Unit = {},
-    profile: @Composable () -> Unit = {},
-) {
-    val shape = MaterialTheme.shapes.extraLarge
-    var menu by remember { mutableStateOf(false) }
-    fun titre(v: PlannerViewer) = when (v) {
-        PlannerViewer.PROFILE -> R.string.planner_viewer_elevation
-        PlannerViewer.SURFACES -> R.string.planner_details_surfaces
-        PlannerViewer.WAYS -> R.string.planner_details_ways
-    }
-    Surface(
-        modifier = modifier.fillMaxWidth().padding(horizontal = Spacing.m).padding(bottom = Spacing.m)
-            .shadow(8.dp, shape, clip = false).testTag("layer_viewer"),
-        shape = shape,
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-    ) {
-        Column(Modifier.padding(start = Spacing.m, end = Spacing.m, top = Spacing.s, bottom = Spacing.l)) {
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp).testTag("layer_viewer_back")) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(22.dp))
-                    }
-                    Box(Modifier.weight(1f)) {
-                        Row(
-                            Modifier.clip(MaterialTheme.shapes.small).clickable(enabled = offered.size > 1) { menu = true }
-                                .padding(horizontal = Spacing.s, vertical = 6.dp).testTag("layer_viewer_title"),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-                        ) {
-                            Text(stringResource(titre(viewer)), style = MaterialTheme.typography.titleMedium,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (offered.size > 1) Icon(Icons.Filled.ExpandMore, null, Modifier.size(20.dp))
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false },
-                            shape = MaterialTheme.shapes.medium,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-                            offered.forEach { v ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(stringResource(titre(v)), style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (v == viewer) FontWeight.SemiBold else FontWeight.Normal)
-                                    },
-                                    onClick = { menu = false; onSwitch(v, initialHighlight(v, segments)) },
-                                )
-                            }
-                        }
-                    }
-                    headerActions()
-                }
-            }
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = Spacing.s, bottom = Spacing.xs))
-            when (viewer) {
-                PlannerViewer.PROFILE -> profile()
-                PlannerViewer.WAYS -> {
-                    val shares = remember(segments) { RouteDetails.ways(segments) }
-                    ShareViewer(shares, highlight as? WayKind, imperial) { onSelect(it) }
-                }
-                PlannerViewer.SURFACES -> {
-                    val shares = remember(segments) { RouteDetails.surfaces(segments) }
-                    ShareViewer(shares, highlight as? SurfaceKind, imperial) { onSelect(it) }
-                }
-            }
-        }
-    }
 }
 
 /**

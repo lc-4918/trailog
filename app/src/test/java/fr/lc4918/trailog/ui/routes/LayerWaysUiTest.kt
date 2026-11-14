@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
@@ -26,7 +27,6 @@ import fr.lc4918.trailog.domain.model.WayKind
 import fr.lc4918.trailog.domain.model.WaySegment
 import fr.lc4918.trailog.routing.TraceMatch
 import fr.lc4918.trailog.ui.planner.PlannerViewer
-import fr.lc4918.trailog.ui.planner.WaysViewerPanel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -147,18 +147,12 @@ class LayerWaysUiTest {
         val s = LayerWaysViewerState().apply { open(couche, voies, listOf(profil), PlannerViewer.SURFACES, SurfaceKind.GRAVEL) }
         compose.setContent {
             MaterialTheme { Surface(Modifier.fillMaxSize()) {
-                val w = s.ways
-                val l = s.layer
-                if (w != null && l != null) WaysViewerPanel(
-                    viewer = s.viewer, title = l.name, segments = w.all, highlight = s.highlight, imperial = false,
-                    offered = s.offered,
-                    onSwitch = { v, k -> s.switch(v, k) }, onSelect = { s.select(it) }, onBack = { s.close() },
-                )
+                LayerWaysViewerPanel(s, imperial = false, settings = SettingsEntity())
             } }
         }
         compose.onNodeWithText("Soreze - Arfons").assertExists()
         compose.onNodeWithTag("planner_viewer_bar").assertExists()
-        compose.onNodeWithTag("layer_viewer_title").performClick()
+        compose.onNodeWithTag("track_viewer_select").performClick()
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.planner_details_ways)).performClick()
         compose.waitForIdle()
@@ -247,27 +241,30 @@ class LayerWaysUiTest {
         val s = LayerWaysViewerState().apply { open(couche, voies, listOf(profil), PlannerViewer.PROFILE, null) }
         compose.setContent {
             MaterialTheme { Surface(Modifier.fillMaxSize()) {
-                val l = s.layer
-                if (l != null) WaysViewerPanel(
-                    viewer = s.viewer, title = l.name, segments = s.ways?.all.orEmpty(), highlight = s.highlight,
-                    imperial = false, offered = s.offered,
-                    onSwitch = { v, k -> s.switch(v, k) }, onSelect = { s.select(it) }, onBack = { s.close() },
-                    profile = {
-                        fr.lc4918.trailog.ui.planner.ProfileViewerContent(
-                            all = profil.samples, fullStats = profil.stats, zoom = null, cursor = s.cursor,
-                            settings = SettingsEntity(), slope = false, lineColor = androidx.compose.ui.graphics.Color.Blue,
-                            infos = { _, _ -> emptyList() }, onScrub = { s.tapProfile(it) }, onZoom = { _, _ -> },
-                        )
-                    },
-                )
+                LayerWaysViewerPanel(s, imperial = false, settings = SettingsEntity())
             } }
         }
+        compose.onNodeWithTag("layer_viewer_profile").assertExists()
         compose.onNodeWithText(ctx.getString(R.string.planner_viewer_elevation)).assertExists()
-        compose.onNodeWithTag("layer_viewer_title").performClick()
+        compose.onNodeWithTag("track_viewer_select").performClick()
         compose.waitForIdle()
         compose.onNodeWithText(ctx.getString(R.string.planner_details_surfaces)).assertExists()
         compose.onNodeWithText(ctx.getString(R.string.planner_details_ways)).performClick()
         compose.waitForIdle()
         assertEquals(PlannerViewer.WAYS, s.viewer)
+    }
+
+    /** Le panneau de la bibliotheque est celui du profil d'une trace : toute la largeur, la couche en titre. */
+    @Test fun `le panneau de la bibliotheque prend toute la largeur`() {
+        val s = LayerWaysViewerState().apply { open(couche, voies, listOf(profil), PlannerViewer.SURFACES, SurfaceKind.GRAVEL) }
+        compose.setContent {
+            MaterialTheme { Surface(Modifier.fillMaxSize()) {
+                LayerWaysViewerPanel(s, imperial = false, settings = SettingsEntity())
+            } }
+        }
+        val panel = compose.onNodeWithTag("layer_viewer").fetchSemanticsNode().boundsInRoot
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        assertEquals(root.width, panel.width, 1f)
+        compose.onNodeWithTag("track_viewer_select").assertExists()
     }
 }

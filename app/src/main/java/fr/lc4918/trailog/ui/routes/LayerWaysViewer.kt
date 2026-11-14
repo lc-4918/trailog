@@ -1,13 +1,21 @@
 package fr.lc4918.trailog.ui.routes
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Dp
+import fr.lc4918.trailog.ui.planner.WaysShareContent
+import fr.lc4918.trailog.ui.planner.initialHighlight
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,8 +45,6 @@ import fr.lc4918.trailog.domain.model.SurfaceKind
 import fr.lc4918.trailog.domain.model.WayKind
 import fr.lc4918.trailog.ui.components.MapController
 import fr.lc4918.trailog.ui.planner.PlannerViewer
-import fr.lc4918.trailog.ui.planner.ProfileViewerContent
-import fr.lc4918.trailog.ui.planner.WaysViewerPanel
 import fr.lc4918.trailog.ui.profile.ProfileZoom
 import fr.lc4918.trailog.ui.profile.cursorInfos
 import fr.lc4918.trailog.ui.profile.titleInfos
@@ -241,48 +246,70 @@ internal fun BoxScope.LayerWaysViewerLayer(
         if (!state.isOpen) hauteur = 0
     }
     if (layer == null) return
+    LayerWaysViewerPanel(state, imperial, settings, onHeightChange = { hauteur = it })
+}
+
+/**
+ * Le panneau lui-meme : **le meme que celui du profil d'une trace** (cf. ProfilePanelLayer), comme les
+ * VIEWER du calcul d'itineraire - toute la largeur du bas, le nom de la couche en titre et le choix du
+ * VIEWER, les totaux, le point courant au-dessus du panneau, le retour a la vue complete a gauche. Il
+ * etait une carte detachee des bords, a l'en-tete a part. La fleche devant le titre le referme, comme le
+ * retour Android.
+ */
+@Composable
+internal fun LayerWaysViewerPanel(
+    state: LayerWaysViewerState,
+    imperial: Boolean,
+    settings: SettingsEntity,
+    onHeightChange: (Int) -> Unit = {},
+) {
+    val layer = state.layer ?: return
     val couleur = remember(layer.color) {
         runCatching { Color(layer.color.toColorInt()) }.getOrNull()
     } ?: MaterialTheme.colorScheme.primary
-    WaysViewerPanel(
-        viewer = state.viewer,
-        title = layer.name,
-        segments = ways?.all.orEmpty(),
-        highlight = state.highlight,
-        imperial = imperial,
-        offered = state.offered,
-        onSwitch = { v, initial -> state.switch(v, initial) },
-        onSelect = { state.select(it) },
-        onBack = { state.close() },
-        modifier = Modifier.align(Alignment.BottomCenter)
-            .windowInsetsPadding(WindowInsets.navigationBars)
-            .onGloballyPositioned { hauteur = it.size.height },
-        headerActions = {
-            if (state.viewer == PlannerViewer.PROFILE && state.zoomRange != null) {
-                IconButton(onClick = { state.resetZoom() }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Filled.Fullscreen, stringResource(R.string.planner_zoom_out),
-                        Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    val track = state.profileTrack
+    Box(Modifier.fillMaxSize()) {
+        ProfilePanelLayer(
+            visible = true,
+            computed = track, lastComputed = track, loading = false,
+            zoom = state.zoomRange, cursor = state.cursor,
+            title = layer.name, lineColor = couleur,
+            settings = settings, imperial = imperial,
+            viewer = state.viewer, offeredViewers = state.offered,
+            onViewer = { v -> state.switch(v, initialHighlight(v, state.ways?.all.orEmpty())) },
+            // Colorie par pente quand la couche l'est, comme le profil qu'on ouvre en touchant la trace.
+            slopeLegend = layer.slopeColored, slopeArea = layer.slopeColored,
+            titleInfos = { stats, samples ->
+                val tobler = remember(samples) { samples?.let { TrackMath.toblerSeconds(it) } }
+                titleInfos(stats, settings.titleInfos, imperial, tobler)
+            },
+            pointInfos = { point -> cursorInfos(point, settings.cursorInfos, imperial) },
+            waysContent = {
+                Box(Modifier.fillMaxWidth().heightIn(min = 72.dp), contentAlignment = Alignment.CenterStart) {
+                    Column {
+                        WaysShareContent(state.viewer, state.ways?.all.orEmpty(), state.highlight, imperial) {
+                            state.select(it)
+                        }
+                    }
                 }
-            }
-        },
-        profile = {
-            val t = state.profileTrack
-            if (t != null) ProfileViewerContent(
-                all = t.samples, fullStats = t.stats, zoom = state.zoomRange, cursor = state.cursor,
-                settings = settings,
-                // Colorie par pente quand la couche l'est, comme le profil qu'on ouvre en touchant la trace.
-                slope = layer.slopeColored,
-                lineColor = couleur,
-                infos = { point, stats ->
-                    if (point != null) cursorInfos(point, "dist,ele,slope", imperial)
-                    else titleInfos(stats, "dist,asc,desc", imperial)
-                },
-                onScrub = { state.tapProfile(it) },
-                onZoom = { scale, fraction -> state.zoomBy(scale, fraction) },
-                modifier = Modifier.testTag("layer_viewer_profile"),
-            )
-        },
-    )
+            },
+            onHeightChange = onHeightChange,
+            onExpandZoom = { state.resetZoom() },
+            onScrub = { state.tapProfile(it) },
+            onZoom = { scale, fraction -> state.zoomBy(scale, fraction) },
+            onDoubleTapZoom = { fraction -> state.zoomBy(2f, fraction) },
+            leading = {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    IconButton(onClick = { state.close() },
+                        modifier = Modifier.size(32.dp).offset(y = (-4).dp).testTag("layer_viewer_back")) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), Modifier.size(20.dp))
+                    }
+                }
+            },
+            panelTestTag = "layer_viewer",
+            chartTestTag = "layer_viewer_profile",
+        )
+    }
 }
 
 /**
