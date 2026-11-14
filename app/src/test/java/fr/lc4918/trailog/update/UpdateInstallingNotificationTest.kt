@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import fr.lc4918.trailog.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +31,12 @@ class UpdateInstallingNotificationTest {
     @Test fun `elle porte un spinner et reste affichee pendant l'installation`() {
         assertTrue("spinner", notification.extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE))
         assertTrue("permanente", notification.flags and Notification.FLAG_ONGOING_EVENT != 0)
+    }
+
+    /** Les fleches en cercle de l'attente, et non la coche de la mise a jour terminee. */
+    @Test fun `son icone n'est pas celle de la fin de l'installation`() {
+        assertEquals(R.drawable.ic_stat_update_installing, notification.smallIcon.resId)
+        assertNotEquals(R.drawable.ic_stat_update, notification.smallIcon.resId)
     }
 
     @Test fun `elle disparait d'elle-meme si l'installation n'aboutit pas`() {

@@ -83,7 +83,9 @@ object UpdateDone {
     internal fun installingNotification(context: Context): android.app.Notification {
         val text = context.getString(R.string.update_installing_text)
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_update)
+            // Les fleches en cercle, et non la coche de la mise a jour terminee : l'attente et la fin se
+            // distinguent d'un coup d'oeil dans la barre d'etat.
+            .setSmallIcon(R.drawable.ic_stat_update_installing)
             .setContentTitle(context.getString(R.string.update_installing_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

@@ -467,7 +467,7 @@ private fun BasemapIcon(p: ProviderEntity) {
 
 /**
  * Le relief, en icone seule dans l'en-tete : allume, la montagne prend la couleur d'accent sur une pastille
- * teintee ; eteint, elle reste au trait, en gris, sans fond. Deux etats qui se distinguent d'un coup d'oeil,
+ * teintee ; eteint, elle reste au trait, noire, sans fond. Deux etats qui se distinguent d'un coup d'oeil,
  * sans libelle - et le lecteur d'ecran les annonce, l'icone etant un interrupteur (IconToggleButton).
  *
  * Le tap allume ou eteint l'ombrage sans fermer le panneau ni changer le fond courant : il se pose sur
@@ -478,7 +478,9 @@ private fun ReliefToggle(on: Boolean, onToggle: () -> Unit) {
     IconToggleButton(
         checked = on, onCheckedChange = { onToggle() }, modifier = Modifier.size(32.dp),
         colors = IconButtonDefaults.iconToggleButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            // Eteint : la couleur du texte du panneau, comme l'icone du nouveau dossier et comme la
+            // montagne de l'ancienne ligne du relief - noire en theme clair, pas grisee.
+            contentColor = LocalContentColor.current,
             checkedContentColor = MaterialTheme.colorScheme.primary,
             checkedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
         ),

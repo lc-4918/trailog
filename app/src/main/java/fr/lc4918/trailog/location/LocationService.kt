@@ -225,6 +225,14 @@ class LocationService : Service() {
      */
     private var inForeground = false
 
+    /**
+     * L'annonce d'un suivi interrompu, portee PAR la notification permanente (cf. [StoppedAlertPlacement]) :
+     * son texte, ou null quand le suivi va bien. [stoppedAlertRung] dit si elle a deja sonne - la
+     * notification se repose a chaque changement de [notice], et ne doit pas resonner a chaque fois.
+     */
+    @Volatile private var stoppedAlertText: String? = null
+    @Volatile private var stoppedAlertRung = false
+
     /** L'application passe en arriere-plan : en mode "ecran seul", le suivi s'arrete sans rien annoncer. */
     private val appLifecycleObserver = LifecycleEventObserver { _, event ->
         if (event == Lifecycle.Event.ON_STOP && !inForeground) {
@@ -410,7 +418,7 @@ class LocationService : Service() {
      * - il porte une notification permanente qui ne doit jamais s'imposer -, et une importance ne se
      * change plus une fois le canal cree.
      */
-    private fun postStoppedAlert(reason: LocationHub.StopReason) {
+    private fun postStoppedAlert(reason: LocationHub.StopReason, serviceStopping: Boolean = false) {
         if (!LocationHub.wanted.value) return
         ensureAlertChannel()
         val texte = getString(
@@ -424,6 +432,15 @@ class LocationService : Service() {
                 else -> R.string.location_stopped_system
             },
         )
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        // Une seule notification : la permanente, quand elle est la et le reste, prend l'annonce a son
+        // compte - elle disait deja la meme chose, sous le meme titre, et l'on en voyait deux.
+        if (StoppedAlertPlacement.mergedIntoOngoing(inForeground, serviceStopping)) {
+            stoppedAlertText = texte
+            stoppedAlertRung = false
+            runCatching { nm.notify(NOTIF_ID, notification(notice.value)) }
+            return
+        }
         val ouvrir = PendingIntent.getActivity(
             this, 2, Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -440,7 +457,6 @@ class LocationService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ERROR)
             .build()
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         runCatching { nm.notify(ALERT_NOTIF_ID, notif) }
     }
 
@@ -497,6 +513,12 @@ class LocationService : Service() {
     private fun cancelStoppedAlert() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
         runCatching { nm?.cancel(ALERT_NOTIF_ID) }
+        // Portee par la permanente : celle-ci redevient discrete, sur son canal a elle.
+        if (stoppedAlertText != null) {
+            stoppedAlertText = null
+            stoppedAlertRung = false
+            if (inForeground) runCatching { nm?.notify(NOTIF_ID, notification(notice.value)) }
+        }
     }
 
     override fun onDestroy() {
@@ -512,7 +534,7 @@ class LocationService : Service() {
         FixLog.write(this) { "--- suivi arrete ($stopReason)" }
         releaseWakeLock()
         // L'annonce AVANT l'arret : setTracking efface l'intention lue par postStoppedAlert.
-        if (stopReason != LocationHub.StopReason.USER) postStoppedAlert(stopReason)
+        if (stopReason != LocationHub.StopReason.USER) postStoppedAlert(stopReason, serviceStopping = true)
         LocationHub.setTracking(false, stopReason)
         // La trace suivie SURVIT au service. Elle etait arretee ici, si bien que l'alerte d'eloignement -
         // la fonction faite pour dire "tu quittes le chemin" - etait demontee par l'evenement meme qui la
@@ -988,6 +1010,7 @@ class LocationService : Service() {
 
     private fun notification(texte: String?): Notification {
         ensureChannel()
+        val alerte = stoppedAlertText
         val ouvrir = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -998,8 +1021,13 @@ class LocationService : Service() {
             this, 1, Intent(this, LocationService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val body = texte ?: getString(R.string.location_notice_idle)
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val body = alerte ?: texte ?: getString(R.string.location_notice_idle)
+        if (alerte != null) ensureAlertChannel()
+        // Suivi interrompu : la meme notification, sur le canal d'alerte (importance haute, elle sonne et
+        // s'affiche en bandeau), le temps que le suivi reprenne. Elle ne sonne qu'a sa premiere pose.
+        val sonne = alerte != null && !stoppedAlertRung
+        if (alerte != null) stoppedAlertRung = true
+        return NotificationCompat.Builder(this, if (alerte != null) ALERT_CHANNEL_ID else CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_location)
             .setContentTitle(getString(R.string.location_notice_title))
             .setContentText(body)
@@ -1008,9 +1036,10 @@ class LocationService : Service() {
             .setContentIntent(ouvrir)
             .addAction(0, getString(R.string.location_notice_stop), arreter)
             .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setSilent(alerte == null)
+            .setOnlyAlertOnce(!sonne)
+            .setPriority(if (alerte != null) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
+            .setCategory(if (alerte != null) NotificationCompat.CATEGORY_ERROR else NotificationCompat.CATEGORY_SERVICE)
             .build()
     }
 
